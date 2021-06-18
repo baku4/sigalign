@@ -1,3 +1,5 @@
+mod classic_wfa;
+
 #[derive(Debug)]
 struct AlignmentConfig {
     // Gap-affine penalties
