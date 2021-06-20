@@ -3,17 +3,41 @@ use std::collections::{HashMap, HashSet};
 type WF = Vec<Option<WFscore>>; // Wavefront
 type WFscore = [Option<Component>; 3]; // Wavefront of score
 #[derive(Debug)]
-struct Component(Vec<(i32, i32)>); // MID Component k: k, v: f.r.point
+struct Component(Vec<(i32, i32, Backtrace)>); // MID Component k: k, v: f.r.point
+
+#[derive(Debug, Clone)]
+enum Backtrace {
+    M(FromM),
+    I(FromI),
+    D(FromD),
+}
+#[derive(Debug, Clone)]
+enum FromM {
+    M,
+    I,
+    D,
+    N,
+}
+#[derive(Debug, Clone)]
+enum FromI {
+    M,
+    I,
+}
+#[derive(Debug, Clone)]
+enum FromD {
+    M,
+    D,
+}
 
 impl Component {
     fn new() -> Self {
         Self(Vec::new())
     }
     fn new_with_first(k: i32, fr_point: i32) -> Self {
-        Self(vec![(k, fr_point)])
+        Self(vec![(k, fr_point, Backtrace::M(FromM::N))])
     }
     fn get_frpoint(&self, k: i32) -> Option<i32> {
-        for (key, val) in &self.0 {
+        for (key, val, _) in &self.0 {
             let gap =  *key - k; // lo to hi
             if gap > 0 {
                 return None
@@ -27,7 +51,7 @@ impl Component {
     fn get_two_frpoint(&self, k_small: i32, k_large: i32) -> (Option<i32>, Option<i32>) {
         let mut fr_1: Option<i32> = None;
         let mut fr_2: Option<i32> = None;
-        for (key, val) in &self.0 {
+        for (key, val, _) in &self.0 {
             let gap_1 =  *key - k_small; // lo to hi
             if gap_1 == 0 {
                 fr_1 = Some(*val);
@@ -45,6 +69,14 @@ impl Component {
     fn get_hi_lo(&self) -> (i32, i32) {
         (self.0[0].0, self.0.last().unwrap().0)
     }
+    fn backtrace(&self, k: i32) -> (i32, &Backtrace) {
+        for (key, fr, bt) in &self.0 {
+            if *key == k {
+                return (*fr, bt)
+            }
+        }
+        panic!("backtrace err");
+    }
 }
 
 fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> WF {
@@ -61,8 +93,9 @@ fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> 
         let wf_score: WFscore = [Some(m_component), None, None];
         vec![Some(wf_score)]
     };
-    #[cfg(test)]
-    let mut i = 1;
+    // FIXME:
+    // #[cfg(test)]
+    // let mut i = 1;
     loop {
         // extend & exit condition
         if let Some(wf_score) = wf[score].as_mut() {
@@ -77,15 +110,15 @@ fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> 
                 }
             }
         }
-        
-        #[cfg(test)]
-        {
-            println!("{:?}\n\n", wf);
-            i += 1;
-            if i == 10 {
-                break;
-            }
-        }
+        // FIXME:
+        // #[cfg(test)]
+        // {
+        //     println!("{:?}\n\n", wf);
+        //     i += 1;
+        //     if i == 10 {
+        //         break;
+        //     }
+        // }
         // next wf
         score += 1;
         wf_next(&mut wf, &query, &text, score, penalties);
@@ -94,7 +127,7 @@ fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> 
 }
 
 fn wf_extend(m_component: &mut Component, query: &Vec<u8>, text: &Vec<u8>) {
-    for (k, fr_point) in m_component.0.iter_mut() {
+    for (k, fr_point, _) in m_component.0.iter_mut() {
         let mut v = (*fr_point - *k) as usize;
         let mut h = *fr_point as usize;
         loop {
@@ -238,63 +271,52 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
     let mut i_comp: Component = Component::new();
     let mut d_comp: Component = Component::new();
     for k in lo..=hi {
-        let mut msk_vec: Vec<i32> = Vec::with_capacity(3);
-        let mut isk_vec: Vec<i32> = Vec::with_capacity(2);
-        let mut dsk_vec: Vec<i32> = Vec::with_capacity(2);
-
+        let mut isk_vec: Vec<(i32, Backtrace)> = Vec::with_capacity(2);
+        let mut dsk_vec: Vec<(i32, Backtrace)> = Vec::with_capacity(2);
+        let mut msk_vec: Vec<(i32, Backtrace)> = Vec::with_capacity(3);   
+        // M s-o-e comp
         if let Some(comp) = m_soe_comp {
-            // fr_1: M s-o-e,k-1
-            // fr_2: M s-o-e,k+1
-            let (fr_1, fr_2) = comp.get_two_frpoint(k-1, k+1);
-            // isk
-            if let Some(frpoint) = fr_1 {
-                isk_vec.push(frpoint);
+            // fr_i: M s-o-e,k-1
+            // fr_d: M s-o-e,k+1
+            let (fr_i, fr_d) = comp.get_two_frpoint(k-1, k+1);
+            if let Some(frpoint) = fr_i {
+                isk_vec.push((frpoint+1, Backtrace::I(FromI::M)));
             }
-            // dsk
-            if let Some(frpoint) = fr_2 {
-                dsk_vec.push(frpoint);
+            if let Some(frpoint) = fr_d {
+                dsk_vec.push((frpoint, Backtrace::D(FromD::M)));
             }
         }
-
-        if let Some(comp) = m_sx_comp {
-            let fr= comp.get_frpoint(k);
-            // msk
-            if let Some(frpoint) = fr {
-                msk_vec.push(frpoint+1);
-            }
-        }
-
+        // I s-e comp
         if let Some(comp) = i_se_comp {
-            let fr= comp.get_frpoint(k-1);
-            // isk
-            if let Some(frpoint) = fr {
-                isk_vec.push(frpoint);
+            if let Some(frpoint) = comp.get_frpoint(k-1) {
+                isk_vec.push((frpoint+1, Backtrace::I(FromI::I)));
             }
         }
-
+        // D s-e comp
         if let Some(comp) = d_se_comp {
-            let fr= comp.get_frpoint(k+1);
-            // dsk
-            if let Some(frpoint) = fr {
-                dsk_vec.push(frpoint);
+            if let Some(frpoint) = comp.get_frpoint(k+1) {
+                dsk_vec.push((frpoint, Backtrace::D(FromD::D)));
+            }
+        }
+        // M s-x comp
+        if let Some(comp) = m_sx_comp {
+            if let Some(frpoint) = comp.get_frpoint(k) {
+                msk_vec.push((frpoint+1, Backtrace::M(FromM::M)));
             }
         }
         // isk
-        if let Some(v) = isk_vec.iter().max() {
-            let isk = *v + 1;
-            msk_vec.push(isk);
-            i_comp.0.push((k, isk));
+        if let Some((fr, backtrace)) = isk_vec.iter().max_by_key(|x| x.0) {
+            msk_vec.push((*fr, Backtrace::M(FromM::I)));
+            i_comp.0.push((k, *fr, backtrace.clone()));
         }
         // dsk
-        if let Some(v) = dsk_vec.iter().max() {
-            let dsk = *v;
-            msk_vec.push(dsk);
-            d_comp.0.push((k, dsk));
+        if let Some((fr, backtrace)) = dsk_vec.iter().max_by_key(|x| x.0) {
+            msk_vec.push((*fr, Backtrace::M(FromM::D)));
+            d_comp.0.push((k, *fr, backtrace.clone()));
         }
         // msk
-        if let Some(v) = msk_vec.iter().max() {
-            let msk = *v;
-            m_comp.0.push((k, msk));
+        if let Some((fr, backtrace)) = msk_vec.iter().max_by_key(|x| x.0) {
+            m_comp.0.push((k, *fr, backtrace.clone()));
         }
     }
     // generate next wfs
@@ -313,6 +335,17 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
         wf.push(None)
     } else {
         wf.push(Some(next_wf_score))
+    }
+}
+
+fn wf_backtrace(
+    wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>,
+    penalties: (usize, usize, usize),
+    score: usize, ak: i32
+){
+    let start_component = wf[score].as_ref().unwrap()[0].as_ref().unwrap().backtrace(ak);
+    loop {
+
     }
 }
 
