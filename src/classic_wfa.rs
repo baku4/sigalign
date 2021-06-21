@@ -29,6 +29,14 @@ enum FromD {
     D,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum Operation {
+    Match,
+    Subst,
+    Ins,
+    Del,
+}
+
 impl Component {
     fn new() -> Self {
         Self(Vec::new())
@@ -47,27 +55,35 @@ impl Component {
         }
         return None
     }
-    // small < large
     fn get_two_frpoint(&self, k_small: i32, k_large: i32) -> (Option<i32>, Option<i32>) {
+        // k small < k large
         let mut fr_1: Option<i32> = None;
         let mut fr_2: Option<i32> = None;
-        for (key, val, _) in &self.0 {
-            let gap_1 =  *key - k_small; // lo to hi
-            if gap_1 == 0 {
-                fr_1 = Some(*val);
-            } else if gap_1 > 0 {
-                let gap_2 =  *key - k_large;
-                if gap_2 == 0 {
+        let mut skip_small = false;
+        for (key, val, _) in &self.0 { // lo to hi
+            if !skip_small {
+                let gap =  *key - k_small;
+                if gap > 0 {
+                    skip_small = true;
+                } else if gap == 0 {
+                    fr_1 = Some(*val);
+                    skip_small = true;
+                }
+            } 
+            if skip_small {
+                let gap =  *key - k_large;
+                if gap > 0 {
+                    return (fr_1, fr_2)
+                } else if gap == 0 {
                     fr_2 = Some(*val);
-                } else if gap_2 > 0 {
                     return (fr_1, fr_2)
                 }
             }
         }
         return (fr_1, fr_2)
     }
-    fn get_hi_lo(&self) -> (i32, i32) {
-        (self.0[0].0, self.0.last().unwrap().0)
+    fn get_k_hi_and_lo(&self) -> (i32, i32) {
+        (self.0.last().unwrap().0, self.0[0].0)
     }
     fn backtrace(&self, k: i32) -> (i32, &Backtrace) {
         for (key, fr, bt) in &self.0 {
@@ -79,7 +95,7 @@ impl Component {
     }
 }
 
-fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> WF {
+fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> Vec<Operation> {
     // penalties: [x, o, e]
     let n = query.len();
     let m = text.len();
@@ -93,9 +109,6 @@ fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> 
         let wf_score: WFscore = [Some(m_component), None, None];
         vec![Some(wf_score)]
     };
-    // FIXME:
-    // #[cfg(test)]
-    // let mut i = 1;
     loop {
         // extend & exit condition
         if let Some(wf_score) = wf[score].as_mut() {
@@ -110,20 +123,10 @@ fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> 
                 }
             }
         }
-        // FIXME:
-        // #[cfg(test)]
-        // {
-        //     println!("{:?}\n\n", wf);
-        //     i += 1;
-        //     if i == 10 {
-        //         break;
-        //     }
-        // }
-        // next wf
         score += 1;
         wf_next(&mut wf, &query, &text, score, penalties);
     }
-    wf
+    wf_backtrace(&mut wf, &query, &text, penalties, score, ak)
 }
 
 fn wf_extend(m_component: &mut Component, query: &Vec<u8>, text: &Vec<u8>) {
@@ -166,7 +169,7 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
                 Some(wfs) => {
                     match &wfs[0] {
                         Some(comp) => {
-                            let (hi, lo) = comp.get_hi_lo();
+                            let (hi, lo) = comp.get_k_hi_and_lo();
                             hi_vec.push(hi);
                             lo_vec.push(lo);
                             Some(comp)
@@ -191,7 +194,7 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
                 Some(wfs) => {
                     match &wfs[0] {
                         Some(comp) => {
-                            let (hi, lo) = comp.get_hi_lo();
+                            let (hi, lo) = comp.get_k_hi_and_lo();
                             hi_vec.push(hi);
                             lo_vec.push(lo);
                             Some(comp)
@@ -217,7 +220,7 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
                     // I
                     let i_se_comp = match &wfs[1] {
                         Some(comp) => {
-                            let (hi, lo) = comp.get_hi_lo();
+                            let (hi, lo) = comp.get_k_hi_and_lo();
                             hi_vec.push(hi);
                             lo_vec.push(lo);
                             Some(comp)
@@ -229,7 +232,7 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
                     // D
                     let d_se_comp = match &wfs[2] {
                         Some(comp) => {
-                            let (hi, lo) = comp.get_hi_lo();
+                            let (hi, lo) = comp.get_k_hi_and_lo();
                             hi_vec.push(hi);
                             lo_vec.push(lo);
                             Some(comp)
@@ -342,24 +345,134 @@ fn wf_backtrace(
     wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>,
     penalties: (usize, usize, usize),
     score: usize, ak: i32
-){
-    let start_component = wf[score].as_ref().unwrap()[0].as_ref().unwrap().backtrace(ak);
-    loop {
+) -> Vec<Operation> {
+    let mut operations: Vec<Operation> = Vec::new();
+    let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
 
+    let mut s = score;
+    let mut k = ak;
+    let mut component = get_comp(0, s, k);
+
+    loop {
+        let fr = component.0;
+        let bactrace = component.1;
+        // Backtrace check
+        match bactrace {
+            Backtrace::M(from) => {
+                match from {
+                    FromM::M => {
+                        // new comp
+                        s -= penalties.0;
+                        component = get_comp(0, s, k);
+                        // extend operations
+                        let mut new_ops = vec![Operation::Match; (fr-component.0-1) as usize];
+                        new_ops.push(Operation::Subst);
+                        operations.extend(new_ops);
+                    },
+                    FromM::I => {
+                        // new comp
+                        component = get_comp(1, s, k);
+                        // extend operations
+                        operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
+                    },
+                    FromM::D => {
+                        // new comp
+                        component = get_comp(2, s, k);
+                        // extend operations
+                        operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
+                    },
+                    FromM::N => {
+                        operations.extend(vec![Operation::Match; fr as usize]);
+                        operations.reverse();
+                        return operations;
+                    },
+                }
+            },
+            Backtrace::I(from) => {
+                match from {
+                    FromI::M => {
+                        s -= penalties.1 + penalties.2;
+                        k -= 1;
+                        // new comp
+                        component = get_comp(0, s, k);
+                        // extend operations
+                        operations.push(Operation::Ins);
+                    },
+                    FromI::I => {
+                        s -= penalties.2;
+                        k -= 1;
+                        // new comp
+                        component = get_comp(1, s, k);
+                        // extend operations
+                        operations.push(Operation::Ins);
+                    },
+                }
+            },
+            Backtrace::D(from) => {
+                match from {
+                    FromD::M => {
+                        s -= penalties.1 + penalties.2;
+                        k += 1;
+                        // new comp
+                        component = get_comp(0, s, k);
+                        // extend operations
+                        operations.push(Operation::Del);
+                    },
+                    FromD::D => {
+                        s -= penalties.2;
+                        k += 1;
+                        // new comp
+                        component = get_comp(2, s, k);
+                        // extend operations
+                        operations.push(Operation::Del);
+                    },
+                }
+            }
+        }
     }
 }
 
 mod test {
     use super::*;
+    use super::Operation::*;
+
+
+    // ** TEST DATASET **
+    // query: Vec<u8>
+    // text: Vec<u8>
+    // penalties: (usize, usize, usize)
+    // answer: Vec<Operation>
+    fn get_test_dataset(idx: usize) -> (Vec<u8>, Vec<u8>, (usize, usize, usize), Vec<Operation>) {
+        let test_data: Vec<(Vec<u8>, Vec<u8>, (usize, usize, usize), Vec<Operation>)> = vec![
+            (
+                "GATACA".as_bytes().to_vec(),
+                "GAGATA".as_bytes().to_vec(),
+                (4, 6, 2),
+                vec![Match, Match, Subst, Match, Subst, Match]
+            ),
+            (
+                "GAAAAACCGTTGAT".as_bytes().to_vec(),
+                "ACCGTGGAT".as_bytes().to_vec(),
+                (4, 3, 2),
+                vec![Del, Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]
+            )
+        ];
+        test_data[idx].clone()
+    }
+
+
     #[test]
     fn test() {
-        // query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)
-        let query = "GATACA".as_bytes().to_vec();
-        let text = "GAGATA".as_bytes().to_vec();
-        let penalties: (usize, usize, usize) =  (4, 6, 2);
-
-        let wf = wf_align(query, text, penalties);
-
-        println!("{:?}", wf);
+        for i in 0..2 {
+            println!("Test data {:?}", i+1);
+            let (
+                query,
+                text,
+                penalties,
+                answer
+            ) = get_test_dataset(i as usize);
+            let result = wf_align(query, text, penalties);
+            assert_eq!(result, answer);
+        }
     }
 }
