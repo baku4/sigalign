@@ -455,6 +455,12 @@ mod test {
                 "ACCGTGGAT".as_bytes().to_vec(),
                 (4, 3, 2),
                 vec![Del, Del, Del, Del, Del, Match, Match, Match, Match, Match, Subst, Match, Match, Match]
+            ),
+            (
+                "AAAAACGTACGTACGTAAAA".as_bytes().to_vec(),
+                "GGGGGGACGTACGTACGT".as_bytes().to_vec(),
+                (3, 3, 2),
+                vec![Ins, Ins, Subst, Subst, Subst, Subst, Match, Match, Match, Match, Match, Match, Match, Match, Match, Match, Match, Match, Del, Del, Del, Del]
             )
         ];
         test_data[idx].clone()
