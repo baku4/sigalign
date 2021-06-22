@@ -1,4 +1,5 @@
 mod classic_wfa;
+mod alignment;
 
 #[derive(Debug)]
 struct AlignmentConfig {
