@@ -432,10 +432,9 @@ fn wf_backtrace(
     }
 }
 
-mod test {
+mod tests {
     use super::*;
     use super::Operation::*;
-
 
     // ** TEST DATASET **
     // query: Vec<u8>
@@ -465,7 +464,6 @@ mod test {
         ];
         test_data[idx].clone()
     }
-
 
     #[test]
     fn test() {

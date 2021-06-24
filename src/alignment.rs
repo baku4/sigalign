@@ -9,6 +9,7 @@ type SeqeunceLength = u32;
 
 const FM_SUFFIX_LEVEL: usize = 2;
 
+#[derive(Debug)]
 struct Aligner {
     cutoff: Cutoff,
     kmer: usize,
@@ -74,11 +75,13 @@ impl<T: AsRef<[u8]>> Reference<T> {
 
 type Scores = (usize, usize, usize);
 
+#[derive(Debug)]
 struct Cutoff {
     score_per_length: f64,
     minimum_length: usize,
 }
 
+#[derive(Debug)]
 struct EmpKmer {
     odd: usize,
     even: usize,
@@ -117,9 +120,21 @@ enum Operation {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    fn test_aligner() -> Aligner {
+        let score_per_length: f64 = 0.05;
+        let minimum_length: usize = 100;
+        let mismatch_penalty: usize = 3;
+        let gapopen_penalty: usize = 4;
+        let gapext_penalty: usize = 2;
 
-    #[test]
-    fn new_config() {
-        
+        let aligner = Aligner::new(
+            score_per_length,
+            minimum_length,
+            mismatch_penalty,
+            gapopen_penalty,
+            gapext_penalty,
+        );
+        aligner
     }
 }
