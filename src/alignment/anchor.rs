@@ -1,6 +1,6 @@
-use std::cmp::min;
+use std::cmp::{min, max};
 
-use super::{FmIndex, Operation, EmpKmer};
+use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -8,10 +8,15 @@ struct AnchorGroup<'a> {
     qry_seq: &'a [u8],
     kmer: usize,
     emp_kmer: &'a EmpKmer,
+    scores: &'a Scores,
+    cutoff: &'a Cutoff,
     anchors: Vec<Anchor>,
 }
 impl<'a> AnchorGroup<'a> {
-    fn new(ref_seq: &[u8], qry_seq: &[u8], index: &FmIndex, kmer: usize, emp_kmer: &EmpKmer) { // -> Self
+    fn new(
+        ref_seq: &'a [u8], qry_seq: &'a [u8], index: &FmIndex,
+        kmer: usize, emp_kmer: &'a EmpKmer, scores: &'a Scores, cutoff: &'a Cutoff
+    ) -> Self {
         let ref_len = ref_seq.len();
         let qry_len = qry_seq.len();
         let search_count = qry_len / kmer;
@@ -89,8 +94,16 @@ impl<'a> AnchorGroup<'a> {
             anchor.to_raw_state(ref_len, qry_len, kmer, &anchor_existence, &emp_kmer);
         });
         // (3) Set up checkpoints
-
-        ()
+        Anchor::create_check_points(&mut anchors_preset, scores, cutoff);
+        Self {
+            ref_seq: ref_seq,
+            qry_seq: qry_seq,
+            kmer: kmer,
+            emp_kmer: emp_kmer,
+            scores: scores,
+            cutoff: cutoff,
+            anchors: anchors_preset,
+        }
     }
     fn is_empty() {
 
@@ -147,8 +160,8 @@ impl Anchor {
         };
         // hind block
         let hind_emp_block = {
-            let ref_block_len = ref_len - (self.position.0 + kmer);
-            let qry_block_len = qry_len - (self.position.1 + kmer);
+            let ref_block_len = ref_len - (self.position.0 + self.size);
+            let qry_block_len = qry_len - (self.position.1 + self.size);
             let block_len = min(ref_block_len, qry_block_len);
             let quot = block_len / kmer;
             let rem = block_len % kmer;
@@ -175,6 +188,53 @@ impl Anchor {
         };
         self.state = AnchorState::Raw((fore_emp_block, hind_emp_block));
     }
+    // query block stacked in order in anchors_preset
+    // : high index is always the hind anchor
+    fn can_be_connected(first: &Self, second: &Self, scores: &Scores, cutoff: &Cutoff) -> bool {
+        let ref_gap = second.position.0 as i64 - first.position.0 as i64 - first.size as i64;
+        let qry_gap = second.position.1 as i64 - first.position.1 as i64 - first.size as i64;
+        if (ref_gap >= 0) && (qry_gap >= 0) {
+            let mut penalty: usize = 0;
+            let mut length: usize = 0;
+            // fore
+            if let AnchorState::Raw((emp_block, _)) = &first.state {
+                penalty += emp_block.penalty;
+                length += emp_block.length;
+            }
+            // hind
+            if let AnchorState::Raw((_, emp_block)) = &second.state {
+                penalty += emp_block.penalty;
+                length += emp_block.length;
+            }
+            // middle
+            length += max(ref_gap, qry_gap) as usize;
+            let indel = (ref_gap - qry_gap).abs() as usize;
+            if indel > 0 {
+                penalty += scores.1 + indel*scores.2;
+            }
+            if (penalty as f64 / length as f64 <= cutoff.score_per_length) & (length >= cutoff.minimum_length) {
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+    fn extend_check_point_together(anchors: &mut Vec<Self>, first_index: usize, second_index: usize) {
+        anchors[first_index].check_points.1.push(second_index);
+        anchors[second_index].check_points.0.push(first_index);
+    }
+    fn create_check_points(anchors: &mut Vec<Self>, scores: &Scores, cutoff: &Cutoff) {
+        let anchor_count = anchors.len();
+        for index_1 in 0..anchor_count {
+            for index_2 in index_1+1..anchor_count {
+                if Self::can_be_connected(&anchors[index_1], &anchors[index_2], &scores, &cutoff) {
+                    Self::extend_check_point_together(anchors, index_1, index_2);
+                }
+            }
+        }
+    }
 }
 
 enum AnchorState {
@@ -188,6 +248,11 @@ enum AnchorState {
 struct AlignmentBlock {
     operations: Vec<Operation>,
     penalty: usize,
+}
+
+enum BlockType {
+    Fore,
+    Hind,
 }
 
 struct EmpBlock {
@@ -204,7 +269,7 @@ impl EmpBlock {
     }
 }
 
-enum BlockType {
-    Fore,
-    Hind,
+#[cfg(test)]
+mod tests {
+
 }

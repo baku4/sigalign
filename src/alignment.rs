@@ -10,12 +10,38 @@ type SeqeunceLength = u32;
 const FM_SUFFIX_LEVEL: usize = 2;
 
 struct Aligner {
-    //
+    cutoff: Cutoff,
+    kmer: usize,
+    scores: Scores,
+    emp_kmer: EmpKmer,
 }
 
 impl Aligner {
-    fn new() {
-
+    fn new(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> Self {
+        let emp_kmer = EmpKmer::new(mismatch_penalty, gapopen_penalty, gapext_penalty);
+        let kmer = Self::kmer_calculation(score_per_length, minimum_length, &emp_kmer);
+        Self {
+            cutoff: Cutoff {
+                score_per_length: score_per_length,
+                minimum_length: minimum_length,
+            },
+            kmer: kmer,
+            scores: (mismatch_penalty, gapopen_penalty, gapext_penalty),
+            emp_kmer: emp_kmer,
+        }
+    }
+    fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &EmpKmer) -> usize {
+        let mut i: usize = 1;
+        let mut kmer_size: f64;
+        loop {
+            kmer_size = (((minimum_length+2) as f64/(2*i) as f64) - 1_f64).ceil();
+            if (i*(emp_kmer.odd + emp_kmer.even)) as f64 > score_per_length * 2_f64 * (((i+1) as f64)*kmer_size-1_f64) {
+                break;
+            } else {
+                i += 1;
+            }
+        }
+        kmer_size as usize
     }
     fn perform(ref_seq: &[u8] , qry_seq: &[u8]) { // -> Option<(Vec<Operation>, usize)>
         let index = Reference::fmindex(&ref_seq);
@@ -46,13 +72,11 @@ impl<T: AsRef<[u8]>> Reference<T> {
     }
 }
 
-enum Operation {
-    Match,
-    Subst,
-    Ins,
-    Del,
-    RefClip(SeqeunceLength),
-    QryClip(SeqeunceLength),
+type Scores = (usize, usize, usize);
+
+struct Cutoff {
+    score_per_length: f64,
+    minimum_length: usize,
 }
 
 struct EmpKmer {
@@ -79,5 +103,23 @@ impl EmpKmer {
             odd: mo,
             even: me,
         }
+    }
+}
+
+enum Operation {
+    Match,
+    Subst,
+    Ins,
+    Del,
+    RefClip(SeqeunceLength),
+    QryClip(SeqeunceLength),
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn new_config() {
+        
     }
 }
