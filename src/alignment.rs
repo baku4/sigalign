@@ -55,11 +55,6 @@ enum Operation {
     QryClip(SeqeunceLength),
 }
 
-struct AlignmentBlock {
-    operations: Vec<Operation>,
-    penalty: usize,
-}
-
 struct EmpKmer {
     odd: usize,
     even: usize,
