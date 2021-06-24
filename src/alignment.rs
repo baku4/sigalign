@@ -1,4 +1,5 @@
 mod anchor;
+mod dropout_wfa;
 
 use fm_index::converter::RangeConverter;
 use fm_index::suffix_array::{SuffixOrderSampledArray, SuffixOrderSampler};
@@ -109,7 +110,7 @@ impl EmpKmer {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 enum Operation {
     Match,
     Subst,

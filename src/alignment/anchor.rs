@@ -140,7 +140,7 @@ impl Anchor {
             let mut odd_block_count: usize = 0;
             let mut even_block_count: usize = 0;
             let mut previous_block_is_odd = false;
-            for exist in anchor_existence[(block_index-quot+1)..block_index+1].iter().rev() {
+            anchor_existence[(block_index-quot+1)..block_index+1].iter().rev().for_each(|exist| {
                 if *exist {
                     if previous_block_is_odd {
                         even_block_count += 1;
@@ -152,7 +152,7 @@ impl Anchor {
                 } else {
                     previous_block_is_odd = false;
                 }
-            }
+            });
             EmpBlock::new(
                 odd_block_count*emp_kmer.odd + even_block_count*emp_kmer.even,
                 block_len + odd_block_count + even_block_count
@@ -168,7 +168,7 @@ impl Anchor {
             let mut odd_block_count: usize = 0;
             let mut even_block_count: usize = 0;
             let mut previous_block_is_odd = false;
-            for exist in anchor_existence[hind_block_index+1..hind_block_index+quot+1].iter() {
+            anchor_existence[hind_block_index+1..hind_block_index+quot+1].iter().for_each(|exist| {
                 if *exist {
                     if previous_block_is_odd {
                         even_block_count += 1;
@@ -180,7 +180,7 @@ impl Anchor {
                 } else {
                     previous_block_is_odd = false;
                 }
-            }
+            });
             EmpBlock::new(
                 odd_block_count*emp_kmer.odd + even_block_count*emp_kmer.even,
                 block_len + odd_block_count + even_block_count
