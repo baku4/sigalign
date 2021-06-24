@@ -10,7 +10,7 @@ type SeqeunceLength = u32;
 const FM_SUFFIX_LEVEL: usize = 2;
 
 #[derive(Debug)]
-struct Aligner {
+pub struct Aligner {
     cutoff: Cutoff,
     kmer: usize,
     scores: Scores,
@@ -109,6 +109,7 @@ impl EmpKmer {
     }
 }
 
+#[derive(Debug)]
 enum Operation {
     Match,
     Subst,
@@ -119,9 +120,11 @@ enum Operation {
 }
 
 #[cfg(test)]
+mod test_data;
+#[cfg(test)]
 mod tests {
     use super::*;
-    fn test_aligner() -> Aligner {
+    pub fn test_aligner() -> Aligner {
         let score_per_length: f64 = 0.05;
         let minimum_length: usize = 100;
         let mismatch_penalty: usize = 3;

@@ -110,6 +110,7 @@ impl<'a> AnchorGroup<'a> {
     }
 }
 
+#[derive(Debug)]
 struct Anchor {
     position: (usize, usize), // (ref, qry)
     size: usize,
@@ -131,16 +132,15 @@ impl Anchor {
         self
     }
     fn to_raw_state(&mut self, ref_len: usize, qry_len: usize, kmer: usize, anchor_existence: &Vec<bool>, emp_kmer: &EmpKmer) {
-        let block_index = self.position.1 / qry_len;
+        let block_index = self.position.1 / kmer;
         // fore block
         let fore_emp_block = {
             let block_len = min(self.position.0, self.position.1);
             let quot = block_len / kmer;
-            let rem = block_len % kmer;
             let mut odd_block_count: usize = 0;
             let mut even_block_count: usize = 0;
             let mut previous_block_is_odd = false;
-            for exist in anchor_existence[(block_index-quot)..block_index].iter().rev() {
+            for exist in anchor_existence[(block_index-quot+1)..block_index+1].iter().rev() {
                 if *exist {
                     if previous_block_is_odd {
                         even_block_count += 1;
@@ -155,20 +155,20 @@ impl Anchor {
             }
             EmpBlock::new(
                 odd_block_count*emp_kmer.odd + even_block_count*emp_kmer.even,
-                block_len + odd_block_count + even_block_count + rem
+                block_len + odd_block_count + even_block_count
             )
         };
         // hind block
         let hind_emp_block = {
+            let hind_block_index = block_index+(self.size/kmer);
             let ref_block_len = ref_len - (self.position.0 + self.size);
             let qry_block_len = qry_len - (self.position.1 + self.size);
             let block_len = min(ref_block_len, qry_block_len);
             let quot = block_len / kmer;
-            let rem = block_len % kmer;
             let mut odd_block_count: usize = 0;
             let mut even_block_count: usize = 0;
             let mut previous_block_is_odd = false;
-            for exist in anchor_existence[(block_index+1)..(block_index+quot+1)].iter() {
+            for exist in anchor_existence[hind_block_index+1..hind_block_index+quot+1].iter() {
                 if *exist {
                     if previous_block_is_odd {
                         even_block_count += 1;
@@ -183,7 +183,7 @@ impl Anchor {
             }
             EmpBlock::new(
                 odd_block_count*emp_kmer.odd + even_block_count*emp_kmer.even,
-                block_len + odd_block_count + even_block_count + rem
+                block_len + odd_block_count + even_block_count
             )
         };
         self.state = AnchorState::Raw((fore_emp_block, hind_emp_block));
@@ -207,7 +207,7 @@ impl Anchor {
                 length += emp_block.length;
             }
             // middle
-            length += max(ref_gap, qry_gap) as usize;
+            length += max(ref_gap, qry_gap) as usize + first.size + second.size;
             let indel = (ref_gap - qry_gap).abs() as usize;
             if indel > 0 {
                 penalty += scores.1 + indel*scores.2;
@@ -237,6 +237,7 @@ impl Anchor {
     }
 }
 
+#[derive(Debug)]
 enum AnchorState {
     Proto,
     Raw((EmpBlock, EmpBlock)), // Fore, Hind
@@ -245,16 +246,19 @@ enum AnchorState {
     Valid(AlignmentBlock),
 }
 
+#[derive(Debug)]
 struct AlignmentBlock {
     operations: Vec<Operation>,
     penalty: usize,
 }
 
+#[derive(Debug)]
 enum BlockType {
     Fore,
     Hind,
 }
 
+#[derive(Debug)]
 struct EmpBlock {
     penalty: usize,
     length: usize,
@@ -271,5 +275,18 @@ impl EmpBlock {
 
 #[cfg(test)]
 mod tests {
+    use crate::alignment::test_data;
+    use super::*;
 
+    #[test]
+    fn print_anchor_group() {
+        let test_data = test_data::get_test_data();
+        let seqs = test_data[1].clone();
+        let ref_seq = seqs.0.as_bytes();
+        let qry_seq = seqs.1.as_bytes();
+        let index = super::super::Reference::fmindex(&ref_seq);
+        let aligner = super::super::tests::test_aligner();
+        let anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff);
+        println!("{:?}", anchor_group.anchors);
+    }
 }

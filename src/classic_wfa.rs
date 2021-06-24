@@ -468,7 +468,6 @@ mod tests {
     #[test]
     fn test() {
         for i in 0..2 {
-            println!("Test data {:?}", i+1);
             let (
                 query,
                 text,
