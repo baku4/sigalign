@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::Operation;
+use super::{Operation, Scores};
 
 type WF = Vec<Option<WFscore>>; // Wavefront
 type WFscore = [Option<Component>; 3]; // Wavefront of score
@@ -87,9 +87,17 @@ impl Component {
         }
         panic!("backtrace err");
     }
+    fn check_exist_condition(&self, qry_len: i32, text_len: i32) -> Option<i32> {
+        for (k, fr_point, _) in &self.0 {
+            if (*fr_point >= text_len) || (*fr_point - *k >= qry_len as i32) {
+                return Some(*k)
+            }
+        }
+        return None
+    }
 }
 
-fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> Vec<Operation> {
+fn wf_align(query: &[u8], text: &[u8], penalties: &Scores) -> Vec<Operation> {
     // penalties: [x, o, e]
     let n = query.len();
     let m = text.len();
@@ -103,27 +111,25 @@ fn wf_align(query: Vec<u8>, text: Vec<u8>, penalties: (usize, usize, usize)) -> 
         let wf_score: WFscore = [Some(m_component), None, None];
         vec![Some(wf_score)]
     };
-    loop {
+    let last_k = loop {
         // extend & exit condition
         if let Some(wf_score) = wf[score].as_mut() {
             if let Some(m_component) = wf_score[0].as_mut() {
                 // extend
-                wf_extend(m_component, &query, &text);
+                wf_extend(m_component, query, text);
                 // exit condition
-                if let Some(fr_point) = m_component.get_frpoint(ak) {
-                    if fr_point >= ao {
-                        break;
-                    }
+                if let Some(last_k) = m_component.check_exist_condition(n as i32, m as i32) {
+                    break last_k;
                 }
             }
         }
         score += 1;
         wf_next(&mut wf, &query, &text, score, penalties);
-    }
-    wf_backtrace(&mut wf, &query, &text, penalties, score, ak)
+    };
+    wf_backtrace(&mut wf, &query, &text, penalties, score, last_k)
 }
 
-fn wf_extend(m_component: &mut Component, query: &Vec<u8>, text: &Vec<u8>) {
+fn wf_extend(m_component: &mut Component, query: &[u8], text: &[u8]) {
     for (k, fr_point, _) in m_component.0.iter_mut() {
         let mut v = (*fr_point - *k) as usize;
         let mut h = *fr_point as usize;
@@ -153,7 +159,7 @@ fn wf_extend(m_component: &mut Component, query: &Vec<u8>, text: &Vec<u8>) {
     }
 }
 
-fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties: (usize, usize, usize)) {
+fn wf_next(wf: &mut WF, query: &[u8], text: &[u8], score: usize, penalties: &Scores) {
     let mut hi_vec = Vec::with_capacity(4);
     let mut lo_vec = Vec::with_capacity(4);
     // (1) check M s-x
@@ -336,15 +342,15 @@ fn wf_next(wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>, score: usize, penalties
 }
 
 fn wf_backtrace(
-    wf: &mut WF, query: &Vec<u8>, text: &Vec<u8>,
-    penalties: (usize, usize, usize),
-    score: usize, ak: i32
+    wf: &mut WF, query: &[u8], text: &[u8],
+    penalties: &Scores,
+    score: usize, k: i32
 ) -> Vec<Operation> {
     let mut operations: Vec<Operation> = Vec::new();
     let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
 
     let mut s = score;
-    let mut k = ak;
+    let mut k = k;
     let mut component = get_comp(0, s, k);
 
     loop {
