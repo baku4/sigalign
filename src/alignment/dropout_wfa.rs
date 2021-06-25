@@ -100,10 +100,14 @@ impl Component {
 type AlignRes = (Vec<Operation>, usize);
 type DroppedRes = WF;
 
-pub fn wf_align(
+pub fn dropout_wf_align(
     query: &[u8], text: &[u8], penalties: &Scores,
     panalty_spare: f64, spl: f64
 ) -> Result<AlignRes, WF> {
+    #[cfg(test)]
+    {
+        println!("panalty_spare: {}", panalty_spare);
+    }
     // penalties: [x, o, e]
     let n = query.len();
     let m = text.len();
@@ -128,14 +132,9 @@ pub fn wf_align(
         }
         score += 1;
         // check dropout
-        // if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
-        //     // FIXME: to del
-        //     #[cfg(test)]
-        //     {
-        //         println!("checkpoint: wf droppde out {}", panalty_spare);
-        //     }
-        //     return Err(wf)
-        // }
+        if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
+            return Err(wf)
+        }
         wf_next(&mut wf, &query, &text, score, penalties);
     };
     let operations = wf_backtrace(&mut wf, &query, &text, penalties, score, last_k);
