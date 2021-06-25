@@ -18,7 +18,7 @@ impl<'a> AnchorGroup<'a> {
     fn new(
         ref_seq: &'a [u8], qry_seq: &'a [u8], index: &FmIndex,
         kmer: usize, emp_kmer: &'a EmpKmer, scores: &'a Scores, cutoff: &'a Cutoff
-    ) -> Self {
+    ) -> Option<Self> {
         let ref_len = ref_seq.len();
         let qry_len = qry_seq.len();
         let search_count = qry_len / kmer;
@@ -91,23 +91,38 @@ impl<'a> AnchorGroup<'a> {
                 },
             }
         }
+        // check anchor exist
+        if !anchor_existence.iter().any(|x| *x) {
+            return None
+        }
         // (2) Calculate the EMP values
         anchors_preset.iter_mut().for_each(|anchor| {
             anchor.to_raw_state(ref_len, qry_len, kmer, &anchor_existence, &emp_kmer);
         });
-        // (3) Set up checkpoints
+        // (3) evaluate raw anchors
+        anchors_preset.iter_mut().for_each(|anchor| {
+            if !anchor.is_valid_raw(cutoff) {
+                anchor.to_dropped();
+            }
+        });
+        // (4) Set up checkpoints
         Anchor::create_check_points(&mut anchors_preset, scores, cutoff);
-        Self {
-            ref_seq: ref_seq,
-            qry_seq: qry_seq,
-            kmer: kmer,
-            emp_kmer: emp_kmer,
-            scores: scores,
-            cutoff: cutoff,
-            anchors: anchors_preset,
-        }
+        Some(
+            Self {
+                ref_seq: ref_seq,
+                qry_seq: qry_seq,
+                kmer: kmer,
+                emp_kmer: emp_kmer,
+                scores: scores,
+                cutoff: cutoff,
+                anchors: anchors_preset,
+            }
+        )
     }
-    fn is_empty() {
+    fn alignment() {
+
+    }
+    fn is_empty(&self) {
 
     }
 }
@@ -227,11 +242,20 @@ impl Anchor {
         anchors[first_index].check_points.1.push(second_index);
         anchors[second_index].check_points.0.push(first_index);
     }
+    fn is_both_raw(anchor_1: &Self, anchor_2: &Self) -> bool {
+        (match &anchor_1.state {
+            AnchorState::Raw(_) => true,
+            _ => false,
+        }) && (match &anchor_2.state {
+            AnchorState::Raw(_) => true,
+            _ => false,
+        })
+    }
     fn create_check_points(anchors: &mut Vec<Self>, scores: &Scores, cutoff: &Cutoff) {
         let anchor_count = anchors.len();
         for index_1 in 0..anchor_count {
             for index_2 in index_1+1..anchor_count {
-                if Self::can_be_connected(&anchors[index_1], &anchors[index_2], &scores, &cutoff) {
+                if Self::is_both_raw(&anchors[index_1], &anchors[index_2]) && Self::can_be_connected(&anchors[index_1], &anchors[index_2], &scores, &cutoff) {
                     Self::extend_check_point_together(anchors, index_1, index_2);
                 }
             }
@@ -324,6 +348,25 @@ impl Anchor {
             },
         }
     }
+    fn to_dropped(&mut self) {
+        self.state = AnchorState::Dropped;
+    }
+    fn is_valid_raw(&self, cutoff: &Cutoff) -> bool{
+        if let AnchorState::Raw((emp_block_1, emp_block_2)) = &self.state {
+            let length = emp_block_1.length + emp_block_2.length + self.size;
+            if length >= cutoff.minimum_length && (emp_block_1.penalty + emp_block_2.penalty) as f64/length as f64 <= cutoff.score_per_length {
+                true
+            } else {
+                false
+            }
+        } else {
+            // TODO: error msg
+            panic!("");
+        }
+    }
+    fn evaluate_both_done() {
+
+    }
     fn alignment(&mut self, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
         self.to_hind_part_done(ref_seq, qry_seq, scores, cutoff);
         self.to_both_part_done(ref_seq, qry_seq, scores, cutoff);
@@ -343,6 +386,11 @@ enum AnchorState {
 struct AlignmentBlock {
     operations: Vec<Operation>,
     penalty: usize,
+}
+impl AlignmentBlock {
+    fn len(&self) -> usize {
+        self.operations.len()
+    }
 }
 
 #[derive(Debug)]
@@ -378,7 +426,7 @@ mod tests {
         let qry_seq = seqs.1.as_bytes();
         let index = super::super::Reference::fmindex(&ref_seq);
         let aligner = super::super::tests::test_aligner();
-        let anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff);
+        let anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
         println!("{:?}", anchor_group.anchors);
     }
 
@@ -390,7 +438,7 @@ mod tests {
         let qry_seq = seqs.1.as_bytes();
         let index = super::super::Reference::fmindex(&ref_seq);
         let aligner = super::super::tests::test_aligner();
-        let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff);
+        let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
         for anchor in &mut anchor_group.anchors {
             anchor.alignment(&ref_seq, &qry_seq, &aligner.scores, &aligner.cutoff);
             println!("{:?}", anchor);
