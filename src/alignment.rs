@@ -6,7 +6,7 @@ use fm_index::suffix_array::{SuffixOrderSampledArray, SuffixOrderSampler};
 use fm_index::FMIndex;
 type FmIndex = FMIndex<u8, RangeConverter<u8>, SuffixOrderSampledArray>;
 
-type SeqeunceLength = u32;
+type SeqeunceLength = usize;
 
 const FM_SUFFIX_LEVEL: usize = 2;
 

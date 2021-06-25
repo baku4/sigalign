@@ -1,5 +1,6 @@
+use core::panic;
 use std::cmp::{min, max};
-use std::u8;
+use std::{u8, usize};
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
 use super::dropout_wfa::dropout_wf_align;
@@ -119,8 +120,25 @@ impl<'a> AnchorGroup<'a> {
             }
         )
     }
-    fn alignment() {
-
+    fn alignment(&mut self) {
+        // Hind Alignment
+        for anchor in &mut self.anchors {
+            match &anchor.state {
+                AnchorState::Raw(_) => {
+                    anchor.to_hind_part_done(self.ref_seq, self.qry_seq, &self.scores, &self.cutoff);
+                },
+                _ => {},
+            }
+        }
+        // Fore Alignment
+        for anchor in &mut self.anchors {
+            match &anchor.state {
+                AnchorState::HindDone(_) => {
+                    anchor.to_both_part_done(self.ref_seq, self.qry_seq, &self.scores, &self.cutoff);
+                },
+                _ => {},
+            }
+        }
     }
     fn is_empty(&self) {
 
@@ -329,6 +347,7 @@ impl Anchor {
             },
             Err(wf) => {
                 // TODO: WF inheritance algorithm
+                self.to_dropped();
             },
         }
     }
@@ -345,6 +364,7 @@ impl Anchor {
             },
             Err(wf) => {
                 // TODO: WF inheritance algorithm
+                self.to_dropped();
             },
         }
     }
@@ -364,12 +384,27 @@ impl Anchor {
             panic!("");
         }
     }
-    fn evaluate_both_done() {
-
-    }
-    fn alignment(&mut self, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
-        self.to_hind_part_done(ref_seq, qry_seq, scores, cutoff);
-        self.to_both_part_done(ref_seq, qry_seq, scores, cutoff);
+    fn evaluate(self, ref_len: usize, qry_len: usize, cutoff: &Cutoff) -> Option<(Vec<Operation>, usize)>{
+        let (fore_block, hind_block) = match self.state {
+            AnchorState::BothDone(v) => v,
+            _ => panic!("Only block with both aligned can be evaluated."),
+        };
+        let length = fore_block.operations.len() + hind_block.operations.len() + self.size;
+        let penalty = fore_block.penalty + hind_block.penalty;
+        #[cfg(test)]
+        println!("len:{}, pen:{}", length, penalty);
+        if (length >= cutoff.minimum_length) && (penalty as f64/length as f64 <= cutoff.score_per_length) {
+            let mut operations = Vec::with_capacity(length+2);
+            operations.push(fore_block.clip_operation(self.position.0, self.position.1));
+            operations.extend(fore_block.operations);
+            operations.extend(vec![Operation::Match; self.size]);
+            let hind_clip = hind_block.clip_operation(ref_len-self.position.0-self.size, qry_len-self.position.1-self.size);
+            operations.extend(hind_block.operations);
+            operations.push(hind_clip);
+            Some((operations, penalty))
+        } else {
+            None
+        }
     }
 }
 
@@ -388,8 +423,21 @@ struct AlignmentBlock {
     penalty: usize,
 }
 impl AlignmentBlock {
-    fn len(&self) -> usize {
-        self.operations.len()
+    fn aligned_length(&self) -> (usize, usize) {
+        let ins = self.operations.iter().filter(|&op| *op == Operation::Ins).count();
+        let del = self.operations.iter().filter(|&op| *op == Operation::Del).count();
+        let len = self.operations.len();
+        (len-del, len-ins)
+    }
+    fn clip_operation(&self, ref_len: usize, qry_len: usize) -> Operation {
+        let (ref_aligned_length, qry_aligned_length) = self.aligned_length();
+        let ref_left = ref_len-ref_aligned_length;
+        let qry_left = qry_len-qry_aligned_length;
+        if ref_left >= qry_left {
+            Operation::RefClip(ref_left-qry_left)
+        } else {
+            Operation::QryClip(qry_left-ref_left)
+        }
     }
 }
 
@@ -431,7 +479,7 @@ mod tests {
     }
 
     #[test]
-    fn print_aligned_anchors() {
+    fn print_aligned_anchor_group() {
         let test_data = test_data::get_test_data();
         let seqs = test_data[1].clone();
         let ref_seq = seqs.0.as_bytes();
@@ -439,9 +487,10 @@ mod tests {
         let index = super::super::Reference::fmindex(&ref_seq);
         let aligner = super::super::tests::test_aligner();
         let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
-        for anchor in &mut anchor_group.anchors {
-            anchor.alignment(&ref_seq, &qry_seq, &aligner.scores, &aligner.cutoff);
-            println!("{:?}", anchor);
+        anchor_group.alignment();
+        for anchor in anchor_group.anchors {
+            let res = anchor.evaluate(anchor_group.ref_seq.len(), anchor_group.qry_seq.len(), anchor_group.cutoff);
+            println!("{:?}", res);
         }
     }
 }
