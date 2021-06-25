@@ -1,6 +1,8 @@
 use std::cmp::{min, max};
+use std::u8;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
+use super::dropout_wfa::wf_align;
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -141,7 +143,11 @@ impl Anchor {
             let mut even_block_count: usize = 0;
             let mut previous_block_is_odd = false;
             anchor_existence[(block_index-quot+1)..block_index+1].iter().rev().for_each(|exist| {
-                if *exist {
+                #[cfg(test)]
+                {
+                    println!("fore {:?}", exist);
+                }
+                if !*exist {
                     if previous_block_is_odd {
                         even_block_count += 1;
                         previous_block_is_odd = false;
@@ -169,7 +175,11 @@ impl Anchor {
             let mut even_block_count: usize = 0;
             let mut previous_block_is_odd = false;
             anchor_existence[hind_block_index+1..hind_block_index+quot+1].iter().for_each(|exist| {
-                if *exist {
+                #[cfg(test)]
+                {
+                    println!("hind {:?}", exist);
+                }
+                if !*exist {
                     if previous_block_is_odd {
                         even_block_count += 1;
                         previous_block_is_odd = false;
@@ -235,6 +245,102 @@ impl Anchor {
             }
         }
     }
+    fn panlty_and_length_of_side(&self, block_type: BlockType) -> (usize, usize) {
+        match block_type {
+            BlockType::Fore => {
+                match &self.state {
+                    AnchorState::Raw((_, emp_block)) => {
+                        (emp_block.penalty, emp_block.length)
+                    },
+                    AnchorState::OnesideDone((alignment_block, _)) => {
+                        (alignment_block.penalty, alignment_block.operations.len())
+                    },
+                    // TODO: modify error msg
+                    _ => panic!("alignment error")
+                }
+            },
+            BlockType::Hind => {
+                match &self.state {
+                    AnchorState::Raw((emp_block, _)) => {
+                        (emp_block.penalty, emp_block.length)
+                    },
+                    AnchorState::OnesideDone((alignment_block, _)) => {
+                        (alignment_block.penalty, alignment_block.operations.len())
+                    },
+                    // TODO: modify error msg
+                    _ => panic!("alignment error")
+                }
+            },
+        }
+    }
+    fn update_to_oneside(&mut self, block_type: BlockType, operations: Vec<Operation>, penalty: usize) {
+        self.state = AnchorState::OnesideDone(
+            (
+                AlignmentBlock {
+                    operations,
+                    penalty,
+                },
+                block_type,
+            )
+        );
+    }
+    fn update_to_valid(&mut self, block_type: BlockType, operations: Vec<Operation>, penalty: usize) {
+        if let AnchorState::OnesideDone((alignment_block, _)) = &self.state {
+            // let (operations, penalty) = match block_type {
+            match block_type {
+                // **************************************
+                // TODO: mutable reference VS moved self
+                BlockType::Fore => {
+                    // operations.extend(vec![Operation::Match; self.size]);
+                    // operations.extend(alignment_block.operations);
+                    // penalty += alignment_block.penalty;
+                    // (operations, penalty)
+                },
+                BlockType::Hind => {
+                    // (operations, penalty)
+                },
+            };
+        }
+    }
+    fn alignment(&mut self, block_type: BlockType, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
+        match block_type {
+            // fore
+            BlockType::Fore => {
+                let (p_other, l_other) = self.panlty_and_length_of_side(BlockType::Hind);
+                let panalty_spare = cutoff.score_per_length * (min(self.position.0, self.position.1) + self.size + l_other) as f64 - p_other as f64;
+                let ref_seq: Vec<u8> = ref_seq[0..self.position.0].iter().rev().map(|x| *x).collect();
+                let qry_seq: Vec<u8> = qry_seq[0..self.position.1].iter().rev().map(|x| *x).collect();
+                let alignment_res = wf_align(&qry_seq, &ref_seq, scores, panalty_spare, cutoff.score_per_length);
+                match alignment_res {
+                    Ok((mut operations, penalty)) => {
+                        operations.reverse();
+                        // update
+                    },
+                    Err(wf) => {
+                        // TODO: WF inheritance algorithm
+                    },
+                }
+            },
+            // hind
+            BlockType::Hind => {
+                let (p_other, l_other) = self.panlty_and_length_of_side(BlockType::Fore);
+                let panalty_spare = cutoff.score_per_length * (
+                    min(
+                        ref_seq.len() - self.position.0 - self.size, qry_seq.len() - self.position.1 - self.size
+                    ) + self.size + l_other
+                ) as f64 - p_other as f64;
+                let alignment_res = wf_align(&qry_seq[self.position.1+self.size..], &ref_seq[self.position.0+self.size..], scores, panalty_spare, cutoff.score_per_length);
+                match alignment_res {
+                    Ok((operations, penalty)) => {
+                        // update
+                    },
+                    Err(wf) => {
+                        // TODO: WF inheritance algorithm
+                    },
+                }
+            },
+        };
+    }
 }
 
 #[derive(Debug)]
@@ -278,7 +384,6 @@ mod tests {
     use crate::alignment::test_data;
     use super::*;
 
-    #[test]
     fn print_anchor_group() {
         let test_data = test_data::get_test_data();
         let seqs = test_data[1].clone();
@@ -288,5 +393,22 @@ mod tests {
         let aligner = super::super::tests::test_aligner();
         let anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff);
         println!("{:?}", anchor_group.anchors);
+    }
+
+    #[test]
+    fn print_aligned_anchors() {
+        let test_data = test_data::get_test_data();
+        let seqs = test_data[1].clone();
+        let ref_seq = seqs.0.as_bytes();
+        let qry_seq = seqs.1.as_bytes();
+        let index = super::super::Reference::fmindex(&ref_seq);
+        let aligner = super::super::tests::test_aligner();
+        let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff);
+        for anchor in anchor_group.anchors {
+            // let anchor = anchor.alignment(BlockType::Fore, &ref_seq, &qry_seq, &aligner.scores, &aligner.cutoff);
+            println!("{:?}", anchor);
+            // let anchor = anchor.alignment(BlockType::Hind, &ref_seq, &qry_seq, &aligner.scores, &aligner.cutoff);
+            println!("{:?}", anchor);
+        }
     }
 }

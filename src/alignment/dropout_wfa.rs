@@ -5,7 +5,7 @@ use super::{Operation, Scores};
 type WF = Vec<Option<WFscore>>; // Wavefront
 type WFscore = [Option<Component>; 3]; // Wavefront of score
 #[derive(Debug)]
-struct Component(Vec<(i32, i32, Backtrace)>); // MID Component k: k, v: f.r.point
+pub struct Component(Vec<(i32, i32, Backtrace)>); // MID Component k: k, v: f.r.point
 
 #[derive(Debug, Clone)]
 enum Backtrace {
@@ -97,13 +97,16 @@ impl Component {
     }
 }
 
-fn wf_align(query: &[u8], text: &[u8], penalties: &Scores) -> Vec<Operation> {
+type AlignRes = (Vec<Operation>, usize);
+type DroppedRes = WF;
+
+pub fn wf_align(
+    query: &[u8], text: &[u8], penalties: &Scores,
+    panalty_spare: f64, spl: f64
+) -> Result<AlignRes, WF> {
     // penalties: [x, o, e]
     let n = query.len();
     let m = text.len();
-    // set offset
-    let ak = m as i32 - n as i32;
-    let ao = m as i32;
     // init
     let mut score: usize = 0;
     let mut wf = {
@@ -124,9 +127,19 @@ fn wf_align(query: &[u8], text: &[u8], penalties: &Scores) -> Vec<Operation> {
             }
         }
         score += 1;
+        // check dropout
+        // if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
+        //     // FIXME: to del
+        //     #[cfg(test)]
+        //     {
+        //         println!("checkpoint: wf droppde out {}", panalty_spare);
+        //     }
+        //     return Err(wf)
+        // }
         wf_next(&mut wf, &query, &text, score, penalties);
     };
-    wf_backtrace(&mut wf, &query, &text, penalties, score, last_k)
+    let operations = wf_backtrace(&mut wf, &query, &text, penalties, score, last_k);
+    Ok((operations, score))
 }
 
 fn wf_extend(m_component: &mut Component, query: &[u8], text: &[u8]) {

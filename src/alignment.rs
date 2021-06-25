@@ -111,7 +111,7 @@ impl EmpKmer {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Operation {
+pub enum Operation {
     Match,
     Subst,
     Ins,
