@@ -2,6 +2,7 @@ use super::{Operation, Scores};
 
 pub type WF = Vec<Option<WFscore>>; // Wavefront
 type WFscore = [Option<Component>; 3]; // Wavefront of score
+
 #[derive(Debug)]
 pub struct Component(Vec<(i32, i32, Backtrace)>); // MID Component k: k, v: f.r.point
 
@@ -98,17 +99,18 @@ impl Component {
 type AlignRes = (Vec<Operation>, usize, WF);
 type DroppedRes = WF;
 
+// FIXME: change text to 'ref_seq' & query to 'qry_seq'
 pub fn dropout_wf_align(
-    query: &[u8], text: &[u8], penalties: &Scores,
+    qry_seq: &[u8], ref_seq: &[u8], penalties: &Scores,
     panalty_spare: f64, spl: f64
-) -> Result<AlignRes, WF> {
+) -> Result<AlignRes, DroppedRes> {
     #[cfg(test)]
     {
         println!("panalty_spare: {}", panalty_spare);
     }
     // penalties: [x, o, e]
-    let n = query.len();
-    let m = text.len();
+    let n = qry_seq.len();
+    let m = ref_seq.len();
     // init
     let mut score: usize = 0;
     let mut wf = {
@@ -121,7 +123,7 @@ pub fn dropout_wf_align(
         if let Some(wf_score) = wf[score].as_mut() {
             if let Some(m_component) = wf_score[0].as_mut() {
                 // extend
-                wf_extend(m_component, query, text);
+                wf_extend(m_component, qry_seq, ref_seq);
                 // exit condition
                 if let Some(last_k) = m_component.check_exist_condition(n as i32, m as i32) {
                     break last_k;
@@ -133,20 +135,20 @@ pub fn dropout_wf_align(
         if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
             return Err(wf)
         }
-        wf_next(&mut wf, &query, &text, score, penalties);
+        wf_next(&mut wf, &qry_seq, &ref_seq, score, penalties);
     };
-    let operations = wf_backtrace(&mut wf, &query, &text, penalties, score, last_k);
+    let operations = wf_backtrace(&mut wf, &qry_seq, &ref_seq, penalties, score, last_k);
     Ok((operations, score, wf))
 }
 
-fn wf_extend(m_component: &mut Component, query: &[u8], text: &[u8]) {
+fn wf_extend(m_component: &mut Component, qry_seq: &[u8], ref_seq: &[u8]) {
     for (k, fr_point, _) in m_component.0.iter_mut() {
         let mut v = (*fr_point - *k) as usize;
         let mut h = *fr_point as usize;
         loop {
-            match query.get(v) {
+            match qry_seq.get(v) {
                 Some(q) => {
-                    match text.get(h) {
+                    match ref_seq.get(h) {
                         Some(t) => {
                             if *q == *t {
                                 *fr_point += 1;
@@ -169,7 +171,7 @@ fn wf_extend(m_component: &mut Component, query: &[u8], text: &[u8]) {
     }
 }
 
-fn wf_next(wf: &mut WF, query: &[u8], text: &[u8], score: usize, penalties: &Scores) {
+fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties: &Scores) {
     let mut hi_vec = Vec::with_capacity(4);
     let mut lo_vec = Vec::with_capacity(4);
     // (1) check M s-x
@@ -352,7 +354,7 @@ fn wf_next(wf: &mut WF, query: &[u8], text: &[u8], score: usize, penalties: &Sco
 }
 
 fn wf_backtrace(
-    wf: &mut WF, query: &[u8], text: &[u8],
+    wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8],
     penalties: &Scores,
     score: usize, k: i32
 ) -> Vec<Operation> {
@@ -442,8 +444,80 @@ fn wf_backtrace(
     }
 }
 
-fn wf_connected() {
-
+pub fn wf_check_inheritable(wf: &WF, ref_pos_gap: i32, qry_pos_gap: i32, scores: &Scores) -> bool {
+    let checkpoint_k = ref_pos_gap - qry_pos_gap;
+    let (checkpoint_score, checkpoint_fr) = {
+        let mut res: Option<(usize, i32)> = None;
+        'wf_checker: for (score, wfs) in wf.iter().enumerate() {
+            if let Some(wfs) = wfs {
+                if let Some(mcomp) = &wfs[0] {
+                    'fr_checker: for (key, val, backtrace) in &mcomp.0 {
+                        let gap =  *key - checkpoint_k; // lo to hi
+                        if gap > 0 {
+                            break 'fr_checker;
+                        } else if gap == 0 { // if matched k have fr_point
+                            if *val >= ref_pos_gap {
+                                if let Backtrace::M(from_m) = backtrace {
+                                    match from_m {
+                                        FromM::M => {
+                                            res = Some((score, *val));
+                                            break 'wf_checker;
+                                        },
+                                        _ => {
+                                            break 'wf_checker;
+                                        },
+                                    }
+                                }
+                                break 'wf_checker;
+                            } else {
+                                // if fr point does not reach to the gap
+                                break 'wf_checker;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        match res {
+            Some(v) => v,
+            None => return false,
+        }
+    };
+    let checkpoint_valid = {
+        let pre_mcomp = wf[checkpoint_score - scores.0].as_ref().unwrap()[0].as_ref().unwrap();
+        if pre_mcomp.get_frpoint(checkpoint_k).unwrap() < ref_pos_gap {
+            // can reach
+            true
+        } else {
+            // cannot reach
+            false
+        }
+    };
+    if checkpoint_valid {
+        // checkpoint_score
+        let first_indel_score = checkpoint_score + scores.1 + scores.2;
+        // check first score
+        match wf.get(first_indel_score) {
+            Some(wfs_option) => {
+                match wfs_option.as_ref() {
+                    Some(wfs) => {
+                        let icomp = &wfs[1];
+                        let dcomp = &wfs[2];
+                        //
+                        false
+                    },
+                    None => {
+                        false
+                    }
+                }
+            },
+            None => {
+                return false
+            },
+        }
+    } else {
+        false
+    }
 }
 
 fn wf_inheritance() {

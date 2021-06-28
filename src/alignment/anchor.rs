@@ -6,7 +6,7 @@ use std::{u8, usize};
 use crate::alignment::anchor;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
-use super::dropout_wfa::{dropout_wf_align, WF};
+use super::dropout_wfa::{WF, dropout_wf_align, wf_check_inheritable};
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -362,7 +362,8 @@ impl Anchor {
                 );
                 // wf inheritant check
                 for &check_point in &current_anchor.check_points.1 {
-                    let test= check_point;
+                    let test = current_anchor.position;
+                    let test = check_point;
                 }
             },
             // If dropped
@@ -372,8 +373,10 @@ impl Anchor {
             },
         }
     }
-    fn wf_inherit(&self, ) {
-
+    fn check_wf_inherit(&self, original_position: &(usize, usize), wf: &WF, scores: &Scores) -> bool {
+        let ref_pos_gap = (self.position.0 - original_position.0 + self.size) as i32;
+        let qry_pos_gap = (self.position.1 - original_position.1 + self.size) as i32;
+        wf_check_inheritable(wf, ref_pos_gap, qry_pos_gap, scores)
     }
     // fn penalty_and_length_of_side(&self, block_type: BlockType) -> (usize, usize) {
     //     match block_type {
