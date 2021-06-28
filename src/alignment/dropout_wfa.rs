@@ -1,8 +1,6 @@
-use std::collections::{HashMap, HashSet};
-
 use super::{Operation, Scores};
 
-type WF = Vec<Option<WFscore>>; // Wavefront
+pub type WF = Vec<Option<WFscore>>; // Wavefront
 type WFscore = [Option<Component>; 3]; // Wavefront of score
 #[derive(Debug)]
 pub struct Component(Vec<(i32, i32, Backtrace)>); // MID Component k: k, v: f.r.point
@@ -97,7 +95,7 @@ impl Component {
     }
 }
 
-type AlignRes = (Vec<Operation>, usize);
+type AlignRes = (Vec<Operation>, usize, WF);
 type DroppedRes = WF;
 
 pub fn dropout_wf_align(
@@ -138,7 +136,7 @@ pub fn dropout_wf_align(
         wf_next(&mut wf, &query, &text, score, penalties);
     };
     let operations = wf_backtrace(&mut wf, &query, &text, penalties, score, last_k);
-    Ok((operations, score))
+    Ok((operations, score, wf))
 }
 
 fn wf_extend(m_component: &mut Component, query: &[u8], text: &[u8]) {
@@ -442,4 +440,12 @@ fn wf_backtrace(
             }
         }
     }
+}
+
+fn wf_connected() {
+
+}
+
+fn wf_inheritance() {
+
 }
