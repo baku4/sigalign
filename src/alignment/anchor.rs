@@ -7,7 +7,7 @@ use std::{u8, usize};
 use crate::alignment::anchor;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
-use super::dropout_wfa::{WF, dropout_wf_align, CheckPoints, wf_check_inheritable};
+use super::dropout_wfa::{WF, CheckPoints, WFalignRes, dropout_wf_align, wf_backtrace, wf_check_inheritable};
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -355,9 +355,9 @@ impl Anchor {
         backtrace_check_points
     }
     fn estimated_to_hind_alignment(anchors: &mut Vec<Self>, current_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
-        // get refernce of current anchor
-        let current_anchor = &mut anchors[current_index];
         let alignment_res = {
+            // get refernce of current anchor
+            let current_anchor = &mut anchors[current_index];
             let (p_other, l_other) = match &current_anchor.state {
                 AlignmentState::Estimated(emp_block, _) => {
                     (emp_block.penalty, emp_block.length)
@@ -374,22 +374,22 @@ impl Anchor {
         };
         match alignment_res {
             // Not dropped
-            Ok(wf) => {
+            Ok((mut wf, last_k)) => {
                 // update state
                 // current_anchor.state = AlignmentState::Exact(
                 //     None,
                 //     AlignmentBlock::Own(operations, penalty),
                 // );
                 // wf inheritant check
-                for &check_point in &current_anchor.check_points.1 {
-                    let test = current_anchor.position;
-                    let test = check_point;
-                }
+                let check_points = Self::wf_backtrace_check_points(anchors, current_index, BlockType::Hind);
+                let (operations, reverse_index) = wf_backtrace(&mut wf, scores, last_k, &check_points);
+                let current_anchor = &mut anchors[current_index];
+                // TODO: 
             },
             // If dropped
             Err(wf) => {
                 // TODO: WF inheritance algorithm
-                current_anchor.to_dropped();
+                // current_anchor.to_dropped();
             },
         }
     }

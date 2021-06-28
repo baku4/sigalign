@@ -100,10 +100,12 @@ impl Component {
     }
 }
 
+pub type WFalignRes = (WF, i32);
+
 pub fn dropout_wf_align(
     qry_seq: &[u8], ref_seq: &[u8], penalties: &Scores,
     panalty_spare: f64, spl: f64
-) -> Result<WF, WF> {
+) -> Result<WFalignRes, WF> {
     #[cfg(test)]
     {
         println!("panalty_spare: {}", panalty_spare);
@@ -139,7 +141,7 @@ pub fn dropout_wf_align(
     };
     // let operations = wf_backtrace(&mut wf, &qry_seq, &ref_seq, penalties, score, last_k);
     // Ok((operations, score, wf))
-    Ok(wf)
+    Ok((wf, last_k))
 }
 
 fn wf_extend(m_component: &mut Component, qry_seq: &[u8], ref_seq: &[u8]) {
@@ -357,16 +359,15 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
 pub type CheckPoints = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint fr, size)
 pub type ReverseIndex = Vec<Option<usize>>;
 
-fn wf_backtrace(
-    wf: &mut WF, penalties: &Scores,
-    score: usize, start_k: i32,
+pub fn wf_backtrace(
+    wf: &mut WF, penalties: &Scores, start_k: i32,
     check_points: &CheckPoints,
 ) -> (Vec<Operation>, ReverseIndex) {
     let mut operations: Vec<Operation> = Vec::new();
     let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
 
     // init
-    let mut s = score;
+    let mut s = wf.len() - 1;
     let mut k = start_k;
     let mut component = get_comp(0, s, k);
     // check points
