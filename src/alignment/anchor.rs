@@ -1,12 +1,13 @@
 use core::panic;
 use std::cmp::{min, max};
 use std::collections::HashSet;
+use std::thread::current;
 use std::{u8, usize};
 
 use crate::alignment::anchor;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
-use super::dropout_wfa::{WF, dropout_wf_align, wf_check_inheritable};
+use super::dropout_wfa::{WF, dropout_wf_align, CheckPoints, wf_check_inheritable};
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -334,6 +335,25 @@ impl Anchor {
             }
         }
     }
+    fn wf_backtrace_check_points(anchors: &Vec<Self>, current_index: usize, block_type: BlockType) -> CheckPoints {
+        let current_anchor = &anchors[current_index];
+        let check_points = match block_type {
+            BlockType::Fore => {
+                &current_anchor.check_points.0
+            },
+            BlockType::Hind => {
+                &current_anchor.check_points.1
+            },
+        };
+        let mut backtrace_check_points: CheckPoints = Vec::with_capacity(check_points.len());
+        for &check_point in check_points {
+            let anchor = &anchors[check_point];
+            let ref_pos_gap = (anchor.position.0 - current_anchor.position.0) as i32;
+            let qry_pos_gap = (anchor.position.1 - current_anchor.position.1) as i32;
+            backtrace_check_points.push((ref_pos_gap, ref_pos_gap-qry_pos_gap, anchor.size as i32));
+        }
+        backtrace_check_points
+    }
     fn estimated_to_hind_alignment(anchors: &mut Vec<Self>, current_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
         // get refernce of current anchor
         let current_anchor = &mut anchors[current_index];
@@ -354,12 +374,12 @@ impl Anchor {
         };
         match alignment_res {
             // Not dropped
-            Ok((operations, penalty, wf)) => {
+            Ok(wf) => {
                 // update state
-                current_anchor.state = AlignmentState::Exact(
-                    None,
-                    AlignmentBlock::Own(operations, penalty),
-                );
+                // current_anchor.state = AlignmentState::Exact(
+                //     None,
+                //     AlignmentBlock::Own(operations, penalty),
+                // );
                 // wf inheritant check
                 for &check_point in &current_anchor.check_points.1 {
                     let test = current_anchor.position;
@@ -511,10 +531,10 @@ impl Anchor {
 // }
 
 // #[derive(Debug)]
-// enum BlockType {
-//     Fore,
-//     Hind,
-// }
+enum BlockType {
+    Fore,
+    Hind,
+}
 
 /*
 #[cfg(test)]

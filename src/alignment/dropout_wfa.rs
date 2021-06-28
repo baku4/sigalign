@@ -1,3 +1,7 @@
+use std::borrow::BorrowMut;
+use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
+
 use super::{Operation, Scores};
 
 pub type WF = Vec<Option<WFscore>>; // Wavefront
@@ -96,14 +100,10 @@ impl Component {
     }
 }
 
-type AlignRes = (Vec<Operation>, usize, WF);
-type DroppedRes = WF;
-
-// FIXME: change text to 'ref_seq' & query to 'qry_seq'
 pub fn dropout_wf_align(
     qry_seq: &[u8], ref_seq: &[u8], penalties: &Scores,
     panalty_spare: f64, spl: f64
-) -> Result<AlignRes, DroppedRes> {
+) -> Result<WF, WF> {
     #[cfg(test)]
     {
         println!("panalty_spare: {}", panalty_spare);
@@ -137,8 +137,9 @@ pub fn dropout_wf_align(
         }
         wf_next(&mut wf, &qry_seq, &ref_seq, score, penalties);
     };
-    let operations = wf_backtrace(&mut wf, &qry_seq, &ref_seq, penalties, score, last_k);
-    Ok((operations, score, wf))
+    // let operations = wf_backtrace(&mut wf, &qry_seq, &ref_seq, penalties, score, last_k);
+    // Ok((operations, score, wf))
+    Ok(wf)
 }
 
 fn wf_extend(m_component: &mut Component, qry_seq: &[u8], ref_seq: &[u8]) {
@@ -353,17 +354,24 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
     }
 }
 
+pub type CheckPoints = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint fr, size)
+pub type ReverseIndex = Vec<Option<usize>>;
+
 fn wf_backtrace(
-    wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8],
-    penalties: &Scores,
-    score: usize, k: i32
-) -> Vec<Operation> {
+    wf: &mut WF, penalties: &Scores,
+    score: usize, start_k: i32,
+    check_points: &CheckPoints,
+) -> (Vec<Operation>, ReverseIndex) {
     let mut operations: Vec<Operation> = Vec::new();
     let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
 
+    // init
     let mut s = score;
-    let mut k = k;
+    let mut k = start_k;
     let mut component = get_comp(0, s, k);
+    // check points
+    let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points.len());
+    let mut reverse_index: ReverseIndex = vec![None; check_points.len()];
 
     loop {
         let fr = component.0;
@@ -380,6 +388,14 @@ fn wf_backtrace(
                         let mut new_ops = vec![Operation::Match; (fr-component.0-1) as usize];
                         new_ops.push(Operation::Subst);
                         operations.extend(new_ops);
+                        // validation backtrace check point
+                        for checkpoint_index in to_check_index.clone() {
+                            let &(checkpoint_k, checkpoint_fr, size) = &check_points[checkpoint_index];
+                            if (checkpoint_k == k) && (checkpoint_fr + size <= fr) && (checkpoint_fr >= component.0) {
+                                reverse_index[checkpoint_index] = Some(operations.len() - (component.0 - checkpoint_fr) as usize);
+                                to_check_index.remove(&checkpoint_index);
+                            }
+                        }
                     },
                     FromM::I => {
                         // new comp
@@ -396,7 +412,7 @@ fn wf_backtrace(
                     FromM::N => {
                         operations.extend(vec![Operation::Match; fr as usize]);
                         operations.reverse();
-                        return operations;
+                        return (operations, reverse_index);
                     },
                 }
             },
