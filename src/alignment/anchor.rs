@@ -8,7 +8,7 @@ use std::{u8, usize};
 use crate::alignment::anchor;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
-use super::dropout_wfa::{WF, CheckPointsValues, WFalignRes, dropout_wf_align, wf_backtrace, wf_check_inheritable};
+use super::dropout_wfa::{WF, CheckPointsValues, WFalignRes, dropout_wf_align, wf_backtrace};
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -344,22 +344,22 @@ impl Anchor {
             BlockType::Fore => {
                 let check_points = &current_anchor.check_points.0;
                 let mut backtrace_check_points: CheckPointsValues = Vec::with_capacity(check_points.len());
-                check_points.into_iter().for_each(|&check_point| {
-                    let anchor = &anchors[check_point];
+                check_points.into_iter().for_each(|&anchor_index| {
+                    let anchor = &anchors[anchor_index];
                     let ref_gap = (current_anchor.position.0 - anchor.position.0) as i32;
                     let qry_gap = (current_anchor.position.1 - anchor.position.1) as i32;
-                    backtrace_check_points.push((ref_gap, ref_gap-qry_gap, anchor.size as i32));
+                    backtrace_check_points.push((anchor_index, ref_gap-qry_gap, ref_gap));
                 });
                 backtrace_check_points
             },
             BlockType::Hind => {
                 let check_points = &current_anchor.check_points.1;
                 let mut backtrace_check_points: CheckPointsValues = Vec::with_capacity(check_points.len());
-                check_points.into_iter().for_each(|&check_point| {
-                    let anchor = &anchors[check_point];
+                check_points.into_iter().for_each(|&anchor_index| {
+                    let anchor = &anchors[anchor_index];
                     let ref_gap = (anchor.position.0 + anchor.size - current_anchor.position.0 - current_anchor.size) as i32;
                     let qry_gap = (anchor.position.1 + anchor.size - current_anchor.position.1 - current_anchor.size) as i32;
-                    backtrace_check_points.push((ref_gap, ref_gap-qry_gap, anchor.size as i32));
+                    backtrace_check_points.push((anchor_index, ref_gap-qry_gap, ref_gap));
                 });
                 backtrace_check_points
             },
@@ -373,7 +373,8 @@ impl Anchor {
                 AlignmentState::Estimated(emp_block, _) => {
                     (emp_block.penalty, emp_block.length)
                 },
-                // if not estimated(hind block is already done) -> just pass to next
+                // if not estimated(hind block is already done) or dropped
+                // -> just pass to next
                 _ => return,
             };
             // if current anchor has cached wf -> continue with cached wf
@@ -399,7 +400,7 @@ impl Anchor {
                 // wf inheritant check
                 let check_points_values = Self::wf_backtrace_check_points(anchors, current_anchor_index, BlockType::Hind);
                 let (operations, connected_backtraces) = wf_backtrace(
-                    &mut wf, scores, last_k, &anchors[current_anchor_index].check_points.1, &check_points_values
+                    &mut wf, scores, last_k, &check_points_values
                 );
                 // get valid anchor index
                 let valid_anchor_index: HashSet<usize> = HashSet::from_iter(
@@ -434,6 +435,8 @@ impl Anchor {
                             anchor.connected.insert(*check_point);
                         }
                     }
+                    // if anchor has cached wf: drop it
+                    anchor.wf_cache = None;
                 }
             },
             // CASE 2: wf dropped
@@ -444,11 +447,11 @@ impl Anchor {
             },
         }
     }
-    fn check_wf_inherit(&self, original_position: &(usize, usize), wf: &WF, scores: &Scores) -> bool {
-        let ref_pos_gap = (self.position.0 - original_position.0 + self.size) as i32;
-        let qry_pos_gap = (self.position.1 - original_position.1 + self.size) as i32;
-        wf_check_inheritable(wf, ref_pos_gap, qry_pos_gap, scores)
-    }
+    // fn check_wf_inherit(&self, original_position: &(usize, usize), wf: &WF, scores: &Scores) -> bool {
+    //     let ref_pos_gap = (self.position.0 - original_position.0 + self.size) as i32;
+    //     let qry_pos_gap = (self.position.1 - original_position.1 + self.size) as i32;
+    //     wf_check_inheritable(wf, ref_pos_gap, qry_pos_gap, scores)
+    // }
     // fn penalty_and_length_of_side(&self, block_type: BlockType) -> (usize, usize) {
     //     match block_type {
     //         BlockType::Fore => {

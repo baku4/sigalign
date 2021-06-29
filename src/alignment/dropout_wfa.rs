@@ -356,14 +356,14 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
     }
 }
 
-pub type CheckPointsValues = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint fr, size)
+pub type CheckPointsValues = Vec<(usize, i32, i32)>; // (anchor index, checkpoint k, checkpoint fr)
 // key: index of anchor
 // val: reverse index & penalty
 pub type ConnectedBacktrace = HashMap<usize, (usize, usize)>;
 
 pub fn wf_backtrace(
     wf: &WF, penalties: &Scores, start_k: i32,
-    check_points: &Vec<usize>, check_points_values: &CheckPointsValues,
+    check_points_values: &CheckPointsValues,
 ) -> (Vec<Operation>, ConnectedBacktrace) {
     let mut operations: Vec<Operation> = Vec::new();
     let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
@@ -394,10 +394,10 @@ pub fn wf_backtrace(
                         operations.extend(new_ops);
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
-                            let &(checkpoint_k, checkpoint_fr, size) = &check_points_values[checkpoint_index];
+                            let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
                             if (checkpoint_k == k) && (checkpoint_fr <= fr) {
                                 reverse_index.insert(
-                                    check_points[checkpoint_index],
+                                    anchor_index,
                                     (
                                         operations.len() - (checkpoint_fr - component.0) as usize,
                                         s + penalties.0
@@ -472,82 +472,85 @@ pub fn wf_backtrace(
 
 
 
-pub fn wf_check_inheritable(wf: &WF, ref_pos_gap: i32, qry_pos_gap: i32, scores: &Scores) -> bool {
-    let checkpoint_k = ref_pos_gap - qry_pos_gap;
-    let (checkpoint_score, checkpoint_fr) = {
-        let mut res: Option<(usize, i32)> = None;
-        'wf_checker: for (score, wfs) in wf.iter().enumerate() {
-            if let Some(wfs) = wfs {
-                if let Some(mcomp) = &wfs[0] {
-                    'fr_checker: for (key, val, backtrace) in &mcomp.0 {
-                        let gap =  *key - checkpoint_k; // lo to hi
-                        if gap > 0 {
-                            break 'fr_checker;
-                        } else if gap == 0 { // if matched k have fr_point
-                            if *val >= ref_pos_gap {
-                                if let Backtrace::M(from_m) = backtrace {
-                                    match from_m {
-                                        FromM::M => {
-                                            res = Some((score, *val));
-                                            break 'wf_checker;
-                                        },
-                                        _ => {
-                                            break 'wf_checker;
-                                        },
+pub fn wf_inheritance(
+    wf: &WF, scores: &Scores, check_points: &Vec<usize>, check_points_values: &CheckPointsValues,
+) -> bool {
+
+
+    for &(anchor_index, checkpoint_k, checkpoint_fr) in check_points_values {
+        let (checkpoint_score, checkpoint_extended_fr) = {
+            let mut res: Option<(usize, i32)> = None;
+            'wf_checker: for (score, wfs) in wf.iter().enumerate() {
+                if let Some(wfs) = wfs {
+                    if let Some(mcomp) = &wfs[0] {
+                        'fr_checker: for (key, val, backtrace) in &mcomp.0 {
+                            let gap =  *key - checkpoint_k; // lo to hi
+                            if gap > 0 {
+                                break 'fr_checker;
+                            } else if gap == 0 { // if matched k have fr_point
+                                if *val >= checkpoint_fr {
+                                    if let Backtrace::M(from_m) = backtrace {
+                                        match from_m {
+                                            FromM::M => {
+                                                res = Some((score, *val));
+                                                break 'wf_checker;
+                                            },
+                                            _ => {
+                                                break 'wf_checker;
+                                            },
+                                        }
                                     }
+                                    break 'wf_checker;
+                                } else {
+                                    // if fr point does not reach to the gap
+                                    break 'wf_checker;
                                 }
-                                break 'wf_checker;
-                            } else {
-                                // if fr point does not reach to the gap
-                                break 'wf_checker;
                             }
                         }
                     }
                 }
             }
-        }
-        match res {
-            Some(v) => v,
-            None => return false,
-        }
-    };
-    let checkpoint_valid = {
-        let pre_mcomp = wf[checkpoint_score - scores.0].as_ref().unwrap()[0].as_ref().unwrap();
-        if pre_mcomp.get_frpoint(checkpoint_k).unwrap() < ref_pos_gap {
-            // can reach
-            true
-        } else {
-            // cannot reach
-            false
-        }
-    };
-    if checkpoint_valid {
-        // checkpoint_score
-        let first_indel_score = checkpoint_score + scores.1 + scores.2;
-        // check first score
-        match wf.get(first_indel_score) {
-            Some(wfs_option) => {
-                match wfs_option.as_ref() {
-                    Some(wfs) => {
-                        let icomp = &wfs[1];
-                        let dcomp = &wfs[2];
-                        //
-                        false
-                    },
-                    None => {
-                        false
+            match res {
+                Some(v) => v,
+                // FIXME:
+                None => return false,
+            }
+        };
+        let checkpoint_valid = {
+            let pre_mcomp = wf[checkpoint_score - scores.0].as_ref().unwrap()[0].as_ref().unwrap();
+            if pre_mcomp.get_frpoint(checkpoint_k).unwrap() < checkpoint_fr {
+                // can reach
+                true
+            } else {
+                // cannot reach
+                false
+            }
+        };
+        if checkpoint_valid {
+            // checkpoint_score
+            let first_indel_score = checkpoint_score + scores.1 + scores.2;
+            // check first score
+            match wf.get(first_indel_score) {
+                Some(wfs_option) => {
+                    match wfs_option.as_ref() {
+                        Some(wfs) => {
+                            let icomp = &wfs[1];
+                            let dcomp = &wfs[2];
+                            //
+                            // false
+                        },
+                        None => {
+                            // false
+                        }
                     }
-                }
-            },
-            None => {
-                return false
-            },
+                },
+                None => {
+                    return false
+                },
+            }
+        } else {
+            // false
         }
-    } else {
-        false
     }
-}
-
-fn wf_inheritance() {
-
+    false
 }
