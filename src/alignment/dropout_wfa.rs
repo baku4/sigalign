@@ -356,13 +356,15 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
     }
 }
 
-pub type CheckPoints = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint fr, size)
-pub type ReverseIndex = Vec<Option<(usize, usize)>>; // reverse index & penalty
+pub type CheckPointsValues = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint fr, size)
+// key: index of anchor
+// val: reverse index & penalty
+pub type ConnectedBacktrace = HashMap<usize, (usize, usize)>;
 
 pub fn wf_backtrace(
     wf: &mut WF, penalties: &Scores, start_k: i32,
-    check_points: &CheckPoints,
-) -> (Vec<Operation>, ReverseIndex) {
+    check_points: &Vec<usize>, check_points_values: &CheckPointsValues,
+) -> (Vec<Operation>, ConnectedBacktrace) {
     let mut operations: Vec<Operation> = Vec::new();
     let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
 
@@ -371,8 +373,9 @@ pub fn wf_backtrace(
     let mut k = start_k;
     let mut component = get_comp(0, s, k);
     // check points
-    let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points.len());
-    let mut reverse_index: ReverseIndex = vec![None; check_points.len()];
+    let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
+    // let mut reverse_index: ReverseIndex = vec![None; check_points.len()];
+    let mut reverse_index: ConnectedBacktrace = HashMap::new();
 
     loop {
         let fr = component.0;
@@ -391,9 +394,12 @@ pub fn wf_backtrace(
                         operations.extend(new_ops);
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
-                            let &(checkpoint_k, checkpoint_fr, size) = &check_points[checkpoint_index];
+                            let &(checkpoint_k, checkpoint_fr, size) = &check_points_values[checkpoint_index];
                             if (checkpoint_k == k) && (checkpoint_fr + size <= fr) && (checkpoint_fr >= component.0) {
-                                reverse_index[checkpoint_index] = Some((operations.len() - (component.0 - checkpoint_fr) as usize, s + penalties.0));
+                                reverse_index.insert(
+                                    check_points[checkpoint_index],
+                                    (operations.len() - (component.0 - checkpoint_fr) as usize, s + penalties.0),
+                                );
                                 to_check_index.remove(&checkpoint_index);
                             }
                         }
