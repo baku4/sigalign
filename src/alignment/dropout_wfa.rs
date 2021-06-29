@@ -398,7 +398,10 @@ pub fn wf_backtrace(
                             if (checkpoint_k == k) && (checkpoint_fr + size <= fr) && (checkpoint_fr >= component.0) {
                                 reverse_index.insert(
                                     check_points[checkpoint_index],
-                                    (operations.len() - (component.0 - checkpoint_fr) as usize, s + penalties.0),
+                                    (
+                                        operations.len() - (checkpoint_fr + size - component.0) as usize,
+                                        s + penalties.0
+                                    ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
                             }
@@ -466,6 +469,8 @@ pub fn wf_backtrace(
         }
     }
 }
+
+
 
 pub fn wf_check_inheritable(wf: &WF, ref_pos_gap: i32, qry_pos_gap: i32, scores: &Scores) -> bool {
     let checkpoint_k = ref_pos_gap - qry_pos_gap;

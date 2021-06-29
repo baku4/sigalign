@@ -153,6 +153,7 @@ struct Anchor {
     size: usize,
     state: AlignmentState,
     check_points: (Vec<usize>, Vec<usize>), // index of anchors (fore, hind)
+    wf_cache: Option<WF>,
     connected: HashSet<usize>, // connected anchors index set for used as symbol
 }
 
@@ -216,6 +217,7 @@ impl Anchor {
             size: kmer,
             state:AlignmentState::Empty,
             check_points: (Vec::new(), Vec::new()),
+            wf_cache: None,
             connected: HashSet::new(),
         }
     }
@@ -371,15 +373,25 @@ impl Anchor {
                 AlignmentState::Estimated(emp_block, _) => {
                     (emp_block.penalty, emp_block.length)
                 },
-                // FIXME: if not estimated -> just pass to next
-                _ => panic!(""), // return
+                // if not estimated(hind block is already done) -> just pass to next
+                _ => return,
             };
-            let panalty_spare = cutoff.score_per_length * (
-                min(
-                    ref_seq.len() - current_anchor.position.0 - current_anchor.size, qry_seq.len() - current_anchor.position.1 - current_anchor.size
-                ) + current_anchor.size + l_other
-            ) as f64 - p_other as f64;
-             dropout_wf_align(&qry_seq[current_anchor.position.1+current_anchor.size..], &ref_seq[current_anchor.position.0+current_anchor.size..], scores, panalty_spare, cutoff.score_per_length)
+            // if current anchor has cached wf -> continue with cached wf
+            let wf_cache = current_anchor.wf_cache.take();
+            match wf_cache {
+                Some(wf) => {
+                    // TODO:
+                    return
+                },
+                None => {
+                    let panalty_spare = cutoff.score_per_length * (
+                        min(
+                            ref_seq.len() - current_anchor.position.0 - current_anchor.size, qry_seq.len() - current_anchor.position.1 - current_anchor.size
+                        ) + current_anchor.size + l_other
+                    ) as f64 - p_other as f64;
+                     dropout_wf_align(&qry_seq[current_anchor.position.1+current_anchor.size..], &ref_seq[current_anchor.position.0+current_anchor.size..], scores, panalty_spare, cutoff.score_per_length)
+                },
+            }
         };
         match alignment_res {
             // CASE 1: wf not dropped
@@ -389,8 +401,6 @@ impl Anchor {
                 let (operations, connected_backtraces) = wf_backtrace(
                     &mut wf, scores, last_k, &anchors[current_anchor_index].check_points.1, &check_points_values
                 );
-                // FIXME: is needed ?
-                let operations_length = operations.len();
                 // get valid anchor index
                 let valid_anchor_index: HashSet<usize> = HashSet::from_iter(
                     connected_backtraces.keys().map(|x| *x)
@@ -425,32 +435,6 @@ impl Anchor {
                         }
                     }
                 }
-                
-                // update current anchor state
-                // get valid checkpoints
-                // let valid_anchor_index: HashSet<usize> = {
-                //     let current_anchor = &mut anchors[current_index];
-                //     HashSet::from_iter(
-                //         reverse_index.iter().enumerate().filter(|(_, &val)| {
-                //             match val {
-                //                 Some(_) => true,
-                //                 None => false,
-                //             }
-                //         }).map(|(idx, _)| {
-                //             current_anchor.check_points.1[idx]
-                //         })
-                //     )
-                // };
-                // update connected anchors
-                // for &anchor_index in &valid_anchor_index {
-                //     let anchor = &mut anchors[anchor_index];
-                //     anchor.state = AlignmentState::Exact(
-                //         None,
-                //         AlignmentBlock::Ref(
-                //             current_index,
-                //             wf.len() - 1),
-                //     );
-                // }
             },
             // CASE 2: wf dropped
             Err(wf) => {
