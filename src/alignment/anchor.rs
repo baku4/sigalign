@@ -375,16 +375,16 @@ impl Anchor {
         match alignment_res {
             // Not dropped
             Ok((mut wf, last_k)) => {
-                // update state
-                // current_anchor.state = AlignmentState::Exact(
-                //     None,
-                //     AlignmentBlock::Own(operations, penalty),
-                // );
                 // wf inheritant check
                 let check_points = Self::wf_backtrace_check_points(anchors, current_index, BlockType::Hind);
                 let (operations, reverse_index) = wf_backtrace(&mut wf, scores, last_k, &check_points);
-                let current_anchor = &mut anchors[current_index];
-                // TODO: 
+                // update current anchors
+                anchors[current_index].state = AlignmentState::Exact(
+                    None,
+                    AlignmentBlock::Own(operations, wf.len() - 1),
+                );
+                // update connected anchors
+                // TODO:
             },
             // If dropped
             Err(wf) => {

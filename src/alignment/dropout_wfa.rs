@@ -357,7 +357,7 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
 }
 
 pub type CheckPoints = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint fr, size)
-pub type ReverseIndex = Vec<Option<usize>>;
+pub type ReverseIndex = Vec<Option<(usize, usize)>>; // reverse index & penalty
 
 pub fn wf_backtrace(
     wf: &mut WF, penalties: &Scores, start_k: i32,
@@ -393,7 +393,7 @@ pub fn wf_backtrace(
                         for checkpoint_index in to_check_index.clone() {
                             let &(checkpoint_k, checkpoint_fr, size) = &check_points[checkpoint_index];
                             if (checkpoint_k == k) && (checkpoint_fr + size <= fr) && (checkpoint_fr >= component.0) {
-                                reverse_index[checkpoint_index] = Some(operations.len() - (component.0 - checkpoint_fr) as usize);
+                                reverse_index[checkpoint_index] = Some((operations.len() - (component.0 - checkpoint_fr) as usize, s + penalties.0));
                                 to_check_index.remove(&checkpoint_index);
                             }
                         }
