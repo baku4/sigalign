@@ -346,9 +346,9 @@ impl Anchor {
                 let mut backtrace_check_points: CheckPointsValues = Vec::with_capacity(check_points.len());
                 check_points.into_iter().for_each(|&check_point| {
                     let anchor = &anchors[check_point];
-                    let ref_pos_gap = (current_anchor.position.0 - anchor.position.0 - anchor.size) as i32;
-                    let qry_pos_gap = (current_anchor.position.1 - anchor.position.1 - anchor.size) as i32;
-                    backtrace_check_points.push((ref_pos_gap, ref_pos_gap-qry_pos_gap, anchor.size as i32));
+                    let ref_gap = (current_anchor.position.0 - anchor.position.0) as i32;
+                    let qry_gap = (current_anchor.position.1 - anchor.position.1) as i32;
+                    backtrace_check_points.push((ref_gap, ref_gap-qry_gap, anchor.size as i32));
                 });
                 backtrace_check_points
             },
@@ -357,9 +357,9 @@ impl Anchor {
                 let mut backtrace_check_points: CheckPointsValues = Vec::with_capacity(check_points.len());
                 check_points.into_iter().for_each(|&check_point| {
                     let anchor = &anchors[check_point];
-                    let ref_pos_gap = (anchor.position.0 - current_anchor.position.0 - current_anchor.size) as i32;
-                    let qry_pos_gap = (anchor.position.1 - current_anchor.position.1 - current_anchor.size) as i32;
-                    backtrace_check_points.push((ref_pos_gap, ref_pos_gap-qry_pos_gap, anchor.size as i32));
+                    let ref_gap = (anchor.position.0 + anchor.size - current_anchor.position.0 - current_anchor.size) as i32;
+                    let qry_gap = (anchor.position.1 + anchor.size - current_anchor.position.1 - current_anchor.size) as i32;
+                    backtrace_check_points.push((ref_gap, ref_gap-qry_gap, anchor.size as i32));
                 });
                 backtrace_check_points
             },
@@ -440,6 +440,7 @@ impl Anchor {
             Err(wf) => {
                 // TODO: WF inheritance algorithm
                 // current_anchor.to_dropped();
+                let cloned_wf = wf.clone();
             },
         }
     }

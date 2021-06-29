@@ -7,7 +7,7 @@ use super::{Operation, Scores};
 pub type WF = Vec<Option<WFscore>>; // Wavefront
 type WFscore = [Option<Component>; 3]; // Wavefront of score
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Component(Vec<(i32, i32, Backtrace)>); // MID Component k: k, v: f.r.point
 
 #[derive(Debug, Clone)]
@@ -362,7 +362,7 @@ pub type CheckPointsValues = Vec<(i32, i32, i32)>; // (checkpoint k, checkpoint 
 pub type ConnectedBacktrace = HashMap<usize, (usize, usize)>;
 
 pub fn wf_backtrace(
-    wf: &mut WF, penalties: &Scores, start_k: i32,
+    wf: &WF, penalties: &Scores, start_k: i32,
     check_points: &Vec<usize>, check_points_values: &CheckPointsValues,
 ) -> (Vec<Operation>, ConnectedBacktrace) {
     let mut operations: Vec<Operation> = Vec::new();
@@ -395,11 +395,11 @@ pub fn wf_backtrace(
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
                             let &(checkpoint_k, checkpoint_fr, size) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr + size <= fr) && (checkpoint_fr >= component.0) {
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) {
                                 reverse_index.insert(
                                     check_points[checkpoint_index],
                                     (
-                                        operations.len() - (checkpoint_fr + size - component.0) as usize,
+                                        operations.len() - (checkpoint_fr - component.0) as usize,
                                         s + penalties.0
                                     ),
                                 );
