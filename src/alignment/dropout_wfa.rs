@@ -470,87 +470,269 @@ pub fn wf_backtrace(
     }
 }
 
+// inheritance check:
+// which anchor is inheritable
+pub fn wf_check_inheritable(
+    wf: &WF, scores: &Scores, check_points_values: &CheckPointsValues,
+) -> HashSet<usize>  {
+    // k checklist
+    let mut checklist_by_k: Vec<(i32, HashSet<(i32, usize)>)> = {
+        // key: checkpoint k , val: list of (checkpoint fr, anchor index)
+        let mut to_check_k_map: HashMap<i32, HashSet<(i32, usize)>> = HashMap::new();
+        for (anchor_index, checkpoint_k,  checkpoint_fr) in check_points_values {
+            match to_check_k_map.get_mut(checkpoint_k) {
+                Some(val) => {
+                    val.insert((*checkpoint_fr, *anchor_index));
+                },
+                None => {
+                    to_check_k_map.insert(
+                        *checkpoint_k, vec![(*checkpoint_fr, *anchor_index)].into_iter().collect()
+                    );
+                },
+            }
+        };
+        let mut checklist_by_k: Vec<(i32, HashSet<(i32, usize)>)> = to_check_k_map.into_iter().map(
+            |(k, val)| {
+                (k, val)
+            }
+        ).collect();
+        // sort by k
+        checklist_by_k.sort_by(|a, b| {
+            a.0.cmp(&b.0)
+        });
+        checklist_by_k
+    };
 
-
-pub fn wf_inheritance(
-    wf: &WF, scores: &Scores, check_points: &Vec<usize>, check_points_values: &CheckPointsValues,
-) -> bool {
-
-
-    for &(anchor_index, checkpoint_k, checkpoint_fr) in check_points_values {
-        let (checkpoint_score, checkpoint_extended_fr) = {
-            let mut res: Option<(usize, i32)> = None;
-            'wf_checker: for (score, wfs) in wf.iter().enumerate() {
-                if let Some(wfs) = wfs {
-                    if let Some(mcomp) = &wfs[0] {
-                        'fr_checker: for (key, val, backtrace) in &mcomp.0 {
-                            let gap =  *key - checkpoint_k; // lo to hi
-                            if gap > 0 {
-                                break 'fr_checker;
-                            } else if gap == 0 { // if matched k have fr_point
-                                if *val >= checkpoint_fr {
-                                    if let Backtrace::M(from_m) = backtrace {
-                                        match from_m {
-                                            FromM::M => {
-                                                res = Some((score, *val));
-                                                break 'wf_checker;
-                                            },
-                                            _ => {
-                                                break 'wf_checker;
-                                            },
-                                        }
+    // valid checkpoints
+    // key: anchor index, val: (score, checkpoint_k, checkpoint_ext_fr)
+    let mut valid_checkpoints: HashMap<usize, (usize, i32, i32)> = HashMap::new();
+    wf.iter().enumerate().for_each(|(score, wfs)| {
+        if let Some(wfs) = wfs {
+            if let Some(mcomp) = &wfs[0] {
+                let mut checklist_index: usize = 0;
+                let mut mcomp_index: usize = 0;
+                loop {
+                    // get mcomp values
+                    let (key, val, backtrace) = match mcomp.0.get(mcomp_index) {
+                        Some(v) => v,
+                        None => {
+                            break;
+                        },
+                    };
+                    // check the backtrace
+                    match checklist_by_k.get_mut(checklist_index) {
+                        Some((k, set)) => {
+                            let kgap = *key - *k;
+                            if kgap > 0 {
+                                // comp_k > checkpoint_k
+                                checklist_index += 1;
+                            } else if kgap == 0 {
+                                // k matched!
+                                if let Backtrace::M(from_m) = backtrace {
+                                    match from_m {
+                                        FromM::M => {
+                                            for (fr, anchor_index) in set.clone() {
+                                                // if current fr point >= checkpoint fr
+                                                if *val >= fr {
+                                                    let pre_score = score - scores.0;
+                                                    let pre_mcomp = wf[pre_score].as_ref().unwrap()[0].as_ref().unwrap();
+                                                    // if pre mcomp fr point < checkpoint fr: valid
+                                                    let pre_fr = pre_mcomp.get_frpoint(*k).unwrap();
+                                                    if pre_fr < fr {
+                                                        // insert checkpoint
+                                                        valid_checkpoints.insert(
+                                                            anchor_index,
+                                                            (score, *k, *val)
+                                                        );
+                                                        // remove value from current set
+                                                        set.remove(&(fr, anchor_index));
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        _ => {},
                                     }
-                                    break 'wf_checker;
-                                } else {
-                                    // if fr point does not reach to the gap
-                                    break 'wf_checker;
                                 }
+                                checklist_index += 1;
+                                mcomp_index += 1;
+                            } else {
+                                // comp_k < checkpoint_k
+                                mcomp_index += 1;
                             }
-                        }
+                        },
+                        None => {
+                            break;
+                        },
                     }
                 }
             }
-            match res {
-                Some(v) => v,
-                // FIXME:
-                None => return false,
-            }
-        };
-        let checkpoint_valid = {
-            let pre_mcomp = wf[checkpoint_score - scores.0].as_ref().unwrap()[0].as_ref().unwrap();
-            if pre_mcomp.get_frpoint(checkpoint_k).unwrap() < checkpoint_fr {
-                // can reach
-                true
-            } else {
-                // cannot reach
-                false
-            }
-        };
-        if checkpoint_valid {
-            // checkpoint_score
-            let first_indel_score = checkpoint_score + scores.1 + scores.2;
-            // check first score
-            match wf.get(first_indel_score) {
-                Some(wfs_option) => {
-                    match wfs_option.as_ref() {
-                        Some(wfs) => {
-                            let icomp = &wfs[1];
-                            let dcomp = &wfs[2];
-                            //
-                            // false
+        }
+    });
+
+    // check inheritable
+    let mut inhertiable_anchors: HashSet<usize> = valid_checkpoints.iter().map(|(idx, _)| *idx).collect();
+    for (anchor_index, (checkpoint_score, checkpoint_k, checkpoint_ext_fr)) in valid_checkpoints {
+        // first indel point
+        let mut indel_score = checkpoint_score + scores.1 + scores.2;
+        match wf.get(indel_score) {
+            Some(wfs_option) => {
+                let [mcomp, icomp, dcomp] = wfs_option.as_ref().unwrap();
+                // Check I
+                // 1. fr == (checkpoint_ext_fr + 1)
+                // 2. I's backtrace:M
+                // 3. M;s backtrace:I
+                let i_passed = {
+                    let (fr, i_bt) = icomp.as_ref().unwrap().backtrace(checkpoint_k+1);
+                    match i_bt {
+                        Backtrace::I(from_i) => {
+                            match from_i {
+                                FromI::M => {
+                                    if fr == checkpoint_ext_fr+1 {
+                                        let (_, m_bt) = mcomp.as_ref().unwrap().backtrace(checkpoint_k+1);
+                                        match m_bt {
+                                            Backtrace::M(from_m) => {
+                                                match from_m {
+                                                    FromM::I => {
+                                                        true
+                                                    },
+                                                    _ => false
+                                                }
+                                            },
+                                            _ => false
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                },
+                                _ => false
+                            }
                         },
-                        None => {
-                            // false
-                        }
+                        _ => false
                     }
-                },
-                None => {
-                    return false
-                },
+                };
+                // Check D
+                // 1. fr == checkpoint_ext_fr
+                // 2. D's backtrace:M
+                // 3. M;s backtrace:D
+                let d_passed = {
+                    let (fr, d_bt) = dcomp.as_ref().unwrap().backtrace(checkpoint_k-1);
+                    match d_bt {
+                        Backtrace::D(from_d) => {
+                            match from_d {
+                                FromD::M => {
+                                    if fr == checkpoint_ext_fr {
+                                        let (_, m_bt) = mcomp.as_ref().unwrap().backtrace(checkpoint_k-1);
+                                        match m_bt {
+                                            Backtrace::M(from_m) => {
+                                                match from_m {
+                                                    FromM::D => {
+                                                        true
+                                                    },
+                                                    _ => false
+                                                }
+                                            },
+                                            _ => false
+                                        }
+                                    } else {
+                                        false
+                                    }
+                                },
+                                _ => false
+                            }
+                        },
+                        _ => false
+                    }
+                };
+                if !(i_passed && d_passed) {
+                    // if not passed: remove
+                    inhertiable_anchors.remove(&anchor_index);
+                    break;
+                }
+            },
+            None => {
+                break;
+            },
+        };
+        // next indel points
+        let mut ext_count = 2;
+        indel_score += scores.2;
+        while let Some(wfs_option) = wf.get(indel_score) {
+            let [mcomp, icomp, dcomp] = wfs_option.as_ref().unwrap();
+            // Check I
+            // 1. fr == (checkpoint_ext_fr + ext_count)
+            // 2. I's backtrace:I
+            // 3. M;s backtrace:I
+            let i_passed = {
+                let (fr, i_bt) = icomp.as_ref().unwrap().backtrace(checkpoint_k+ext_count);
+                match i_bt {
+                    Backtrace::I(from_i) => {
+                        match from_i {
+                            FromI::I => {
+                                if fr == checkpoint_ext_fr+ext_count {
+                                    let (_, m_bt) = mcomp.as_ref().unwrap().backtrace(checkpoint_k+ext_count);
+                                    match m_bt {
+                                        Backtrace::M(from_m) => {
+                                            match from_m {
+                                                FromM::I => {
+                                                    true
+                                                },
+                                                _ => false
+                                            }
+                                        },
+                                        _ => false
+                                    }
+                                } else {
+                                    false
+                                }
+                            },
+                            _ => false
+                        }
+                    },
+                    _ => false
+                }
+            };
+            // Check D
+            // 1. fr == checkpoint_ext_fr
+            // 2. D's backtrace:D
+            // 3. M;s backtrace:D
+            let d_passed = {
+                let (fr, d_bt) = dcomp.as_ref().unwrap().backtrace(checkpoint_k-ext_count);
+                match d_bt {
+                    Backtrace::D(from_d) => {
+                        match from_d {
+                            FromD::D => {
+                                if fr == checkpoint_ext_fr {
+                                    let (_, m_bt) = mcomp.as_ref().unwrap().backtrace(checkpoint_k-ext_count);
+                                    match m_bt {
+                                        Backtrace::M(from_m) => {
+                                            match from_m {
+                                                FromM::D => {
+                                                    true
+                                                },
+                                                _ => false
+                                            }
+                                        },
+                                        _ => false
+                                    }
+                                } else {
+                                    false
+                                }
+                            },
+                            _ => false
+                        }
+                    },
+                    _ => false
+                }
+            };
+            if !(i_passed && d_passed) {
+                // if not passed: remove
+                inhertiable_anchors.remove(&anchor_index);
+                break;
             }
-        } else {
-            // false
+            // indel extension
+            indel_score += scores.2;
+            ext_count += 1;
         }
     }
-    false
+    inhertiable_anchors
 }
