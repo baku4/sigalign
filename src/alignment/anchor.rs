@@ -402,6 +402,9 @@ impl Anchor {
             },
         }
     }
+    fn wf_inherit(&mut self, wf: WF, score: usize, k: i32) {
+        // TODO:
+    }
     fn estimated_to_hind_alignment(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
         let alignment_res = {
             // get refernce of current anchor
@@ -440,7 +443,7 @@ impl Anchor {
                     &mut wf, scores, last_k, &check_points_values
                 );
                 // get valid anchor index
-                let valid_anchor_index: HashSet<usize> = HashSet::from_iter(
+                let valid_anchors_index: HashSet<usize> = HashSet::from_iter(
                     connected_backtraces.keys().map(|x| *x)
                 );
                 // update current anchor
@@ -452,7 +455,7 @@ impl Anchor {
                         AlignmentBlock::Own(operations, wf.len() - 1),
                     );
                     // update
-                    current_anchor.connected = valid_anchor_index.clone();
+                    current_anchor.connected = valid_anchors_index.clone();
                 }
                 // update connected anchors
                 for (anchor_index, (reverse_index, penalty)) in connected_backtraces {
@@ -468,7 +471,7 @@ impl Anchor {
                     );
                     // update anchor's connected info
                     for check_point in &anchor.check_points.1 {
-                        if valid_anchor_index.contains(check_point) {
+                        if valid_anchors_index.contains(check_point) {
                             anchor.connected.insert(*check_point);
                         }
                     }
@@ -478,9 +481,31 @@ impl Anchor {
             },
             // CASE 2: wf dropped
             Err(wf) => {
-                // TODO: WF inheritance algorithm
-                // current_anchor.to_dropped();
-                let cloned_wf = wf.clone();
+                let check_points_values = Self::wf_inheritance_check_points(anchors, current_anchor_index, BlockType::Hind);
+                // TODO: check_points have to passed by refernce?
+                // 
+                let inheritable_checkpoints: Vec<(usize, usize, i32)> = {
+                    let mut valid_checkpoints: Vec<(usize, usize, i32)> = wf_check_inheritable(&wf, scores, &check_points_values).into_iter().map(
+                        |(key, val)| {
+                            (key, val.0, val.1)
+                        }
+                    ).collect();
+                    valid_checkpoints.sort_by(|a, b| a.cmp(&b));
+                    valid_checkpoints
+                };
+                let mut checked_anchors_index: HashSet<usize> = HashSet::new();
+                for (anchor_index, score, k) in inheritable_checkpoints {
+                    // if anchor is not checked yet: caching WF
+                    if !checked_anchors_index.contains(&anchor_index) {
+                        let anchor = &mut anchors[anchor_index];
+                        // inherit WF
+                        anchor.wf_inherit(wf.clone(), score, k);
+                        // add all check points to the checked index list
+                        checked_anchors_index.insert(anchor_index);
+                    }
+                }
+                // drop current index
+                anchors[current_anchor_index].to_dropped();
             },
         }
     }

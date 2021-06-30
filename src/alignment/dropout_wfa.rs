@@ -472,9 +472,10 @@ pub fn wf_backtrace(
 
 // inheritance check:
 // which anchor is inheritable
+// return - key: anchor index, val: (score, checkpoint_k, checkpoint_ext_fr)
 pub fn wf_check_inheritable(
     wf: &WF, scores: &Scores, check_points_values: &CheckPointsValues,
-) -> HashSet<usize>  {
+) -> HashMap<usize, (usize, i32, i32)> {
     // k checklist
     let mut checklist_by_k: Vec<(i32, HashSet<(i32, usize)>)> = {
         // key: checkpoint k , val: list of (checkpoint fr, anchor index)
@@ -570,8 +571,7 @@ pub fn wf_check_inheritable(
     });
 
     // check inheritable
-    let mut inhertiable_anchors: HashSet<usize> = valid_checkpoints.iter().map(|(idx, _)| *idx).collect();
-    for (anchor_index, (checkpoint_score, checkpoint_k, checkpoint_ext_fr)) in valid_checkpoints {
+    for (anchor_index, (checkpoint_score, checkpoint_k, checkpoint_ext_fr)) in valid_checkpoints.clone() {
         // first indel point
         let mut indel_score = checkpoint_score + scores.1 + scores.2;
         match wf.get(indel_score) {
@@ -645,7 +645,7 @@ pub fn wf_check_inheritable(
                 };
                 if !(i_passed && d_passed) {
                     // if not passed: remove
-                    inhertiable_anchors.remove(&anchor_index);
+                    valid_checkpoints.remove(&anchor_index);
                     break;
                 }
             },
@@ -726,7 +726,7 @@ pub fn wf_check_inheritable(
             };
             if !(i_passed && d_passed) {
                 // if not passed: remove
-                inhertiable_anchors.remove(&anchor_index);
+                valid_checkpoints.remove(&anchor_index);
                 break;
             }
             // indel extension
@@ -734,5 +734,9 @@ pub fn wf_check_inheritable(
             ext_count += 1;
         }
     }
-    inhertiable_anchors
+    valid_checkpoints
+}
+
+pub fn inherit_wf(wf: &mut WF, score: usize, k: i32) {
+    
 }
