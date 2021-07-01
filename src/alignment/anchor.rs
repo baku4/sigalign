@@ -126,12 +126,21 @@ impl<'a> AnchorGroup<'a> {
         )
     }
     // FIXME: rename fn
-    fn estimated_to_hind(&mut self) {
+    fn alignment_tests(&mut self) {
         for idx in 0..self.anchors.len() {
-            Anchor::estimated_to_hind_alignment(
+            Anchor::alignment_hind_block(
                 &mut self.anchors,
                 idx,
                 self.ref_seq, self.qry_seq, self.scores, self.cutoff
+            );
+        }
+        let reversed_ref_seq: Vec<u8> = self.ref_seq.iter().rev().map(|x| *x).collect();
+        let reversed_qry_seq: Vec<u8> = self.qry_seq.iter().rev().map(|x| *x).collect();
+        for idx in (0..self.anchors.len()).rev() {
+            Anchor::alignment_fore_block(
+                &mut self.anchors,
+                idx,
+                &reversed_ref_seq, &reversed_qry_seq, self.scores, self.cutoff
             );
         }
     }
@@ -292,6 +301,9 @@ impl Anchor {
         };
         self.state = AlignmentState::Estimated(fore_emp_block, hind_emp_block);
     }
+    /*
+    CHECK POINT
+    */
     // query block stacked in order in anchors_preset
     // : high index is always the hind anchor
     fn can_be_connected(first: &Self, second: &Self, scores: &Scores, cutoff: &Cutoff) -> bool {
@@ -369,11 +381,6 @@ impl Anchor {
                     let anchor = &anchors[anchor_index];
                     let ref_gap = (anchor.position.0 + anchor.size - current_anchor.position.0 - current_anchor.size) as i32;
                     let qry_gap = (anchor.position.1 + anchor.size - current_anchor.position.1 - current_anchor.size) as i32;
-                    // FIXME: to del
-                    #[cfg(test)]
-                    {
-                        println!("{}, {}", ref_gap, qry_gap);
-                    }
                     backtrace_check_points.push((anchor_index, ref_gap-qry_gap, ref_gap));
                 });
                 backtrace_check_points
@@ -417,7 +424,10 @@ impl Anchor {
             },
         }
     }
-    fn estimated_to_hind_alignment(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
+    /*
+    ALIGNMENT
+    */
+    fn alignment_hind_block(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
         let alignment_res = {
             // get refernce of current anchor
             let current_anchor = &mut anchors[current_anchor_index];
@@ -520,54 +530,117 @@ impl Anchor {
             },
         }
     }
-    // fn penalty_and_length_of_side(&self, block_type: BlockType) -> (usize, usize) {
-    //     match block_type {
-    //         BlockType::Fore => {
-    //             match &self.state {
-    //                 AlignmentState::Estimated(emp_block, _) => {
-    //                     (emp_block.penalty, emp_block.length)
-    //                 },
-    //                 // TODO: modify error msg
-    //                 _ => panic!("alignment error")
-    //             }
-    //         },
-    //         BlockType::Hind => {
-    //             match &self.state {
-    //                 AlignmentState::Estimated(_, emp_block) => {
-    //                     (emp_block.penalty, emp_block.length)
-    //                 },
-    //                 AlignmentState::Exact(_, alignment_block) => {
-    //                     (alignment_block.1, alignment_block.0.len())
-    //                 },
-    //                 // TODO: modify error msg
-    //                 _ => panic!("alignment error")
-    //             }
-    //         },
-    //     }
-    // }
-    // fn update_hind(&mut self, operations: Vec<Operation>, penalty: usize) {
-    //     self.state = AnchorState::HindDone(Some(
-    //         AlignmentBlock {
-    //             operations,
-    //             penalty,
-    //         },
-    //     ));
-    // }
-    // fn update_fore(&mut self, operations: Vec<Operation>, penalty: usize) {
-    //     if let AnchorState::HindDone(block_option) = &mut self.state {
-    //         let alignment_block = match block_option.take() {
-    //             Some(v) => v,
-    //             None => panic!("Hind block cannot be None"),
-    //         };
-    //         self.state = AnchorState::BothDone((
-    //             AlignmentBlock {
-    //                 operations,
-    //                 penalty,
-    //             },
-    //             alignment_block,
-    //         ));
-    //     }
-    // }
+    fn alignment_fore_block(anchors: &mut Vec<Self>, current_anchor_index: usize, reversed_ref_seq: &[u8], reversed_qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
+        let alignment_res = {
+            // get refernce of current anchor
+            let current_anchor = &mut anchors[current_anchor_index];
+            let (p_other, l_other) = match &current_anchor.state {
+                AlignmentState::Exact(fore, hind) => {
+                    match fore {
+                        None => {
+                            match hind {
+                                AlignmentBlock::Own(operations, penalty) => {
+                                    (*penalty, operations.len())
+                                },
+                                AlignmentBlock::Ref(_, reverse_index, penalty ) => {
+                                    (*penalty, *reverse_index)
+                                }
+                            }
+                        },
+                        _ => return,
+                    }
+                },
+                _ => return,
+            };
+            // if current anchor has cached wf -> continue with cached wf
+            let wf_cache = current_anchor.wf_cache.take();
+            let panalty_spare = cutoff.score_per_length * (
+                min(current_anchor.position.0, current_anchor.position.1) + current_anchor.size + l_other
+            ) as f64 - p_other as f64;
+            // sequence must be reversed
+            match wf_cache {
+                Some(wf) => {
+                    dropout_inherited_wf_align(wf, &reversed_qry_seq[reversed_qry_seq.len()-current_anchor.position.1..], &reversed_ref_seq[reversed_ref_seq.len()-current_anchor.position.0..], scores, panalty_spare, cutoff.score_per_length)
+                },
+                None => {
+                    dropout_wf_align(&reversed_qry_seq[reversed_qry_seq.len()-current_anchor.position.1..], &reversed_ref_seq[reversed_ref_seq.len()-current_anchor.position.0..], scores, panalty_spare, cutoff.score_per_length)
+                },
+            }
+        };
+        match alignment_res {
+            // CASE 1: wf not dropped
+            Ok((mut wf, last_k)) => {
+                let current_anchor_score = wf.len();
+                // wf inheritant check
+                let check_points_values = Self::wf_backtrace_check_points(anchors, current_anchor_index, BlockType::Fore);
+                let (mut operations, connected_backtraces) = wf_backtrace(
+                    &mut wf, scores, last_k, &check_points_values
+                );
+                operations.reverse();
+                // get valid anchor index
+                let valid_anchors_index: HashSet<usize> = HashSet::from_iter(
+                    connected_backtraces.keys().map(|x| *x)
+                );
+                // update current anchor
+                {
+                    let current_anchor = &mut anchors[current_anchor_index];
+                    // update state
+                    if let AlignmentState::Exact(fore_block, _) = &mut current_anchor.state {
+                        *fore_block = Some(AlignmentBlock::Own(operations, wf.len() - 1));
+                    }
+                    // update 
+                    current_anchor.connected = valid_anchors_index.clone();
+                }
+                // update connected anchors
+                for (anchor_index, (reverse_index, penalty)) in connected_backtraces {
+                    let anchor = &mut anchors[anchor_index];
+                    // update anchor state
+                    if let AlignmentState::Exact(fore_block, _) = &mut anchor.state {
+                        *fore_block = Some(AlignmentBlock::Ref(
+                            current_anchor_index,
+                            reverse_index,
+                            current_anchor_score - penalty
+                        ));
+                    }
+                    // update anchor's connected info
+                    for check_point in &anchor.check_points.0 {
+                        if valid_anchors_index.contains(check_point) {
+                            anchor.connected.insert(*check_point);
+                        }
+                    }
+                    // if anchor has cached wf: drop it
+                    anchor.wf_cache = None;
+                }
+            },
+            // CASE 2: wf dropped
+            Err(wf) => {
+                let check_points_values = Self::wf_inheritance_check_points(anchors, current_anchor_index, BlockType::Hind);
+                let inheritable_checkpoints: Vec<(usize, usize, i32, i32)> = {
+                    let mut valid_checkpoints: Vec<(usize, usize, i32, i32)> = wf_check_inheritable(&wf, scores, check_points_values).into_iter().map(
+                        |(key, val)| {
+                            (key, val.0, val.1, val.2)
+                        }
+                    ).collect();
+                    valid_checkpoints.sort_by(|a, b| a.cmp(&b));
+                    valid_checkpoints
+                };
+                let mut checked_anchors_index: HashSet<usize> = HashSet::new();
+                for (anchor_index, score, k, fr) in inheritable_checkpoints {
+                    // if anchor is not checked yet: caching WF
+                    if !checked_anchors_index.contains(&anchor_index) {
+                        let anchor = &mut anchors[anchor_index];
+                        // inherit WF
+                        anchor.wf_cache = Some(wf_inherited_cache(&wf, score, k));
+                        // add all check points to the checked index list
+                        checked_anchors_index.insert(anchor_index);
+                        checked_anchors_index.extend(anchor.check_points.0.iter());
+                    }
+                }
+                // drop current index
+                anchors[current_anchor_index].to_dropped();
+            },
+        }
+    }
     // fn to_hind_part_done(&mut self, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
     //     let (p_other, l_other) = self.penalty_and_length_of_side(BlockType::Fore);
     //     let panalty_spare = cutoff.score_per_length * (
@@ -684,10 +757,10 @@ mod tests {
         let qry_seq = seqs.1.as_bytes();
         let index = super::super::Reference::fmindex(&ref_seq);
         let aligner = super::super::tests::test_aligner(
-0.05, 100, 3, 4, 2
+0.1, 100, 3, 4, 2
         );
         let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
-        anchor_group.estimated_to_hind();
+        anchor_group.alignment_tests();
         for anchor in anchor_group.anchors {
             println!("{:?}", anchor);
         }
