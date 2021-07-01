@@ -125,6 +125,7 @@ impl<'a> AnchorGroup<'a> {
     }
     // FIXME: to del
     fn alignment_tests(&mut self) {
+        // (1) alignment hind
         for idx in 0..self.anchors.len() {
             Anchor::alignment(
                 &mut self.anchors, idx,
@@ -132,6 +133,7 @@ impl<'a> AnchorGroup<'a> {
                 BlockType::Hind
             );
         }
+        // (2) alignment fore
         let reversed_ref_seq: Vec<u8> = self.ref_seq.iter().rev().map(|x| *x).collect();
         let reversed_qry_seq: Vec<u8> = self.qry_seq.iter().rev().map(|x| *x).collect();
         for idx in (0..self.anchors.len()).rev() {
@@ -140,7 +142,13 @@ impl<'a> AnchorGroup<'a> {
                 &reversed_ref_seq, &reversed_qry_seq, self.scores, self.cutoff,
                 BlockType::Fore
             );
-        }
+        };
+        // (3) evaluate
+        for anchor in self.anchors.iter_mut() {
+            if !anchor.evaluate_exact_alignment(&self.cutoff) {
+                anchor.to_dropped();
+            };
+        };
     }
     // fn alignment(&mut self) {
     //     // Hind Alignment
@@ -197,6 +205,14 @@ pub enum AlignmentState {
     Exact(Option<AlignmentBlock>, AlignmentBlock), // Fore, Hind
     /// Cutoff is not satisfied when aligned from anchor
     Dropped,
+}
+impl AlignmentState {
+    fn is_valid(&self) -> bool {
+        match self {
+            Self::Exact(_, _) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Alignment assumed when EMP state from anchor
@@ -546,7 +562,6 @@ impl Anchor {
             CASE 1: wf not dropped
             */
             Ok((mut wf, last_k)) => {
-                let current_anchor_score = wf.len() - 1;
                 // wf inheritant check
                 let check_points_values = Self::wf_backtrace_check_points(anchors, current_anchor_index, block_type.clone());
                 let (mut operations, connected_backtraces) = wf_backtrace(
@@ -581,6 +596,7 @@ impl Anchor {
                     current_anchor.connected.extend(valid_anchors_index.iter());
                 }
                 // update connected anchors
+                let current_anchor_score = wf.len() - 1;
                 for (anchor_index, (reverse_index, penalty)) in connected_backtraces {
                     let anchor = &mut anchors[anchor_index];
                     // update anchor state & anchor's connected info
@@ -660,6 +676,51 @@ impl Anchor {
     }
     fn to_dropped(&mut self) {
         self.state = AlignmentState::Dropped;
+    }
+    /**
+    Evaluate
+    */
+    fn evaluate_exact_alignment(&self, cutoff: &Cutoff) -> bool {
+        let mut total_length: usize = 0;
+        let mut total_penalty: usize = 0;
+        if let AlignmentState::Exact(fore_option, hind) = &self.state {
+            let fore = fore_option.as_ref().unwrap();
+            // add fore & hind info
+            for &block in [fore, hind].iter() {
+                match block {
+                    AlignmentBlock::Own(operations, penalty) => {
+                        total_length += operations.len();
+                        total_penalty += *penalty;
+                    },
+                    AlignmentBlock::Ref(_, reverse_index, penalty) => {
+                        total_length += reverse_index;
+                        total_penalty += *penalty;
+                    },
+                }
+            }
+        }
+        total_length += self.size;
+        if (total_length >= cutoff.minimum_length) && (total_penalty as f64/total_length as f64 <= cutoff.score_per_length) {
+            true
+        } else {
+            false
+        }
+    }
+    fn get_unique_symbols(anchors: &Vec<Self>) {
+        let mut unique_anchors_set: HashSet<usize> = HashSet::new();
+        let valid_anchors_set: HashSet<usize> = anchors.iter().enumerate().filter_map(
+            |(idx, anchor)| {
+                match anchor.state {
+                    AlignmentState::Exact(_, _) => {
+                        Some(idx)
+                    },
+                    _ => {
+                        None
+                    }
+                }
+            }
+        ).collect();
+        // TODO:
     }
     // fn evaluate(self, ref_len: usize, qry_len: usize, cutoff: &Cutoff) -> Option<(Vec<Operation>, usize)>{
     //     let (fore_block, hind_block) = match self.state {
