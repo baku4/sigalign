@@ -1,17 +1,15 @@
+//! Alignment by Anchor
 use core::panic;
 use std::cmp::{min, max};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::thread::current;
-use std::{u8, usize};
-
-use crate::alignment::anchor;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
-use super::dropout_wfa::{WF, CheckPointsValues, WFalignRes, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, wf_check_inheritable, wf_inherited_cache};
+use super::dropout_wfa::{WF, CheckPointsValues, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, wf_check_inheritable, wf_inherited_cache};
 use fm_index::BackwardSearchIndex;
 
-struct AnchorGroup<'a> {
+/// Anchor Group
+pub struct AnchorGroup<'a> {
     ref_seq: &'a [u8],
     qry_seq: &'a [u8],
     kmer: usize,
@@ -103,11 +101,11 @@ impl<'a> AnchorGroup<'a> {
         }
         // (2) Calculate the EMP values
         anchors_preset.iter_mut().for_each(|anchor| {
-            anchor.estimate(ref_len, qry_len, kmer, &anchor_existence, &emp_kmer);
+            anchor.estimate_from_empty(ref_len, qry_len, kmer, &anchor_existence, &emp_kmer);
         });
         // (3) evaluate raw anchors
         anchors_preset.iter_mut().for_each(|anchor| {
-            if !anchor.is_valid_raw(cutoff) {
+            if !anchor.is_emp_state_valid(cutoff) {
                 anchor.to_dropped();
             }
         });
@@ -125,7 +123,7 @@ impl<'a> AnchorGroup<'a> {
             }
         )
     }
-    // FIXME: rename fn
+    // FIXME: to del
     fn alignment_tests(&mut self) {
         for idx in 0..self.anchors.len() {
             Anchor::alignment_hind_block(
@@ -166,26 +164,44 @@ impl<'a> AnchorGroup<'a> {
     // }
 }
 
+/// Anchor
 #[derive(Debug)]
-struct Anchor {
-    position: (usize, usize), // (ref, qry)
+pub struct Anchor {
+    /// Positions of anchor
+    /// (position of reference, position of qry)
+    position: (usize, usize),
+    /// Size of anchor
     size: usize,
+    /// Alignment state of anchor
     state: AlignmentState,
-    check_points: (Vec<usize>, Vec<usize>), // index of anchors (fore, hind)
+    /// Index of other anchors to check on WF inheritance & backtrace.
+    /// (fore, hind)
+    check_points: (Vec<usize>, Vec<usize>),
+    /// Cache for inherited WF
     wf_cache: Option<WF>,
-    connected: HashSet<usize>, // connected anchors index set for used as symbol
+    /// Connected anchors index set for used as anchor's symbol
+    connected: HashSet<usize>,
 }
 
+/// State of alignment
 #[derive(Debug)]
-enum AlignmentState {
+pub enum AlignmentState {
+    /// 1st state
+    /// fore and hind alignments are empty
     Empty,
+    /// 2nd state
+    /// filled with blocks in the EMP state
     Estimated(EmpBlock, EmpBlock), // Fore, Hind
+    /// 3rd, 4th state
+    /// aligned exactly with `dropout wfa`
     Exact(Option<AlignmentBlock>, AlignmentBlock), // Fore, Hind
+    /// Cutoff is not satisfied when aligned from anchor
     Dropped,
 }
 
+/// Alignment assumed when EMP state from anchor
 #[derive(Debug)]
-struct EmpBlock {
+pub struct EmpBlock {
     penalty: usize,
     length: usize,
 }
@@ -198,10 +214,15 @@ impl EmpBlock {
     }
 }
 
+/// One-way semi-global alignment from anchor
 #[derive(Debug)]
-enum AlignmentBlock {
-    Own(Vec<Operation>, usize), // operations, penalty
-    Ref(usize, usize, usize), // index of connected anchor, opertaion reverse start point(=length), penalty
+pub enum AlignmentBlock {
+    /// Having an operations.
+    /// (operations, penalty)
+    Own(Vec<Operation>, usize), 
+    /// Referring to the operation of another anchor.
+    /// (index of connected anchor, reverse index of operation(same as length), penalty)
+    Ref(usize, usize, usize),
 }
 // impl AlignmentBlock {
 //     fn aligned_length(&self) -> (usize, usize) {
@@ -223,6 +244,10 @@ enum AlignmentBlock {
 // }
 
 impl Anchor {
+    /**
+    # initialization
+    */
+    /// New anchor in Empty state
     fn new(ref_pos: usize, qry_pos: usize, kmer: usize) -> Self {
         Self {
             position: (ref_pos, qry_pos),
@@ -233,11 +258,13 @@ impl Anchor {
             connected: HashSet::new(),
         }
     }
+    /// When the anchor is completely connected, both anchors are treated as one anchor.
     fn impeccable_extension(mut self, kmer: usize) -> Self {
         self.size += kmer;
         self
     }
-    fn estimate(&mut self, ref_len: usize, qry_len: usize, kmer: usize, anchor_existence: &Vec<bool>, emp_kmer: &EmpKmer) {
+    /// Empty anchor to estimated state
+    fn estimate_from_empty(&mut self, ref_len: usize, qry_len: usize, kmer: usize, anchor_existence: &Vec<bool>, emp_kmer: &EmpKmer) {
         let block_index = self.position.1 / kmer;
         // fore block
         let fore_emp_block = {
@@ -294,8 +321,20 @@ impl Anchor {
         };
         self.state = AlignmentState::Estimated(fore_emp_block, hind_emp_block);
     }
-    /*
-    CHECK POINT
+    fn is_emp_state_valid(&self, cutoff: &Cutoff) -> bool{
+        if let AlignmentState::Estimated(emp_block_1, emp_block_2) = &self.state {
+            let length = emp_block_1.length + emp_block_2.length + self.size;
+            if length >= cutoff.minimum_length && (emp_block_1.penalty + emp_block_2.penalty) as f64/length as f64 <= cutoff.score_per_length {
+                true
+            } else {
+                false
+            }
+        } else {
+            panic!("Anchor is not in EMP state.");
+        }
+    }
+    /**
+    Check point
     */
     // query block stacked in order in anchors_preset
     // : high index is always the hind anchor
@@ -330,7 +369,7 @@ impl Anchor {
             false
         }
     }
-    fn extend_check_point_together(anchors: &mut Vec<Self>, first_index: usize, second_index: usize) {
+    fn extend_each_check_points(anchors: &mut Vec<Self>, first_index: usize, second_index: usize) {
         anchors[first_index].check_points.1.push(second_index);
         anchors[second_index].check_points.0.push(first_index);
     }
@@ -348,7 +387,7 @@ impl Anchor {
         for index_1 in 0..anchor_count {
             for index_2 in index_1+1..anchor_count {
                 if Self::both_estimated(&anchors[index_1], &anchors[index_2]) && Self::can_be_connected(&anchors[index_1], &anchors[index_2], &scores, &cutoff) {
-                    Self::extend_check_point_together(anchors, index_1, index_2);
+                    Self::extend_each_check_points(anchors, index_1, index_2);
                 }
             }
         }
@@ -417,8 +456,8 @@ impl Anchor {
             },
         }
     }
-    /*
-    ALIGNMENT
+    /**
+    Alignment
     */
     fn alignment_hind_block(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
         let alignment_res = {
@@ -643,19 +682,6 @@ impl Anchor {
     fn to_dropped(&mut self) {
         self.state = AlignmentState::Dropped;
     }
-    fn is_valid_raw(&self, cutoff: &Cutoff) -> bool{
-        if let AlignmentState::Estimated(emp_block_1, emp_block_2) = &self.state {
-            let length = emp_block_1.length + emp_block_2.length + self.size;
-            if length >= cutoff.minimum_length && (emp_block_1.penalty + emp_block_2.penalty) as f64/length as f64 <= cutoff.score_per_length {
-                true
-            } else {
-                false
-            }
-        } else {
-            // TODO: error msg
-            panic!("");
-        }
-    }
     // fn evaluate(self, ref_len: usize, qry_len: usize, cutoff: &Cutoff) -> Option<(Vec<Operation>, usize)>{
     //     let (fore_block, hind_block) = match self.state {
     //         AnchorState::BothDone(v) => v,
@@ -679,17 +705,6 @@ impl Anchor {
     //     }
     // }
 }
-
-// #[derive(Debug)]
-// enum AnchorState {
-//     Proto,
-//     Raw((EmpBlock, EmpBlock)), // Fore, Hind
-//     HindDone(Option<AlignmentBlock>), // Hind
-//     BothDone((AlignmentBlock, AlignmentBlock)), // Fore, Hind
-//     Dropped,
-// }
-
-// #[derive(Debug)]
 enum BlockType {
     Fore,
     Hind,

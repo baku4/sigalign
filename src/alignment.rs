@@ -1,5 +1,6 @@
-mod anchor;
-mod dropout_wfa;
+//! Dropout alignment core
+pub mod anchor;
+pub mod dropout_wfa;
 
 use fm_index::converter::RangeConverter;
 use fm_index::suffix_array::{SuffixOrderSampledArray, SuffixOrderSampler};
