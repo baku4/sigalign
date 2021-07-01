@@ -125,10 +125,6 @@ pub fn dropout_wf_align(
     qry_seq: &[u8], ref_seq: &[u8], penalties: &Scores,
     panalty_spare: f64, spl: f64
 ) -> Result<WFalignRes, WF> {
-    #[cfg(test)]
-    {
-        println!("panalty_spare: {}", panalty_spare);
-    }
     // penalties: [x, o, e]
     let n = qry_seq.len();
     let m = ref_seq.len();
@@ -166,10 +162,6 @@ pub fn dropout_inherited_wf_align(
     panalty_spare: f64, spl: f64
 ) -> Result<WFalignRes, WF> {
     let mut wf = inherited_wf;
-    #[cfg(test)]
-    {
-        println!("panalty_spare: {}", panalty_spare);
-    }
     // penalties: [x, o, e]
     let n = qry_seq.len();
     let m = ref_seq.len();
@@ -448,11 +440,6 @@ pub fn wf_backtrace(
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
                             let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            //FIXME: to del
-                            #[cfg(test)]
-                            {
-                                println!("{}, {}, {}, {}", checkpoint_k, checkpoint_fr, fr, component.0);
-                            }
                             if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
                                 reverse_index.insert(
                                     anchor_index,
@@ -589,8 +576,6 @@ pub fn wf_check_inheritable(
         });
         checklist_by_k
     };
-    #[cfg(test)]
-    println!("checklist_by_k: {:?}", checklist_by_k);
     // valid checkpoints
     // key: anchor index, val: (score, checkpoint_k, checkpoint_ext_fr, checkpoint_fr)
     let mut valid_checkpoints: HashMap<usize, (usize, i32, i32, i32)> = HashMap::new();
@@ -694,8 +679,6 @@ pub fn wf_check_inheritable(
             }
         }
     });
-    #[cfg(test)]
-    println!("valid_checkpoints: {:?}", valid_checkpoints);
     // check inheritable
     for (anchor_index, (checkpoint_score, checkpoint_k, checkpoint_ext_fr, _)) in valid_checkpoints.clone() {
         // first indel point
@@ -860,13 +843,9 @@ pub fn wf_check_inheritable(
             ext_count += 1;
         }
     }
-    #[cfg(test)]
-    println!("still valid_checkpoints: {:?}", valid_checkpoints);
     valid_checkpoints
 }
 pub fn wf_inherited_cache(wf: &WF, score: usize, k_gap: i32, fr_gap: i32) -> WF {
-    #[cfg(test)]
-    println!("{:?}", wf[score..].iter().clone());
     let mut new_wf: WF = wf[score..].iter().map(
         |wfs_option| {
             match wfs_option.as_ref() {
