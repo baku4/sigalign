@@ -546,9 +546,9 @@ impl Anchor {
             CASE 1: wf not dropped
             */
             Ok((mut wf, last_k)) => {
-                let current_anchor_score = wf.len();
+                let current_anchor_score = wf.len() - 1;
                 // wf inheritant check
-                let check_points_values = Self::wf_backtrace_check_points(anchors, current_anchor_index, BlockType::Hind);
+                let check_points_values = Self::wf_backtrace_check_points(anchors, current_anchor_index, block_type.clone());
                 let (mut operations, connected_backtraces) = wf_backtrace(
                     &mut wf, scores, last_k, &check_points_values
                 );
