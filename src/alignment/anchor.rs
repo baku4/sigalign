@@ -8,7 +8,7 @@ use std::{u8, usize};
 use crate::alignment::anchor;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
-use super::dropout_wfa::{WF, CheckPointsValues, WFalignRes, dropout_wf_align, wf_backtrace, wf_check_inheritable};
+use super::dropout_wfa::{WF, CheckPointsValues, WFalignRes, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, wf_check_inheritable, wf_inherited_cache};
 use fm_index::BackwardSearchIndex;
 
 struct AnchorGroup<'a> {
@@ -124,6 +124,16 @@ impl<'a> AnchorGroup<'a> {
                 anchors: anchors_preset,
             }
         )
+    }
+    // FIXME: rename fn
+    fn estimated_to_hind(&mut self) {
+        for idx in 0..self.anchors.len() {
+            Anchor::estimated_to_hind_alignment(
+                &mut self.anchors,
+                idx,
+                self.ref_seq, self.qry_seq, self.scores, self.cutoff
+            );
+        }
     }
     // fn alignment(&mut self) {
     //     // Hind Alignment
@@ -359,6 +369,11 @@ impl Anchor {
                     let anchor = &anchors[anchor_index];
                     let ref_gap = (anchor.position.0 + anchor.size - current_anchor.position.0 - current_anchor.size) as i32;
                     let qry_gap = (anchor.position.1 + anchor.size - current_anchor.position.1 - current_anchor.size) as i32;
+                    // FIXME: to del
+                    #[cfg(test)]
+                    {
+                        println!("{}, {}", ref_gap, qry_gap);
+                    }
                     backtrace_check_points.push((anchor_index, ref_gap-qry_gap, ref_gap));
                 });
                 backtrace_check_points
@@ -402,9 +417,6 @@ impl Anchor {
             },
         }
     }
-    fn wf_inherit(&mut self, wf: WF, score: usize, k: i32) {
-        // TODO:
-    }
     fn estimated_to_hind_alignment(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff) {
         let alignment_res = {
             // get refernce of current anchor
@@ -419,24 +431,24 @@ impl Anchor {
             };
             // if current anchor has cached wf -> continue with cached wf
             let wf_cache = current_anchor.wf_cache.take();
+            let panalty_spare = cutoff.score_per_length * (
+                min(
+                    ref_seq.len() - current_anchor.position.0 - current_anchor.size, qry_seq.len() - current_anchor.position.1 - current_anchor.size
+                ) + current_anchor.size + l_other
+            ) as f64 - p_other as f64;
             match wf_cache {
                 Some(wf) => {
-                    // TODO:
-                    return
+                    dropout_inherited_wf_align(wf, &qry_seq[current_anchor.position.1+current_anchor.size..], &ref_seq[current_anchor.position.0+current_anchor.size..], scores, panalty_spare, cutoff.score_per_length)
                 },
                 None => {
-                    let panalty_spare = cutoff.score_per_length * (
-                        min(
-                            ref_seq.len() - current_anchor.position.0 - current_anchor.size, qry_seq.len() - current_anchor.position.1 - current_anchor.size
-                        ) + current_anchor.size + l_other
-                    ) as f64 - p_other as f64;
-                     dropout_wf_align(&qry_seq[current_anchor.position.1+current_anchor.size..], &ref_seq[current_anchor.position.0+current_anchor.size..], scores, panalty_spare, cutoff.score_per_length)
+                    dropout_wf_align(&qry_seq[current_anchor.position.1+current_anchor.size..], &ref_seq[current_anchor.position.0+current_anchor.size..], scores, panalty_spare, cutoff.score_per_length)
                 },
             }
         };
         match alignment_res {
             // CASE 1: wf not dropped
             Ok((mut wf, last_k)) => {
+                let current_anchor_score = wf.len();
                 // wf inheritant check
                 let check_points_values = Self::wf_backtrace_check_points(anchors, current_anchor_index, BlockType::Hind);
                 let (operations, connected_backtraces) = wf_backtrace(
@@ -466,7 +478,7 @@ impl Anchor {
                         AlignmentBlock::Ref(
                             current_anchor_index,
                             reverse_index,
-                            penalty
+                            current_anchor_score - penalty
                         ),
                     );
                     // update anchor's connected info
@@ -482,26 +494,25 @@ impl Anchor {
             // CASE 2: wf dropped
             Err(wf) => {
                 let check_points_values = Self::wf_inheritance_check_points(anchors, current_anchor_index, BlockType::Hind);
-                // TODO: check_points have to passed by refernce?
-                // 
-                let inheritable_checkpoints: Vec<(usize, usize, i32)> = {
-                    let mut valid_checkpoints: Vec<(usize, usize, i32)> = wf_check_inheritable(&wf, scores, &check_points_values).into_iter().map(
+                let inheritable_checkpoints: Vec<(usize, usize, i32, i32)> = {
+                    let mut valid_checkpoints: Vec<(usize, usize, i32, i32)> = wf_check_inheritable(&wf, scores, check_points_values).into_iter().map(
                         |(key, val)| {
-                            (key, val.0, val.1)
+                            (key, val.0, val.1, val.2)
                         }
                     ).collect();
                     valid_checkpoints.sort_by(|a, b| a.cmp(&b));
                     valid_checkpoints
                 };
                 let mut checked_anchors_index: HashSet<usize> = HashSet::new();
-                for (anchor_index, score, k) in inheritable_checkpoints {
+                for (anchor_index, score, k, fr) in inheritable_checkpoints {
                     // if anchor is not checked yet: caching WF
                     if !checked_anchors_index.contains(&anchor_index) {
                         let anchor = &mut anchors[anchor_index];
                         // inherit WF
-                        anchor.wf_inherit(wf.clone(), score, k);
+                        anchor.wf_cache = Some(wf_inherited_cache(&wf, score, k));
                         // add all check points to the checked index list
                         checked_anchors_index.insert(anchor_index);
+                        checked_anchors_index.extend(anchor.check_points.1.iter());
                     }
                 }
                 // drop current index
@@ -509,11 +520,6 @@ impl Anchor {
             },
         }
     }
-    // fn check_wf_inherit(&self, original_position: &(usize, usize), wf: &WF, scores: &Scores) -> bool {
-    //     let ref_pos_gap = (self.position.0 - original_position.0 + self.size) as i32;
-    //     let qry_pos_gap = (self.position.1 - original_position.1 + self.size) as i32;
-    //     wf_check_inheritable(wf, ref_pos_gap, qry_pos_gap, scores)
-    // }
     // fn penalty_and_length_of_side(&self, block_type: BlockType) -> (usize, usize) {
     //     match block_type {
     //         BlockType::Fore => {
@@ -652,7 +658,6 @@ enum BlockType {
     Hind,
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use crate::alignment::test_data;
@@ -664,25 +669,27 @@ mod tests {
         let ref_seq = seqs.0.as_bytes();
         let qry_seq = seqs.1.as_bytes();
         let index = super::super::Reference::fmindex(&ref_seq);
-        let aligner = super::super::tests::test_aligner();
+        let aligner = super::super::tests::test_aligner(
+            0.05, 100, 3, 4, 2
+        );
         let anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
         println!("{:?}", anchor_group.anchors);
     }
 
     #[test]
-    fn print_aligned_anchor_group() {
+    fn test_estimated_to_hind_alignment() {
         let test_data = test_data::get_test_data();
         let seqs = test_data[1].clone();
         let ref_seq = seqs.0.as_bytes();
         let qry_seq = seqs.1.as_bytes();
         let index = super::super::Reference::fmindex(&ref_seq);
-        let aligner = super::super::tests::test_aligner();
+        let aligner = super::super::tests::test_aligner(
+0.05, 100, 3, 4, 2
+        );
         let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
-        anchor_group.alignment();
+        anchor_group.estimated_to_hind();
         for anchor in anchor_group.anchors {
-            let res = anchor.evaluate(anchor_group.ref_seq.len(), anchor_group.qry_seq.len(), anchor_group.cutoff);
-            println!("{:?}", res);
+            println!("{:?}", anchor);
         }
     }
 }
-*/

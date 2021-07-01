@@ -98,6 +98,15 @@ impl Component {
         }
         return None
     }
+    fn inherit(&self, k_gap: i32, fr_gap: i32) -> Self {
+        Self(
+            self.0.iter().map(
+                |(k, fr, bt)| {
+                    (*k - k_gap, *fr - fr_gap, bt.clone())
+                }
+            ).collect()
+        )
+    }
 }
 
 pub type WFalignRes = (WF, i32);
@@ -120,6 +129,46 @@ pub fn dropout_wf_align(
         let wf_score: WFscore = [Some(m_component), None, None];
         vec![Some(wf_score)]
     };
+    let last_k = loop {
+        // extend & exit condition
+        if let Some(wf_score) = wf[score].as_mut() {
+            if let Some(m_component) = wf_score[0].as_mut() {
+                // extend
+                wf_extend(m_component, qry_seq, ref_seq);
+                // exit condition
+                if let Some(last_k) = m_component.check_exist_condition(n as i32, m as i32) {
+                    break last_k;
+                }
+            }
+        }
+        score += 1;
+        // check dropout
+        if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
+            return Err(wf)
+        }
+        wf_next(&mut wf, &qry_seq, &ref_seq, score, penalties);
+    };
+    Ok((wf, last_k))
+}
+
+pub fn dropout_inherited_wf_align(
+    inherited_wf: WF, qry_seq: &[u8], ref_seq: &[u8], penalties: &Scores,
+    panalty_spare: f64, spl: f64
+) -> Result<WFalignRes, WF> {
+    let mut wf = inherited_wf;
+    #[cfg(test)]
+    {
+        println!("panalty_spare: {}", panalty_spare);
+    }
+    // penalties: [x, o, e]
+    let n = qry_seq.len();
+    let m = ref_seq.len();
+    // init
+    let mut score: usize = wf.len();
+    if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
+        return Err(wf)
+    }
+    wf_next(&mut wf, &qry_seq, &ref_seq, score, penalties);
     let last_k = loop {
         // extend & exit condition
         if let Some(wf_score) = wf[score].as_mut() {
@@ -395,7 +444,12 @@ pub fn wf_backtrace(
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
                             let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) {
+                            //FIXME: to del
+                            #[cfg(test)]
+                            {
+                                println!("{}, {}, {}, {}", checkpoint_k, checkpoint_fr, fr, component.0);
+                            }
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
                                 reverse_index.insert(
                                     anchor_index,
                                     (
@@ -412,12 +466,40 @@ pub fn wf_backtrace(
                         component = get_comp(1, s, k);
                         // extend operations
                         operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
+                        // validation backtrace check point
+                        for checkpoint_index in to_check_index.clone() {
+                            let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
+                                reverse_index.insert(
+                                    anchor_index,
+                                    (
+                                        operations.len() - (checkpoint_fr - component.0) as usize,
+                                        s
+                                    ),
+                                );
+                                to_check_index.remove(&checkpoint_index);
+                            }
+                        }
                     },
                     FromM::D => {
                         // new comp
                         component = get_comp(2, s, k);
                         // extend operations
                         operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
+                        // validation backtrace check point
+                        for checkpoint_index in to_check_index.clone() {
+                            let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
+                                reverse_index.insert(
+                                    anchor_index,
+                                    (
+                                        operations.len() - (checkpoint_fr - component.0) as usize,
+                                        s
+                                    ),
+                                );
+                                to_check_index.remove(&checkpoint_index);
+                            }
+                        }
                     },
                     FromM::N => {
                         operations.extend(vec![Operation::Match; fr as usize]);
@@ -474,20 +556,20 @@ pub fn wf_backtrace(
 // which anchor is inheritable
 // return - key: anchor index, val: (score, checkpoint_k, checkpoint_ext_fr)
 pub fn wf_check_inheritable(
-    wf: &WF, scores: &Scores, check_points_values: &CheckPointsValues,
+    wf: &WF, scores: &Scores, check_points_values: CheckPointsValues,
 ) -> HashMap<usize, (usize, i32, i32)> {
     // k checklist
     let mut checklist_by_k: Vec<(i32, HashSet<(i32, usize)>)> = {
         // key: checkpoint k , val: list of (checkpoint fr, anchor index)
         let mut to_check_k_map: HashMap<i32, HashSet<(i32, usize)>> = HashMap::new();
         for (anchor_index, checkpoint_k,  checkpoint_fr) in check_points_values {
-            match to_check_k_map.get_mut(checkpoint_k) {
+            match to_check_k_map.get_mut(&checkpoint_k) {
                 Some(val) => {
-                    val.insert((*checkpoint_fr, *anchor_index));
+                    val.insert((checkpoint_fr, anchor_index));
                 },
                 None => {
                     to_check_k_map.insert(
-                        *checkpoint_k, vec![(*checkpoint_fr, *anchor_index)].into_iter().collect()
+                        checkpoint_k, vec![(checkpoint_fr, anchor_index)].into_iter().collect()
                     );
                 },
             }
@@ -736,7 +818,28 @@ pub fn wf_check_inheritable(
     }
     valid_checkpoints
 }
-
-pub fn inherit_wf(wf: &mut WF, score: usize, k: i32) {
-    
+pub fn wf_inherited_cache(wf: &WF, score: usize, k_gap: i32) -> WF {
+    let fr_gap = wf[score].as_ref().unwrap()[0].as_ref().unwrap().get_frpoint(k_gap).unwrap();
+    let new_wf: WF = wf[score..].iter().map(
+        |wfs_option| {
+            match wfs_option.as_ref() {
+                Some(wfs) => {
+                    let mut new_wfs: [Option<Component>; 3] = [None, None, None];
+                    for (idx, comp_option) in wfs.iter().enumerate() {
+                        if let Some(comp) = comp_option {
+                            new_wfs[idx] = Some(comp.inherit(k_gap, fr_gap));
+                        };
+                    }
+                    Some(new_wfs)
+                },
+                None => {
+                    None
+                }
+            }
+        }
+    ).collect();
+    new_wf
 }
+
+// pub type WF = Vec<Option<WFscore>>; // Wavefront
+// type WFscore = [Option<Component>; 3]; //

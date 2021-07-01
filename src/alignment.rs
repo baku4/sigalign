@@ -125,13 +125,13 @@ mod test_data;
 #[cfg(test)]
 mod tests {
     use super::*;
-    pub fn test_aligner() -> Aligner {
-        let score_per_length: f64 = 0.05;
-        let minimum_length: usize = 100;
-        let mismatch_penalty: usize = 3;
-        let gapopen_penalty: usize = 4;
-        let gapext_penalty: usize = 2;
-
+    pub fn test_aligner(
+        score_per_length: f64,
+        minimum_length: usize,
+        mismatch_penalty: usize,
+        gapopen_penalty: usize,
+        gapext_penalty: usize,
+    ) -> Aligner {
         let aligner = Aligner::new(
             score_per_length,
             minimum_length,
