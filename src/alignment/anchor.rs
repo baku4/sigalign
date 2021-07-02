@@ -1,12 +1,15 @@
 //! Alignment by Anchor
 use core::panic;
 use std::cmp::{min, max};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
 use super::dropout_wfa::{WF, CheckPointsValues, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, wf_check_inheritable, wf_inherited_cache};
 use fm_index::BackwardSearchIndex;
+
+// Alignment Result: (operations, penalty)
+type AlignmentRes = Vec<(Vec<Operation>, usize)>;
 
 /// Anchor Group
 pub struct AnchorGroup<'a> {
@@ -149,6 +152,13 @@ impl<'a> AnchorGroup<'a> {
                 anchor.to_dropped();
             };
         };
+        // (4) get unique anchors
+        let unqiue_anchors_index = Anchor::get_unique_symbols(&self.anchors);
+        // (5) get operations & penalty
+        let mut result: AlignmentRes = Vec::with_capacity(unqiue_anchors_index.len());
+        for anchor_index in unqiue_anchors_index {
+            
+        }
     }
     // fn alignment(&mut self) {
     //     // Hind Alignment
@@ -706,8 +716,8 @@ impl Anchor {
             false
         }
     }
-    fn get_unique_symbols(anchors: &Vec<Self>) {
-        let mut unique_anchors_set: HashSet<usize> = HashSet::new();
+    fn get_unique_symbols(anchors: &Vec<Self>) -> HashSet<usize> {
+        // valid anchors set
         let valid_anchors_set: HashSet<usize> = anchors.iter().enumerate().filter_map(
             |(idx, anchor)| {
                 match anchor.state {
@@ -720,7 +730,45 @@ impl Anchor {
                 }
             }
         ).collect();
-        // TODO:
+        // symbol dictionary
+        let anchor_symbols = {
+            let mut anchor_symbols: HashMap<usize, HashSet<usize>> = HashMap::with_capacity(valid_anchors_set.len());
+            // 1. add connected & valid anchor
+            for &anchor_index in valid_anchors_set.iter() {
+                let symbol: HashSet<usize> =  valid_anchors_set.intersection(&anchors[anchor_index].connected).map(|x| *x).collect();
+                anchor_symbols.insert(anchor_index, symbol);
+            };
+            // 2. add extended anchors of connected
+            for anchor_index in valid_anchors_set.iter() {
+                let mut extended_symbol: HashSet<usize> = HashSet::new();
+                anchor_symbols.get(anchor_index).unwrap().iter().for_each(|idx| {
+                    extended_symbol.extend(anchor_symbols.get(idx).unwrap());
+                });
+                let symbol = anchor_symbols.get_mut(anchor_index).unwrap();
+                symbol.extend(extended_symbol);
+                // add self index
+                symbol.insert(*anchor_index);
+            };
+            anchor_symbols
+        };
+        // unique symbols list
+        let unique_anchor = {
+            let mut unique_anchor: HashSet<usize> = HashSet::new();
+            let mut used_symbols: HashSet<Vec<usize>> = HashSet::with_capacity(anchor_symbols.len());
+            for (anchor_index, symbol) in anchor_symbols.into_iter() {
+                let mut serialized_symbol: Vec<usize> = symbol.into_iter().collect();
+                serialized_symbol.sort();
+                if !used_symbols.contains(&serialized_symbol) {
+                    unique_anchor.insert(anchor_index);
+                    used_symbols.insert(serialized_symbol);
+                }
+            };
+            unique_anchor
+        };
+        unique_anchor
+    }
+    fn operations_and_penalty(anchors: &Vec<Self>, current_anchor_index: usize) {
+        
     }
     // fn evaluate(self, ref_len: usize, qry_len: usize, cutoff: &Cutoff) -> Option<(Vec<Operation>, usize)>{
     //     let (fore_block, hind_block) = match self.state {
