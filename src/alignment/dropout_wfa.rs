@@ -102,8 +102,9 @@ impl Component {
         let comp_vector: Vec<(i32, i32, Backtrace)> = self.0.iter().filter_map(
             |(k, fr, bt)| {
                 let new_fr = *fr - fr_gap;
-                if new_fr >= 0 {
-                    Some((*k - k_gap, new_fr, bt.clone()))
+                let new_k = *k - k_gap;
+                if (new_fr >= 0) && (new_fr >= new_k) {
+                    Some((new_k, new_fr, bt.clone()))
                 } else {
                     None
                 }
@@ -152,7 +153,7 @@ pub fn dropout_wf_align(
         if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
             return Err(wf)
         }
-        wf_next(&mut wf, &qry_seq, &ref_seq, score, penalties);
+        wf_next(&mut wf, score, penalties);
     };
     Ok((wf, last_k))
 }
@@ -173,7 +174,7 @@ pub fn dropout_inherited_wf_align(
         if score as f64 - spl*((score as isize - penalties.1 as isize)/penalties.2 as isize) as f64 > panalty_spare {
             return Err(wf)
         }
-        wf_next(&mut wf, &qry_seq, &ref_seq, score, penalties);
+        wf_next(&mut wf, score, penalties);
         // extend & exit condition
         if let Some(wf_score) = wf[score].as_mut() {
             if let Some(m_component) = wf_score[0].as_mut() {
@@ -219,7 +220,7 @@ fn wf_extend(m_component: &mut Component, qry_seq: &[u8], ref_seq: &[u8]) {
     }
 }
 
-fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties: &Scores) {
+fn wf_next(wf: &mut WF, score: usize, penalties: &Scores) {
     let mut hi_vec = Vec::with_capacity(4);
     let mut lo_vec = Vec::with_capacity(4);
     // (1) check M s-x
@@ -249,8 +250,8 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
     };
     // (2) check M s-o-e
     let m_soe_comp = {
-        if score >= (penalties.1 + penalties.2) {
-            match &wf[score-(penalties.1 + penalties.2)] {
+        if score >= penalties.1 + penalties.2 {
+            match &wf[score - penalties.1 - penalties.2] {
                 Some(wfs) => {
                     match &wfs[0] {
                         Some(comp) => {
@@ -401,7 +402,7 @@ fn wf_next(wf: &mut WF, qry_seq: &[u8], ref_seq: &[u8], score: usize, penalties:
     }
 }
 
-pub type CheckPointsValues = Vec<(usize, i32, i32)>; // (anchor index, checkpoint k, checkpoint fr)
+pub type CheckPointsValues = Vec<(usize, i32, i32, i32)>; // (anchor index, size, checkpoint k, checkpoint fr)
 // key: index of anchor
 // val: reverse index & penalty
 pub type ConnectedBacktrace = HashMap<usize, (usize, usize)>;
@@ -428,6 +429,7 @@ pub fn wf_backtrace(
         // Backtrace check
         match bactrace {
             Backtrace::M(from) => {
+                // TODO: concat enums M,I,D
                 match from {
                     FromM::M => {
                         // new comp
@@ -439,8 +441,8 @@ pub fn wf_backtrace(
                         operations.extend(new_ops);
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
-                            let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
+                            let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= component.0) {
                                 reverse_index.insert(
                                     anchor_index,
                                     (
@@ -459,8 +461,8 @@ pub fn wf_backtrace(
                         operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
-                            let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
+                            let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= component.0) {
                                 reverse_index.insert(
                                     anchor_index,
                                     (
@@ -479,8 +481,8 @@ pub fn wf_backtrace(
                         operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
                         // validation backtrace check point
                         for checkpoint_index in to_check_index.clone() {
-                            let &(anchor_index, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr > component.0) {
+                            let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= component.0) {
                                 reverse_index.insert(
                                     anchor_index,
                                     (
@@ -550,22 +552,22 @@ pub fn wf_check_inheritable(
     wf: &WF, scores: &Scores, check_points_values: CheckPointsValues,
 ) -> HashMap<usize, (usize, i32, i32, i32)> {
     // k checklist
-    let mut checklist_by_k: Vec<(i32, HashSet<(i32, usize)>)> = {
-        // key: checkpoint k , val: list of (checkpoint fr, anchor index)
-        let mut to_check_k_map: HashMap<i32, HashSet<(i32, usize)>> = HashMap::new();
-        for (anchor_index, checkpoint_k,  checkpoint_fr) in check_points_values {
+    let mut checklist_by_k: Vec<(i32, HashSet<(i32, i32, usize)>)> = {
+        // key: checkpoint k , val: list of (checkpoint fr, size, anchor index)
+        let mut to_check_k_map: HashMap<i32, HashSet<(i32, i32, usize)>> = HashMap::new();
+        for (anchor_index, size, checkpoint_k,  checkpoint_fr) in check_points_values {
             match to_check_k_map.get_mut(&checkpoint_k) {
                 Some(val) => {
-                    val.insert((checkpoint_fr, anchor_index));
+                    val.insert((checkpoint_fr, size, anchor_index));
                 },
                 None => {
                     to_check_k_map.insert(
-                        checkpoint_k, vec![(checkpoint_fr, anchor_index)].into_iter().collect()
+                        checkpoint_k, vec![(checkpoint_fr, size, anchor_index)].into_iter().collect()
                     );
                 },
             }
         };
-        let mut checklist_by_k: Vec<(i32, HashSet<(i32, usize)>)> = to_check_k_map.into_iter().map(
+        let mut checklist_by_k: Vec<(i32, HashSet<(i32, i32, usize)>)> = to_check_k_map.into_iter().map(
             |(k, val)| {
                 (k, val)
             }
@@ -576,17 +578,21 @@ pub fn wf_check_inheritable(
         });
         checklist_by_k
     };
+    #[cfg(test)]
+    {
+        println!("checklist_by_k: {:?}", checklist_by_k);
+    }
     // valid checkpoints
     // key: anchor index, val: (score, checkpoint_k, checkpoint_ext_fr, checkpoint_fr)
     let mut valid_checkpoints: HashMap<usize, (usize, i32, i32, i32)> = HashMap::new();
-    wf.iter().enumerate().for_each(|(score, wfs)| {
-        if let Some(wfs) = wfs {
+    wf.iter().enumerate().for_each(|(score, wfs_option)| {
+        if let Some(wfs) = wfs_option {
             if let Some(mcomp) = &wfs[0] {
                 let mut checklist_index: usize = 0;
                 let mut mcomp_index: usize = 0;
                 loop {
                     // get mcomp values
-                    let (key, val, backtrace) = match mcomp.0.get(mcomp_index) {
+                    let (k_mcomp, fr_mcomp, backtrace) = match mcomp.0.get(mcomp_index) {
                         Some(v) => v,
                         None => {
                             break;
@@ -594,69 +600,72 @@ pub fn wf_check_inheritable(
                     };
                     // check the backtrace
                     match checklist_by_k.get_mut(checklist_index) {
-                        Some((k, set)) => {
-                            let kgap = *key - *k;
+                        Some((k_chkpoint, val_chkpoint)) => {
+                            let kgap = *k_mcomp - *k_chkpoint;
                             if kgap > 0 {
                                 // comp_k > checkpoint_k
                                 checklist_index += 1;
-                            } else if kgap == 0 {
-                                // k matched!
+                            } else if kgap < 0 {
+                                // comp_k < checkpoint_k
+                                mcomp_index += 1;
+                            } else { // if kgap == 0
                                 if let Backtrace::M(from_m) = backtrace {
                                     match from_m {
                                         FromM::M => {
-                                            for (fr, anchor_index) in set.clone() {
+                                            for (fr, size, anchor_index) in val_chkpoint.clone() {
                                                 // if current fr point >= checkpoint fr
-                                                if *val >= fr {
+                                                if *fr_mcomp >= fr {
                                                     let pre_score = score - scores.0;
                                                     let pre_mcomp = wf[pre_score].as_ref().unwrap()[0].as_ref().unwrap();
                                                     // if pre mcomp fr point < checkpoint fr: valid
-                                                    let pre_fr = pre_mcomp.get_frpoint(*k).unwrap();
-                                                    if pre_fr < fr {
+                                                    let pre_fr = pre_mcomp.get_frpoint(*k_chkpoint).unwrap();
+                                                    if pre_fr <= fr - size {
                                                         // insert checkpoint
                                                         valid_checkpoints.insert(
                                                             anchor_index,
-                                                            (score, *k, *val, fr)
+                                                            (score, *k_chkpoint, *fr_mcomp, fr)
                                                         );
                                                         // remove value from current set
-                                                        set.remove(&(fr, anchor_index));
+                                                        val_chkpoint.remove(&(fr, size, anchor_index));
+                                                        // TODO: empty checkpoints set can be remained
                                                     }
                                                 }
                                             }
                                         },
                                         FromM::I => {
-                                            for (fr, anchor_index) in set.clone() {
+                                            for (fr, size, anchor_index) in val_chkpoint.clone() {
                                                 // if current fr point >= checkpoint fr
-                                                if *val >= fr {
+                                                if *fr_mcomp >= fr {
                                                     let pre_icomp = wf[score].as_ref().unwrap()[1].as_ref().unwrap();
                                                     // if pre mcomp fr point < checkpoint fr: valid
-                                                    let pre_fr = pre_icomp.get_frpoint(*k).unwrap();
-                                                    if pre_fr < fr {
+                                                    let pre_fr = pre_icomp.get_frpoint(*k_chkpoint).unwrap();
+                                                    if pre_fr <= fr - size {
                                                         // insert checkpoint
                                                         valid_checkpoints.insert(
                                                             anchor_index,
-                                                            (score, *k, *val, fr)
+                                                            (score, *k_chkpoint, *fr_mcomp, fr)
                                                         );
                                                         // remove value from current set
-                                                        set.remove(&(fr, anchor_index));
+                                                        val_chkpoint.remove(&(fr, size, anchor_index));
                                                     }
                                                 }
                                             }
                                         },
                                         FromM::D => {
-                                            for (fr, anchor_index) in set.clone() {
+                                            for (fr, size, anchor_index) in val_chkpoint.clone() {
                                                 // if current fr point >= checkpoint fr
-                                                if *val >= fr {
+                                                if *fr_mcomp >= fr {
                                                     let pre_dcomp = wf[score].as_ref().unwrap()[2].as_ref().unwrap();
                                                     // if pre mcomp fr point < checkpoint fr: valid
-                                                    let pre_fr = pre_dcomp.get_frpoint(*k).unwrap();
-                                                    if pre_fr < fr {
+                                                    let pre_fr = pre_dcomp.get_frpoint(*k_chkpoint).unwrap();
+                                                    if pre_fr <= fr - size {
                                                         // insert checkpoint
                                                         valid_checkpoints.insert(
                                                             anchor_index,
-                                                            (score, *k, *val, fr)
+                                                            (score, *k_chkpoint, *fr_mcomp, fr)
                                                         );
                                                         // remove value from current set
-                                                        set.remove(&(fr, anchor_index));
+                                                        val_chkpoint.remove(&(fr, size, anchor_index));
                                                     }
                                                 }
                                             }
@@ -665,9 +674,6 @@ pub fn wf_check_inheritable(
                                     }
                                 }
                                 checklist_index += 1;
-                                mcomp_index += 1;
-                            } else {
-                                // comp_k < checkpoint_k
                                 mcomp_index += 1;
                             }
                         },
