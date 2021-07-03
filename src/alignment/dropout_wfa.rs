@@ -98,13 +98,13 @@ impl Component {
         }
         return None
     }
-    fn inherit(&self, k_gap: i32, fr_gap: i32) -> Option<Self> {
+    fn inherit(&self, k_chkp: i32, fr_chkp: i32, ext_fr_chkp: i32) -> Option<Self> {
         let comp_vector: Vec<(i32, i32, Backtrace)> = self.0.iter().filter_map(
             |(k, fr, bt)| {
-                let new_fr = *fr - fr_gap;
-                let new_k = *k - k_gap;
-                if (new_fr >= 0) && (new_fr >= new_k) {
-                    Some((new_k, new_fr, bt.clone()))
+                let ext_fr_gap = *fr - ext_fr_chkp;
+                let k_gap = *k - k_chkp;
+                if (ext_fr_gap >= 0) && (ext_fr_gap >= k_gap) {
+                    Some((k_gap, *fr - fr_chkp, bt.clone()))
                 } else {
                     None
                 }
@@ -554,6 +554,9 @@ pub fn wf_check_inheritable(
     wf: &WF, scores: &Scores, check_points_values: ChkpInherit,
 ) -> ChkpInherit { // HashMap<usize, (usize, i32, i32, i32)> {
     let mut check_points_values = check_points_values;
+    let mut check_points_passed: HashMap<usize, bool> = check_points_values.keys().map(|x| {
+        (*x, false)
+    }).collect();
     let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
     wf.iter().enumerate().for_each(|(score, wfs_option)| {
         if let Some([Some(mcomp), icomp, dcomp]) = wfs_option {
@@ -561,25 +564,31 @@ pub fn wf_check_inheritable(
                 for (anchor_index, (size, checkpoint_k, checkpoint_fr, checkpoint_ext_fr)) in check_points_values.clone() {
                     let valid: bool = {
                         let k_gap_w_chkp = *k - checkpoint_k;
-                        let fr_gap_w_chkp = *fr - checkpoint_ext_fr;
-                        if k_gap_w_chkp == 0 && fr_gap_w_chkp == 0 {
-                            // Conditiono 1: matched with checkpoint
+                        let ext_fr_gap_w_chkp = *fr - checkpoint_ext_fr;
+                        if k_gap_w_chkp == 0 && ext_fr_gap_w_chkp == 0 {
+                            // Condition 1: matched with checkpoint
                             if let Backtrace::M(m_bt) = bt {
                                 let pre_fr = match m_bt {
                                     FromM::M => {
                                         let (fr, _) = get_comp(0, score - scores.0, *k);
                                         fr
                                     },
-                                    FromM::I | FromM::D => {
+                                    FromM::I => {
                                         icomp.as_ref().unwrap().get_frpoint(*k).unwrap()
+                                    },
+                                    FromM::D => {
+                                        dcomp.as_ref().unwrap().get_frpoint(*k).unwrap()
                                     },
                                     FromM::N => {
                                         0_i32
-                                    }
+                                    },
                                 };
                                 if pre_fr <= checkpoint_fr - size as i32 {
                                     // change size to score
                                     check_points_values.get_mut(&anchor_index).unwrap().0 = score;
+                                    // change passed state
+                                    *check_points_passed.get_mut(&anchor_index).unwrap() = true;
+
                                     true
                                 } else {
                                     false
@@ -587,23 +596,21 @@ pub fn wf_check_inheritable(
                             } else {
                                 false
                             }
-                        } else if fr_gap_w_chkp >= 0 && fr_gap_w_chkp >= k_gap_w_chkp {
+                        } else if ext_fr_gap_w_chkp >= 0 && ext_fr_gap_w_chkp >= k_gap_w_chkp {
                             // Condition 2: not inbound to outbound
-                            let pre_comp = if let Backtrace::M(m_bt) = bt {
+                            let (pre_fr, pre_bt) = if let Backtrace::M(m_bt) = bt {
                                 match m_bt {
                                     FromM::M => {
-                                        wf[score - scores.0].as_ref().unwrap()[0].as_ref().unwrap()
+                                        wf[score - scores.0].as_ref().unwrap()[0].as_ref().unwrap().backtrace(*k)
                                     },
-                                    FromM::I => icomp.as_ref().unwrap(),
-                                    FromM::D => dcomp.as_ref().unwrap(),
-                                    FromM::N => panic!(""),
+                                    FromM::I => icomp.as_ref().unwrap().backtrace(*k),
+                                    FromM::D => dcomp.as_ref().unwrap().backtrace(*k),
+                                    FromM::N => (0, &Backtrace::M(FromM::N)),
                                 }
                             } else {
                                 // TODO: err msg
                                 panic!("");
                             };
-                            // let k_gap_w_pre = *k - *checkpoint_k;
-                            let (pre_fr, pre_bt) = pre_comp.backtrace(*k);
                             let mut fr_gap_w_pre = *fr - pre_fr;
                             let k_gap_w_pre = match pre_bt {
                                 Backtrace::M(_) => {
@@ -634,9 +641,14 @@ pub fn wf_check_inheritable(
             }
         }
     });
+    for (anchor_index, chkp_passed) in check_points_passed {
+        if !chkp_passed {
+            check_points_values.remove(&anchor_index);
+        }
+    }
     check_points_values
 }
-pub fn wf_inherited_cache(wf: &WF, score: usize, k_gap: i32, fr_gap: i32) -> WF {
+pub fn wf_inherited_cache(wf: &WF, score: usize, k: i32, fr: i32, ext_fr: i32) -> WF {
     let mut new_wf: WF = wf[score..].iter().map(
         |wfs_option| {
             match wfs_option.as_ref() {
@@ -644,15 +656,13 @@ pub fn wf_inherited_cache(wf: &WF, score: usize, k_gap: i32, fr_gap: i32) -> WF 
                     let mut new_wfs: [Option<Component>; 3] = [None, None, None];
                     for (idx, comp_option) in wfs.iter().enumerate() {
                         if let Some(comp) = comp_option {
-                            new_wfs[idx] = comp.inherit(k_gap, fr_gap);
+                            new_wfs[idx] = comp.inherit(k, fr, ext_fr);
                         };
                     }
-                    if new_wfs.iter().any(|x| {
-                        match x {
-                            Some(_) => true,
-                            None => false,
-                        }
-                    }) {
+                    if new_wfs.iter().any(|x|{match x {
+                        Some(_) => true,
+                        None => false,
+                    }}){
                         Some(new_wfs)
                     } else {
                         None

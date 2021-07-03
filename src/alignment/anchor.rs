@@ -437,12 +437,24 @@ impl Anchor {
                     if let AlignmentState::Exact(None, _) = &anchor.state {
                         let (ref_pos, qry_pos) = anchor.position;
                         let mut ext_count: usize = 1;
-                        while ref_seq[ref_pos - ext_count] == qry_seq[qry_pos - ext_count] {
-                            ext_count += 1
+                        loop {
+                            if let Some(ref_char) = ref_seq.get(ref_pos - ext_count) {
+                                if let Some(qry_char) = qry_seq.get(qry_pos - ext_count) {
+                                    if *ref_char == *qry_char {
+                                        ext_count += 1
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
                         };
                         let ref_gap = (current_anchor.position.0 - anchor.position.0) as i32;
                         let qry_gap = (current_anchor.position.1 - anchor.position.1) as i32;
-                        inheritance_check_points.insert(anchor_index, (anchor.size, ref_gap-qry_gap, ref_gap, ref_gap-qry_gap+ext_count as i32-1));
+                        inheritance_check_points.insert(anchor_index, (anchor.size, ref_gap-qry_gap, ref_gap, ref_gap+ext_count as i32-1));
                     };
                 });
                 inheritance_check_points
@@ -455,12 +467,24 @@ impl Anchor {
                     if let AlignmentState::Estimated(_, _) = &anchor.state {
                         let (ref_pos, qry_pos) = anchor.position;
                         let mut ext_count: usize = 1;
-                        while ref_seq[ref_pos + anchor.size + ext_count] == qry_seq[qry_pos + anchor.size +  ext_count] {
-                            ext_count += 1
+                        loop {
+                            if let Some(ref_char) = ref_seq.get(ref_pos + anchor.size + ext_count) {
+                                if let Some(qry_char) = qry_seq.get(qry_pos + anchor.size +  ext_count) {
+                                    if *ref_char == *qry_char {
+                                        ext_count += 1
+                                    } else {
+                                        break;
+                                    }
+                                } else {
+                                    break;
+                                }
+                            } else {
+                                break;
+                            }
                         };
                         let ref_gap = (anchor.position.0 + anchor.size - current_anchor.position.0 - current_anchor.size) as i32;
                         let qry_gap = (anchor.position.1 + anchor.size - current_anchor.position.1 - current_anchor.size) as i32;
-                        inheritance_check_points.insert(anchor_index, (anchor.size, ref_gap-qry_gap, ref_gap, ref_gap-qry_gap+ext_count as i32-1));
+                        inheritance_check_points.insert(anchor_index, (anchor.size, ref_gap-qry_gap, ref_gap, ref_gap+ext_count as i32-1));
                     };
                 });
                 inheritance_check_points
@@ -677,22 +701,23 @@ impl Anchor {
             // TODO:
             Err(wf) => {
                 let check_points_values = Self::wf_inheritance_check_points(anchors, current_anchor_index, ref_seq, qry_seq, block_type.clone());
-                let inheritable_checkpoints: Vec<(usize, usize, i32, i32)> = {
-                    let mut valid_checkpoints: Vec<(usize, usize, i32, i32)> = wf_check_inheritable(&wf, scores, check_points_values).into_iter().map(
+                // unpack map & sort by anchor index
+                let inheritable_checkpoints: Vec<(usize, usize, i32, i32, i32)> = {
+                    let mut valid_checkpoints: Vec<(usize, usize, i32, i32, i32)> = wf_check_inheritable(&wf, scores, check_points_values).into_iter().map(
                         |(key, val)| {
-                            (key, val.0, val.1, val.3)
+                            (key, val.0, val.1, val.2, val.3)
                         }
                     ).collect();
                     valid_checkpoints.sort_by(|a, b| a.cmp(&b));
                     valid_checkpoints
                 };
                 let mut checked_anchors_index: HashSet<usize> = HashSet::new();
-                for (anchor_index, score, k, fr) in inheritable_checkpoints {
+                for (anchor_index, score, k, fr, ext_fr) in inheritable_checkpoints {
                     // if anchor is not checked yet: caching WF
                     if !checked_anchors_index.contains(&anchor_index) {
                         let anchor = &mut anchors[anchor_index];
                         // inherit WF
-                        anchor.wf_cache = Some(wf_inherited_cache(&wf, score, k, fr));
+                        anchor.wf_cache = Some(wf_inherited_cache(&wf, score, k, fr, ext_fr));
                         // add all check points to the checked index list
                         checked_anchors_index.insert(anchor_index);
                         match block_type {
@@ -703,7 +728,6 @@ impl Anchor {
                                 checked_anchors_index.extend(anchor.check_points.0.iter());
                             },
                         }
-                        
                     }
                 }
                 // drop current index
