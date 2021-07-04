@@ -35,7 +35,7 @@ impl<'a> AnchorGroup<'a> {
                 let pattern = &qry_seq[qry_position..qry_position+kmer];
                 let search = index.search_backward(pattern);
                 let positions = search.locate();
-                // ** Check Impeccable Extension **
+                // Check Impeccable Extension
                 match anchors_cache {
                     Some(anchors) => {
                         if positions.len() == 0 {
@@ -872,37 +872,3 @@ enum BlockType {
     Hind,
     Fore,
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::alignment::test_data;
-//     use super::*;
-
-//     fn print_anchor_group() {
-//         let test_data = test_data::get_test_data();
-//         let seqs = test_data[1].clone();
-//         let ref_seq = seqs.0.as_bytes();
-//         let qry_seq = seqs.1.as_bytes();
-//         let index = super::super::Reference::fmindex(&ref_seq);
-//         let aligner = super::super::tests::test_aligner(
-//             0.05, 100, 3, 4, 2
-//         );
-//         let anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
-//         println!("{:?}", anchor_group.anchors);
-//     }
-
-//     #[test]
-//     fn test_alignment() {
-//         let test_data = test_data::get_test_data();
-//         let seqs = test_data[1].clone();
-//         let ref_seq = seqs.0.as_bytes();
-//         let qry_seq = seqs.1.as_bytes();
-//         let index = super::super::Reference::fmindex(&ref_seq);
-//         let aligner = super::super::tests::test_aligner(
-// 0.6, 100, 3, 4, 2
-//         );
-//         let mut anchor_group = AnchorGroup::new(&ref_seq, &qry_seq, &index, aligner.kmer, &aligner.emp_kmer, &aligner.scores, &aligner.cutoff).unwrap();
-//         let alignment_res = anchor_group.alignment();
-//         println!("{:?}", alignment_res);
-//     }
-// }

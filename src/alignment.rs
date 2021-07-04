@@ -1,6 +1,6 @@
 //! Dropout alignment core
 pub mod anchor;
-pub mod dropout_wfa;
+mod dropout_wfa;
 
 use anchor::AnchorGroup;
 
@@ -42,7 +42,7 @@ impl Aligner {
             get_minimum_penalty: get_minimum_penalty,
         }
     }
-    fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &EmpKmer) -> usize {
+    pub fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &EmpKmer) -> usize {
         let mut i: usize = 1;
         let mut kmer_size: f64;
         loop {
@@ -83,7 +83,7 @@ pub struct Reference<T: AsRef<[u8]>>{
     index: FmIndex
 }
 impl<T: AsRef<[u8]>> Reference<T> {
-    fn new(sequence: T) -> Self {
+    pub fn new(sequence: T) -> Self {
         let fm_index =  Self::fmindex(&sequence);
         Self {
             sequence: sequence,
@@ -114,7 +114,7 @@ pub struct EmpKmer {
 }
 
 impl EmpKmer {
-    fn new(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> Self {
+    pub fn new(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> Self {
         let mo: usize;
         let me: usize;
         if mismatch_penalty <= gapopen_penalty + gapext_penalty {
