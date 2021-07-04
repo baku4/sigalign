@@ -122,8 +122,6 @@ pub enum Operation {
 }
 
 #[cfg(test)]
-mod test_data;
-#[cfg(test)]
 mod tests {
     use super::*;
     pub fn test_aligner(
