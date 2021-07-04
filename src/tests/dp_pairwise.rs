@@ -25,9 +25,9 @@ fn get_scoring(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: 
         -(mismatch_penalty as i32),
     );
     if y_is_long {
-        scoring.yclip_prefix(0)
+        scoring.yclip_suffix(0)
     } else {
-        scoring.xclip_prefix(0)
+        scoring.xclip_suffix(0)
     }
 }
 pub fn alignment(ref_seq: &[u8], qry_seq: &[u8],
