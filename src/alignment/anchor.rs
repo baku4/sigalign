@@ -5,25 +5,20 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::slice::Iter;
 
-use super::{FmIndex, Operation, EmpKmer, Cutoff, Scores};
+use super::{AlignmentResult, FmIndex, Operation, EmpKmer, Cutoff, Scores};
 use super::dropout_wfa::{WF, ChkpBacktrace, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, ChkpInherit, wf_check_inheritable, wf_inherited_cache};
 use fm_index::BackwardSearchIndex;
-
-// Alignment Result: (operations, penalty)
-type AlignmentRes = Vec<(Vec<Operation>, usize)>;
 
 /// Anchor Group
 pub struct AnchorGroup<'a> {
     ref_seq: &'a [u8],
     qry_seq: &'a [u8],
-    kmer: usize,
-    emp_kmer: &'a EmpKmer,
     scores: &'a Scores,
     cutoff: &'a Cutoff,
     anchors: Vec<Anchor>,
 }
 impl<'a> AnchorGroup<'a> {
-    fn new(
+    pub fn new(
         ref_seq: &'a [u8], qry_seq: &'a [u8], index: &FmIndex,
         kmer: usize, emp_kmer: &'a EmpKmer, scores: &'a Scores, cutoff: &'a Cutoff
     ) -> Option<Self> {
@@ -119,21 +114,20 @@ impl<'a> AnchorGroup<'a> {
             Self {
                 ref_seq: ref_seq,
                 qry_seq: qry_seq,
-                kmer: kmer,
-                emp_kmer: emp_kmer,
                 scores: scores,
                 cutoff: cutoff,
                 anchors: anchors_preset,
             }
         )
     }
-    fn alignment(&mut self) -> AlignmentRes {
+    pub fn alignment(&mut self, using_cached_wf: bool) {
         // (1) alignment hind
         for idx in 0..self.anchors.len() {
             Anchor::alignment(
                 &mut self.anchors, idx,
                 self.ref_seq, self.qry_seq, self.scores, self.cutoff,
-                BlockType::Hind
+                BlockType::Hind,
+                using_cached_wf
             );
         }
         // (2) alignment fore
@@ -143,17 +137,42 @@ impl<'a> AnchorGroup<'a> {
             Anchor::alignment(
                 &mut self.anchors, idx,
                 &reversed_ref_seq, &reversed_qry_seq, self.scores, self.cutoff,
-                BlockType::Fore
+                BlockType::Fore,
+                using_cached_wf
             );
         };
+    }
+    pub fn get_result(&mut self, get_minimum_penalty: bool) -> AlignmentResult {
         // (3) evaluate
-        for anchor in self.anchors.iter_mut() {
-            if !anchor.evaluate_exact_alignment(&self.cutoff) {
-                anchor.to_dropped();
+        let anchors_of_minimum_penalty = if get_minimum_penalty {
+            // TODO: first anchor can be evalauted only one time?
+            let (mut minimum_penalty, _) = self.anchors[0].get_penalty_and_length();
+            let mut anchors_of_minimum_penalty: HashSet<usize> = HashSet::new();
+            for (anchor_index, anchor) in self.anchors.iter_mut().enumerate() {
+                let (penalty, length) = anchor.get_penalty_and_length();
+                if !Anchor::evaluate_exact_alignment(penalty, length, &self.cutoff) {
+                    anchor.to_dropped();
+                } else {
+                    if penalty < minimum_penalty {
+                        minimum_penalty = penalty;
+                        anchors_of_minimum_penalty = HashSet::from_iter(vec![anchor_index]);
+                    } else if penalty == minimum_penalty {
+                        anchors_of_minimum_penalty.insert(anchor_index);
+                    }
+                }
+            }
+            Some(anchors_of_minimum_penalty)
+        } else {
+            for anchor in self.anchors.iter_mut() {
+                let (penalty, length) = anchor.get_penalty_and_length();
+                if !Anchor::evaluate_exact_alignment(penalty, length, &self.cutoff) {
+                    anchor.to_dropped();
+                };
             };
+            None
         };
         // (4) get unique anchors
-        let unqiue_anchors_index = Anchor::get_unique_symbols(&self.anchors);
+        let unqiue_anchors_index = Anchor::get_unique_symbols(&self.anchors, anchors_of_minimum_penalty);
         // (5) get operations & penalty
         let ref_len = self.ref_seq.len();
         let qry_len = self.qry_seq.len();
@@ -525,7 +544,7 @@ impl Anchor {
     /**
     Alignment
     */
-    fn alignment(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff, block_type: BlockType) {
+    fn alignment(anchors: &mut Vec<Self>, current_anchor_index: usize, ref_seq: &[u8], qry_seq: &[u8], scores: &Scores, cutoff: &Cutoff, block_type: BlockType, using_cached_wf: bool) {
         #[cfg(test)]
         {
             println!("current index: {:?} / pos: {:?}", current_anchor_index, anchors[current_anchor_index].position);
@@ -700,33 +719,35 @@ impl Anchor {
             */
             // TODO:
             Err(wf) => {
-                let check_points_values = Self::wf_inheritance_check_points(anchors, current_anchor_index, ref_seq, qry_seq, block_type.clone());
-                // unpack map & sort by anchor index
-                let inheritable_checkpoints: Vec<(usize, usize, i32, i32, i32)> = {
-                    let mut valid_checkpoints: Vec<(usize, usize, i32, i32, i32)> = wf_check_inheritable(&wf, scores, check_points_values).into_iter().map(
-                        |(key, val)| {
-                            (key, val.0, val.1, val.2, val.3)
-                        }
-                    ).collect();
-                    valid_checkpoints.sort_by(|a, b| a.cmp(&b));
-                    valid_checkpoints
-                };
-                let mut checked_anchors_index: HashSet<usize> = HashSet::new();
-                for (anchor_index, score, k, fr, ext_fr) in inheritable_checkpoints {
-                    // if anchor is not checked yet: caching WF
-                    if !checked_anchors_index.contains(&anchor_index) {
-                        let anchor = &mut anchors[anchor_index];
-                        // inherit WF
-                        anchor.wf_cache = Some(wf_inherited_cache(&wf, score, k, fr, ext_fr));
-                        // add all check points to the checked index list
-                        checked_anchors_index.insert(anchor_index);
-                        match block_type {
-                            BlockType::Hind => {
-                                checked_anchors_index.extend(anchor.check_points.1.iter());
-                            },
-                            BlockType::Fore => {
-                                checked_anchors_index.extend(anchor.check_points.0.iter());
-                            },
+                if using_cached_wf {
+                    let check_points_values = Self::wf_inheritance_check_points(anchors, current_anchor_index, ref_seq, qry_seq, block_type.clone());
+                    // unpack map & sort by anchor index
+                    let inheritable_checkpoints: Vec<(usize, usize, i32, i32, i32)> = {
+                        let mut valid_checkpoints: Vec<(usize, usize, i32, i32, i32)> = wf_check_inheritable(&wf, scores, check_points_values).into_iter().map(
+                            |(key, val)| {
+                                (key, val.0, val.1, val.2, val.3)
+                            }
+                        ).collect();
+                        valid_checkpoints.sort_by(|a, b| a.cmp(&b));
+                        valid_checkpoints
+                    };
+                    let mut checked_anchors_index: HashSet<usize> = HashSet::new();
+                    for (anchor_index, score, k, fr, ext_fr) in inheritable_checkpoints {
+                        // if anchor is not checked yet: caching WF
+                        if !checked_anchors_index.contains(&anchor_index) {
+                            let anchor = &mut anchors[anchor_index];
+                            // inherit WF
+                            anchor.wf_cache = Some(wf_inherited_cache(&wf, score, k, fr, ext_fr));
+                            // add all check points to the checked index list
+                            checked_anchors_index.insert(anchor_index);
+                            match block_type {
+                                BlockType::Hind => {
+                                    checked_anchors_index.extend(anchor.check_points.1.iter());
+                                },
+                                BlockType::Fore => {
+                                    checked_anchors_index.extend(anchor.check_points.0.iter());
+                                },
+                            }
                         }
                     }
                 }
@@ -741,7 +762,7 @@ impl Anchor {
     /**
     Evaluate
     */
-    fn evaluate_exact_alignment(&self, cutoff: &Cutoff) -> bool {
+    fn get_penalty_and_length(&self) -> (usize, usize) {
         let mut total_length: usize = 0;
         let mut total_penalty: usize = 0;
         if let AlignmentState::Exact(fore_option, hind) = &self.state {
@@ -761,26 +782,35 @@ impl Anchor {
             }
         }
         total_length += self.size;
-        if (total_length >= cutoff.minimum_length) && (total_penalty as f64/total_length as f64 <= cutoff.score_per_length) {
+        (total_penalty, total_length)
+    }
+    fn evaluate_exact_alignment(penalty: usize, length: usize, cutoff: &Cutoff) -> bool {
+        if (length >= cutoff.minimum_length) && (penalty as f64/length as f64 <= cutoff.score_per_length) {
             true
         } else {
             false
         }
     }
-    fn get_unique_symbols(anchors: &Vec<Self>) -> HashSet<usize> {
+    fn get_unique_symbols(anchors: &Vec<Self>, anchors_of_minimum_penalty: Option<HashSet<usize>>) -> HashSet<usize> {
+        // TODO: can be more optimized
         // valid anchors set
-        let valid_anchors_set: HashSet<usize> = anchors.iter().enumerate().filter_map(
-            |(idx, anchor)| {
-                match anchor.state {
-                    AlignmentState::Exact(_, _) => {
-                        Some(idx)
-                    },
-                    _ => {
-                        None
+        let valid_anchors_set: HashSet<usize> = match anchors_of_minimum_penalty {
+            Some(anchors_set) => anchors_set,
+            None => {
+                anchors.iter().enumerate().filter_map(
+                    |(idx, anchor)| {
+                        match anchor.state {
+                            AlignmentState::Exact(_, _) => {
+                                Some(idx)
+                            },
+                            _ => {
+                                None
+                            }
+                        }
                     }
-                }
+                ).collect()
             }
-        ).collect();
+        };
         // symbol dictionary
         let anchor_symbols = {
             let mut anchor_symbols: HashMap<usize, HashSet<usize>> = HashMap::with_capacity(valid_anchors_set.len());

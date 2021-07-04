@@ -2,6 +2,8 @@
 pub mod anchor;
 pub mod dropout_wfa;
 
+use anchor::AnchorGroup;
+
 use fm_index::converter::RangeConverter;
 use fm_index::suffix_array::{SuffixOrderSampledArray, SuffixOrderSampler};
 use fm_index::FMIndex;
@@ -17,10 +19,15 @@ pub struct Aligner {
     kmer: usize,
     scores: Scores,
     emp_kmer: EmpKmer,
+    using_cached_wf: bool,
+    get_minimum_penalty: bool,
 }
 
+// Alignment Result: (operations, penalty)
+type AlignmentResult = Vec<(Vec<Operation>, usize)>;
+
 impl Aligner {
-    fn new(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> Self {
+    pub fn new(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize, using_cached_wf: bool, get_minimum_penalty: bool) -> Self {
         let emp_kmer = EmpKmer::new(mismatch_penalty, gapopen_penalty, gapext_penalty);
         let kmer = Self::kmer_calculation(score_per_length, minimum_length, &emp_kmer);
         Self {
@@ -31,6 +38,8 @@ impl Aligner {
             kmer: kmer,
             scores: (mismatch_penalty, gapopen_penalty, gapext_penalty),
             emp_kmer: emp_kmer,
+            using_cached_wf: using_cached_wf,
+            get_minimum_penalty: get_minimum_penalty,
         }
     }
     fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &EmpKmer) -> usize {
@@ -46,15 +55,30 @@ impl Aligner {
         }
         kmer_size as usize
     }
-    fn perform(ref_seq: &[u8] , qry_seq: &[u8]) { // -> Option<(Vec<Operation>, usize)>
+    pub fn perform_with_sequence(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
         let index = Reference::fmindex(&ref_seq);
+        let result = match AnchorGroup::new(ref_seq, qry_seq, &index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
+            Some(mut anchor_group) => {
+                anchor_group.alignment(self.using_cached_wf);
+                Some(anchor_group.get_result(self.get_minimum_penalty))
+            },
+            None => None,
+        };
+        result
     }
-    fn perform_with_index<T: AsRef<[u8]>>(ref_seq: &Reference<T> , qry_seq: &[u8]) { // -> Option<(Vec<Operation>, usize)>
-        
+    pub fn perform_with_index<T: AsRef<[u8]>>(&self, reference: &Reference<T> , qry_seq: &[u8]) -> Option<AlignmentResult> {
+        let result = match AnchorGroup::new(reference.sequence.as_ref(), qry_seq, &reference.index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
+            Some(mut anchor_group) => {
+                anchor_group.alignment(self.using_cached_wf);
+                Some(anchor_group.get_result(self.get_minimum_penalty))
+            },
+            None => None,
+        };
+        result
     }
 }
 
-struct Reference<T: AsRef<[u8]>>{
+pub struct Reference<T: AsRef<[u8]>>{
     sequence: T,
     index: FmIndex
 }
@@ -78,13 +102,13 @@ impl<T: AsRef<[u8]>> Reference<T> {
 type Scores = (usize, usize, usize);
 
 #[derive(Debug)]
-struct Cutoff {
+pub struct Cutoff {
     score_per_length: f64,
     minimum_length: usize,
 }
 
 #[derive(Debug)]
-struct EmpKmer {
+pub struct EmpKmer {
     odd: usize,
     even: usize,
 }
@@ -119,25 +143,4 @@ pub enum Operation {
     Del,
     RefClip(SeqeunceLength),
     QryClip(SeqeunceLength),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    pub fn test_aligner(
-        score_per_length: f64,
-        minimum_length: usize,
-        mismatch_penalty: usize,
-        gapopen_penalty: usize,
-        gapext_penalty: usize,
-    ) -> Aligner {
-        let aligner = Aligner::new(
-            score_per_length,
-            minimum_length,
-            mismatch_penalty,
-            gapopen_penalty,
-            gapext_penalty,
-        );
-        aligner
-    }
 }
