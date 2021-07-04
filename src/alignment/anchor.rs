@@ -216,14 +216,6 @@ pub enum AlignmentState {
     /// Cutoff is not satisfied when aligned from anchor
     Dropped,
 }
-impl AlignmentState {
-    fn is_valid(&self) -> bool {
-        match self {
-            Self::Exact(_, _) => true,
-            _ => false,
-        }
-    }
-}
 
 /// Alignment assumed when EMP state from anchor
 #[derive(Debug)]
@@ -510,37 +502,6 @@ impl Anchor {
             },
         }
     }
-    fn wf_inheritance_check_points_dep(anchors: &Vec<Self>, current_index: usize, block_type: BlockType) -> ChkpBacktrace {
-        let current_anchor = &anchors[current_index];
-        match block_type {
-            BlockType::Fore => {
-                let check_points = &current_anchor.check_points.0;
-                let mut inheritance_check_points: ChkpBacktrace = Vec::with_capacity(check_points.len());
-                check_points.iter().for_each(|&anchor_index| {
-                    let anchor = &anchors[anchor_index];
-                    if let AlignmentState::Exact(None, _) = &anchor.state {
-                        let ref_gap = (current_anchor.position.0 - anchor.position.0) as i32;
-                        let qry_gap = (current_anchor.position.1 - anchor.position.1) as i32;
-                        inheritance_check_points.push((anchor_index, anchor.size as i32, ref_gap-qry_gap, ref_gap));
-                    };
-                });
-                inheritance_check_points
-            },
-            BlockType::Hind => {
-                let check_points = &current_anchor.check_points.1;
-                let mut inheritance_check_points: ChkpBacktrace = Vec::with_capacity(check_points.len());
-                check_points.into_iter().for_each(|&anchor_index| {
-                    let anchor = &anchors[anchor_index];
-                    if let AlignmentState::Estimated(_, _) = &anchor.state {
-                        let ref_gap = (anchor.position.0 + anchor.size - current_anchor.position.0 - current_anchor.size) as i32;
-                        let qry_gap = (anchor.position.1 + anchor.size - current_anchor.position.1 - current_anchor.size) as i32;
-                        inheritance_check_points.push((anchor_index, anchor.size as i32, ref_gap-qry_gap, ref_gap));
-                    };
-                });
-                inheritance_check_points
-            },
-        }
-    }
     /**
     Alignment
     */
@@ -549,9 +510,7 @@ impl Anchor {
         {
             println!("current index: {:?} / pos: {:?}", current_anchor_index, anchors[current_anchor_index].position);
         }
-        /**
-        (1) get alignment result
-        */
+        // (1) get alignment result
         let alignment_res = {
             // get refernce of current anchor
             let current_anchor = &mut anchors[current_anchor_index];
@@ -633,9 +592,7 @@ impl Anchor {
                 },
             }
         };
-        /**
-        (2) Interpreting result
-        */
+        // (2) Interpreting result
         match alignment_res {
             /*
             CASE 1: wf not dropped
