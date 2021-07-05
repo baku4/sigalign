@@ -60,7 +60,12 @@ impl Aligner {
         let result = match AnchorGroup::new(ref_seq, qry_seq, &index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
             Some(mut anchor_group) => {
                 anchor_group.alignment(self.using_cached_wf);
-                Some(anchor_group.get_result(self.get_minimum_penalty))
+                let result = anchor_group.get_result(self.get_minimum_penalty);
+                if result.len() == 0 {
+                    None
+                } else {
+                    Some(result)
+                }
             },
             None => None,
         };
@@ -70,7 +75,12 @@ impl Aligner {
         let result = match AnchorGroup::new(reference.sequence.as_ref(), qry_seq, &reference.index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
             Some(mut anchor_group) => {
                 anchor_group.alignment(self.using_cached_wf);
-                Some(anchor_group.get_result(self.get_minimum_penalty))
+                let result = anchor_group.get_result(self.get_minimum_penalty);
+                if result.len() == 0 {
+                    None
+                } else {
+                    Some(result)
+                }
             },
             None => None,
         };
