@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::alignment::*;
 use crate::alignment::anchor::*;
 
@@ -60,14 +62,15 @@ pub fn alignment(ref_seq: &[u8], qry_seq: &[u8],
                     new_anchors.push((ref_pos as usize, i*kmer, kmer));
                 } else {
                     // Check Impeccable Extension
-                    for (pre_idx, (ref_pos_pre, qry_pos_pre, size_pre)) in pre_anchors.clone().into_iter().enumerate() {
-                        if ref_pos_pre + size_pre == ref_pos as usize {
-                            pre_anchors.remove(pre_idx);
-                            new_anchors.push((ref_pos_pre, qry_pos_pre, size_pre + kmer));
+                    pre_anchors = pre_anchors.into_iter().filter(|(ref_pos_pre, qry_pos_pre, size_pre)| {
+                        if *ref_pos_pre + *size_pre == ref_pos as usize {
+                            new_anchors.push((*ref_pos_pre, *qry_pos_pre, size_pre + kmer));
+                            false
                         } else {
                             new_anchors.push((ref_pos as usize, i*kmer, kmer));
+                            true
                         }
-                    }
+                    }).collect();
                 }
             };
             // extend & new -> pre
