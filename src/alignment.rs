@@ -4,14 +4,14 @@ mod dropout_wfa;
 
 use anchor::AnchorGroup;
 
-use fm_index::converter::RangeConverter;
-use fm_index::suffix_array::{SuffixOrderSampledArray, SuffixOrderSampler};
-use fm_index::FMIndex;
-type FmIndex = FMIndex<u8, RangeConverter<u8>, SuffixOrderSampledArray>;
+use lt_fm_index::Config as FmConfig;
+use lt_fm_index::FmIndex;
 
 type SeqeunceLength = usize;
 
-const FM_SUFFIX_LEVEL: usize = 2;
+const FM_KLT_KMER_SIZE: usize = 8;
+const FM_SA_SAMPLING_RATIO: u64 = 2;
+
 
 #[derive(Debug)]
 pub struct Aligner {
@@ -102,10 +102,11 @@ impl<T: AsRef<[u8]>> Reference<T> {
     }
     fn fmindex(sequence: &T) -> FmIndex {
         let seq = sequence.as_ref().iter().cloned().collect();
-        // TODO: change the input ASCII code range
-        let converter = RangeConverter::new(b'A', b'T');
-        let sampler = SuffixOrderSampler::new().level(FM_SUFFIX_LEVEL);
-        FMIndex::new(seq, converter, sampler)
+        // TODO: Custom fmindex configuration
+        let fm_config: FmConfig = FmConfig::new()
+            .set_kmer_lookup_table(FM_KLT_KMER_SIZE)
+            .set_suffix_array_sampling_ratio(FM_SA_SAMPLING_RATIO);
+        FmIndex::new(&fm_config, seq)
     }
 }
 

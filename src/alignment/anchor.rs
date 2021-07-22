@@ -7,7 +7,6 @@ use std::slice::Iter;
 
 use super::{AlignmentResult, FmIndex, Operation, EmpKmer, Cutoff, Scores};
 use super::dropout_wfa::{WF, ChkpBacktrace, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, ChkpInherit, wf_check_inheritable, wf_inherited_cache};
-use fm_index::BackwardSearchIndex;
 
 /// Anchor Group
 pub struct AnchorGroup<'a> {
@@ -33,8 +32,7 @@ impl<'a> AnchorGroup<'a> {
             for i in 0..search_count {
                 let qry_position = i*kmer;
                 let pattern = &qry_seq[qry_position..qry_position+kmer];
-                let search = index.search_backward(pattern);
-                let positions = search.locate();
+                let positions = index.locate_with_klt(pattern);
                 // Check Impeccable Extension
                 match anchors_cache {
                     Some(anchors) => {
