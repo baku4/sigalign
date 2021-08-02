@@ -1,6 +1,7 @@
 //! Dropout alignment core
 pub mod anchor;
 mod dropout_wfa;
+mod dwfa;
 
 use anchor::AnchorGroup;
 
