@@ -8,7 +8,8 @@ use anchor::AnchorGroup;
 use lt_fm_index::Config as FmConfig;
 use lt_fm_index::FmIndex;
 
-type SeqeunceLength = usize;
+type SeqLength = u64;
+type Penalty = usize;
 
 const FM_KLT_KMER_SIZE: usize = 8;
 const FM_SA_SAMPLING_RATIO: u64 = 2;
@@ -19,7 +20,7 @@ pub struct Aligner {
     cutoff: Cutoff,
     kmer: usize,
     scores: Scores,
-    emp_kmer: EmpKmer,
+    emp_kmer: BlockPenalty,
     using_cached_wf: bool,
     get_minimum_penalty: bool,
 }
@@ -29,7 +30,7 @@ type AlignmentResult = Vec<(Vec<Operation>, usize)>;
 
 impl Aligner {
     pub fn new(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize, using_cached_wf: bool, get_minimum_penalty: bool) -> Self {
-        let emp_kmer = EmpKmer::new(mismatch_penalty, gapopen_penalty, gapext_penalty);
+        let emp_kmer = BlockPenalty::new(mismatch_penalty, gapopen_penalty, gapext_penalty);
         let kmer = Self::kmer_calculation(score_per_length, minimum_length, &emp_kmer);
         Self {
             cutoff: Cutoff {
@@ -43,7 +44,7 @@ impl Aligner {
             get_minimum_penalty: get_minimum_penalty,
         }
     }
-    pub fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &EmpKmer) -> usize {
+    pub fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &BlockPenalty) -> usize {
         let mut i: usize = 1;
         let mut kmer_size: f64;
         loop {
@@ -114,18 +115,26 @@ impl<T: AsRef<[u8]>> Reference<T> {
 type Scores = (usize, usize, usize);
 
 #[derive(Debug)]
+pub struct Penalties {
+    x: Penalty,
+    o: Penalty,
+    e: Penalty,
+}
+
+#[derive(Debug)]
 pub struct Cutoff {
     score_per_length: f64,
+    // TODO: min length to u64
     minimum_length: usize,
 }
 
 #[derive(Debug)]
-pub struct EmpKmer {
+pub struct BlockPenalty {
     odd: usize,
     even: usize,
 }
 
-impl EmpKmer {
+impl BlockPenalty {
     pub fn new(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> Self {
         let mo: usize;
         let me: usize;
@@ -153,6 +162,6 @@ pub enum Operation {
     Subst,
     Ins,
     Del,
-    RefClip(SeqeunceLength),
-    QryClip(SeqeunceLength),
+    RefClip(SeqLength),
+    QryClip(SeqLength),
 }

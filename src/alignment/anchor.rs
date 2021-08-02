@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::slice::Iter;
 
-use super::{AlignmentResult, FmIndex, Operation, EmpKmer, Cutoff, Scores};
+use super::{AlignmentResult, FmIndex, Operation, BlockPenalty, Cutoff, Scores};
 use super::dropout_wfa::{WF, ChkpBacktrace, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, ChkpInherit, wf_check_inheritable, wf_inherited_cache};
 
 /// Anchor Group
@@ -19,7 +19,7 @@ pub struct AnchorGroup<'a> {
 impl<'a> AnchorGroup<'a> {
     pub fn new(
         ref_seq: &'a [u8], qry_seq: &'a [u8], index: &FmIndex,
-        kmer: usize, emp_kmer: &'a EmpKmer, scores: &'a Scores, cutoff: &'a Cutoff
+        kmer: usize, emp_kmer: &'a BlockPenalty, scores: &'a Scores, cutoff: &'a Cutoff
     ) -> Option<Self> {
         let ref_len = ref_seq.len();
         let qry_len = qry_seq.len();
@@ -252,9 +252,9 @@ impl AlignmentBlock {
         let ref_left = ref_len-ref_aligned_length;
         let qry_left = qry_len-qry_aligned_length;
         if ref_left >= qry_left {
-            Operation::RefClip(ref_left-qry_left)
+            Operation::RefClip((ref_left-qry_left) as u64)
         } else {
-            Operation::QryClip(qry_left-ref_left)
+            Operation::QryClip((qry_left-ref_left) as u64)
         }
     }
 }
@@ -280,7 +280,7 @@ impl Anchor {
         self
     }
     /// Empty anchor to estimated state
-    fn estimate_from_empty(&mut self, ref_len: usize, qry_len: usize, kmer: usize, anchor_existence: &Vec<bool>, emp_kmer: &EmpKmer) {
+    fn estimate_from_empty(&mut self, ref_len: usize, qry_len: usize, kmer: usize, anchor_existence: &Vec<bool>, emp_kmer: &BlockPenalty) {
         let block_index = self.position.1 / kmer;
         // fore block
         let fore_emp_block = {

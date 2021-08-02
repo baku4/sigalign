@@ -16,7 +16,7 @@ type DPanchor = (usize, usize, usize);
 type DPresult = Vec<(Vec<AlignmentOperation>, usize)>;
 
 pub fn get_kmer(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> usize {
-    let kmer = Aligner::kmer_calculation(score_per_length, minimum_length, &EmpKmer::new(mismatch_penalty, gapopen_penalty, gapext_penalty));
+    let kmer = Aligner::kmer_calculation(score_per_length, minimum_length, &BlockPenalty::new(mismatch_penalty, gapopen_penalty, gapext_penalty));
     kmer
 }
 fn get_scoring(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize, y_is_long: bool) -> pairwise::Scoring<pairwise::MatchParams> {
