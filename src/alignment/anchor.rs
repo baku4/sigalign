@@ -8,6 +8,8 @@ use std::slice::Iter;
 use super::{AlignmentResult, FmIndex, Operation, BlockPenalty, Cutoff, Scores};
 use super::dropout_wfa::{WF, ChkpBacktrace, dropout_wf_align, dropout_inherited_wf_align, wf_backtrace, ChkpInherit, wf_check_inheritable, wf_inherited_cache};
 
+use super::dwfa;
+
 /// Anchor Group
 pub struct AnchorGroup<'a> {
     ref_seq: &'a [u8],

@@ -1,7 +1,8 @@
-use crate::io::cigar::Cigar;
+use crate::io::cigar::{Cigar, Operation};
 use super::Penalties;
 
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
+use std::iter::FromIterator;
 
 type WF_SCORE = usize;
 type WF_K = i32;
@@ -86,11 +87,13 @@ impl Penalties {
     }
 }
 
+type WfRes = (WaveFront, usize, i32); // (WaveFront, Score, Last k)
+
 pub fn dropout_wf_align(
     qry_seq: &[u8], ref_seq: &[u8],
     penalty_spare: usize, spl: f64,
     penalties: &Penalties,
-) -> Result<(WaveFront, i32), WaveFront> {
+) -> Result<WfRes, WaveFront> {
     let n = qry_seq.len();
     let m = ref_seq.len();
 
@@ -119,7 +122,8 @@ pub fn dropout_wf_align(
             (2) check exit condition
             */
             if ((h + fr_to_add) as usize >= m) || ((v + fr_to_add) as usize >= n) {
-                return Ok((wf, k))
+                // Return Ok
+                return Ok((wf, score, k)) 
             } else {
                 wfs.m_fr += fr_to_add;
             }
@@ -132,6 +136,7 @@ pub fn dropout_wf_align(
         }
         dropout_wf_next(&mut wf, penalties, score, start_index, max_k);
     };
+    // Return Err
     Err(wf)
 }
 
@@ -332,148 +337,254 @@ fn dropout_wf_next(
     }
 }
 
-pub type ChkpBacktrace = Vec<(usize, i32, i32, i32)>; // (anchor index, size, checkpoint k, checkpoint fr)
-// key: index of anchor
-// val: reverse index & penalty
-pub type ConnectedBacktrace = HashMap<usize, (usize, usize)>;
+pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>; // (anchor index, size, checkpoint k, checkpoint fr)
+pub type PassedAnchors = HashMap<usize, (usize, usize)>; // key: index of anchor, val: (length , penalty)
 
 #[inline]
-fn dropout_wf_backtrace(
-    wf: &WaveFront, penalties: &Penalties, start_k: i32,
-    check_points_values: &ChkpBacktrace,
-) -> () { // (Cigar, ConnectedBacktrace) {
-    /*
-    let mut operations: Vec<Operation> = Vec::new();
-    let get_comp = |mat_idx: usize, s: usize, k: i32| wf[s].as_ref().unwrap()[mat_idx].as_ref().unwrap().backtrace(k);
+pub fn dropout_wf_backtrace(
+    wf: &WaveFront, penalties: &Penalties, mut score: usize, mut k: i32,
+    check_points_values: &AnchorsToPassCheck,
+) -> (Cigar, PassedAnchors) {
+    let mut opertion_length: usize = 0;
+    let (start_index, max_k) = penalties.get_index_max_k(score);
+    let mut index = start_index + (max_k + k) as usize;
+    let mut component_type: usize = 0;
+    let mut fr = wf[index].m_fr;
 
-    // init
-    let mut s = wf.len() - 1;
-    let mut k = start_k;
-    let mut component = get_comp(0, s, k);
-    // check points
     let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
-    // let mut reverse_index: ReverseIndex = vec![None; check_points.len()];
-    let mut reverse_index: ConnectedBacktrace = HashMap::new();
+    let mut cigar: Cigar = Vec::with_capacity(score);
+    let mut checkpoint_backtrace: PassedAnchors = HashMap::with_capacity(check_points_values.len());
 
     loop {
-        let fr = component.0;
-        let bactrace = component.1;
-        // Backtrace check
-        match bactrace {
-            Backtrace::M(from) => {
-                // TODO: concat enums M,I,D
-                match from {
-                    FromM::M => {
-                        // new comp
-                        s -= penalties.0;
-                        component = get_comp(0, s, k);
-                        // extend operations
-                        let mut new_ops = vec![Operation::Match; (fr-component.0-1) as usize];
-                        new_ops.push(Operation::Subst);
-                        operations.extend(new_ops);
-                        // validation backtrace check point
+        let wfs = &wf[index];
+        match component_type { // get bt
+            0 => { // M
+                match wfs.m_bt {
+                    FROM_M => {
+                        // (1) Next score
+                        score -= penalties.x;
+                        // (2) Next k
+                        // not change
+                        // (3) Next index
+                        index = penalties.get_index(score, k);
+                        // (4) Next fr
+                        let next_fr = wf[index].m_fr;
+                        // (5) Component type
+                        // not chnage
+                        // (6) Add Cigar
+                        let match_count = (fr-next_fr) as u32;
+                        if match_count == 0 {
+                            if let Some((Operation::Subst, last_fr)) = cigar.last_mut() {
+                                *last_fr += 1;
+                            } else {
+                                cigar.push((Operation::Subst, 1));
+                            }
+                        } else {
+                            cigar.push((Operation::Match, match_count));
+                            cigar.push((Operation::Subst, 1));
+                        }
+                        opertion_length += (match_count + 1) as usize;
+                        // (7) Check anchor is passed
                         for checkpoint_index in to_check_index.clone() {
                             let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= component.0) {
-                                reverse_index.insert(
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
+                                checkpoint_backtrace.insert(
                                     anchor_index,
                                     (
-                                        operations.len() - (checkpoint_fr - component.0) as usize,
-                                        s + penalties.0
+                                        opertion_length - (checkpoint_fr - next_fr) as usize,
+                                        score + penalties.x
                                     ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
                             }
                         }
+                        // (7) Next fr to fr
+                        fr = next_fr;
                     },
-                    FromM::I => {
-                        // new comp
-                        component = get_comp(1, s, k);
-                        // extend operations
-                        operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
-                        // validation backtrace check point
+                    FROM_I => {
+                        // (1) Next score
+                        // not change
+                        // (2) Next k
+                        // not change
+                        // (3) Next index
+                        // not change
+                        // (4) Next fr
+                        let next_fr = wf[index].i_fr;
+                        // (5) Component type
+                        component_type = 1;
+                        // (6) Add Cigar
+                        let match_count = (fr-next_fr) as u32;
+                        if match_count != 0 {
+                            cigar.push((Operation::Match, match_count));
+                        }
+                        opertion_length += match_count as usize;
+                        // (7) Check anchor is passed
                         for checkpoint_index in to_check_index.clone() {
                             let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= component.0) {
-                                reverse_index.insert(
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
+                                checkpoint_backtrace.insert(
                                     anchor_index,
                                     (
-                                        operations.len() - (checkpoint_fr - component.0) as usize,
-                                        s
+                                        opertion_length - (checkpoint_fr - next_fr) as usize,
+                                        score
                                     ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
                             }
                         }
+                        // (7) Next fr to fr
+                        fr = next_fr;
                     },
-                    FromM::D => {
-                        // new comp
-                        component = get_comp(2, s, k);
-                        // extend operations
-                        operations.extend(vec![Operation::Match; (fr-component.0) as usize]);
-                        // validation backtrace check point
+                    FROM_D => {
+                        // (1) Next score
+                        // not change
+                        // (2) Next k
+                        // not change
+                        // (3) Next index
+                        // not change
+                        // (4) Next fr
+                        let next_fr = wf[index].d_fr;
+                        // (5) Component type
+                        component_type = 2;
+                        // (6) Add Cigar
+                        let match_count = (fr-next_fr) as u32;
+                        if match_count != 0 {
+                            cigar.push((Operation::Match, match_count));
+                        }
+                        opertion_length += match_count as usize;
+                        // (7) Check anchor is passed
                         for checkpoint_index in to_check_index.clone() {
                             let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= component.0) {
-                                reverse_index.insert(
+                            if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
+                                checkpoint_backtrace.insert(
                                     anchor_index,
                                     (
-                                        operations.len() - (checkpoint_fr - component.0) as usize,
-                                        s
+                                        opertion_length - (checkpoint_fr - next_fr) as usize,
+                                        score
                                     ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
                             }
                         }
+                        // (7) Next fr to fr
+                        fr = next_fr;
                     },
-                    FromM::N => {
-                        operations.extend(vec![Operation::Match; fr as usize]);
-                        operations.reverse();
-                        return (operations, reverse_index);
+                    _ => { // Can't be EMPTY -> this is START_POINT
+                        if fr != 0 {
+                            cigar.push((Operation::Match, fr as u32));
+                        };
+                        cigar.reverse();
+                        // shrink
+                        cigar.shrink_to_fit();
+                        checkpoint_backtrace.shrink_to_fit();
+                        return (cigar, checkpoint_backtrace);
+                    }
+                }
+            },
+            1 => { // I
+                match wfs.i_bt {
+                    FROM_M => {
+                        // (1) Next score
+                        score -= penalties.o + penalties.x;
+                        // (2) Next k
+                        k -= 1;
+                        // not change
+                        // (3) Next index
+                        index = penalties.get_index(score, k);
+                        // (4) Next fr
+                        // cache not needed
+                        // (5) Component type
+                        component_type = 0;
+                        // (6) Add Cigar
+                        if let Some((Operation::Ins, last_fr)) = cigar.last_mut() {
+                            *last_fr += 1;
+                        } else {
+                            cigar.push((Operation::Ins, 1));
+                        }
+                        opertion_length += 1;
+                        // (7) Check anchor is passed
+                        // not needed
+                        // (7) Next fr to fr
+                        fr = wf[index].i_fr;
+                    },
+                    _ => { // FROM_I
+                        // (1) Next score
+                        score -= penalties.x;
+                        // (2) Next k
+                        k -= 1;
+                        // not change
+                        // (3) Next index
+                        index = penalties.get_index(score, k);
+                        // (4) Next fr
+                        // cache not needed
+                        // (5) Component type
+                        // not change
+                        // (6) Add Cigar
+                        if let Some((Operation::Ins, last_fr)) = cigar.last_mut() {
+                            *last_fr += 1;
+                        } else {
+                            cigar.push((Operation::Ins, 1));
+                        }
+                        opertion_length += 1;
+                        // (7) Check anchor is passed
+                        // not needed
+                        // (7) Next fr to fr
+                        fr = wf[index].i_fr;
                     },
                 }
             },
-            Backtrace::I(from) => {
-                match from {
-                    FromI::M => {
-                        s -= penalties.1 + penalties.2;
-                        k -= 1;
-                        // new comp
-                        component = get_comp(0, s, k);
-                        // extend operations
-                        operations.push(Operation::Ins);
-                    },
-                    FromI::I => {
-                        s -= penalties.2;
-                        k -= 1;
-                        // new comp
-                        component = get_comp(1, s, k);
-                        // extend operations
-                        operations.push(Operation::Ins);
-                    },
-                }
-            },
-            Backtrace::D(from) => {
-                match from {
-                    FromD::M => {
-                        s -= penalties.1 + penalties.2;
+            _ => {
+                match wfs.d_bt {
+                    FROM_M => {
+                        // (1) Next score
+                        score -= penalties.o + penalties.x;
+                        // (2) Next k
                         k += 1;
-                        // new comp
-                        component = get_comp(0, s, k);
-                        // extend operations
-                        operations.push(Operation::Del);
+                        // not change
+                        // (3) Next index
+                        index = penalties.get_index(score, k);
+                        // (4) Next fr
+                        // cache not needed
+                        // (5) Component type
+                        component_type = 0;
+                        // (6) Add Cigar
+                        if let Some((Operation::Del, last_fr)) = cigar.last_mut() {
+                            *last_fr += 1;
+                        } else {
+                            cigar.push((Operation::Del, 1));
+                        }
+                        opertion_length += 1;
+                        // (7) Check anchor is passed
+                        // not needed
+                        // (7) Next fr to fr
+                        fr = wf[index].d_fr;
                     },
-                    FromD::D => {
-                        s -= penalties.2;
+                    _ => {
+                        // (1) Next score
+                        score -= penalties.x;
+                        // (2) Next k
                         k += 1;
-                        // new comp
-                        component = get_comp(2, s, k);
-                        // extend operations
-                        operations.push(Operation::Del);
+                        // not change
+                        // (3) Next index
+                        index = penalties.get_index(score, k);
+                        // (4) Next fr
+                        // cache not needed
+                        // (5) Component type
+                        // not change
+                        // (6) Add Cigar
+                        if let Some((Operation::Del, last_fr)) = cigar.last_mut() {
+                            *last_fr += 1;
+                        } else {
+                            cigar.push((Operation::Del, 1));
+                        }
+                        opertion_length += 1;
+                        // (7) Check anchor is passed
+                        // not needed
+                        // (7) Next fr to fr
+                        fr = wf[index].d_fr;
                     },
                 }
             }
-        }
+        };
     }
-     */
 }
