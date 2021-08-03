@@ -1,9 +1,13 @@
 //! Dropout alignment core
-pub mod anchor;
-mod dropout_wfa;
+// for dep
+pub mod anchor_dep;
+mod dropout_wfa_dep;
+
+mod anchor;
 mod dwfa;
 
-use anchor::AnchorGroup;
+use anchor_dep::AnchorGroup;
+use crate::io::cigar::Cigar;
 
 use lt_fm_index::Config as FmConfig;
 use lt_fm_index::FmIndex;
@@ -26,7 +30,9 @@ pub struct Aligner {
 }
 
 // Alignment Result: (operations, penalty)
-type AlignmentResult = Vec<(Vec<Operation>, usize)>;
+type AlignmentResultForDep = Vec<(Vec<Operation>, usize)>;
+// Alignment Result
+pub type AlignmentResult = (Cigar, usize, usize); // cigar, length, penalty
 
 impl Aligner {
     pub fn new(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize, using_cached_wf: bool, get_minimum_penalty: bool) -> Self {
@@ -57,7 +63,7 @@ impl Aligner {
         }
         kmer_size as usize
     }
-    pub fn perform_with_sequence(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
+    pub fn perform_with_sequence(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResultForDep> {
         let index = Reference::fmindex(&ref_seq);
         let result = match AnchorGroup::new(ref_seq, qry_seq, &index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
             Some(mut anchor_group) => {
@@ -73,7 +79,7 @@ impl Aligner {
         };
         result
     }
-    pub fn perform_with_index<T: AsRef<[u8]>>(&self, reference: &Reference<T> , qry_seq: &[u8]) -> Option<AlignmentResult> {
+    pub fn perform_with_index<T: AsRef<[u8]>>(&self, reference: &Reference<T> , qry_seq: &[u8]) -> Option<AlignmentResultForDep> {
         let result = match AnchorGroup::new(reference.sequence.as_ref(), qry_seq, &reference.index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
             Some(mut anchor_group) => {
                 anchor_group.alignment(self.using_cached_wf);

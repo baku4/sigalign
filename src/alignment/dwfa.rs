@@ -1,13 +1,15 @@
 use crate::io::cigar::{Cigar, Operation};
-use super::Penalties;
+use super::{Penalties, AlignmentResult};
 
 use std::collections::{HashSet, HashMap};
 use std::iter::FromIterator;
 
+// For WaveFront
 type WF_SCORE = usize;
 type WF_K = i32;
 type FR_POINT = i32;
 
+// For Backtrace
 type BACTRACE = u8;
 const EMPTY: u8 = 0;
 const FROM_M: u8 = 1;
@@ -15,7 +17,7 @@ const FROM_I: u8 = 2;
 const FROM_D: u8 = 3;
 const START_POINT: u8 = 4;
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct WFS {
     m_fr: FR_POINT,
     i_fr: FR_POINT,
@@ -25,7 +27,7 @@ pub struct WFS {
     d_bt: BACTRACE,
 }
 
-type WaveFront = Vec<WFS>;
+pub type WaveFront = Vec<WFS>;
 
 // TODO: vector from raw
 fn empty_wf(size: usize) -> WaveFront {
@@ -338,13 +340,14 @@ fn dropout_wf_next(
 }
 
 pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>; // (anchor index, size, checkpoint k, checkpoint fr)
-pub type PassedAnchors = HashMap<usize, (usize, usize)>; // key: index of anchor, val: (length , penalty)
+pub type CigarReference = (usize, usize); // (length , penalty)
+pub type PassedAnchors = HashMap<usize, CigarReference>; // key: index of anchor, val: (length , penalty)
 
 #[inline]
 pub fn dropout_wf_backtrace(
     wf: &WaveFront, penalties: &Penalties, mut score: usize, mut k: i32,
     check_points_values: &AnchorsToPassCheck,
-) -> (Cigar, PassedAnchors) {
+) -> (AlignmentResult, PassedAnchors) {
     let mut opertion_length: usize = 0;
     let (start_index, max_k) = penalties.get_index_max_k(score);
     let mut index = start_index + (max_k + k) as usize;
@@ -352,6 +355,7 @@ pub fn dropout_wf_backtrace(
     let mut fr = wf[index].m_fr;
 
     let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
+    // FIXME: check if this cap is enough.
     let mut cigar: Cigar = Vec::with_capacity(score);
     let mut checkpoint_backtrace: PassedAnchors = HashMap::with_capacity(check_points_values.len());
 
@@ -473,11 +477,12 @@ pub fn dropout_wf_backtrace(
                         if fr != 0 {
                             cigar.push((Operation::Match, fr as u32));
                         };
-                        cigar.reverse();
+                        // TODO: delete reverse
+                        // cigar.reverse();
                         // shrink
                         cigar.shrink_to_fit();
                         checkpoint_backtrace.shrink_to_fit();
-                        return (cigar, checkpoint_backtrace);
+                        return ((cigar, opertion_length, score), checkpoint_backtrace,);
                     }
                 }
             },

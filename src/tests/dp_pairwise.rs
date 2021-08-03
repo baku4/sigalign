@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::alignment::*;
-use crate::alignment::anchor::*;
+use crate::alignment::anchor_dep::*;
 
 use bio::alignment::*;
 use bio::alignment::AlignmentOperation;
