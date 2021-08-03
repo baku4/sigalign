@@ -93,8 +93,7 @@ type WfRes = (WaveFront, usize, i32); // (WaveFront, Score, Last k)
 
 pub fn dropout_wf_align(
     qry_seq: &[u8], ref_seq: &[u8],
-    penalty_spare: usize, spl: f64,
-    penalties: &Penalties,
+    penalty_spare: usize, penalties: &Penalties,
 ) -> Result<WfRes, WaveFront> {
     let n = qry_seq.len();
     let m = ref_seq.len();
@@ -107,7 +106,7 @@ pub fn dropout_wf_align(
     let (mut start_index, mut max_k) = (0, 0);
 
     // main
-    'score: for score in 0..penalty_spare {
+    for score in 0..penalty_spare {
         let last_index = start_index + (2*max_k as usize) + 1;
         // extend & check exit condition
         'wfs: for (wfs, k) in wf[start_index..last_index].iter_mut().zip(-max_k..=max_k) {
@@ -340,8 +339,8 @@ fn dropout_wf_next(
 }
 
 pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>; // (anchor index, size, checkpoint k, checkpoint fr)
-pub type CigarReference = (usize, usize); // (length , penalty)
-pub type PassedAnchors = HashMap<usize, CigarReference>; // key: index of anchor, val: (length , penalty)
+pub type CigarReference = (usize, usize); // (length , penalty in ref)
+pub type PassedAnchors = HashMap<usize, CigarReference>; // key: index of anchor, val: CigarReference
 
 #[inline]
 pub fn dropout_wf_backtrace(
@@ -477,8 +476,6 @@ pub fn dropout_wf_backtrace(
                         if fr != 0 {
                             cigar.push((Operation::Match, fr as u32));
                         };
-                        // TODO: delete reverse
-                        // cigar.reverse();
                         // shrink
                         cigar.shrink_to_fit();
                         checkpoint_backtrace.shrink_to_fit();
