@@ -2,6 +2,7 @@ pub mod cigar;
 
 use crate::{SequenceLength, Penalty};
 
+#[derive(Debug)]
 pub struct Alignment {
     pub penalty: Penalty,
     pub length: SequenceLength,

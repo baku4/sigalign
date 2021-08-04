@@ -523,10 +523,11 @@ impl Anchor {
         penalties: &Penalties, cutoff: &Cutoff,
         block_type: BlockType, using_cached_wf: bool,
     ) {
-        #[cfg(test)]
-        {
-            println!("current index: {:?} / pos: {:?}", current_anchor_index, anchors[current_anchor_index].position);
-        }
+        // TODO: to del
+        // #[cfg(test)]
+        // {
+        //     println!("current index: {:?} / pos: {:?}", current_anchor_index, anchors[current_anchor_index].position);
+        // }
         // (1) DWFA
         let dwfa_res = {
             // get refernce of current anchor
@@ -585,12 +586,13 @@ impl Anchor {
             // Get cached wf
             // if current anchor has cached wf -> continue with cached wf
             let wf_cache = current_anchor.wf_cache.take();
-            #[cfg(test)]
-            {
-                if let Some(v) = &wf_cache {
-                    println!("using inherited wf:\n{:?}\n{:?}, ", v[0], v[1]);
-                };
-            }
+            // TODO: to del
+            // #[cfg(test)]
+            // {
+            //     if let Some(v) = &wf_cache {
+            //         println!("using inherited wf:\n{:?}\n{:?}, ", v[0], v[1]);
+            //     };
+            // }
             // DWFA
             match block_type {
                 BlockType::Hind => {
