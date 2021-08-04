@@ -7,13 +7,12 @@ mod anchor;
 mod dwfa;
 
 use anchor_dep::AnchorGroup;
-use crate::io::cigar::Cigar;
+use crate::{SequenceLength, OperationLength, Penalty};
+use crate::io::Alignment;
+use crate::io::cigar::{Cigar, Clip};
 
 use lt_fm_index::Config as FmConfig;
 use lt_fm_index::FmIndex;
-
-type SeqLength = u64;
-type Penalty = usize;
 
 const FM_KLT_KMER_SIZE: usize = 8;
 const FM_SA_SAMPLING_RATIO: u64 = 2;
@@ -24,18 +23,27 @@ pub struct Aligner {
     cutoff: Cutoff,
     kmer: usize,
     scores: Scores,
+    // TODO: emp kmer naming
     emp_kmer: BlockPenalty,
     using_cached_wf: bool,
     get_minimum_penalty: bool,
 }
 
 // Alignment Result: (operations, penalty)
-type AlignmentResultForDep = Vec<(Vec<Operation>, usize)>;
+type AlignmentResultForDep = Vec<(Vec<Operation>, Penalty)>;
 // Alignment Result
-pub type AlignmentResult = (Cigar, usize, usize); // cigar, length, penalty
+pub type AlignmentResult = Vec<Alignment>;
 
 impl Aligner {
-    pub fn new(score_per_length: f64, minimum_length: usize, mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize, using_cached_wf: bool, get_minimum_penalty: bool) -> Self {
+    pub fn new(
+        score_per_length: f64,
+        minimum_length: usize,
+        mismatch_penalty: usize,
+        gapopen_penalty: usize,
+        gapext_penalty: usize,
+        using_cached_wf: bool,
+        get_minimum_penalty: bool
+    ) -> Self {
         let emp_kmer = BlockPenalty::new(mismatch_penalty, gapopen_penalty, gapext_penalty);
         let kmer = Self::kmer_calculation(score_per_length, minimum_length, &emp_kmer);
         Self {
@@ -81,6 +89,30 @@ impl Aligner {
     }
     pub fn perform_with_index<T: AsRef<[u8]>>(&self, reference: &Reference<T> , qry_seq: &[u8]) -> Option<AlignmentResultForDep> {
         let result = match AnchorGroup::new(reference.sequence.as_ref(), qry_seq, &reference.index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
+            Some(mut anchor_group) => {
+                anchor_group.alignment(self.using_cached_wf);
+                let result = anchor_group.get_result(self.get_minimum_penalty);
+                if result.len() == 0 {
+                    None
+                } else {
+                    Some(result)
+                }
+            },
+            None => None,
+        };
+        result
+    }
+    pub fn perform_with_sequence_using_new_anchor(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
+        let penalties = Penalties {
+            x: self.scores.0,
+            o: self.scores.1,
+            e: self.scores.2,
+        };
+        let index = Reference::fmindex(&ref_seq);
+        let result = match anchor::AnchorGroup::new(
+            ref_seq, qry_seq, &index, self.kmer,
+            &self.emp_kmer, &penalties, &self.cutoff
+        ) {
             Some(mut anchor_group) => {
                 anchor_group.alignment(self.using_cached_wf);
                 let result = anchor_group.get_result(self.get_minimum_penalty);
@@ -168,6 +200,6 @@ pub enum Operation {
     Subst,
     Ins,
     Del,
-    RefClip(SeqLength),
-    QryClip(SeqLength),
+    RefClip(u64),
+    QryClip(u64),
 }

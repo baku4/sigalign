@@ -1,13 +1,14 @@
+use crate::{SequenceLength, OperationLength, Penalty};
 use crate::io::cigar::{Cigar, Operation};
-use super::{Penalties, AlignmentResult};
+use super::{Penalties, Alignment};
 
 use std::collections::{HashSet, HashMap};
 use std::iter::FromIterator;
 
-// For WaveFront
-type WF_SCORE = usize;
-type WF_K = i32;
-type FR_POINT = i32;
+// TYPES
+type WfScore = usize;
+type WfK = i32;
+type FrPoint = i32;
 
 // For Backtrace
 type BACTRACE = u8;
@@ -19,9 +20,9 @@ const START_POINT: u8 = 4;
 
 #[derive(Clone, Default, Debug)]
 pub struct WFS {
-    m_fr: FR_POINT,
-    i_fr: FR_POINT,
-    d_fr: FR_POINT,
+    m_fr: FrPoint,
+    i_fr: FrPoint,
+    d_fr: FrPoint,
     m_bt: BACTRACE,
     i_bt: BACTRACE,
     d_bt: BACTRACE,
@@ -38,7 +39,7 @@ fn empty_wf(size: usize) -> WaveFront {
 
 impl Penalties {
     #[inline]
-    fn get_max_k(&self, score: WF_SCORE) -> usize {
+    fn get_max_k(&self, score: WfScore) -> usize {
         if score < self.o {
             1
         } else {
@@ -46,7 +47,7 @@ impl Penalties {
         }
     }
     #[inline]
-    fn get_index(&self, score: WF_SCORE, k: WF_K) -> usize {
+    fn get_index(&self, score: WfScore, k: WfK) -> usize {
         if score < self.o {
             score
         } else {
@@ -57,7 +58,7 @@ impl Penalties {
         }
     }
     #[inline]
-    fn get_index_max_k(&self, score: WF_SCORE) -> (usize, WF_K) {
+    fn get_index_max_k(&self, score: WfScore) -> (usize, WfK) {
         if score < self.o {
             (score, 1)
         } else {
@@ -65,11 +66,11 @@ impl Penalties {
             let q = s_m_po / self.e;
             let r = s_m_po % self.e;
             let start_index = self.o + (q*q + q - 1)*self.e + (2*q-1)*r;
-            (start_index, q as WF_K)
+            (start_index, q as WfK)
         }
     }
     #[inline]
-    fn get_wf_size(&self, panalty_spare: WF_SCORE) -> usize {
+    fn get_wf_size(&self, panalty_spare: WfScore) -> usize {
         if panalty_spare < self.o {
             panalty_spare + 1
         } else {
@@ -80,7 +81,7 @@ impl Penalties {
         }
     }
     #[inline]
-    fn get_pre_indices(&self, score: WF_SCORE) -> [(usize, i32); 3] {
+    fn get_pre_indices(&self, score: WfScore) -> [(usize, WfK); 3] {
         [
             self.get_index_max_k(score-self.o-self.x), // (1) score: s-o-e
             self.get_index_max_k(score-self.x), // (2) score: s-x
@@ -89,11 +90,11 @@ impl Penalties {
     }
 }
 
-type WfRes = (WaveFront, usize, i32); // (WaveFront, Score, Last k)
+type WfRes = (WaveFront, WfScore, WfK); // (WaveFront, Score, Last k)
 
 pub fn dropout_wf_align(
     qry_seq: &[u8], ref_seq: &[u8],
-    penalty_spare: usize, penalties: &Penalties,
+    penalty_spare: WfScore, penalties: &Penalties,
 ) -> Result<WfRes, WaveFront> {
     let n = qry_seq.len();
     let m = ref_seq.len();
@@ -152,7 +153,7 @@ fn compare_seqs(qry_seq: &[u8], ref_seq: &[u8], v: usize, h: usize) -> i32 {
 
 #[inline]
 fn dropout_wf_next(
-    wf: &mut WaveFront, penalties: &Penalties, score: usize, start_index: usize, max_k: i32
+    wf: &mut WaveFront, penalties: &Penalties, score: WfScore, start_index: usize, max_k: WfK
 ) {
     // Prepare indices of pre positions
     let [
@@ -163,11 +164,11 @@ fn dropout_wf_next(
     // wf next
     for k in -max_k..=max_k {
         let index = start_index + (max_k + k) as usize;
-        let mut msk_array: [FR_POINT; 3] = [-1, -1, -1];
+        let mut msk_array: [FrPoint; 3] = [-1, -1, -1];
         let mut msk_exist = false;
 
         { // Next I
-            let fr_from_m: Option<FR_POINT> = {
+            let fr_from_m: Option<FrPoint> = {
                 let index_gap = maxk_soe + k - 1;
                 if index_gap >= 0 {
                     let wfs = &wf[sidx_soe+index_gap as usize];
@@ -179,7 +180,7 @@ fn dropout_wf_next(
                     None
                 }
             };
-            let fr_from_i: Option<FR_POINT> = {
+            let fr_from_i: Option<FrPoint> = {
                 let index_gap = maxk_se + k - 1;
                 if index_gap >= 0 {
                     let wfs = &wf[sidx_se+index_gap as usize];
@@ -239,7 +240,7 @@ fn dropout_wf_next(
             }
         };
         { // Next D
-            let fr_from_m: Option<FR_POINT> = {
+            let fr_from_m: Option<FrPoint> = {
                 let index_gap = maxk_soe + k + 1;
                 if index_gap <= max_k {
                     let wfs = &wf[sidx_soe+index_gap as usize];
@@ -251,7 +252,7 @@ fn dropout_wf_next(
                     None
                 }
             };
-            let fr_from_d: Option<FR_POINT> = {
+            let fr_from_d: Option<FrPoint> = {
                 let index_gap = maxk_se + k + 1;
                 if index_gap <= max_k {
                     let wfs = &wf[sidx_se+index_gap as usize];
@@ -338,15 +339,19 @@ fn dropout_wf_next(
     }
 }
 
-pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>; // (anchor index, size, checkpoint k, checkpoint fr)
-pub type CigarReference = (usize, usize); // (length , penalty in ref)
-pub type PassedAnchors = HashMap<usize, CigarReference>; // key: index of anchor, val: CigarReference
+pub type BacktraceResult = (Cigar, SequenceLength, Penalty); // cigar is reversed 
+// (anchor index, size, checkpoint k, checkpoint fr)
+pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>;
+// (length , penalty in ref)
+pub type CigarReference = (usize, usize);
+// key: index of anchor, val: CigarReference
+pub type PassedAnchors = HashMap<usize, CigarReference>;
 
 #[inline]
 pub fn dropout_wf_backtrace(
-    wf: &WaveFront, penalties: &Penalties, mut score: usize, mut k: i32,
+    wf: &WaveFront, penalties: &Penalties, mut score: WfScore, mut k: WfK,
     check_points_values: &AnchorsToPassCheck,
-) -> (AlignmentResult, PassedAnchors) {
+) -> (BacktraceResult, PassedAnchors) {
     let mut opertion_length: usize = 0;
     let (start_index, max_k) = penalties.get_index_max_k(score);
     let mut index = start_index + (max_k + k) as usize;
@@ -375,7 +380,7 @@ pub fn dropout_wf_backtrace(
                         // (5) Component type
                         // not chnage
                         // (6) Add Cigar
-                        let match_count = (fr-next_fr) as u32;
+                        let match_count = (fr-next_fr) as OperationLength;
                         if match_count == 0 {
                             if let Some((Operation::Subst, last_fr)) = cigar.last_mut() {
                                 *last_fr += 1;
@@ -416,7 +421,7 @@ pub fn dropout_wf_backtrace(
                         // (5) Component type
                         component_type = 1;
                         // (6) Add Cigar
-                        let match_count = (fr-next_fr) as u32;
+                        let match_count = (fr-next_fr) as OperationLength;
                         if match_count != 0 {
                             cigar.push((Operation::Match, match_count));
                         }
@@ -450,7 +455,7 @@ pub fn dropout_wf_backtrace(
                         // (5) Component type
                         component_type = 2;
                         // (6) Add Cigar
-                        let match_count = (fr-next_fr) as u32;
+                        let match_count = (fr-next_fr) as OperationLength;
                         if match_count != 0 {
                             cigar.push((Operation::Match, match_count));
                         }
@@ -474,7 +479,7 @@ pub fn dropout_wf_backtrace(
                     },
                     _ => { // Can't be EMPTY -> this is START_POINT
                         if fr != 0 {
-                            cigar.push((Operation::Match, fr as u32));
+                            cigar.push((Operation::Match, fr as OperationLength));
                         };
                         // shrink
                         cigar.shrink_to_fit();

@@ -2,6 +2,9 @@ mod data;
 mod classic_wfa;
 mod dp_pairwise;
 
+mod compare_result {
+}
+
 mod accuracy {
     use super::*;
     use crate::alignment::*;
