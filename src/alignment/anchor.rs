@@ -5,8 +5,8 @@ use crate::io::cigar::{
 };
 use super::{Cutoff, Penalties, BlockPenalty, FmIndex, Alignment, AlignmentResult};
 use super::dwfa::{
-    WaveFront, AnchorsToPassCheck, CigarReference, BacktraceResult,
-    dropout_wf_align, dropout_wf_backtrace
+    WaveFrontDep, AnchorsToPassCheck, CigarReference, BacktraceResult,
+    dropout_wf_align, dropout_wf_backtrace_dep
 };
 
 use core::panic;
@@ -201,7 +201,7 @@ pub struct Anchor {
     /// (fore, hind)
     check_points: (Vec<usize>, Vec<usize>),
     /// Cache for inherited WF
-    wf_cache: Option<WaveFront>,
+    wf_cache: Option<WaveFrontDep>,
     /// Connected anchors index set for used as anchor's symbol
     connected: HashSet<usize>,
 }
@@ -608,7 +608,8 @@ impl Anchor {
                                 &qry_seq[current_anchor.position.1+current_anchor.size..],
                                 &ref_seq[current_anchor.position.0+current_anchor.size..],
                                 penalty_spare,
-                                penalties
+                                penalties,
+                                true,
                             )
                         },
                     }
@@ -627,7 +628,8 @@ impl Anchor {
                                 &qry_seq[qry_seq.len()-current_anchor.position.1..],
                                 &ref_seq[ref_seq.len()-current_anchor.position.0..],
                                 penalty_spare,
-                                penalties
+                                penalties,
+                                false
                             )
                         },
                     }
@@ -645,7 +647,7 @@ impl Anchor {
                     anchors, current_anchor_index, block_type.clone()
                 );
                 // (2) bactrace
-                let (alignment_res, connected_backtraces) = dropout_wf_backtrace(
+                let (alignment_res, connected_backtraces) = dropout_wf_backtrace_dep(
                     &wf, penalties, current_anchor_score, last_k, &anchors_to_chk
                 );
                 // (3) get valid anchor index
