@@ -1,4 +1,6 @@
 use crate::alignment::*;
+use crate::io::cigar::{Cigar, Clip, Operation};
+use crate::io::Alignment;
 
 use bio::alignment::*;
 use bio::alignment::AlignmentOperation;
@@ -17,7 +19,10 @@ pub struct DpAligner {
     gapext_penalty: usize,
 }
 type DpAnchor = (usize, usize, usize); // ref position, qry position, size
-pub type DpResult = Vec<(Vec<AlignmentOperation>, usize)>;
+
+pub type DpResultCigar = Vec<Alignment>;
+pub type DpResultVec = Vec<(Vec<AlignmentOperation>, usize)>;
+
 
 impl DpAligner {
     pub fn new(
@@ -48,11 +53,11 @@ fn calculate_kmer(
 
 pub fn alignment(
     aligner: &DpAligner, ref_seq: &[u8], qry_seq: &[u8]
-) -> DpResult {
+) -> Vec<Alignment> {
     // (1) get anchors (same as `anchorgroup`)
     let anchors = generate_anchors(aligner, ref_seq, qry_seq);
     // (2) alignment
-    let mut result: DpResult = Vec::new();
+    let mut result: DpResultVec = Vec::new();
     for (ref_pos, qry_pos, size) in anchors {
         let mut operations: Vec<AlignmentOperation> = Vec::new();
         let mut penalty: usize = 0;
@@ -92,7 +97,7 @@ pub fn alignment(
             result.push((operations, penalty))
         }
     };
-    result
+    conv_to_cigar(result)
 }
 
 fn generate_anchors(
@@ -154,4 +159,76 @@ fn get_scoring(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: 
     } else {
         scoring.xclip_suffix(0)
     }
+}
+
+fn conv_to_cigar(dp_result_vec: DpResultVec) -> Vec<Alignment> {
+    dp_result_vec.into_iter().map(|(ops, penalty)| {
+        let mut length = ops.len();
+        let mut start_index: usize = 0;
+        let mut end_index: usize = ops.len();
+        let clip_front = {
+            match ops[0] {
+                AlignmentOperation::Xclip(x) => {
+                    start_index += 1;
+                    length -= 1;
+                    Clip::Qry(x)
+                },
+                AlignmentOperation::Yclip(x) => {
+                    start_index += 1;
+                    length -= 1;
+                    Clip::Ref(x)
+                },
+                _ => Clip::None
+            }
+        };
+        let clip_end = {
+            match ops[end_index-1] {
+                AlignmentOperation::Xclip(x) => {
+                    end_index -= 1;
+                    length -= 1;
+                    Clip::Qry(x)
+                },
+                AlignmentOperation::Yclip(x) => {
+                    end_index -= 1;
+                    length -= 1;
+                    Clip::Ref(x)
+                },
+                _ => Clip::None
+            }
+        };
+        let mut cigar: Cigar = Vec::new();
+        for op in ops[start_index..end_index].iter() {
+            let next_cigar_op = match op {
+                AlignmentOperation::Match => Operation::Match,
+                AlignmentOperation::Subst => Operation::Subst,
+                AlignmentOperation::Del => Operation::Del,
+                AlignmentOperation::Ins => Operation::Ins,
+                _ => panic!("op conv err"),
+            };
+            
+            let elong = match cigar.last() {
+                Some((last_op, _)) => {
+                    if *last_op == next_cigar_op {
+                        true
+                    } else {
+                        false
+                    }
+                },
+                None => false
+            };
+
+            if elong {
+                cigar.last_mut().unwrap().1 += 1;
+            } else {
+                cigar.push((next_cigar_op, 1));
+            }
+        };
+        Alignment {
+            length,
+            penalty,
+            clip_front,
+            clip_end,
+            cigar,
+        }
+    }).collect()
 }

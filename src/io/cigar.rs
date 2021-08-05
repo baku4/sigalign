@@ -4,7 +4,7 @@ pub type Cigar = Vec<(Operation, OperationLength)>;
 // ReverseIndex: (index from end, count offset, ins count, del count)
 pub type ReverseIndex = (usize, OperationLength, OperationLength, OperationLength);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Operation {
     Match,
     Subst,

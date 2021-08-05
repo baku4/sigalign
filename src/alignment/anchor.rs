@@ -126,8 +126,6 @@ impl<'a> AnchorGroup<'a> {
         )
     }
     pub fn alignment(&mut self, using_cached_wf: bool) {
-        println!("Ref: {}, Qry: {}", self.ref_seq.len(), self.qry_seq.len());
-        println!("BEFORE: {:#?}", self.anchors);
         // (1) alignment hind
         for idx in 0..self.anchors.len() {
             Anchor::alignment(
@@ -137,7 +135,6 @@ impl<'a> AnchorGroup<'a> {
                 using_cached_wf
             );
         }
-        println!("HIND: {:#?}", self.anchors);
         // (2) alignment fore
         // TODO: not use new vector
         let reversed_ref_seq: Vec<u8> = self.ref_seq.iter().rev().map(|x| *x).collect();
@@ -150,7 +147,6 @@ impl<'a> AnchorGroup<'a> {
                 using_cached_wf
             );
         };
-        println!("FORE: {:#?}", self.anchors);
     }
     pub fn get_result(&mut self, get_minimum_penalty: bool) -> AlignmentResult {
         // anchor index, length, penalty
@@ -187,7 +183,7 @@ impl<'a> AnchorGroup<'a> {
         let ref_len = self.ref_seq.len();
         let qry_len = self.qry_seq.len();
         unique_anchors.into_iter().map(|unique_anchor_index| {
-            let (clip_front, clip_end, cigar) = Anchor::get_alignment(
+            let (clip_front, clip_end, cigar) = Anchor::clips_and_cigar(
                 &self.anchors,
                 unique_anchor_index,
                 ref_len,
@@ -281,17 +277,18 @@ impl ExactAlign {
     fn get_cigar_ridx<'a>(
         &'a self,
         anchors: &'a Vec<Anchor>,
+        block_type: BlockType,
         ref_len: usize,
         qry_len: usize,
     ) -> (Option<(&'a Cigar, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
         match self {
-            ExactAlign::Own((cigar, length, penalty)) => {
+            ExactAlign::Own((cigar, length, _)) => {
                 if cigar.len() == 0 {
                     (None, Clip::new(
                         ref_len,
                         qry_len,
                         *length,
-                        *penalty,
+                        *length,
                     ))
                 } else {
                     let (cigar_length, offset, ins, del) = get_reverse_index_from_own(cigar);
@@ -303,19 +300,32 @@ impl ExactAlign {
                     ))
                 }
             },
-            ExactAlign::Ref(ref_anchor_index, (length, penalty)) => {
-                if let AlignmentState::Exact(Some(ExactAlign::Own((cigar, _, _))), _) = &anchors[*ref_anchor_index].state {
-                    let (cigar_length, offset, ins, del) = get_reverse_index_from_ref(cigar, length);
-                    (Some((cigar, cigar_length, offset)), Clip::new(
-                        ref_len,
-                        qry_len,
-                        *length - del as usize,
-                        *length - ins as usize,
-                    ))
-                } else {
-                    // TODO: err msg
-                    panic!("Trying to get result operations from invalid anchor.");
-                }
+            ExactAlign::Ref(ref_anchor_index, (length, _)) => {
+                let cigar = match block_type {
+                    BlockType::Fore => {
+                        if let AlignmentState::Exact(Some(ExactAlign::Own((cigar, _, _))), _) = &anchors[*ref_anchor_index].state {
+                            cigar
+                        } else {
+                            // TODO: err msg
+                            panic!("Trying to get result operations from invalid anchor.");
+                        }
+                    },
+                    BlockType::Hind => {
+                        if let AlignmentState::Exact(_,ExactAlign::Own((cigar, _, _))) = &anchors[*ref_anchor_index].state {
+                            cigar
+                        } else {
+                            // TODO: err msg
+                            panic!("Trying to get result operations from invalid anchor.");
+                        }
+                    },
+                };
+                let (cigar_length, offset, ins, del) = get_reverse_index_from_ref(cigar, length);
+                (Some((cigar, cigar_length, offset)), Clip::new(
+                    ref_len,
+                    qry_len,
+                    *length - del as usize,
+                    *length - ins as usize,
+                ))
             }
         }
     }
@@ -628,7 +638,7 @@ impl Anchor {
                         ) as f64
                         - (penalties.e * p_opp) as f64
                         - penalties.o as f64 * cutoff.score_per_length
-                    ) / (penalties.e - 1) as f64
+                    ) / (penalties.e as f64 - cutoff.score_per_length)
                 },
                 BlockType::Fore => {
                     (
@@ -640,7 +650,7 @@ impl Anchor {
                         ) as f64
                         - ( penalties.e * p_opp) as f64
                         - penalties.o as f64 * cutoff.score_per_length
-                    ) / (penalties.e - 1) as f64
+                    ) / (penalties.e as f64 - cutoff.score_per_length)
                 }
             }.ceil() as usize;
             // Get cached wf
@@ -878,7 +888,7 @@ impl Anchor {
         }
     }
     #[inline]
-    fn get_alignment<'a>(
+    fn clips_and_cigar<'a>(
         anchors: &'a Vec<Self>, current_anchor_index: usize,
         ref_len: SequenceLength, qry_len: SequenceLength
     ) -> (Clip, Clip, Cigar) {
@@ -887,11 +897,13 @@ impl Anchor {
             // (1) Get cigar & ridx
             let (fore_cigar, fore_clip) = fore_option.as_ref().unwrap().get_cigar_ridx(
                 anchors,
+                BlockType::Fore,
                 current_anchor.position.0,
                 current_anchor.position.1
             );
             let (hind_cigar, hind_clip) = hind.get_cigar_ridx(
                 anchors,
+                BlockType::Hind,
                 ref_len-current_anchor.position.0-current_anchor.size,
                 qry_len-current_anchor.position.1-current_anchor.size
             );

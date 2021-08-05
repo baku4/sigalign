@@ -12,8 +12,8 @@ use std::slice::Iter;
 type WfScore = usize;
 type WfK = i32;
 type WfFrPoint = i32;
-const NullMaxK: i32 = -1;
-const NullFrPoint: i32 = -1;
+const NULL_MAX_K: i32 = -1;
+const NULL_FR_POINT: i32 = -1;
 // WaveFront Backtrace
 type BackTrace = u8;
 const EMPTY: u8 = 0;
@@ -149,19 +149,19 @@ impl Penalties {
         [
             // (1) score: s-o-e
             if score < self.o + self.e {
-                (0, NullMaxK)
+                (0, NULL_MAX_K)
             } else {
                 self.get_index_max_k(score-self.o-self.e)
             },
             // (2) score: s-x
             if score < self.x {
-                (0, NullMaxK)
+                (0, NULL_MAX_K)
             } else {
                 self.get_index_max_k(score-self.x)
             },
             // (3) score: s-e
             if score < self.e {
-                (0, NullMaxK)
+                (0, NULL_MAX_K)
             } else {
                 self.get_index_max_k(score-self.e)
             },
@@ -207,7 +207,10 @@ pub fn dropout_wf_align(
         );
         // Update Component
         wf[score].comp = wfs_comps;
+        // println!("wf score:{}\n{:#?}", score, wf[0..score+1].iter());
         if let Some(last_k) = exist_with_k {
+            // truncate
+            wf.truncate(score+1);
             return Ok((wf, score, last_k));
         }
     };
@@ -272,12 +275,7 @@ fn dropout_wf_next(
                             fr: pre_m.fr + 1,
                             bt: FROM_M,
                         };
-                            
-                        // Update M
-                        comp_array[0] = Component {
-                            fr: pre_m.fr + 1,
-                            bt: FROM_I,
-                        };
+                        
                     }
                 }
                 // 2. Update D from M & M from D
@@ -288,13 +286,6 @@ fn dropout_wf_next(
                         comp_array[2] = Component {
                             fr: pre_m.fr,
                             bt: FROM_M,
-                        };
-                        // Update M
-                        if comp_array[0].bt == EMPTY || comp_array[0].fr > pre_m.fr {
-                            comp_array[0] = Component {
-                                fr: pre_m.fr,
-                                bt: FROM_D,
-                            };
                         };
                     }
                 }
@@ -341,15 +332,29 @@ fn dropout_wf_next(
                 // 1. Update M from M
                 let comp_index = pre_wfs.max_k + k;
                 if let Some([pre_m, _, _]) = pre_wfs.comp.get(comp_index as usize) {
-                    if pre_m.bt != EMPTY {
-                        // Update M
-                        if comp_array[0].bt == EMPTY || comp_array[0].fr > pre_m.fr + 1 {
-                            comp_array[0] = Component {
-                                fr: pre_m.fr + 1,
-                                bt: FROM_M,
-                            };
+                    // Update M
+                    comp_array[0] = Component {
+                        fr: pre_m.fr + 1,
+                        bt: FROM_M,
+                    };
+                }
+                // 2. Update M from I
+                if comp_array[1].bt != EMPTY {
+                    if comp_array[0].bt == EMPTY || comp_array[1].fr >= comp_array[0].fr {
+                        comp_array[0] = Component {
+                            fr: comp_array[1].fr,
+                            bt: FROM_I,
                         };
-                    }
+                    };
+                }
+                // 3. Update M from D
+                if comp_array[2].bt != EMPTY {
+                    if comp_array[0].bt == EMPTY || comp_array[2].fr >= comp_array[0].fr {
+                        comp_array[0] = Component {
+                            fr: comp_array[2].fr,
+                            bt: FROM_D,
+                        };
+                    };
                 }
             });
         }    
@@ -389,7 +394,7 @@ fn dropout_wf_next_dep(
     // wf next
     for k in -max_k..=max_k {
         let index = start_index + (max_k + k) as usize;
-        let mut msk_array: [WfFrPoint; 3] = [NullFrPoint; 3];
+        let mut msk_array: [WfFrPoint; 3] = [NULL_FR_POINT; 3];
         let mut msk_exist = false;
 
         // Next I
@@ -710,9 +715,9 @@ pub fn dropout_wf_backtrace(
                 match component.bt {
                     FROM_M => {
                         // (1) Next score
-                        score -= penalties.o + penalties.x;
+                        score -= penalties.o + penalties.e;
                         // (2) Next k
-                        k += 1;
+                        k -= 1;
                         // (3) Next WFS
                         wfs = &wf[score];
                         // (4) Component type
@@ -735,7 +740,7 @@ pub fn dropout_wf_backtrace(
                     },
                     _ => { // FROM_I
                         // (1) Next score
-                        score -= penalties.x;
+                        score -= penalties.e;
                         // (2) Next k
                         k -= 1;
                         // (3) Next WFS
@@ -765,9 +770,9 @@ pub fn dropout_wf_backtrace(
                 match component.bt {
                     FROM_M => {
                         // (1) Next score
-                        score -= penalties.o + penalties.x;
+                        score -= penalties.o + penalties.e;
                         // (2) Next k
-                        k -= 1;
+                        k += 1;
                         // (3) Next WFS
                         wfs = &wf[score];
                         // (4) Component type
@@ -790,7 +795,7 @@ pub fn dropout_wf_backtrace(
                     },
                     _ => { // FROM_D
                         // (1) Next score
-                        score -= penalties.x;
+                        score -= penalties.e;
                         // (2) Next k
                         k += 1;
                         // (3) Next WFS

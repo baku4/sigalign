@@ -21,7 +21,7 @@ struct AlignmentOption {
 
 fn alignment_using_dp(
     alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>
-) -> Option<dp_pairwise::DpResult> {
+) -> Option<alignment::AlignmentResult> {
     let aligner = dp_pairwise::DpAligner::new(alignment_option.score_per_length, alignment_option.minimum_length, alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty);
     let res = dp_pairwise::alignment(&aligner, &ref_seq, &qry_seq);
     if res.len() == 0 {
