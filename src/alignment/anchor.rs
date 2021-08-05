@@ -13,7 +13,6 @@ use core::panic;
 use std::cmp::{min, max};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
-use std::slice::Iter;
 
 /// Anchor Group
 pub struct AnchorGroup<'a> {
@@ -836,22 +835,6 @@ impl Anchor {
     EVALUATE
     */
     #[inline]
-    fn get_length_and_penalty(&self) -> (SequenceLength, Penalty) {
-        let mut total_length: usize = 0;
-        let mut total_penalty: usize = 0;
-        if let AlignmentState::Exact(fore_option, hind) = &self.state {
-            let fore = fore_option.as_ref().unwrap();
-            // add fore & hind info
-            for &exact_align in [fore, hind].iter() {
-                let (len, p) = exact_align.length_and_penalty();
-                total_length += len;
-                total_penalty += p;
-            }
-        }
-        total_length += self.size;
-        (total_length, total_penalty)
-    }
-    #[inline]
     fn drop_with_length_penalty(&mut self, cutoff: &Cutoff) -> Option<(SequenceLength, Penalty)> {
         let mut total_length: usize = 0;
         let mut total_penalty: usize = 0;
@@ -877,14 +860,6 @@ impl Anchor {
         } else {
             self.to_dropped();
             None
-        }
-    }
-    #[inline]
-    fn exact_alignment_is_valid(penalty: Penalty, length: SequenceLength, cutoff: &Cutoff) -> bool {
-        if (length >= cutoff.minimum_length) && (penalty as f64/length as f64 <= cutoff.score_per_length) {
-            true
-        } else {
-            false
         }
     }
     #[inline]
@@ -952,67 +927,7 @@ impl Anchor {
             panic!("Trying to get result operations from invalid anchor.");
         }
     }
-    #[inline]
-    fn get_unique_symbols(anchors: &Vec<Self>, anchors_of_minimum_penalty: Option<HashSet<usize>>) -> HashSet<usize> {
-        // TODO: can be more optimized
-        // valid anchors set
-        let valid_anchors_set: HashSet<usize> = match anchors_of_minimum_penalty {
-            Some(anchors_set) => anchors_set,
-            None => {
-                anchors.iter().enumerate().filter_map(
-                    |(idx, anchor)| {
-                        match anchor.state {
-                            AlignmentState::Exact(_, _) => {
-                                Some(idx)
-                            },
-                            _ => {
-                                None
-                            }
-                        }
-                    }
-                ).collect()
-            }
-        };
-        // symbol dictionary
-        let anchor_symbols = {
-            let mut anchor_symbols: HashMap<usize, HashSet<usize>> = HashMap::with_capacity(valid_anchors_set.len());
-            // 1. add connected & valid anchor
-            for &anchor_index in valid_anchors_set.iter() {
-                let symbol: HashSet<usize> =  valid_anchors_set.intersection(&anchors[anchor_index].connected).map(|x| *x).collect();
-                anchor_symbols.insert(anchor_index, symbol);
-            };
-            // 2. add extended anchors of connected
-            for anchor_index in valid_anchors_set.iter() {
-                let mut extended_symbol: HashSet<usize> = HashSet::new();
-                anchor_symbols.get(anchor_index).unwrap().iter().for_each(|idx| {
-                    extended_symbol.extend(anchor_symbols.get(idx).unwrap());
-                });
-                let symbol = anchor_symbols.get_mut(anchor_index).unwrap();
-                symbol.extend(extended_symbol);
-                // add self index
-                symbol.insert(*anchor_index);
-            };
-            anchor_symbols
-        };
-        // unique symbols list
-        let unique_anchor = {
-            let mut unique_anchor: HashSet<usize> = HashSet::new();
-            let mut used_symbols: HashSet<Vec<usize>> = HashSet::with_capacity(anchor_symbols.len());
-            for (anchor_index, symbol) in anchor_symbols.into_iter() {
-                let mut serialized_symbol: Vec<usize> = symbol.into_iter().collect();
-                serialized_symbol.sort();
-                if !used_symbols.contains(&serialized_symbol) {
-                    unique_anchor.insert(anchor_index);
-                    used_symbols.insert(serialized_symbol);
-                }
-            };
-            unique_anchor
-        };
-        unique_anchor
-    }
 }
-
-type AlignmentPresetDep = (usize, SequenceLength, Penalty);
 
 #[inline]
 fn unique_symbols_filtering(
