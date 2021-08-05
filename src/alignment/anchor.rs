@@ -5,14 +5,15 @@ use crate::io::cigar::{
 };
 use super::{Cutoff, Penalties, BlockPenalty, FmIndex, Alignment, AlignmentResult};
 use super::dwfa::{
-    WaveFrontDep, AnchorsToPassCheck, CigarReference, BacktraceResult,
-    dropout_wf_align, dropout_wf_backtrace_dep
+    WaveFront, AnchorsToPassCheck, CigarReference, BacktraceResult,
+    dropout_wf_align, dropout_wf_backtrace
 };
 
 use core::panic;
 use std::cmp::{min, max};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
+use std::slice::Iter;
 
 /// Anchor Group
 pub struct AnchorGroup<'a> {
@@ -125,6 +126,8 @@ impl<'a> AnchorGroup<'a> {
         )
     }
     pub fn alignment(&mut self, using_cached_wf: bool) {
+        println!("Ref: {}, Qry: {}", self.ref_seq.len(), self.qry_seq.len());
+        println!("BEFORE: {:#?}", self.anchors);
         // (1) alignment hind
         for idx in 0..self.anchors.len() {
             Anchor::alignment(
@@ -134,6 +137,7 @@ impl<'a> AnchorGroup<'a> {
                 using_cached_wf
             );
         }
+        println!("HIND: {:#?}", self.anchors);
         // (2) alignment fore
         // TODO: not use new vector
         let reversed_ref_seq: Vec<u8> = self.ref_seq.iter().rev().map(|x| *x).collect();
@@ -146,43 +150,57 @@ impl<'a> AnchorGroup<'a> {
                 using_cached_wf
             );
         };
+        println!("FORE: {:#?}", self.anchors);
     }
     pub fn get_result(&mut self, get_minimum_penalty: bool) -> AlignmentResult {
-        // (3) evaluate
-        let anchors_of_minimum_penalty = if get_minimum_penalty {
-            // TODO: first anchor can be evalauted only one time?
-            let (mut minimum_penalty, _) = self.anchors[0].get_penalty_and_length();
-            let mut anchors_of_minimum_penalty: HashSet<usize> = HashSet::new();
+        // anchor index, length, penalty
+        type AlignmentPreset = HashMap<usize, (SequenceLength, Penalty)>;
+        // (1) Get AlignmentPreset of valid anchors
+        let alignment_preset: AlignmentPreset = if get_minimum_penalty {
+            let mut minimum_penalty: Penalty = Penalty::MAX;
+            let mut anchors_map: AlignmentPreset = HashMap::new();
             for (anchor_index, anchor) in self.anchors.iter_mut().enumerate() {
-                let (penalty, length) = anchor.get_penalty_and_length();
-                if !Anchor::exact_alignment_is_valid(penalty, length, &self.cutoff) {
-                    anchor.to_dropped();
-                } else {
+                if let Some((length, penalty)) = anchor.drop_with_length_penalty(self.cutoff) {
                     if penalty < minimum_penalty {
                         minimum_penalty = penalty;
-                        anchors_of_minimum_penalty = HashSet::from_iter(vec![anchor_index]);
+                        anchors_map = HashMap::new();
+                        anchors_map.insert(anchor_index, (length, penalty));
                     } else if penalty == minimum_penalty {
-                        anchors_of_minimum_penalty.insert(anchor_index);
+                        anchors_map.insert(anchor_index, (length, penalty));
                     }
                 }
             }
-            Some(anchors_of_minimum_penalty)
+            anchors_map
         } else {
-            for anchor in self.anchors.iter_mut() {
-                let (penalty, length) = anchor.get_penalty_and_length();
-                if !Anchor::exact_alignment_is_valid(penalty, length, &self.cutoff) {
-                    anchor.to_dropped();
-                };
-            };
-            None
+            let mut anchors_map: AlignmentPreset = HashMap::new();
+            for (anchor_index, anchor) in self.anchors.iter_mut().enumerate() {
+                if let Some((length, penalty)) = anchor.drop_with_length_penalty(self.cutoff) {
+                    anchors_map.insert(anchor_index, (length, penalty));
+                }
+            }
+            anchors_map
         };
-        // (4) get unique anchors
-        let unqiue_anchors_index = Anchor::get_unique_symbols(&self.anchors, anchors_of_minimum_penalty);
-        // (5) get cigar & penalty
+        let valid_anchors: HashSet<usize> = alignment_preset.keys().map(|index| *index).collect();
+        // (2) get unique anchors
+        let unique_anchors = unique_symbols_filtering(valid_anchors, &self.anchors);
+        // (3) get cigar & penalty
         let ref_len = self.ref_seq.len();
         let qry_len = self.qry_seq.len();
-        unqiue_anchors_index.into_iter().map(|anchor_index| {
-            Anchor::get_alignment(&self.anchors, anchor_index, ref_len, qry_len)
+        unique_anchors.into_iter().map(|unique_anchor_index| {
+            let (clip_front, clip_end, cigar) = Anchor::get_alignment(
+                &self.anchors,
+                unique_anchor_index,
+                ref_len,
+                qry_len
+            );
+            let (length, penalty) = alignment_preset.get(&unique_anchor_index).unwrap();
+            Alignment {
+                penalty: *penalty,
+                length: *length,
+                clip_front: clip_front, 
+                clip_end: clip_end,
+                cigar: cigar, 
+            }
         }).collect()
     }
 }
@@ -201,7 +219,7 @@ pub struct Anchor {
     /// (fore, hind)
     check_points: (Vec<usize>, Vec<usize>),
     /// Cache for inherited WF
-    wf_cache: Option<WaveFrontDep>,
+    wf_cache: Option<WaveFront>,
     /// Connected anchors index set for used as anchor's symbol
     connected: HashSet<usize>,
 }
@@ -242,7 +260,7 @@ impl EstAlign {
 #[derive(Debug)]
 pub enum ExactAlign {
     /// Having an operations.
-    Own(BacktraceResult), 
+    Own((Cigar, SequenceLength, Penalty)), 
     /// Referring to the operation of another anchor.
     /// (index of connected anchor, length, penalty)
     Ref(usize, CigarReference),
@@ -256,6 +274,48 @@ impl ExactAlign {
             },
             &Self::Ref(_, v) => {
                 v
+            }
+        }
+    }
+    #[inline]
+    fn get_cigar_ridx<'a>(
+        &'a self,
+        anchors: &'a Vec<Anchor>,
+        ref_len: usize,
+        qry_len: usize,
+    ) -> (Option<(&'a Cigar, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
+        match self {
+            ExactAlign::Own((cigar, length, penalty)) => {
+                if cigar.len() == 0 {
+                    (None, Clip::new(
+                        ref_len,
+                        qry_len,
+                        *length,
+                        *penalty,
+                    ))
+                } else {
+                    let (cigar_length, offset, ins, del) = get_reverse_index_from_own(cigar);
+                    (Some((cigar, cigar_length, offset)), Clip::new(
+                        ref_len,
+                        qry_len,
+                        *length - del as usize,
+                        *length - ins as usize,
+                    ))
+                }
+            },
+            ExactAlign::Ref(ref_anchor_index, (length, penalty)) => {
+                if let AlignmentState::Exact(Some(ExactAlign::Own((cigar, _, _))), _) = &anchors[*ref_anchor_index].state {
+                    let (cigar_length, offset, ins, del) = get_reverse_index_from_ref(cigar, length);
+                    (Some((cigar, cigar_length, offset)), Clip::new(
+                        ref_len,
+                        qry_len,
+                        *length - del as usize,
+                        *length - ins as usize,
+                    ))
+                } else {
+                    // TODO: err msg
+                    panic!("Trying to get result operations from invalid anchor.");
+                }
             }
         }
     }
@@ -629,7 +689,7 @@ impl Anchor {
                                 &ref_seq[ref_seq.len()-current_anchor.position.0..],
                                 penalty_spare,
                                 penalties,
-                                false
+                                true, //FIXME: add reverse
                             )
                         },
                     }
@@ -641,14 +701,14 @@ impl Anchor {
             /*
             CASE 1: wf not dropped
             */
-            Ok((mut wf, current_anchor_score, last_k)) => {
+            Ok((mut wf, score, last_k)) => {
                 // (1) get check points for backtrace
                 let anchors_to_chk: AnchorsToPassCheck = Self::get_check_points_for_backtrace(
                     anchors, current_anchor_index, block_type.clone()
                 );
                 // (2) bactrace
-                let (alignment_res, connected_backtraces) = dropout_wf_backtrace_dep(
-                    &wf, penalties, current_anchor_score, last_k, &anchors_to_chk
+                let (alignment_res, connected_backtraces) = dropout_wf_backtrace(
+                    &wf, penalties, score, last_k, &anchors_to_chk
                 );
                 // (3) get valid anchor index
                 let connected_anchor_indices: HashSet<usize> = HashSet::from_iter(
@@ -662,12 +722,12 @@ impl Anchor {
                         BlockType::Hind => {
                             current_anchor.state = AlignmentState::Exact(
                                 None,
-                                ExactAlign::Own(alignment_res),
+                                ExactAlign::Own((alignment_res.0, alignment_res.1, score)),
                             );
                         },
                         BlockType::Fore => {
                             if let AlignmentState::Exact(fore_block, _) = &mut current_anchor.state {
-                                *fore_block = Some(ExactAlign::Own(alignment_res));
+                                *fore_block = Some(ExactAlign::Own((alignment_res.0, alignment_res.1, score)));
                             }
                         }
                     }
@@ -684,7 +744,7 @@ impl Anchor {
                                 None,
                                 ExactAlign::Ref(
                                     current_anchor_index,
-                                    (length, current_anchor_score - penalty_in_ref)
+                                    (length, score - penalty_in_ref)
                                 ),
                             );
                             // update anchor's connected info
@@ -699,7 +759,7 @@ impl Anchor {
                             if let AlignmentState::Exact(fore_block, _) = &mut connected_anchor.state {
                                 *fore_block = Some(ExactAlign::Ref(
                                     current_anchor_index,
-                                    (length, current_anchor_score - penalty_in_ref)
+                                    (length, score - penalty_in_ref)
                                 ));
                             };
                             // update anchor's connected info
@@ -762,11 +822,11 @@ impl Anchor {
     fn to_dropped(&mut self) {
         self.state = AlignmentState::Dropped;
     }
-    /**
+    /*
     EVALUATE
     */
     #[inline]
-    fn get_penalty_and_length(&self) -> (Penalty, SequenceLength) {
+    fn get_length_and_penalty(&self) -> (SequenceLength, Penalty) {
         let mut total_length: usize = 0;
         let mut total_penalty: usize = 0;
         if let AlignmentState::Exact(fore_option, hind) = &self.state {
@@ -779,7 +839,35 @@ impl Anchor {
             }
         }
         total_length += self.size;
-        (total_penalty, total_length)
+        (total_length, total_penalty)
+    }
+    #[inline]
+    fn drop_with_length_penalty(&mut self, cutoff: &Cutoff) -> Option<(SequenceLength, Penalty)> {
+        let mut total_length: usize = 0;
+        let mut total_penalty: usize = 0;
+        // If already dropped: pass
+        if let AlignmentState::Exact(fore_option, hind) = &self.state {
+            // fore
+            let (len, p) = fore_option.as_ref().unwrap().length_and_penalty();
+            total_length += len;
+            total_penalty += p;
+            // anchor
+            total_length += self.size;
+            // hind
+            let (len, p) = hind.length_and_penalty();
+            total_length += len;
+            total_penalty += p;
+            
+        } else {
+            return None;
+        }
+        // Evaluate
+        if (total_length >= cutoff.minimum_length) && (total_penalty as f64/total_length as f64 <= cutoff.score_per_length) {
+            Some((total_length, total_penalty))
+        } else {
+            self.to_dropped();
+            None
+        }
     }
     #[inline]
     fn exact_alignment_is_valid(penalty: Penalty, length: SequenceLength, cutoff: &Cutoff) -> bool {
@@ -787,6 +875,69 @@ impl Anchor {
             true
         } else {
             false
+        }
+    }
+    #[inline]
+    fn get_alignment<'a>(
+        anchors: &'a Vec<Self>, current_anchor_index: usize,
+        ref_len: SequenceLength, qry_len: SequenceLength
+    ) -> (Clip, Clip, Cigar) {
+        let current_anchor = &anchors[current_anchor_index];
+        if let AlignmentState::Exact(fore_option, hind) = &current_anchor.state {
+            // (1) Get cigar & ridx
+            let (fore_cigar, fore_clip) = fore_option.as_ref().unwrap().get_cigar_ridx(
+                anchors,
+                current_anchor.position.0,
+                current_anchor.position.1
+            );
+            let (hind_cigar, hind_clip) = hind.get_cigar_ridx(
+                anchors,
+                ref_len-current_anchor.position.0-current_anchor.size,
+                qry_len-current_anchor.position.1-current_anchor.size
+            );
+            // (2) Generate empty new cigar
+            let mut new_cigar: Cigar = Vec::with_capacity(
+                if let Some((_, cigar_length, _)) = fore_cigar{
+                    cigar_length
+                } else {
+                    0
+                } +
+                if let Some((_, cigar_length, _)) = hind_cigar{
+                    cigar_length
+                } else {
+                    0
+                } + 1
+            );
+            // (3) Deal & generate clip with fore
+            if let Some((cigar, cigar_length, offset)) = fore_cigar {
+                new_cigar.extend(&cigar[..cigar_length]);
+                new_cigar.last_mut().unwrap().1 = offset;
+            };
+            // (4) Deal with size
+            if let Some((Operation::Match, count)) = new_cigar.last_mut() {
+                *count += current_anchor.size as u32;
+            } else {
+                new_cigar.push((Operation::Match, current_anchor.size as u32))
+            };
+            // (5) Deal & generate clip with hind
+            if let Some((cigar, cigar_length, offset)) = hind_cigar{
+                // first index
+                let first_cigar_op = cigar[cigar_length-1].0;
+                match first_cigar_op {
+                    Operation::Match => {
+                        new_cigar.last_mut().unwrap().1 += offset;
+                    },
+                    other_op => {
+                        new_cigar.push((other_op, offset));
+                    }
+                };
+                // extend remains
+                new_cigar.extend(cigar[..cigar_length-1].iter().rev());
+            };
+            (fore_clip, hind_clip, new_cigar)
+        } else {
+            // TODO: err msg
+            panic!("Trying to get result operations from invalid anchor.");
         }
     }
     #[inline]
@@ -847,126 +998,48 @@ impl Anchor {
         };
         unique_anchor
     }
-    #[inline]
-    fn get_alignment<'a>(
-        anchors: &'a Vec<Self>, current_anchor_index: usize,
-        ref_len: SequenceLength, qry_len: SequenceLength
-    ) -> Alignment {
-        let current_anchor = &anchors[current_anchor_index];
-        let mut total_length: usize = 0;
-        let mut total_penalty: usize = 0;
-        if let AlignmentState::Exact(fore_option, hind) = &current_anchor.state {
-            // Closure: get cigar and reverse index
-            let mut get_cigar_ridx = |exact_align: &'a ExactAlign| -> Option<(&'a Cigar, ReverseIndex)> {
-                match exact_align {
-                    ExactAlign::Own((cigar, length, penalty)) => {
-                        if cigar.len() == 0 {
-                            None
-                        } else {
-                            total_length += length;
-                            total_penalty += penalty;
-                            let mut reverse_index = get_reverse_index_from_own(cigar);
-                            // update indel count to qry, ref left length
-                            reverse_index.2 = *length as u32 - reverse_index.2;
-                            reverse_index.3 = *length as u32 - reverse_index.3;
-                            Some((cigar, reverse_index))
-                        }
-                    },
-                    ExactAlign::Ref(ref_anchor_index, (length, penalty)) => {
-                        total_length += length;
-                        total_penalty += penalty;
-                        if let AlignmentState::Exact(Some(ExactAlign::Own((cigar, _, _))), _) = &anchors[*ref_anchor_index].state {
-                            let mut reverse_index = get_reverse_index_from_ref(cigar, length);
-                            // update indel count to qry, ref left length
-                            reverse_index.2 = *length as u32 - reverse_index.2;
-                            reverse_index.3 = *length as u32 - reverse_index.3;
-                            Some((cigar, get_reverse_index_from_ref(cigar, length)))
-                        } else {
-                            // TODO: err msg
-                            panic!("Trying to get result operations from invalid anchor.");
-                        }
-                    }
+}
+
+type AlignmentPresetDep = (usize, SequenceLength, Penalty);
+
+#[inline]
+fn unique_symbols_filtering(
+    valid_anchors: HashSet<usize>,
+    anchors: &Vec<Anchor>,
+) -> HashSet<usize>{
+    // init
+    let mut anchor_symbols: HashMap<usize, HashSet<usize>> = HashMap::with_capacity(valid_anchors.len());
+    let mut used_symbols: HashSet<Vec<usize>> = HashSet::with_capacity(valid_anchors.len());
+    let mut unique_anchors: HashSet<usize> = HashSet::with_capacity(valid_anchors.len());
+    // 1. add connected & valid anchor
+    for &anchor_index in valid_anchors.iter() {
+        let symbol: HashSet<usize> = valid_anchors.intersection(&anchors[anchor_index].connected).map(|x| *x).collect();
+        anchor_symbols.insert(anchor_index, symbol);
+    };
+    // 2. get unique anchors
+    for (anchor_index, mut symbol) in anchor_symbols.clone() {
+        // get lexicographic ordered symbols
+        let lexico_ordered_symbol = {
+            // add extended anchors 
+            for extended_anchor_index in symbol.clone() {
+                for index in anchor_symbols.get(&extended_anchor_index).unwrap() {
+                    symbol.insert(*index);
                 }
-            };
-            // Closure: Get clip operation
-            let get_clip_op = |qry_aligned_length: u32, ref_aligned_length: u32| {
-                let ref_left = ref_len - ref_aligned_length as SequenceLength;
-                let qry_left = qry_len - qry_aligned_length as SequenceLength;
-                if ref_left == qry_left {
-                    Clip::None
-                } else if ref_left > qry_left {
-                    Clip::Ref(ref_left - qry_left)
-                } else {
-                    Clip::Qry(qry_left - ref_left)
-                }
-            };
-            // (1) Get cigar & ridx
-            let fore_cigar_ridx = get_cigar_ridx(fore_option.as_ref().unwrap());
-            let hind_cigar_ridx = get_cigar_ridx(hind);
-            // (2) Generate empty new cigar
-            let mut new_cigar: Cigar = Vec::with_capacity(
-                if let Some((_, (cigar_length, _, _, _))) = fore_cigar_ridx{
-                    cigar_length
-                } else {
-                    0
-                } +
-                if let Some((_, (cigar_length, _, _, _))) = hind_cigar_ridx{
-                    cigar_length
-                } else {
-                    0
-                } + 1
-            );
-            // (3) Deal & generate clip with fore
-            let fore_clip = match fore_cigar_ridx {
-                Some((cigar, ridx)) => {
-                    new_cigar.extend(&cigar[..ridx.0]);
-                    new_cigar.last_mut().unwrap().1 = ridx.1;
-                    get_clip_op(ridx.2, ridx.3)
-                },
-                None => {
-                    Clip::None
-                },
-            };
-            // (4) Deal with size
-            if let Some((Operation::Match, count)) = new_cigar.last_mut() {
-                *count += current_anchor.size as u32;
-            } else {
-                new_cigar.push((Operation::Match, current_anchor.size as u32))
-            };
-            total_length += current_anchor.size;
-            // (5) Deal & generate clip with hind
-            let hind_clip = match hind_cigar_ridx {
-                Some((cigar, ridx)) => {
-                    // first index
-                    let first_cigar_op = cigar[ridx.0-1].0;
-                    match first_cigar_op {
-                        Operation::Match => {
-                            new_cigar.last_mut().unwrap().1 += ridx.1;
-                        },
-                        other_op => {
-                            new_cigar.push((other_op, ridx.1));
-                        }
-                    };
-                    // extend remains
-                    new_cigar.extend(cigar[..ridx.0-1].iter().rev());
-                    get_clip_op(ridx.2, ridx.3)
-                },
-                None => {
-                    Clip::None
-                },
-            };
-            Alignment {
-                penalty: total_penalty,
-                length: total_length,
-                clip_front: fore_clip,
-                clip_end: hind_clip,
-                cigar: new_cigar,
             }
-        } else {
-            // TODO: err msg
-            panic!("Trying to get result operations from invalid anchor.");
+            // add self
+            symbol.insert(anchor_index);
+            // symbol to vector
+            let mut vec: Vec<usize> = symbol.into_iter().collect();
+            vec.sort();
+            vec
+        };
+        // if not exist in used_symbols: add to unique anchors set
+        if !used_symbols.contains(&lexico_ordered_symbol) {
+            used_symbols.insert(lexico_ordered_symbol);
+            unique_anchors.insert(anchor_index);
         }
     }
+    unique_anchors
 }
 
 #[derive(Clone)]

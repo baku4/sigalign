@@ -19,6 +19,26 @@ pub enum Clip {
     Ref(SequenceLength),
 }
 
+impl Clip {
+    #[inline]
+    pub fn new(
+        ref_len: SequenceLength,
+        qry_len: SequenceLength,
+        ref_aligned_length: SequenceLength,
+        qry_aligned_length: SequenceLength
+    ) -> Self {
+        let ref_left = ref_len - ref_aligned_length;
+        let qry_left = qry_len - qry_aligned_length;
+        if ref_left == qry_left {
+            Clip::None
+        } else if ref_left > qry_left {
+            Clip::Ref(ref_left - qry_left)
+        } else {
+            Clip::Qry(qry_left - ref_left)
+        }
+    }
+}
+
 #[inline]
 pub fn get_reverse_index_from_own(reversed_cigar: &Cigar) -> ReverseIndex { 
     let mut ins: u32 = 0;

@@ -43,6 +43,7 @@ mod compare_result {
     use super::*;
     use crate::*;
 
+    #[allow(dead_code)]
     #[test]
     fn test_alignment_result() {
         // setting option
@@ -56,7 +57,7 @@ mod compare_result {
             get_minimum_penalty: true,
         };
         // executor
-        let executor = multi_thread::print_output::Executor::new(4);
+        let executor = multi_thread::print_output::Executor::new(1);
         // get 
         let map = data::get_connected_map();
         // read data
