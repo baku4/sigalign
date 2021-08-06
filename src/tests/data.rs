@@ -1,20 +1,22 @@
 use bio::io::fasta::{self, *};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io;
+use std::io::{self, BufReader};
 use std::path::Path;
 
 const FASTA_DIR: &str = "./src/tests/fasta";
 const FASTA_FILES: [&str; 2] = ["./src/tests/fasta/ERR209055.fa", "./src/tests/fasta/ERR209056.fa"];
 
-pub fn ref_fasta_records() -> Records<File> {
+type RecordsType = Records<BufReader<File>>;
+
+pub fn ref_fasta_records() -> RecordsType {
     fasta::Reader::from_file(FASTA_FILES[0]).unwrap().records()
 }
-pub fn qry_fasta_records() -> Records<File> {
+pub fn qry_fasta_records() -> RecordsType {
     fasta::Reader::from_file(FASTA_FILES[1]).unwrap().records()
 }
 
-pub fn get_fasta_records() -> (Records<File>, Records<File>) {
+pub fn get_fasta_records() -> (RecordsType, RecordsType) {
     let mut ref_records = fasta::Reader::from_file(FASTA_FILES[0]).unwrap().records();
     let mut qry_records = fasta::Reader::from_file(FASTA_FILES[1]).unwrap().records();
     (ref_records, qry_records)

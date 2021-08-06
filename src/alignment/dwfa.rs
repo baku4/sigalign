@@ -18,6 +18,8 @@ const FROM_I: u8 = 2;
 const FROM_D: u8 = 3;
 const START_POINT: u8 = 4;
 
+// TODO: del pub
+
 #[derive(Clone, Default, Debug)]
 pub struct WFS {
     m_fr: WfFrPoint,

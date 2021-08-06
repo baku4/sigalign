@@ -3,7 +3,7 @@ mod classic_wfa;
 mod dp_pairwise;
 mod multi_thread;
 
-use crate::*;
+use crate::{*, alignment::{Cutoff, Penalties}};
 
 #[derive(Debug, Clone, Copy)]
 struct AlignmentOption {
@@ -34,9 +34,13 @@ fn alignment_using_dp(
 fn alignment_using_dwfa(
     alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>
 ) -> Option<alignment::AlignmentResult> {
-    let aligner = alignment::Aligner::new(alignment_option.score_per_length, alignment_option.minimum_length, alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty, alignment_option.using_cached_wf, alignment_option.get_minimum_penalty);
-    let res= aligner.perform_with_sequence_using_new_anchor(&ref_seq, &qry_seq);
-    res
+    let cutoff = Cutoff::new(alignment_option.minimum_length, alignment_option.score_per_length);
+    let penalties = Penalties::new(alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty);
+    let aligner = alignment::Aligner::new(cutoff, penalties);
+    // FIXME:
+    // let res= aligner.align_with_only_sequences(&ref_seq, &qry_seq);
+    //
+    None
 }
 
 mod compare_result {

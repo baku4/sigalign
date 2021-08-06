@@ -31,7 +31,7 @@ impl DpAligner {
         score_per_length: f64, minimum_length: usize,
         mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize
     ) -> Self {
-        let kmer = calculate_kmer(
+        let kmer = calculate_kmer_dp(
             score_per_length, minimum_length, mismatch_penalty,
             gapopen_penalty, gapext_penalty
         );
@@ -46,10 +46,13 @@ impl DpAligner {
     }
 }
 
-fn calculate_kmer(
+fn calculate_kmer_dp(
     score_per_length: f64, minimum_length: usize, mismatch_penalty: usize,
-    gapopen_penalty: usize, gapext_penalty: usize) -> usize {
-    let kmer = Aligner::kmer_calculation(score_per_length, minimum_length, &BlockPenalty::new(mismatch_penalty, gapopen_penalty, gapext_penalty));
+    gapopen_penalty: usize, gapext_penalty: usize
+) -> usize {
+    let bp = BlockPenalty::new(&Penalties::new(mismatch_penalty, gapopen_penalty, gapext_penalty ));
+    let cutoff = Cutoff::new(minimum_length, score_per_length);
+    let kmer = calculate_kmer(&cutoff, &bp);
     kmer
 }
 

@@ -1,6 +1,9 @@
 pub mod cigar;
+pub mod reader;
 
 use crate::{SequenceLength, Penalty};
+
+// DATA STRUCTURES
 
 #[derive(Debug)]
 pub struct Alignment {

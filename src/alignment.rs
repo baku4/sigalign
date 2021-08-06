@@ -2,73 +2,95 @@
 mod anchor;
 mod dwfa;
 
-use crate::{SequenceLength, OperationLength, Penalty};
+use std::fmt::Debug;
+
+use crate::{SequenceLength, Penalty};
 use crate::io::Alignment;
-use crate::io::cigar::{Cigar, Clip};
-
-use lt_fm_index::Config as FmConfig;
-use lt_fm_index::FmIndex;
-
-const FM_KLT_KMER_SIZE: usize = 8;
-const FM_SA_SAMPLING_RATIO: u64 = 2;
-
-
-#[derive(Debug)]
-pub struct Aligner {
-    cutoff: Cutoff,
-    kmer: usize,
-    penalties: Penalties,
-    // TODO: emp kmer naming
-    emp_kmer: BlockPenalty,
-    using_cached_wf: bool,
-    get_minimum_penalty: bool,
-}
+use crate::reference::{Reference, FmIndex};
 
 // Alignment Result
 pub type AlignmentResult = Vec<Alignment>;
 
+#[derive(Debug, Clone)]
+pub struct Penalties {
+    x: Penalty,
+    o: Penalty,
+    e: Penalty,
+}
+impl Penalties {
+    /// Generate new [Penalties] which is required to [Aligner]
+    /// - x: penalty for mismatch
+    /// - o: penalty for gap opening
+    /// - e: penalty for gap extending
+    pub fn new(x: usize, o: usize, e: usize) -> Self {
+        Self { x, o, e }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Cutoff {
+    ml: SequenceLength,
+    ppl: f64,
+}
+impl Cutoff {
+    /// Generate new [Cutoff] which is required to [Aligner]
+    /// - ml: minimum aligned length
+    /// - ppl: penalty per aligned length
+    pub fn new(ml: SequenceLength, ppl: f64) -> Self {
+        Self{ ml, ppl }
+    }
+}
+
+pub struct Aligner {
+    cutoff: Cutoff,
+    penalties: Penalties,
+    // Auto caluclated
+    block_penalty: BlockPenalty,
+    kmer: usize,
+    // Options
+    using_cached_wf: bool,
+    get_minimum_penalty: bool,
+    // Reference
+    reference: Option<Reference>,
+}
+
 impl Aligner {
-    pub fn new(
-        score_per_length: f64,
-        minimum_length: usize,
-        mismatch_penalty: usize,
-        gapopen_penalty: usize,
-        gapext_penalty: usize,
-        using_cached_wf: bool,
-        get_minimum_penalty: bool
-    ) -> Self {
-        let emp_kmer = BlockPenalty::new(mismatch_penalty, gapopen_penalty, gapext_penalty);
-        let kmer = Self::kmer_calculation(score_per_length, minimum_length, &emp_kmer);
+    pub fn new(cutoff: Cutoff, penalties: Penalties) -> Self {
+        let block_penalty = BlockPenalty::new(&penalties);
+        let kmer = calculate_kmer(&cutoff, &block_penalty);
         Self {
-            cutoff: Cutoff {
-                score_per_length: score_per_length,
-                minimum_length: minimum_length,
-            },
-            kmer: kmer,
-            penalties: Penalties{ x: mismatch_penalty, o: gapopen_penalty, e: gapext_penalty},
-            emp_kmer: emp_kmer,
-            using_cached_wf: using_cached_wf,
-            get_minimum_penalty: get_minimum_penalty,
+            cutoff,
+            penalties,
+            block_penalty,
+            kmer,
+            // Options
+            using_cached_wf: false,
+            get_minimum_penalty: false,
+            reference: None,
         }
     }
-    pub fn kmer_calculation(score_per_length: f64, minimum_length: usize, emp_kmer: &BlockPenalty) -> usize {
-        let mut i: usize = 1;
-        let mut kmer_size: f64;
-        loop {
-            kmer_size = (((minimum_length+2) as f64/(2*i) as f64) - 1_f64).ceil();
-            if (i*(emp_kmer.odd + emp_kmer.even)) as f64 > score_per_length * 2_f64 * (((i+1) as f64)*kmer_size-1_f64) {
-                break;
-            } else {
-                i += 1;
-            }
-        }
-        kmer_size as usize
+    pub fn get_minimum_penalty(mut self) -> Self {
+        self.get_minimum_penalty = true;
+        self
     }
-    pub fn perform_with_sequence_using_new_anchor(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
-        let index = Reference::fmindex(&ref_seq);
+    pub fn load_reference(&mut self) {
+        //
+    }
+    pub fn clear_reference(&mut self) {
+        //
+    }
+    pub fn change_reference(&mut self) {
+        //
+    }
+    pub fn alignment(&mut self) {
+        //
+    }
+    /*
+    pub fn align_with_only_sequences(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
+        let index = ReferenceDep::fmindex(&ref_seq);
         let result = match anchor::AnchorGroup::new(
             ref_seq, qry_seq, &index, self.kmer,
-            &self.emp_kmer, &self.penalties, &self.cutoff
+            &self.block_penalty, &self.penalties, &self.cutoff
         ) {
             Some(mut anchor_group) => {
                 anchor_group.alignment(self.using_cached_wf);
@@ -83,67 +105,44 @@ impl Aligner {
         };
         result
     }
+    */
 }
 
-pub struct Reference<T: AsRef<[u8]>>{
-    sequence: T,
-    index: FmIndex
-}
-impl<T: AsRef<[u8]>> Reference<T> {
-    pub fn new(sequence: T) -> Self {
-        let fm_index =  Self::fmindex(&sequence);
-        Self {
-            sequence: sequence,
-            index: fm_index,
-        }
-    }
-    fn fmindex(sequence: &T) -> FmIndex {
-        let seq = sequence.as_ref().iter().cloned().collect();
-        // TODO: Custom fmindex configuration
-        let fm_config: FmConfig = FmConfig::new()
-            .set_kmer_lookup_table(FM_KLT_KMER_SIZE)
-            .set_suffix_array_sampling_ratio(FM_SA_SAMPLING_RATIO);
-        FmIndex::new(&fm_config, seq)
-    }
-}
-
-#[derive(Debug)]
-pub struct Penalties {
-    x: Penalty,
-    o: Penalty,
-    e: Penalty,
-}
-
-#[derive(Debug)]
-pub struct Cutoff {
-    score_per_length: f64,
-    minimum_length: SequenceLength,
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockPenalty {
     odd: Penalty,
     even: Penalty,
 }
 
 impl BlockPenalty {
-    pub fn new(mismatch_penalty: Penalty, gapopen_penalty: Penalty, gapext_penalty: Penalty) -> Self {
+    pub fn new(penalties: &Penalties) -> Self {
         let mo: Penalty;
         let me: Penalty;
-        if mismatch_penalty <= gapopen_penalty + gapext_penalty {
-            mo = mismatch_penalty;
-            if mismatch_penalty * 2 <= gapopen_penalty + (gapext_penalty * 2) {
-                me = mismatch_penalty;
+        if penalties.x <= penalties.o + penalties.e {
+            mo = penalties.x;
+            if penalties.x * 2 <= penalties.o + (penalties.e * 2) {
+                me = penalties.x;
             } else {
-                me = gapopen_penalty + (gapext_penalty * 2) - mismatch_penalty;
+                me = penalties.o + (penalties.e * 2) - penalties.x;
             }
         } else {
-            mo = gapopen_penalty + gapext_penalty;
-            me = gapext_penalty;
+            mo = penalties.o + penalties.e;
+            me = penalties.e;
         }
-        Self {
-            odd: mo,
-            even: me,
+        Self { odd: mo, even: me }
+    }
+}
+
+pub fn calculate_kmer(cutoff: &Cutoff, block_penalty: &BlockPenalty) -> usize {
+    let mut i: usize = 1;
+    let mut kmer: f64;
+    loop {
+        kmer = (((cutoff.ml+2) as f64/(2*i) as f64) - 1_f64).ceil();
+        if (i*(block_penalty.odd + block_penalty.even)) as f64 > cutoff.ppl * 2_f64 * (((i+1) as f64)*kmer-1_f64) {
+            break;
+        } else {
+            i += 1;
         }
     }
+    kmer as usize
 }

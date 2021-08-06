@@ -8,7 +8,8 @@ edition = "2018"
 
 [dependencies]
 lt-fm-index = "0.1.1"
+bio = "0.37.0"
+
 fm-index = "0.1.2"
 
 [dev-dependencies]
-bio = "0.34.0"

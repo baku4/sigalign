@@ -14,21 +14,24 @@ use std::cmp::{min, max};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-
 type IsHindBlock = bool;
 const HIND_BLOCK: bool = true;
 const FORE_BLOCK: bool = false;
 
+// Anchor Group
+pub struct AnchorsGroup {
+    anchors: Vec<Vec<Anchor>>,
+}
 
-/// Anchor Group
-pub struct AnchorGroup<'a> {
+// Anchor Group
+pub struct AnchorGroupDep<'a> {
     ref_seq: &'a [u8],
     qry_seq: &'a [u8],
     penalties: &'a Penalties,
     cutoff: &'a Cutoff,
     anchors: Vec<Anchor>,
 }
-impl<'a> AnchorGroup<'a> {
+impl<'a> AnchorGroupDep<'a> {
     pub fn new(
         ref_seq: &'a [u8], qry_seq: &'a [u8], index: &FmIndex,
         kmer: usize, block_penalty: &'a BlockPenalty,
@@ -205,7 +208,7 @@ impl<'a> AnchorGroup<'a> {
 
 /// Anchor
 #[derive(Debug)]
-pub struct Anchor {
+struct Anchor {
     /// Positions of anchor
     /// (position of reference, position of qry)
     position: (SequenceLength, SequenceLength),
@@ -224,7 +227,7 @@ pub struct Anchor {
 
 /// State of alignment
 #[derive(Debug)]
-pub enum AlignmentState {
+enum AlignmentState {
     /// 1st state
     /// fore and hind alignments are empty
     Preset,
@@ -240,7 +243,7 @@ pub enum AlignmentState {
 
 /// Alignment assumed when EMP state from anchor
 #[derive(Debug)]
-pub struct EstAlign {
+struct EstAlign {
     penalty: Penalty,
     length: SequenceLength,
 }
@@ -256,7 +259,7 @@ impl EstAlign {
 
 /// One-way semi-global alignment from anchor
 #[derive(Debug)]
-pub enum ExactAlign {
+enum ExactAlign {
     /// Having an operations.
     Own((Cigar, SequenceLength, Penalty)), 
     /// Referring to the operation of another anchor.
@@ -415,7 +418,7 @@ impl Anchor {
     fn estimated_state_is_valid(&self, cutoff: &Cutoff) -> bool {
         if let AlignmentState::Estimated(emp_block_1, emp_block_2) = &self.state {
             let length = emp_block_1.length + emp_block_2.length + self.size;
-            if length >= cutoff.minimum_length && (emp_block_1.penalty + emp_block_2.penalty) as f64/length as f64 <= cutoff.score_per_length {
+            if length >= cutoff.ml && (emp_block_1.penalty + emp_block_2.penalty) as f64/length as f64 <= cutoff.ppl {
                 true
             } else {
                 false
@@ -452,7 +455,7 @@ impl Anchor {
             if indel > 0 {
                 penalty += penalties.o + indel*penalties.e;
             }
-            if (penalty as f64 / length as f64 <= cutoff.score_per_length) & (length >= cutoff.minimum_length) {
+            if (penalty as f64 / length as f64 <= cutoff.ppl) & (length >= cutoff.ml) {
                 true
             } else {
                 false
@@ -613,26 +616,26 @@ impl Anchor {
             };
             let penalty_spare = if is_hind_block {
                 (
-                    penalties.e as f64 * cutoff.score_per_length * (
+                    penalties.e as f64 * cutoff.ppl * (
                         l_opp + current_anchor.size + min(
                             ref_seq.len() - current_anchor.position.0 - current_anchor.size,
                             qry_seq.len() - current_anchor.position.1 - current_anchor.size,
                         )
                     ) as f64
                     - (penalties.e * p_opp) as f64
-                    - penalties.o as f64 * cutoff.score_per_length
-                ) / (penalties.e as f64 - cutoff.score_per_length)
+                    - penalties.o as f64 * cutoff.ppl
+                ) / (penalties.e as f64 - cutoff.ppl)
             } else {
                 (
-                    penalties.e as f64 * cutoff.score_per_length * (
+                    penalties.e as f64 * cutoff.ppl * (
                         l_opp + current_anchor.size + min(
                             current_anchor.position.0,
                             current_anchor.position.1,
                         )
                     ) as f64
                     - ( penalties.e * p_opp) as f64
-                    - penalties.o as f64 * cutoff.score_per_length
-                ) / (penalties.e as f64 - cutoff.score_per_length)
+                    - penalties.o as f64 * cutoff.ppl
+                ) / (penalties.e as f64 - cutoff.ppl)
             }.ceil() as usize;
             // Get cached wf
             // if current anchor has cached wf -> continue with cached wf
@@ -828,7 +831,7 @@ impl Anchor {
             return None;
         }
         // Evaluate
-        if (total_length >= cutoff.minimum_length) && (total_penalty as f64/total_length as f64 <= cutoff.score_per_length) {
+        if (total_length >= cutoff.ml) && (total_penalty as f64/total_length as f64 <= cutoff.ppl) {
             Some((total_length, total_penalty))
         } else {
             self.to_dropped();

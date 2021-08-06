@@ -1,5 +1,6 @@
 //! Dropout alignment
 pub mod alignment;
+pub mod reference;
 pub mod io;
 
 /* BASIC TYPES */
