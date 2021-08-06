@@ -17,15 +17,13 @@ const FM_SA_SAMPLING_RATIO: u64 = 2;
 pub struct Aligner {
     cutoff: Cutoff,
     kmer: usize,
-    scores: Scores,
+    penalties: Penalties,
     // TODO: emp kmer naming
     emp_kmer: BlockPenalty,
     using_cached_wf: bool,
     get_minimum_penalty: bool,
 }
 
-// Alignment Result: (operations, penalty)
-type AlignmentResultForDep = Vec<(Vec<Operation>, Penalty)>;
 // Alignment Result
 pub type AlignmentResult = Vec<Alignment>;
 
@@ -47,7 +45,7 @@ impl Aligner {
                 minimum_length: minimum_length,
             },
             kmer: kmer,
-            scores: (mismatch_penalty, gapopen_penalty, gapext_penalty),
+            penalties: Penalties{ x: mismatch_penalty, o: gapopen_penalty, e: gapext_penalty},
             emp_kmer: emp_kmer,
             using_cached_wf: using_cached_wf,
             get_minimum_penalty: get_minimum_penalty,
@@ -67,15 +65,10 @@ impl Aligner {
         kmer_size as usize
     }
     pub fn perform_with_sequence_using_new_anchor(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
-        let penalties = Penalties {
-            x: self.scores.0,
-            o: self.scores.1,
-            e: self.scores.2,
-        };
         let index = Reference::fmindex(&ref_seq);
         let result = match anchor::AnchorGroup::new(
             ref_seq, qry_seq, &index, self.kmer,
-            &self.emp_kmer, &penalties, &self.cutoff
+            &self.emp_kmer, &self.penalties, &self.cutoff
         ) {
             Some(mut anchor_group) => {
                 anchor_group.alignment(self.using_cached_wf);
@@ -114,8 +107,6 @@ impl<T: AsRef<[u8]>> Reference<T> {
     }
 }
 
-type Scores = (usize, usize, usize);
-
 #[derive(Debug)]
 pub struct Penalties {
     x: Penalty,
@@ -126,20 +117,19 @@ pub struct Penalties {
 #[derive(Debug)]
 pub struct Cutoff {
     score_per_length: f64,
-    // TODO: min length to u64
-    minimum_length: usize,
+    minimum_length: SequenceLength,
 }
 
 #[derive(Debug)]
 pub struct BlockPenalty {
-    odd: usize,
-    even: usize,
+    odd: Penalty,
+    even: Penalty,
 }
 
 impl BlockPenalty {
-    pub fn new(mismatch_penalty: usize, gapopen_penalty: usize, gapext_penalty: usize) -> Self {
-        let mo: usize;
-        let me: usize;
+    pub fn new(mismatch_penalty: Penalty, gapopen_penalty: Penalty, gapext_penalty: Penalty) -> Self {
+        let mo: Penalty;
+        let me: Penalty;
         if mismatch_penalty <= gapopen_penalty + gapext_penalty {
             mo = mismatch_penalty;
             if mismatch_penalty * 2 <= gapopen_penalty + (gapext_penalty * 2) {
@@ -156,14 +146,4 @@ impl BlockPenalty {
             even: me,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Operation {
-    Match,
-    Subst,
-    Ins,
-    Del,
-    RefClip(u64),
-    QryClip(u64),
 }
