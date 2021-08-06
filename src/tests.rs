@@ -31,19 +31,11 @@ fn alignment_using_dp(
     }
 }
 
-fn alignment_using_dwfa_new_anchor(
+fn alignment_using_dwfa(
     alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>
 ) -> Option<alignment::AlignmentResult> {
     let aligner = alignment::Aligner::new(alignment_option.score_per_length, alignment_option.minimum_length, alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty, alignment_option.using_cached_wf, alignment_option.get_minimum_penalty);
     let res= aligner.perform_with_sequence_using_new_anchor(&ref_seq, &qry_seq);
-    res
-}
-
-fn alignment_using_dwfa_old_anchor(
-    alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>
-) -> Option<Vec<(Vec<alignment::Operation>, usize)>> {
-    let aligner = alignment::Aligner::new(alignment_option.score_per_length, alignment_option.minimum_length, alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty, alignment_option.using_cached_wf, alignment_option.get_minimum_penalty);
-    let res= aligner.perform_with_sequence(&ref_seq, &qry_seq);
     res
 }
 
@@ -103,7 +95,7 @@ mod compare_result {
                 // setting job 2
                 let print_using_dropout = |label: String| {
                     move |alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>| {
-                        let res = alignment_using_dwfa_new_anchor(alignment_option, ref_seq, qry_seq);
+                        let res = alignment_using_dwfa(alignment_option, ref_seq, qry_seq);
                         if let Some(v) = res {
                             println!("{}\n{:?}", label, v);
                         }
@@ -154,22 +146,15 @@ mod compare_result {
                             let duration = start.elapsed();
                             duration.as_micros()
                         };
-                        // (2) using old anchor
+                        // (2) using new anchor
                         let time_2 = {
                             let start = Instant::now();
-                            let _ = alignment_using_dwfa_old_anchor(alignment_option, ref_seq.clone(), qry_seq.clone());
-                            let duration = start.elapsed();
-                            duration.as_micros()
-                        };
-                        // (3) using new anchor
-                        let time_3 = {
-                            let start = Instant::now();
-                            let _ = alignment_using_dwfa_new_anchor(alignment_option, ref_seq.clone(), qry_seq.clone());
+                            let _ = alignment_using_dwfa(alignment_option, ref_seq.clone(), qry_seq.clone());
                             let duration = start.elapsed();
                             duration.as_micros()
                         };
                         // print time
-                        println!("{},{},{},{}", label, time_1, time_2, time_3);
+                        println!("{},{},{}", label, time_1, time_2);
                     }
                 };
                 let boxed_function: Box::<dyn FnOnce(AlignmentOption, Vec<u8>, Vec<u8>) + Send + 'static> = Box::new(

@@ -1,12 +1,7 @@
 //! Dropout alignment core
-// for dep
-pub mod anchor_dep;
-mod dropout_wfa_dep;
-
 mod anchor;
 mod dwfa;
 
-use anchor_dep::AnchorGroup;
 use crate::{SequenceLength, OperationLength, Penalty};
 use crate::io::Alignment;
 use crate::io::cigar::{Cigar, Clip};
@@ -70,37 +65,6 @@ impl Aligner {
             }
         }
         kmer_size as usize
-    }
-    pub fn perform_with_sequence(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResultForDep> {
-        let index = Reference::fmindex(&ref_seq);
-        let result = match AnchorGroup::new(ref_seq, qry_seq, &index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
-            Some(mut anchor_group) => {
-                anchor_group.alignment(self.using_cached_wf);
-                let result = anchor_group.get_result(self.get_minimum_penalty);
-                if result.len() == 0 {
-                    None
-                } else {
-                    Some(result)
-                }
-            },
-            None => None,
-        };
-        result
-    }
-    pub fn perform_with_index<T: AsRef<[u8]>>(&self, reference: &Reference<T> , qry_seq: &[u8]) -> Option<AlignmentResultForDep> {
-        let result = match AnchorGroup::new(reference.sequence.as_ref(), qry_seq, &reference.index, self.kmer, &self.emp_kmer, &self.scores, &self.cutoff) {
-            Some(mut anchor_group) => {
-                anchor_group.alignment(self.using_cached_wf);
-                let result = anchor_group.get_result(self.get_minimum_penalty);
-                if result.len() == 0 {
-                    None
-                } else {
-                    Some(result)
-                }
-            },
-            None => None,
-        };
-        result
     }
     pub fn perform_with_sequence_using_new_anchor(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
         let penalties = Penalties {
