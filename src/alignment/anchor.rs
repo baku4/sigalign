@@ -141,13 +141,10 @@ impl<'a> AnchorGroup<'a> {
             );
         }
         // (2) alignment fore
-        // TODO: not use new vector
-        let reversed_ref_seq: Vec<u8> = self.ref_seq.iter().rev().map(|x| *x).collect();
-        let reversed_qry_seq: Vec<u8> = self.qry_seq.iter().rev().map(|x| *x).collect();
         for idx in (0..self.anchors.len()).rev() {
             Anchor::alignment(
                 &mut self.anchors, idx,
-                &reversed_ref_seq, &reversed_qry_seq, self.penalties, self.cutoff,
+                self.ref_seq, self.qry_seq, self.penalties, self.cutoff,
                 FORE_BLOCK,
                 using_cached_wf
             );
@@ -677,11 +674,11 @@ impl Anchor {
                     */
                     _ => {
                         dropout_wf_align(
-                            &qry_seq[qry_seq.len()-current_anchor.position.1..],
-                            &ref_seq[ref_seq.len()-current_anchor.position.0..],
+                            &qry_seq[..current_anchor.position.1],
+                            &ref_seq[..current_anchor.position.0],
                             penalty_spare,
                             penalties,
-                            true, //FIXME: add reverse
+                            false,
                         )
                     },
                 }

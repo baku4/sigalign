@@ -104,7 +104,7 @@ pub fn dropout_wf_align(
 
     // INIT
     let mut wf: WaveFront = penalties.wf_init(penalty_spare);
-    let fr_offset = compare_seqs(qry_seq, ref_seq, 0, 0);
+    let fr_offset = seqs_compare(qry_seq, ref_seq, 0, 0, forward);
     let first_wfs_comp: Vec<[Component; 3]> = vec![[
         Component { fr: fr_offset, bt: START_POINT },
         Component::default(),
@@ -124,7 +124,8 @@ pub fn dropout_wf_align(
             ref_seq,
             qry_seq,
             ref_len,
-            qry_len
+            qry_len,
+            forward,
         );
         // Update Component
         wf[score].comp = wfs_comps;
@@ -140,13 +141,23 @@ pub fn dropout_wf_align(
 }
 
 #[inline]
-fn compare_seqs(qry_seq: &[u8], ref_seq: &[u8], v: usize, h: usize) -> i32 {
+fn seqs_compare(qry_seq: &[u8], ref_seq: &[u8], v: usize, h: usize, forward: bool) -> i32 {
     let mut fr_to_add: i32 = 0;
-    for (v1, v2) in qry_seq[v..].iter().zip(ref_seq[h..].iter()) {
-        if *v1 == *v2 {
-            fr_to_add += 1;
-        } else {
-            return fr_to_add
+    if forward {
+        for (v1, v2) in qry_seq[v..].iter().zip(ref_seq[h..].iter()) {
+            if *v1 == *v2 {
+                fr_to_add += 1;
+            } else {
+                return fr_to_add
+            }
+        }
+    } else {
+        for (v1, v2) in qry_seq[..qry_seq.len()-v].iter().rev().zip(ref_seq[..ref_seq.len()-h].iter().rev()) {
+            if *v1 == *v2 {
+                fr_to_add += 1;
+            } else {
+                return fr_to_add
+            }
         }
     }
     fr_to_add
@@ -161,6 +172,7 @@ fn dropout_wf_next(
     qry_seq: &[u8],
     ref_len: usize,
     qry_len: usize,
+    forward: bool,
 ) -> (Option<WfK>, WfsComps) {
     let k_range_vector: Vec<i32> = {
         let max_k = wf[score].max_k;
@@ -280,7 +292,7 @@ fn dropout_wf_next(
             // Extend & update
             let mut v = (mcomp.fr - k) as usize;
             let mut h = mcomp.fr as usize;
-            let fr_offset = compare_seqs(qry_seq, ref_seq, v, h);
+            let fr_offset = seqs_compare(qry_seq, ref_seq, v, h, forward);
             mcomp.fr += fr_offset;
             // Check exit condition
             v += fr_offset as usize;
