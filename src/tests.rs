@@ -58,7 +58,8 @@ mod compare_result {
             get_minimum_penalty: true,
         };
         // executor
-        let executor = multi_thread::print_output::Executor::new(1);
+        let mut executor = multi_thread::print_output::Executor::new(1);
+        let job_sender = executor.get_sender().unwrap();
         // get 
         let map = data::get_connected_map();
         // read data
@@ -111,8 +112,8 @@ mod compare_result {
                     boxed_function_dropout,
                 );
                 // Send job
-                let _ = executor.job_sender.send(job_1);
-                let _ = executor.job_sender.send(job_2);
+                let _ = job_sender.send(job_1);
+                let _ = job_sender.send(job_2);
             }
         }
     }
@@ -130,7 +131,8 @@ mod compare_result {
             get_minimum_penalty: true,
         };
         // executor
-        let executor = multi_thread::print_output::Executor::new(4);
+        let mut executor = multi_thread::print_output::Executor::new(4);
+        let job_sender = executor.get_sender().unwrap();
         // read data
         let mut ref_records = data::ref_fasta_records();
         while let Some(Ok(ref_record)) = ref_records.next() {
@@ -170,7 +172,7 @@ mod compare_result {
                     boxed_function,
                 );
                 // Send job
-                let _ = executor.job_sender.send(job);
+                let _ = job_sender.send(job);
             }
         }
     }

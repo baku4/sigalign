@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::alignment::*;
 use crate::io::cigar::{Cigar, Clip, Operation};
 use crate::io::Alignment;
@@ -58,6 +60,7 @@ pub fn alignment(
     let anchors = generate_anchors(aligner, ref_seq, qry_seq);
     // (2) alignment
     let mut result: DpResultVec = Vec::new();
+    let mut used_operations: HashSet<Vec<AlignmentOperation>> = HashSet::new();
     for (ref_pos, qry_pos, size) in anchors {
         let mut operations: Vec<AlignmentOperation> = Vec::new();
         let mut penalty: usize = 0;
@@ -94,7 +97,10 @@ pub fn alignment(
             }
         }).count();
         if (length >= aligner.minimum_length) && (penalty as f64/length as f64 <= aligner.score_per_length) {
-            result.push((operations, penalty))
+            if !used_operations.contains(&operations) {
+                used_operations.insert(operations.clone());
+                result.push((operations, penalty))
+            }
         }
     };
     conv_to_cigar(result)

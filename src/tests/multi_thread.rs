@@ -16,7 +16,7 @@ pub mod print_output {
     pub type Job = (AlignmentOption, Vec<u8>, Vec<u8>, Box<dyn FnOnce(AlignmentOption, Vec<u8>, Vec<u8>) + Send + 'static>);
 
     pub struct Executor {
-        pub job_sender: mpsc::Sender<Job>,
+        pub job_sender: Option<mpsc::Sender<Job>>,
         workers: Vec<Worker>,
     }
     impl Executor {
@@ -32,9 +32,12 @@ pub mod print_output {
                 );
             }
             Self {
-                job_sender,
+                job_sender: Some(job_sender),
                 workers,
             }
+        }
+        pub fn get_sender(&mut self) -> Option<mpsc::Sender<Job>> {
+            self.job_sender.take()
         }
     }
     impl Drop for Executor {

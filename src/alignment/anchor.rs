@@ -605,7 +605,7 @@ impl Anchor {
                 BlockType::Hind => {
                     match &current_anchor.state {
                         AlignmentState::Estimated(est_align, _) => {
-                            (est_align.penalty, est_align.length)
+                            (est_align.length, est_align.penalty)
                         },
                         // if not estimated(hind block is already done) or dropped
                         // -> just pass to next
