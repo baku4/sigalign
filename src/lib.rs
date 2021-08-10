@@ -2,6 +2,7 @@
 pub mod alignment;
 pub mod reference;
 pub mod io;
+mod utils;
 
 /* BASIC TYPES */
 
