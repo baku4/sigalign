@@ -44,7 +44,7 @@ impl ReferenceConfig {
     }
 }
 
-const DEFAULT_LABEL: &str = "Ref";
+const DEFAULT_LABEL: &str = "Reference";
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Reference {
@@ -62,7 +62,7 @@ impl Reference {
         klt_kmer: usize,
         sa_sampling_ratio: u64,
         only_nucleotide: bool,
-    ) -> Self {
+    ) -> Self { // TODO: Result<Self, Error>
         let (sequence_records, accumulated_length, seq_len) = Self::get_preset_from_string(reverse_complement, sequence);
         let lt_fm_index = Self::generate_fmindex(&sequence_records, seq_len, klt_kmer, sa_sampling_ratio, only_nucleotide);
         Self {
@@ -79,7 +79,7 @@ impl Reference {
         klt_kmer: usize,
         sa_sampling_ratio: u64,
         only_nucleotide: bool,
-    ) -> Self {
+    ) -> Self { // TODO: Result<Self, Error>
         let (sequence_records, accumulated_length, seq_len) = Self::get_preset_from_fasta(reverse_complement, file_path);
         let lt_fm_index = Self::generate_fmindex(&sequence_records, seq_len, klt_kmer, sa_sampling_ratio, only_nucleotide);
         let have_one_record = accumulated_length.len() == 1;

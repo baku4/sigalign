@@ -27,6 +27,19 @@ pub struct AnchorsGroup {
 }
 impl AnchorsGroup {
     #[inline]
+    pub fn alignment_with_anchor(
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        block_penalty: &BlockPenalty,
+        reference: &Reference,
+        kmer: usize,
+        query: &[u8],
+        get_minimum_penalty: bool,
+    ) -> Vec<Vec<Alignment>> {
+        let mut ag = Self::new(penalties, cutoff, block_penalty, reference, kmer, query);
+        ag.alignment(penalties, cutoff, reference, query, get_minimum_penalty)
+    }
+    #[inline]
     pub fn new(
         penalties: &Penalties,
         cutoff: &Cutoff,

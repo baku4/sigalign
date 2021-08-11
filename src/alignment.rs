@@ -1,13 +1,14 @@
 //! Dropout alignment core
-pub mod anchor_dep;
 mod dwfa;
 pub mod anchor;
+pub mod anchor_dep;
 
 use std::fmt::Debug;
 
 use crate::{SequenceLength, Penalty};
 use crate::io::Alignment;
 use crate::reference::{Reference, FmIndex};
+use anchor::AnchorsGroup;
 
 // Alignment Result
 pub type AlignmentResult = Vec<Alignment>;
@@ -79,30 +80,18 @@ impl Aligner {
         self.reference = reference;
     }
     /// Alignment
-    pub fn alignment_with_sequence(&self, query: &[u8]) {
-        
+    #[inline]
+    pub fn alignment_with_sequence(&self, query: &[u8], get_minimum_penalty: bool) {
+        let alignment_res = AnchorsGroup::alignment_with_anchor(
+            &self.penalties,
+            &self.cutoff,
+            &self.block_penalty,
+            &self.reference,
+            self.kmer,
+            query,
+            get_minimum_penalty,
+        );
     }
-    /*
-    pub fn align_with_only_sequences(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {
-        let index = ReferenceDep::fmindex(&ref_seq);
-        let result = match anchor::AnchorGroup::new(
-            ref_seq, qry_seq, &index, self.kmer,
-            &self.block_penalty, &self.penalties, &self.cutoff
-        ) {
-            Some(mut anchor_group) => {
-                anchor_group.alignment(self.using_cached_wf);
-                let result = anchor_group.get_result(self.get_minimum_penalty);
-                if result.len() == 0 {
-                    None
-                } else {
-                    Some(result)
-                }
-            },
-            None => None,
-        };
-        result
-    }
-    */
 }
 
 #[derive(Debug, Clone)]
