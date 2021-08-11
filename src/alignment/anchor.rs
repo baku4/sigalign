@@ -19,131 +19,16 @@ type IsHindBlock = bool;
 const HIND_BLOCK: bool = true;
 const FORE_BLOCK: bool = false;
 
-// Anchor Group
-pub struct AnchorsGroup<'a> {
-    anchors_by_seq: Vec<Vec<Anchor>>,
-    reference: &'a Reference,
-}
-
-impl<'a> AnchorsGroup<'a> {
-    #[inline]
-    pub fn new(
-        reference: &'a Reference,
-        penalties: &'a Penalties,
-        cutoff: &'a Cutoff,
-        block_penalty: &'a BlockPenalty,
-        kmer: usize,
-        query: &'a [u8],
-    ) {
-        let record_count = reference.accumulated_length.len();
-        // let mut anchors_by_seq: Vec<Vec<Anchor>> = vec![Vec::new(); record_count];
-
-        let qry_len = query.len();
-        let search_count = qry_len / kmer;
-
-        if record_count == 1 { // if have one record
-            // TODO: with cap
-            let mut anchors_preset: Vec<Anchor> = Vec::new();
-            let mut anchor_existence: Vec<bool> = Vec::with_capacity(search_count+1); // first value is buffer
-            // (1) Generate Anchors Preset
-            {
-                let mut anchors_cache: Option<Vec<Anchor>> = None;
-                for i in 0..search_count {
-                    let qry_position = i*kmer;
-                    let pattern = &query[qry_position..qry_position+kmer];
-                    let positions = reference.lt_fm_index.locate_w_klt(pattern);
-                    // Check Impeccable Extension
-                    match anchors_cache {
-                        Some(anchors) => {
-                            if positions.len() == 0 {
-                                anchors_preset.extend(anchors);
-                                anchors_cache = None;
-                            } else {
-                                let mut current_anchors: Vec<Anchor> = Vec::with_capacity(positions.len());
-                                let mut ie_positions: Vec<u64> = Vec::new();
-                                for anchor in anchors {
-                                    let mut ie_check = false;
-                                    for position in &positions {
-                                        // impeccable extension occurs
-                                        if *position as usize == anchor.position.0 + anchor.size {
-                                            ie_positions.push(*position);
-                                            ie_check = true;
-                                            break;
-                                        }
-                                    }
-                                    // push anchor
-                                    if !ie_check {
-                                        anchors_preset.push(anchor);
-                                    } else {
-                                        current_anchors.push(anchor.impeccable_extension(kmer));
-                                    }
-                                }
-                                // if position is not ie position: add to current anchors
-                                for position in positions {
-                                    if !ie_positions.contains(&position) {
-                                        current_anchors.push(
-                                            Anchor::new(position as usize, i*kmer, kmer)
-                                        );
-                                    }
-                                }
-                                anchors_cache = Some(current_anchors);
-                            }
-                            anchor_existence.push(true);
-                        },
-                        None => {
-                            if positions.len() != 0 {
-                                anchors_cache = Some(positions.into_iter().map(|x| {
-                                    Anchor::new(x as usize, i*kmer, kmer)
-                                }).collect());
-                            }
-                            anchor_existence.push(false);
-                        },
-                    }
-                }
-                // push last anchors
-                match anchors_cache {
-                    Some(anchors) => {
-                        anchors_preset.extend(anchors);
-                        anchor_existence.push(true);
-                    },
-                    None => {
-                        anchor_existence.push(false);
-                    },
-                }
-                // check anchor exist
-                if !anchor_existence.iter().any(|x| *x) {
-                    //
-                    // FIXME: return None
-                }
-            }
-            // (2) Estimate alignment from anchor preset
-            anchors_preset.iter_mut().for_each(|anchor| {
-                anchor.estimate_preset(reference.total_length, qry_len, kmer, &anchor_existence, &block_penalty);
-                // if can't satisfy the cutoff -> drop
-                if !anchor.estimated_state_is_valid(cutoff) {
-                    anchor.to_dropped();
-                }
-            });
-            // (3) Set up checkpoints
-            Anchor::create_check_points(&mut anchors_preset, penalties, cutoff);
-            // (4) Add anchors_preset to anchors by seq
-            // anchors_by_seq.push(anchors_preset)
-        } else {
-            let mut anchors_preset: Vec<Anchor> = Vec::new();
-            let mut anchor_existence: Vec<bool> = Vec::with_capacity(search_count+1); // first value is buffer
-        }
-    }
-}
 
 // Anchor Group
-pub struct AnchorGroupDep<'a> {
+pub struct AnchorGroup<'a> {
     ref_seq: &'a [u8],
     qry_seq: &'a [u8],
     penalties: &'a Penalties,
     cutoff: &'a Cutoff,
     anchors: Vec<Anchor>,
 }
-impl<'a> AnchorGroupDep<'a> {
+impl<'a> AnchorGroup<'a> {
     pub fn new(
         ref_seq: &'a [u8], qry_seq: &'a [u8], index: &FmIndex,
         kmer: usize, block_penalty: &'a BlockPenalty,
@@ -316,11 +201,6 @@ impl<'a> AnchorGroupDep<'a> {
             }
         }).collect()
     }
-}
-
-struct AnchorsPreset {
-    pushed: Vec<Anchor>,
-    cache: Vec<Anchor>,
 }
 
 /// Anchor
@@ -840,7 +720,7 @@ impl Anchor {
                     current_anchor.connected.extend(connected_anchor_indices.iter());
                 }
                 // (5) update connected anchors
-                for (connected_anchor_index, (length, penalty_in_ref)) in connected_backtraces {
+                for (connected_anchor_index, (penalty_in_ref, length)) in connected_backtraces {
                     let connected_anchor = &mut anchors[connected_anchor_index];
                     if is_hind_block {
                         // update anchor state
