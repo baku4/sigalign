@@ -1,7 +1,7 @@
 //! Dropout alignment core
-mod anchor;
+pub mod anchor_dep;
 mod dwfa;
-mod anchor_new;
+pub mod anchor;
 
 use std::fmt::Debug;
 
@@ -43,16 +43,16 @@ impl Cutoff {
 }
 
 pub struct Aligner {
-    cutoff: Cutoff,
-    penalties: Penalties,
+    pub cutoff: Cutoff,
+    pub penalties: Penalties,
     // Auto caluclated
-    block_penalty: BlockPenalty,
-    kmer: usize,
+    pub block_penalty: BlockPenalty,
+    pub kmer: usize,
     // Options
-    using_cached_wf: bool,
-    get_minimum_penalty: bool,
+    pub using_cached_wf: bool,
+    pub get_minimum_penalty: bool,
     // Reference
-    reference: Reference,
+    pub reference: Reference,
 }
 
 impl Aligner {
