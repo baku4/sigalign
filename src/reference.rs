@@ -1,10 +1,8 @@
 pub use lt_fm_index::{FmIndexConfig, FmIndex};
 use serde::{Serialize, Deserialize};
 
-use crate::io::reader::{
-    read_lt_fm_index_from_file_path, read_lt_fm_index_from_infered_path,
-    FastaRecords, fasta_records,
-};
+use crate::io::fasta::{FastaRecords, fasta_records};
+use crate::io::index::{read_lt_fm_index_from_file_path, read_lt_fm_index_from_inferred_path}; //TODO: use inferred path
 use crate::utils::get_reverse_complement;
 
 /// Configurations for `reference`
@@ -41,7 +39,7 @@ impl ReferenceConfig {
     pub fn generate_reference_with_string(&self, sequence: Vec<u8>) -> Reference {
         Reference::new_with_string(sequence, self.reverse_complement, self.klt_kmer, self.sa_sampling_ratio, self.only_nucleotide)
     }
-    pub fn generate_reference_with_fasta_file(&self, file_path: String) -> Reference {
+    pub fn generate_reference_with_fasta_file(&self, file_path: &str) -> Reference {
         Reference::new_with_fasta_file(file_path, self.reverse_complement, self.klt_kmer, self.sa_sampling_ratio, self.only_nucleotide)
     }
 }
@@ -50,11 +48,11 @@ const DEFAULT_LABEL: &str = "Ref";
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Reference {
-    sequence_records: Vec<SequenceRecord>,
-    accumulated_length: Vec<u64>,
-    have_one_record: bool,
-    reverse_complement: bool,
-    index: FmIndex,
+    pub sequence_records: Vec<SequenceRecord>,
+    pub lt_fm_index: FmIndex,
+    pub accumulated_length: Vec<u64>,
+    pub reverse_complement: bool,
+    pub total_length: usize,
 }
 
 impl Reference {
@@ -70,23 +68,86 @@ impl Reference {
         Self {
             sequence_records: sequence_records,
             accumulated_length: accumulated_length,
-            have_one_record: !reverse_complement,
             reverse_complement: reverse_complement,
-            index: lt_fm_index,
+            lt_fm_index,
+            total_length: seq_len,
         }
     }
     pub fn new_with_fasta_file(
-        file_path: String,
+        file_path: &str,
         reverse_complement: bool,
         klt_kmer: usize,
         sa_sampling_ratio: u64,
         only_nucleotide: bool,
     ) -> Self {
-        // Get records of sequences
+        let (sequence_records, accumulated_length, seq_len) = Self::get_preset_from_fasta(reverse_complement, file_path);
+        let lt_fm_index = Self::generate_fmindex(&sequence_records, seq_len, klt_kmer, sa_sampling_ratio, only_nucleotide);
+        let have_one_record = accumulated_length.len() == 1;
+        Self {
+            sequence_records: sequence_records,
+            accumulated_length: accumulated_length,
+            reverse_complement: reverse_complement,
+            lt_fm_index,
+            total_length: seq_len,
+        }
+    }
+    pub fn load_from_string_and_index_file(sequence: Vec<u8>, index_path: &str, reverse_complement: bool) -> Result<Self, String> {
+        let fm_index = read_lt_fm_index_from_file_path(index_path)?;
+        let (sequence_records, accumulated_length, seq_len) = Self::get_preset_from_string(reverse_complement, sequence);
+        Ok(
+            Self {
+                sequence_records: sequence_records,
+                accumulated_length: accumulated_length,
+                reverse_complement: reverse_complement,
+                lt_fm_index: fm_index,
+                total_length: seq_len,
+            }
+        )
+    }
+    pub fn load_from_fasta_and_index_file(fasta_path: &str, index_path: &str, reverse_complement: bool) -> Result<Self, String> {
+        let fm_index = read_lt_fm_index_from_file_path(index_path)?;
+        let (sequence_records, accumulated_length, seq_len) = Self::get_preset_from_fasta(reverse_complement, fasta_path);
+        let have_one_record = accumulated_length.len() == 1;
+        Ok(
+            Self {
+                sequence_records: sequence_records,
+                accumulated_length: accumulated_length,
+                reverse_complement: reverse_complement,
+                lt_fm_index: fm_index,
+                total_length: seq_len,
+            }
+        )
+    }
+    // TODO: Add function write to new fasta file
+    pub fn load_from_reference_file(file_path: &str) -> Result<Self, String> {
+        Self::read_index_from_file(file_path)
+    }
+    // Preset: sequence_records, accumulated_length, seq_len for Reference
+    fn get_preset_from_string(reverse_complement: bool, sequence: Vec<u8>) -> (Vec<SequenceRecord>, Vec<u64>, usize) {
+        if reverse_complement {
+            let seq_len = sequence.len();
+            let accumulated_length = vec![seq_len as u64, (seq_len*2) as u64];
+            let rc_seq = get_reverse_complement(&sequence);
+            let sequence_records: Vec<SequenceRecord> = vec![
+                SequenceRecord::new(DEFAULT_LABEL, true, sequence),
+                SequenceRecord::new(DEFAULT_LABEL, false, rc_seq),
+                ];
+            (sequence_records, accumulated_length, seq_len*2)
+        } else {
+            let seq_len = sequence.len();
+            let accumulated_length = vec![seq_len as u64];
+            let sequence_records: Vec<SequenceRecord> = vec![
+                SequenceRecord::new(DEFAULT_LABEL, true, sequence),
+                ];
+            (sequence_records, accumulated_length, seq_len)
+        }
+    }
+    fn get_preset_from_fasta(reverse_complement: bool, fasta_path: &str) -> (Vec<SequenceRecord>, Vec<u64>, usize) {
         let mut seq_len: usize = 0;
         let mut accumulated_length: Vec<u64> = Vec::new();
         let mut sequence_records: Vec<SequenceRecord> = Vec::new();
-        let records: FastaRecords = fasta_records(&file_path);
+        // Get records of sequences
+        let mut records: FastaRecords = fasta_records(fasta_path);
         while let Some(Ok(record)) = records.next() {
             let label = record.id();
             let seq = record.seq();
@@ -112,54 +173,10 @@ impl Reference {
                 );
             }
         }
-        let lt_fm_index = Self::generate_fmindex(&sequence_records, seq_len, klt_kmer, sa_sampling_ratio, only_nucleotide);
-        let have_one_record = accumulated_length.len() == 1;
-        Self {
-            sequence_records: sequence_records,
-            accumulated_length: accumulated_length,
-            have_one_record: have_one_record,
-            reverse_complement: reverse_complement,
-            index: lt_fm_index,
-        }
+        (sequence_records, accumulated_length, seq_len)
     }
-    pub fn load_from_string_and_index_file(sequence: Vec<u8>, index_path: &str, reverse_complement: bool) -> Result<Self, String> {
-        let fm_index = read_lt_fm_index_from_file_path(index_path)?;
-        let (sequence_records, accumulated_length, seq_len) = Self::get_preset_from_string(reverse_complement, sequence);
-        Ok(
-            Self {
-                sequence_records: sequence_records,
-                accumulated_length: accumulated_length,
-                have_one_record: !reverse_complement,
-                reverse_complement: reverse_complement,
-                index: fm_index,
-            }
-        )
-    }
-    pub fn load_from_fasta_and_index_file(fasta_path: &str, index_path: &str, reverse_complement: bool) {
-        
-    }
-    // TODO: Add function write to new fasta file
-    pub fn load_from_reference_file(file_path: &str) {
-        
-    }
-    fn get_preset_from_string(reverse_complement: bool, sequence: Vec<u8>) -> (Vec<SequenceRecord>, Vec<u64>, usize) {
-        if reverse_complement {
-            let seq_len = sequence.len();
-            let accumulated_length = vec![seq_len as u64, (seq_len*2) as u64];
-            let rc_seq = get_reverse_complement(&sequence);
-            let sequence_records: Vec<SequenceRecord> = vec![
-                SequenceRecord::new(DEFAULT_LABEL, true, sequence),
-                SequenceRecord::new(DEFAULT_LABEL, false, rc_seq),
-                ];
-            (sequence_records, accumulated_length, seq_len*2)
-        } else {
-            let seq_len = sequence.len();
-            let accumulated_length = vec![seq_len as u64];
-            let sequence_records: Vec<SequenceRecord> = vec![
-                SequenceRecord::new(DEFAULT_LABEL, true, sequence),
-                ];
-            (sequence_records, accumulated_length, seq_len)
-        }
+    pub fn locate(&self, pattern: &[u8]) -> Vec<u64> {
+        self.lt_fm_index.locate_w_klt(pattern)
     }
     fn generate_fmindex(
         sequence_records: &Vec<SequenceRecord>,
@@ -185,13 +202,14 @@ impl Reference {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-struct SequenceRecord {
-    label: String,
-    direction: Direction,
-    sequence: Vec<u8>,
+pub struct SequenceRecord {
+    pub label: String,
+    pub direction: Direction,
+    pub sequence: Vec<u8>,
 }
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-enum Direction {
+pub enum Direction {
     Forward,
     Reverse,
 }
@@ -210,16 +228,5 @@ impl SequenceRecord {
             concated_seq.extend_from_slice(&record.sequence);
         });
         concated_seq
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-    use super::*;
-
-    #[test]
-    fn reference_test() {
-        let records: FastaRecords = fasta_records("./src/tests/fasta/ERR209055.fa");
     }
 }

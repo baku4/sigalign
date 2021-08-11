@@ -1,9 +1,8 @@
 pub mod cigar;
-pub mod reader;
+pub mod fasta;
+pub mod index;
 
 use crate::{SequenceLength, Penalty};
-
-// DATA STRUCTURES
 
 #[derive(Debug)]
 pub struct Alignment {

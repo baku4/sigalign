@@ -1,6 +1,7 @@
 //! Dropout alignment core
 mod anchor;
 mod dwfa;
+mod anchor_new;
 
 use std::fmt::Debug;
 
@@ -51,11 +52,12 @@ pub struct Aligner {
     using_cached_wf: bool,
     get_minimum_penalty: bool,
     // Reference
-    reference: Option<Reference>,
+    reference: Reference,
 }
 
 impl Aligner {
-    pub fn new(cutoff: Cutoff, penalties: Penalties) -> Self {
+    /// Create new aligner
+    pub fn new(cutoff: Cutoff, penalties: Penalties, reference: Reference) -> Self {
         let block_penalty = BlockPenalty::new(&penalties);
         let kmer = calculate_kmer(&cutoff, &block_penalty);
         Self {
@@ -66,24 +68,19 @@ impl Aligner {
             // Options
             using_cached_wf: false,
             get_minimum_penalty: false,
-            reference: None,
+            reference: reference,
         }
     }
+    /// Change alignment options
     pub fn get_minimum_penalty(mut self) -> Self {
-        self.get_minimum_penalty = true;
-        self
+        self.get_minimum_penalty = true; self
     }
-    pub fn load_reference(&mut self) {
-        //
+    pub fn change_reference(&mut self, reference: Reference) {
+        self.reference = reference;
     }
-    pub fn clear_reference(&mut self) {
-        //
-    }
-    pub fn change_reference(&mut self) {
-        //
-    }
-    pub fn alignment(&mut self) {
-        //
+    /// Alignment
+    pub fn alignment_with_sequence(&self, query: &[u8]) {
+        
     }
     /*
     pub fn align_with_only_sequences(&self, ref_seq: &[u8] , qry_seq: &[u8]) -> Option<AlignmentResult> {

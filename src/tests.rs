@@ -36,7 +36,7 @@ fn alignment_using_dwfa(
 ) -> Option<alignment::AlignmentResult> {
     let cutoff = Cutoff::new(alignment_option.minimum_length, alignment_option.score_per_length);
     let penalties = Penalties::new(alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty);
-    let aligner = alignment::Aligner::new(cutoff, penalties);
+    // let aligner = alignment::Aligner::new(cutoff, penalties);
     // FIXME:
     // let res= aligner.align_with_only_sequences(&ref_seq, &qry_seq);
     //
