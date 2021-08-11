@@ -310,22 +310,23 @@ fn dropout_wf_next(
 pub type BacktraceResult = (Cigar, SequenceLength); // cigar is reversed 
 // (anchor index, size, checkpoint k, checkpoint fr)
 pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>;
-// (length , penalty in ref)
+// key: index of passed anchor, val: (penalty, length)
+pub type RefToBacktrace = HashMap<usize, (usize, usize)>;
+
+// (length, penalty in ref) (TO DEP)
 pub type CigarReference = (usize, usize);
-// key: index of anchor, val: CigarReference
-pub type BacktraceRefed = HashMap<usize, CigarReference>;
 
 #[inline]
 pub fn dropout_wf_backtrace(
     wf: &WaveFront, penalties: &Penalties, mut score: WfScore, mut k: WfK,
     check_points_values: &AnchorsToPassCheck,
-) -> (BacktraceResult, BacktraceRefed) {
+) -> (BacktraceResult, RefToBacktrace) {
     // INIT
     let mut operation_length: usize = 0;
     let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
     // FIXME: check if this cap is enough.
     let mut cigar: Cigar = Vec::with_capacity(score);
-    let mut checkpoint_backtrace: BacktraceRefed = HashMap::with_capacity(check_points_values.len());
+    let mut checkpoint_backtrace: RefToBacktrace = HashMap::with_capacity(check_points_values.len());
     
     // FIRST COMP
     let mut wfs: &WaveFrontScore = &wf[score];
@@ -372,8 +373,8 @@ pub fn dropout_wf_backtrace(
                                 checkpoint_backtrace.insert(
                                     anchor_index,
                                     (
+                                        score + penalties.x,
                                         operation_length - (checkpoint_fr - next_fr) as usize,
-                                        score + penalties.x
                                     ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
@@ -408,8 +409,8 @@ pub fn dropout_wf_backtrace(
                                 checkpoint_backtrace.insert(
                                     anchor_index,
                                     (
+                                        score,
                                         operation_length - (checkpoint_fr - next_fr) as usize,
-                                        score
                                     ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
@@ -444,8 +445,8 @@ pub fn dropout_wf_backtrace(
                                 checkpoint_backtrace.insert(
                                     anchor_index,
                                     (
+                                        score,
                                         operation_length - (checkpoint_fr - next_fr) as usize,
-                                        score
                                     ),
                                 );
                                 to_check_index.remove(&checkpoint_index);
