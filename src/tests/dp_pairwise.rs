@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
-use crate::alignment::*;
+use crate::alignment::{Alignment, BlockPenalty, Cutoff, calculate_kmer, Penalties};
 use crate::io::cigar::{Cigar, Clip, Operation};
-use crate::io::Alignment;
 
 use bio::alignment::*;
 use bio::alignment::AlignmentOperation;

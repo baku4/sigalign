@@ -21,19 +21,20 @@ struct AlignmentOption {
 
 fn alignment_using_dp(
     alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>
-) -> Option<alignment::AlignmentResult> {
+) -> Option<alignment::AlignmentResultDep> {
     let aligner = dp_pairwise::DpAligner::new(alignment_option.score_per_length, alignment_option.minimum_length, alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty);
     let res = dp_pairwise::alignment(&aligner, &ref_seq, &qry_seq);
     if res.len() == 0 {
         None
     } else {
-        Some(res)
+        // Some(res)
+        None
     }
 }
 
 fn alignment_using_dwfa(
     alignment_option: AlignmentOption, ref_seq: Vec<u8>, qry_seq: Vec<u8>
-) -> Option<alignment::AlignmentResult> {
+) -> Option<alignment::AlignmentResultDep> {
     let cutoff = Cutoff::new(alignment_option.minimum_length, alignment_option.score_per_length);
     let penalties = Penalties::new(alignment_option.mismatch_penalty, alignment_option.gapopen_penalty, alignment_option.gapext_penalty);
     // let aligner = alignment::Aligner::new(cutoff, penalties);

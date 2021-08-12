@@ -9,6 +9,10 @@ use super::dwfa::{
     dropout_wf_align, dropout_wf_backtrace
 };
 
+
+use std::time::{Duration, Instant};
+
+
 use core::panic;
 use std::cmp::{min, max};
 use std::collections::{HashMap, HashSet};
@@ -35,7 +39,7 @@ impl AnchorsGroup {
         kmer: usize,
         query: &[u8],
         get_minimum_penalty: bool,
-    ) -> Vec<Vec<Alignment>> {
+    ) -> AlignmentResult {
         let mut ag = Self::new(penalties, cutoff, block_penalty, reference, kmer, query);
         ag.alignment(penalties, cutoff, reference, query, get_minimum_penalty)
     }
@@ -48,6 +52,8 @@ impl AnchorsGroup {
         kmer: usize,
         query: &[u8],
     ) -> Self {
+        #[cfg(test)]
+        let start_time = Instant::now();
         // TODO: in case just one record 
         let records_count: usize = reference.accumulated_length.len();
         let mut preset_container: Vec<AnchorsPreset> = vec![AnchorsPreset::new(); records_count];
@@ -131,6 +137,8 @@ impl AnchorsGroup {
         preset_container.iter_mut().for_each(|anchors_preset| {
             anchors_preset.pushed_positions.extend_from_slice(&anchors_preset.pre_positions);
         });
+        #[cfg(test)]
+        println!("1,new_preset,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
         /*
         (2) Preset to new anchors
         */
@@ -155,12 +163,23 @@ impl AnchorsGroup {
                 anchors
             }).collect()
         };
+        #[cfg(test)]
+        println!("2,preset_to_new,{}", start_time.elapsed().as_nanos());
+        #[cfg(test)]
+        {
+            let len: usize = anchors_by_seq.iter().map(|x| x.len()).sum();
+            println!("#anchorcount:{}", len);
+        }
+        #[cfg(test)]
+        let start_time = Instant::now();
         /*
         (3) Generate checkpoints
         */
         anchors_by_seq.iter_mut().for_each(|anchors_record| {
             Anchor::create_check_points(anchors_record, penalties, cutoff);
         });
+        #[cfg(test)]
+        println!("3,gen_chkp,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
         Self {
             anchors_by_seq: anchors_by_seq,
         }
@@ -173,11 +192,16 @@ impl AnchorsGroup {
         reference: &Reference,
         query: &[u8],
         get_minimum_penalty: bool,
-    ) -> Vec<Vec<Alignment>> {
+    ) -> AlignmentResult {
         type AlignmentPreset = HashMap<usize, (usize, usize)>; // anchor index, (penalty, length)
 
+        let mut result: AlignmentResult = Vec::new();
+        let mut minimum_penalty: Penalty = Penalty::MAX;
+
         let seq_records = &reference.sequence_records;
-        let res: Vec<Vec<Alignment>> = seq_records.iter().zip(self.anchors_by_seq.iter_mut()).map(|(seq_rec, anchors)| {
+        seq_records.iter().enumerate().zip(self.anchors_by_seq.iter_mut()).for_each(|((rec_idx, seq_rec), anchors)| {
+            #[cfg(test)]
+            let start_time = Instant::now();
             // (1) Alignment hind
             for idx in 0..anchors.len() {
                 Anchor::alignment(
@@ -190,6 +214,8 @@ impl AnchorsGroup {
                     HIND_BLOCK,
                 );
             }
+            #[cfg(test)]
+            println!("4,hind,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
             // (2) Alignment fore
             for idx in (0..anchors.len()).rev() {
                 Anchor::alignment(
@@ -202,15 +228,17 @@ impl AnchorsGroup {
                     FORE_BLOCK,
                 );
             }
+            println!("5,fore,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
             // (3) Get AlignmentPreset of valid anchors
             let alignment_preset: AlignmentPreset = if get_minimum_penalty {
-                let mut minimum_penalty: Penalty = Penalty::MAX;
+                
                 let mut anchors_map: AlignmentPreset = HashMap::new();
                 for (anchor_index, anchor) in anchors.iter_mut().enumerate() {
                     if let Some((penalty, length)) = anchor.drop_with_penalty_length(cutoff) {
                         if penalty < minimum_penalty {
                             minimum_penalty = penalty;
-                            anchors_map = HashMap::new();
+                            result.clear();
+                            anchors_map.clear();
                             anchors_map.insert(anchor_index, (penalty, length));
                         } else if penalty == minimum_penalty {
                             anchors_map.insert(anchor_index, (penalty, length));
@@ -228,18 +256,19 @@ impl AnchorsGroup {
                 anchors_map
             };
             let valid_anchors: HashSet<usize> = alignment_preset.keys().map(|index| *index).collect();
+            println!("6,preset,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
             // (4) Get unique anchors
             let unique_anchors = unique_symbols_filtering(valid_anchors, &*anchors);
             // (5) Get cigar & penalty
             let ref_len = seq_rec.sequence.len();
             let qry_len = query.len();
-            unique_anchors.into_iter().map(|unique_anchor_index| {
+            let res: Vec<Alignment> = unique_anchors.into_iter().map(|unique_anchor_index| {
                 let (clip_front, clip_end, cigar) = Anchor::clips_and_cigar(
                     anchors,
                     unique_anchor_index,
                     ref_len,
                     qry_len
-                );
+                ); // FIXME: can be ref to dropped
                 let (penalty, length) = alignment_preset.get(&unique_anchor_index).unwrap();
                 Alignment {
                     penalty: *penalty,
@@ -248,9 +277,15 @@ impl AnchorsGroup {
                     clip_end: clip_end,
                     cigar: cigar, 
                 }
-            }).collect()
-        }).collect();
-        res
+            }).collect();
+            println!("7,get_unique,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
+            if res.len() != 0 {
+                for a in res {
+                    result.push((rec_idx, a));
+                }
+            }
+        });
+        result
     }
 }
 
@@ -850,4 +885,56 @@ fn unique_symbols_filtering(
         }
     }
     unique_anchors
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use crate::reference::*;
+    use crate::alignment::*;
+    use crate::io::*;
+    use super::*;
+
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_with_two_files() {
+
+        let ref_fasta = "./src/tests/fasta/ERR209055.fa";
+        let qry_fasta = "./src/tests/fasta/ERR209056.fa";
+        
+        let kmer_klt = 13;
+        let ssr = 2;
+        let ml = 100;
+        let ppl = 0.1;
+        let x = 4;
+        let o = 6;
+        let e = 2;
+
+        let now = Instant::now();
+
+        let cutoff = Cutoff::new(ml, ppl);
+        let penalties = Penalties::new(x,o,e);
+        let reference = ReferenceConfig::new()
+            .contain_only_nucleotide(true)
+            .search_reverse_complement(true)
+            .set_kmer_size_for_klt(kmer_klt)
+            .set_sampling_ratio_for_sa(ssr)
+            .generate_reference_with_fasta_file(ref_fasta);
+        
+        let aligner = Aligner::new(cutoff, penalties, reference);
+
+        println!("0,set_aligner,{}", now.elapsed().as_nanos());
+
+        println!("#kmer: {:?}", aligner.kmer);
+        let mut qry_reader = fasta::fasta_records(qry_fasta);
+        while let Some(Ok(record)) = qry_reader.next() {
+            println!("#{}", record.id());
+            let res = aligner.alignment_with_sequence(
+                record.seq(),
+                false,
+            );
+            println!("#{:?}", res);
+        };
+    }
 }

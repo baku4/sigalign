@@ -6,12 +6,23 @@ pub mod anchor_dep;
 use std::fmt::Debug;
 
 use crate::{SequenceLength, Penalty};
-use crate::io::Alignment;
 use crate::reference::{Reference, FmIndex};
+use crate::io::cigar;
 use anchor::AnchorsGroup;
 
 // Alignment Result
-pub type AlignmentResult = Vec<Alignment>;
+#[derive(Debug)]
+pub struct Alignment {
+    pub penalty: Penalty,
+    pub length: SequenceLength,
+    pub clip_front: cigar::Clip,
+    pub clip_end: cigar::Clip,
+    pub cigar: cigar::Cigar,
+}
+pub type AlignmentResult = Vec<(usize, Alignment)>; // (Index of reference, Alignment)
+
+
+pub type AlignmentResultDep = Vec<(Alignment)>; // TODO: to dep
 
 #[derive(Debug, Clone)]
 pub struct Penalties {
@@ -81,7 +92,7 @@ impl Aligner {
     }
     /// Alignment
     #[inline]
-    pub fn alignment_with_sequence(&self, query: &[u8], get_minimum_penalty: bool) {
+    pub fn alignment_with_sequence(&self, query: &[u8], get_minimum_penalty: bool) -> AlignmentResult {
         let alignment_res = AnchorsGroup::alignment_with_anchor(
             &self.penalties,
             &self.cutoff,
@@ -91,6 +102,7 @@ impl Aligner {
             query,
             get_minimum_penalty,
         );
+        alignment_res
     }
 }
 

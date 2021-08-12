@@ -3,7 +3,7 @@ use crate::io::cigar::{
     Cigar, Operation, Clip, ReverseIndex,
     get_reverse_index_from_own, get_reverse_index_from_ref,
 };
-use super::{Cutoff, Penalties, BlockPenalty, FmIndex, Alignment, AlignmentResult};
+use super::{Cutoff, Penalties, BlockPenalty, FmIndex, Alignment, AlignmentResultDep};
 use super::dwfa::{
     WaveFront, AnchorsToPassCheck, CigarReference, BacktraceResult,
     dropout_wf_align, dropout_wf_backtrace
@@ -150,7 +150,7 @@ impl<'a> AnchorGroup<'a> {
             );
         };
     }
-    pub fn get_result(&mut self, get_minimum_penalty: bool) -> AlignmentResult {
+    pub fn get_result(&mut self, get_minimum_penalty: bool) -> AlignmentResultDep {
         // anchor index, length, penalty
         type AlignmentPreset = HashMap<usize, (SequenceLength, Penalty)>;
         // (1) Get AlignmentPreset of valid anchors
