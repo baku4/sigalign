@@ -99,10 +99,10 @@ pub fn alignment(
             }
         }).count();
         if (length >= aligner.minimum_length) && (penalty as f64/length as f64 <= aligner.score_per_length) {
-            if !used_operations.contains(&operations) {
-                used_operations.insert(operations.clone());
-                result.push((operations, penalty))
-            }
+            // if !used_operations.contains(&operations) {
+            //     used_operations.insert(operations.clone());
+            //     result.push((operations, penalty))
+            // }
         }
     };
     conv_to_cigar(result)
