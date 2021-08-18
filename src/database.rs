@@ -15,7 +15,27 @@ pub trait SequenceProvider<'a> {
     fn accumulated_length(&'a self) -> AccumulatedLength;
 }
 
-/// Config for [Database]
+/// Accumulated length for locating k-sized pattern
+/// (start, end)
+pub type AccumulatedLength = Vec<(u64, u64)>;
+
+/// Search Range  
+/// must be sorted
+pub type SearchRange = Vec<usize>;
+
+/// Direction for represent reverse complement
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub enum Direction {
+    Forward,
+    Reverse,
+}
+
+
+/*****************************
+********* DATA BASE **********
+*****************************/
+
+/// Config
 pub struct DatabaseConfig {
     reverse_complement: bool,
     in_memory_index: bool,
@@ -25,6 +45,7 @@ pub struct DatabaseConfig {
     only_nucleotide: bool,
 }
 impl DatabaseConfig {
+    // Settings
     pub fn new() -> Self {
         Self {
             reverse_complement: true,
@@ -34,6 +55,7 @@ impl DatabaseConfig {
             only_nucleotide: true,
         }
     }
+    // Create DB
     pub fn create_db<'a, P: SequenceProvider<'a>>(&self, sequence_provider: &'a P) -> Database<'a> {
         Database::new(self, sequence_provider)
     }
@@ -61,7 +83,7 @@ impl<'a> Database<'a> {
             .set_suffix_array_sampling_ratio(database_config.sa_sampling_ratio)
             .set_kmer_lookup_table(database_config.klt_kmer);
         if !database_config.only_nucleotide {
-            fm_index_config = fm_index_config.contain_non_nucleotide();
+            fm_index_config = fm_index_config.contain_non_nucleotide(); //TODO: change configs setting method
         }
         let fm_index = fm_index_config.generate_fmindex(concated_seq);
         Self {
@@ -75,14 +97,26 @@ impl<'a> Database<'a> {
             sa_sampling_ratio: database_config.sa_sampling_ratio,
         }
     }
-    pub fn load() {
+    pub fn load<P: SequenceProvider<'a>>(file_path: &str, sequence_provider: &'a P) {
 
     }
     pub fn state(&self) {
 
     }
-    pub fn search(&self, query: &[u8], aligner: &Aligner, search_range: &SearchRange) {
-
+    pub fn search(
+        &self,
+        query: &[u8],
+        aligner: &Aligner,
+        search_range: &SearchRange,
+        get_minimum_penalty: bool,
+    ) {
+        let res_for_db = aligner.alignment_with_query(
+            self,
+            search_range,
+            query,
+            get_minimum_penalty,
+        );
+        ()
     }
     pub fn locate(&self, pattern: &[u8]) -> Vec<u64> {
         self.fm_index.locate_w_klt(pattern) //TODO: locate
@@ -151,27 +185,6 @@ impl<'a> Database<'a> {
     }
 }
 
-/// Accumulated length for locating k-sized pattern
-/// (start, end)
-pub type AccumulatedLength = Vec<(u64, u64)>;
-
-/// Search Range  
-/// ! must be sorted
-pub type SearchRange = Vec<usize>;
-
-/// Location of the database
-/// (index of sequence, start position of pattern)
-pub struct Location {
-    pub index: usize,
-    pub position: usize,
-}
-
-/// Result of search
-struct SearchResult {
-    label: String,
-    sequence: Vec<u8>,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct SerializedDatabase {
     // Index
@@ -197,7 +210,7 @@ mod tests {
 
         let ref_fasta = "./src/tests/fasta/ERR209055.fa";
 
-        let (seq_provider, _) = sequence_provider::InMemorySequences::from_fasta(
+        let (seq_provider, _) = sequence_provider::OnMemoryProvider::from_fasta(
             reverse_complement,
             ref_fasta
         );

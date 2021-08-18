@@ -10,7 +10,7 @@ use super::operation::{
     AlignedBlock, Operation, Clip, ReverseIndex,
     get_reverse_index_from_own, get_reverse_index_from_ref,
 };
-use super::{Penalties, Cutoff, BlockPenalty, AlignmentResult, AlignmentResultForDB};
+use super::{Penalties, Cutoff, BlockPenalty, AlignmentResult, AlignmentResultByDbIndex};
 
 use std::time::{Duration, Instant};
 use core::panic;
@@ -95,10 +95,10 @@ impl AnchorsGroup {
         cutoff: &Cutoff,
         query: &[u8],
         get_minimum_penalty: bool,
-    ) -> AlignmentResultForDB {
+    ) -> AlignmentResultByDbIndex {
         type AlignmentPreset = HashMap<usize, (usize, usize)>; // anchor index, (penalty, length)
 
-        let mut result_for_db: AlignmentResultForDB = HashMap::with_capacity(self.anchors_by_index.len());
+        let mut result_for_db: AlignmentResultByDbIndex = HashMap::with_capacity(self.anchors_by_index.len());
         let mut minimum_penalty: Penalty = Penalty::MAX;
 
         for (index, anchors) in &mut self.anchors_by_index {
@@ -866,7 +866,7 @@ mod tests {
 
         let aligner = alignment::Aligner::new(cutoff, penalties);
         println!("kmer: {}", aligner.kmer);
-        let (seq_provider, _) = sequence_provider::InMemorySequences::from_fasta(true, ref_fasta);
+        let (seq_provider, _) = sequence_provider::OnMemoryProvider::from_fasta(true, ref_fasta);
 
         let database_config = DatabaseConfig::new();
 

@@ -15,7 +15,7 @@ pub struct AlignmentResult {
 }
 
 /// Result of alignment for database
-pub type AlignmentResultForDB = std::collections::HashMap<usize, Vec<AlignmentResult>>;
+pub type AlignmentResultByDbIndex = std::collections::HashMap<usize, Vec<AlignmentResult>>;
 
 /// Scoring scheme for alignment
 #[derive(Debug, Clone)]
@@ -34,6 +34,7 @@ impl Penalties {
     }
 }
 
+/// Cutoff for alignment
 #[derive(Debug, Clone)]
 pub struct Cutoff {
     ml: SequenceLength,
@@ -82,9 +83,9 @@ impl Aligner {
     pub fn get_minimum_penalty(mut self) -> Self {
         self.get_minimum_penalty = true; self
     }
-    // Alignment
+    /// Alignment with query sequence
     #[inline]
-    pub fn alignment_with_query(&self, database: &Database, search_range: &SearchRange, query: &[u8], get_minimum_penalty: bool) -> AlignmentResultForDB {
+    pub fn alignment_with_query(&self, database: &Database, search_range: &SearchRange, query: &[u8], get_minimum_penalty: bool) -> AlignmentResultByDbIndex {
         let mut anchors_group = anchor::AnchorsGroup::new(
             database,
             search_range,
