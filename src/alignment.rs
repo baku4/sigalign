@@ -14,6 +14,9 @@ pub struct AlignmentResult {
     pub aligned_block: operation::AlignedBlock,
 }
 
+/// Result of alignment for database
+pub type AlignmentResultForDB = std::collections::HashMap<usize, Vec<AlignmentResult>>;
+
 /// Scoring scheme for alignment
 #[derive(Debug, Clone)]
 pub struct Penalties {

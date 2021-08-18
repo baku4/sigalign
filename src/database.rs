@@ -1,10 +1,10 @@
-mod sequence_provider;
+pub mod sequence_provider;
 
 use crate::alignment::Aligner;
 
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use lt_fm_index::FmIndex;
+use lt_fm_index::{FmIndex, FmIndexConfig};
 
 /// Records of Sequences
 pub trait SequenceProvider<'a> {
@@ -18,7 +18,6 @@ pub trait SequenceProvider<'a> {
 /// Config for [Database]
 pub struct DatabaseConfig {
     reverse_complement: bool,
-    in_memory_sr: bool,
     in_memory_index: bool,
     // Lt-fm-index
     klt_kmer: usize,
@@ -29,15 +28,14 @@ impl DatabaseConfig {
     pub fn new() -> Self {
         Self {
             reverse_complement: true,
-            in_memory_sr: true,
             in_memory_index: true,
-            klt_kmer: 13,
+            klt_kmer: 10,
             sa_sampling_ratio: 2,
             only_nucleotide: true,
         }
     }
-    pub fn create_db(&self) { //  -> Database
-        // Database::new(self)
+    pub fn create_db<'a, P: SequenceProvider<'a>>(&self, sequence_provider: &'a P) -> Database<'a> {
+        Database::new(self, sequence_provider)
     }
 }
 
@@ -56,8 +54,26 @@ pub struct Database<'a> {
 }
 
 impl<'a> Database<'a> {
-    pub fn new(database_config: &DatabaseConfig) {
-        
+    pub fn new<P: SequenceProvider<'a>>(database_config: &DatabaseConfig, sequence_provider: &'a P) -> Self {
+        let concated_seq = sequence_provider.concated_sequence();
+        let accumualated_length = sequence_provider.accumulated_length();
+        let mut fm_index_config = FmIndexConfig::new()
+            .set_suffix_array_sampling_ratio(database_config.sa_sampling_ratio)
+            .set_kmer_lookup_table(database_config.klt_kmer);
+        if !database_config.only_nucleotide {
+            fm_index_config = fm_index_config.contain_non_nucleotide();
+        }
+        let fm_index = fm_index_config.generate_fmindex(concated_seq);
+        Self {
+            sequence_provider: sequence_provider,
+            fm_index: fm_index,
+            accumulated_length: accumualated_length,
+            in_memory_index: database_config.in_memory_index,
+            reverse_complement: database_config.reverse_complement,
+            only_nucleotide: database_config.only_nucleotide,
+            klt_kmer: database_config.klt_kmer,
+            sa_sampling_ratio: database_config.sa_sampling_ratio,
+        }
     }
     pub fn load() {
 
@@ -71,9 +87,15 @@ impl<'a> Database<'a> {
     pub fn locate(&self, pattern: &[u8]) -> Vec<u64> {
         self.fm_index.locate_w_klt(pattern) //TODO: locate
     }
+    pub fn get_range(&self) -> Vec<usize> {
+        (0..self.accumulated_length.len()).collect()
+    }
     pub fn get_ref_len(&self, ref_index: usize) -> usize {
         let (start, end) = self.accumulated_length[ref_index];
         (end - start) as usize
+    }
+    pub fn get_sequence(&self, ref_index: usize) -> &[u8] {
+        self.sequence_provider.sequence(ref_index)
     }
     pub fn find_ref_positions(
         &self,
@@ -91,18 +113,18 @@ impl<'a> Database<'a> {
 
         for position in sorted_positions {
             // reset
-            size = search_range.len();
+            right = search_range.len();
             left = mid;
-            right = size;
+            size = right - left;
     
             while left < right {
                 mid = left + size / 2;
                 index = search_range[mid];
-    
+                
                 let (start, end) = self.accumulated_length[index];
-                if start > position {
+                if position >= end {
                     left = mid + 1;
-                } else if position >= end {
+                } else if start > position {
                     right = mid;
                 } else {
                     if (position + kmer) < end {
@@ -115,6 +137,7 @@ impl<'a> Database<'a> {
                                 ref_positions_by_index.insert(index, vec![ref_pos]);
                             },
                         }
+                        break;
                     } else {
                         break;
                     }
@@ -169,7 +192,18 @@ mod tests {
     use crate::*;
     
     #[test]
-    fn test_find_ref_positions() {
+    fn test_create_db() {
+        let reverse_complement = true;
 
+        let ref_fasta = "./src/tests/fasta/ERR209055.fa";
+
+        let (seq_provider, _) = sequence_provider::InMemorySequences::from_fasta(
+            reverse_complement,
+            ref_fasta
+        );
+
+        let database_config = DatabaseConfig::new();
+
+        let database = database_config.create_db(&seq_provider);
     }
 }
