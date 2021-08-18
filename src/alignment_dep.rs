@@ -1,18 +1,32 @@
-pub mod operation;
-mod anchor;
+//! Dropout alignment core
 mod dwfa;
+pub mod anchor;
+pub mod anchor_dep;
 
-use crate::{Penalty, SequenceLength};
+use std::fmt::Debug;
 
-/// Result of alignment
+use crate::database::Database;
+use crate::{SequenceLength, Penalty};
+use crate::io::cigar;
+use anchor::AnchorsGroup;
+
+// Alignment Result
+
+
+// Alignment Result
 #[derive(Debug)]
-pub struct AlignmentResult {
+pub struct Alignment {
     pub penalty: Penalty,
     pub length: SequenceLength,
-    pub clip_front: operation::Clip,
-    pub clip_end: operation::Clip,
-    pub aligned_block: operation::AlignedBlock,
+    pub clip_front: cigar::Clip,
+    pub clip_end: cigar::Clip,
+    pub cigar: cigar::Cigar,
 }
+
+pub type AlignmentResult = Vec<(usize, Alignment)>; // (Index of reference, Alignment)
+
+
+pub type AlignmentResultDep = Vec<(Alignment)>; // TODO: to dep
 
 /// Scoring scheme for alignment
 #[derive(Debug, Clone)]
@@ -79,20 +93,20 @@ impl Aligner {
     pub fn get_minimum_penalty(mut self) -> Self {
         self.get_minimum_penalty = true; self
     }
-    // Alignment
-    // #[inline]
-    // pub fn alignment_with_sequence(&self, reference: &[u8], query: &[u8], get_minimum_penalty: bool) -> Vec<AlignmentResult> {
-    //     let alignment_res = AnchorsGroup::alignment_with_anchor(
-    //         &self.penalties,
-    //         &self.cutoff,
-    //         &self.block_penalty,
-    //         &self.reference,
-    //         self.kmer,
-    //         query,
-    //         get_minimum_penalty,
-    //     );
-    //     alignment_res
-    // }
+    /// Alignment
+    #[inline]
+    pub fn alignment_with_sequence(&self, query: &[u8], get_minimum_penalty: bool) -> AlignmentResult {
+        let alignment_res = AnchorsGroup::alignment_with_anchor(
+            &self.penalties,
+            &self.cutoff,
+            &self.block_penalty,
+            &self.reference,
+            self.kmer,
+            query,
+            get_minimum_penalty,
+        );
+        alignment_res
+    }
 }
 
 #[derive(Debug, Clone)]

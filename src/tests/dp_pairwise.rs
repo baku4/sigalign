@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::alignment::{Alignment, BlockPenalty, Cutoff, calculate_kmer, Penalties};
+use crate::alignment_dep::{Alignment, BlockPenalty, Cutoff, calculate_kmer, Penalties};
 use crate::io::cigar::{Cigar, Clip, Operation};
 
 use bio::alignment::*;

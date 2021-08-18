@@ -1,6 +1,7 @@
 //! Dropout alignment
+// pub mod alignment_dep;
+// pub mod reference;
 pub mod alignment;
-pub mod reference;
 pub mod io;
 pub mod utils;
 pub mod database;
@@ -14,5 +15,5 @@ pub type OperationLength = u32;
 /// Penalty(Score): Same as memory bandwidth
 pub type Penalty = usize;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;

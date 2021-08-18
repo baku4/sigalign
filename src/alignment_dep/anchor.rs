@@ -1,53 +1,70 @@
-use crate::database::{
-    Database, AccumulatedLength, SearchRange,
-};
 use crate::{SequenceLength, Penalty};
+use crate::io::cigar::{
+    Cigar, Operation, Clip, ReverseIndex,
+    get_reverse_index_from_own, get_reverse_index_from_ref,
+};
+use super::{Cutoff, Penalties, BlockPenalty, FmIndex, Alignment, AlignmentResult};
 use super::dwfa::{
     WaveFront, AnchorsToPassCheck, CigarReference, BacktraceResult, RefToBacktrace,
     dropout_wf_align, dropout_wf_backtrace
 };
-use super::operation::{
-    AlignedBlock, Operation, Clip, ReverseIndex,
-    get_reverse_index_from_own, get_reverse_index_from_ref,
-};
-use super::{Penalties, Cutoff, BlockPenalty};
+
 
 use std::time::{Duration, Instant};
+
+
 use core::panic;
 use std::cmp::{min, max};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
-/*****************************
-******** ANCHOR GROUP ********
-*****************************/
-struct AnchorsGroup {
-    anchors_by_index: HashMap<usize, Vec<Anchor>>,
+type IsHindBlock = bool;
+const HIND_BLOCK: bool = true;
+const FORE_BLOCK: bool = false;
+
+// Anchor Group
+pub struct AnchorsGroup {
+    anchors_by_seq: Vec<AnchorsRecord>,
 }
 impl AnchorsGroup {
-    pub fn new(
-        database: &Database,
-        search_range: &SearchRange,
+    #[inline]
+    pub fn alignment_with_anchor(
         penalties: &Penalties,
         cutoff: &Cutoff,
         block_penalty: &BlockPenalty,
+        reference: &Reference,
+        kmer: usize,
+        query: &[u8],
+        get_minimum_penalty: bool,
+    ) -> AlignmentResult {
+        let mut ag = Self::new(penalties, cutoff, block_penalty, reference, kmer, query);
+        ag.alignment(penalties, cutoff, reference, query, get_minimum_penalty)
+    }
+    #[inline]
+    pub fn new(
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        block_penalty: &BlockPenalty,
+        reference: &Reference,
         kmer: usize,
         query: &[u8],
     ) -> Self {
-        // init
+        #[cfg(test)]
+        let start_time = Instant::now();
+        // TODO: in case just one record 
+        let records_count: usize = reference.accumulated_length.len();
+        let mut preset_container: Vec<AnchorsPreset> = vec![AnchorsPreset::new(); records_count];
+
         let qry_len = query.len();
         let search_count = qry_len / kmer;
         let mut anchor_existence: Vec<bool> = Vec::with_capacity(search_count);
-
-        let mut anchors_preset_by_index: HashMap<usize, AnchorsPreset> = HashMap::new();
         /*
         (1) Create Preset of Anchors
         */
         for qry_idx in 0..search_count {
             let qry_pos = qry_idx*kmer;
-            // Get positions of reference
             let pattern = &query[qry_pos..qry_pos+kmer];
-            let mut positions = database.locate(pattern);
+            let mut positions = reference.locate(pattern);
             if positions.is_empty() {
                 anchor_existence.push(false);
                 continue;
@@ -55,238 +72,235 @@ impl AnchorsGroup {
                 anchor_existence.push(true);
                 positions.sort(); // must be sorted
             }
-            let ref_positions_by_index = database.find_ref_positions(
-                search_range, positions, kmer as u64
-            );
-
-            // Ref pos to preset of anchors
-            for (ref_index, ref_positions) in ref_positions_by_index {
-                match anchors_preset_by_index.get_mut(&ref_index) {
-                    Some(anchors_preset) => {
-                        // anchors_preset
-                        anchors_preset.add_anchors(ref_positions, qry_idx);
-                    },
-                    None => {
-                        let ref_len = database.get_ref_len(ref_index);
-                        let mut new_anchors_preset = AnchorsPreset::new(ref_len);
-                        new_anchors_preset.add_anchors(ref_positions, qry_idx);
-                        anchors_preset_by_index.insert(ref_index, new_anchors_preset);
-                    },
+            let mut pos_idx: usize = 0;
+            for record_idx in 0..records_count {
+                // Get AnchorsPreset
+                let anchors_preset = &mut preset_container[record_idx];
+                // Make positions to add
+                let mut curr_positions: Vec<AnchorPosition> = Vec::new();
+                let mut ie_pre_positions: Vec<AnchorPosition> = Vec::new();
+                // Fetch reference information
+                let ref_last_index = &reference.accumulated_length[record_idx];
+                // Check if position can be added to this anchors preset
+                while pos_idx < positions.len() {
+                    let position = positions[pos_idx];
+                    if position <= *ref_last_index {
+                        if (position + kmer as u64) <= *ref_last_index { // the position is included in this record
+                            let mut this_pos_is_ie = false;
+                            // Check Impeccable Extension (IE)
+                            for pre_pos in &mut anchors_preset.pre_positions {
+                                if position as usize == (pre_pos.ref_pos + pre_pos.size) {
+                                    let mut ie_pre_pos = pre_pos.clone();
+                                    ie_pre_pos.size += kmer;
+                                    ie_pre_positions.push(ie_pre_pos);
+                                    this_pos_is_ie = true;
+                                    pre_pos.used = true; // this pre position is used
+                                    break;
+                                }
+                            }
+                            // If not IE -> add to current positions cache
+                            if !this_pos_is_ie {
+                                curr_positions.push(
+                                    AnchorPosition {
+                                        ref_pos: position as usize,
+                                        qry_idx: qry_idx,
+                                        size: kmer,
+                                        used: false,
+                                    }
+                                );
+                            }
+                            pos_idx += 1; // check next position with this anchors preset
+                        } else { // this position traverse the edge of sequences
+                            pos_idx += 1;
+                            break; // escape the loop
+                        }
+                    } else { // the position is not included in this record
+                        break; // pass this position to next record - escape the loop
+                    }
                 }
+                // Add positions to this anchors preset
+                // push unused pre positions
+                for pre_pos in &anchors_preset.pre_positions {
+                    if !pre_pos.used {
+                        anchors_preset.pushed_positions.push(pre_pos.clone());
+                    }
+                }
+                // ie & curr positions to pre positions
+                ie_pre_positions.extend(curr_positions);
+                anchors_preset.pre_positions = ie_pre_positions;
             }
         }
+        // Push last pre_pos of anchors preset
+        preset_container.iter_mut().for_each(|anchors_preset| {
+            anchors_preset.pushed_positions.extend_from_slice(&anchors_preset.pre_positions);
+        });
+        #[cfg(test)]
+        println!("1,new_preset,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
         /*
         (2) Preset to new anchors
         */
-        let (forward_bp, backward_bp) = AnchorsPreset::existence_to_bp(anchor_existence, block_penalty);
-        let anchors_by_index: HashMap<usize, Vec<Anchor>> = anchors_preset_by_index.into_iter().map(|(index, anchors_preset)| {
-            (index, anchors_preset.to_anchors(kmer, qry_len, &forward_bp, &backward_bp, cutoff))
-        }).collect();
+        // Convert existence info to block penalty
+        let (forward_bp, backward_bp) = existence_to_bp(anchor_existence, block_penalty);
+        // AnchorsPreset to new anchors
+        let mut ref_start_pos = 0;
+        let mut ref_end_pos = 0;
+        let mut anchors_by_seq: Vec<AnchorsRecord> = { // : Vec<Vec<Anchor>>
+            preset_container.into_iter().enumerate().map(|(record_index, anchors_preset)| {
+                ref_end_pos = reference.accumulated_length[record_index] as usize;
+                let anchors = anchors_preset.create_anchors(
+                    &kmer,
+                    &qry_len,
+                    &forward_bp,
+                    &backward_bp,
+                    &ref_start_pos,
+                    &ref_end_pos,
+                    cutoff
+                );
+                ref_start_pos = ref_end_pos;
+                anchors
+            }).collect()
+        };
+        #[cfg(test)]
+        println!("2,preset_to_new,{}", start_time.elapsed().as_nanos());
+        #[cfg(test)]
+        {
+            let len: usize = anchors_by_seq.iter().map(|x| x.len()).sum();
+            println!("#anchorcount:{}", len);
+        }
+        #[cfg(test)]
+        let start_time = Instant::now();
+        /*
+        (3) Generate checkpoints
+        */
+        anchors_by_seq.iter_mut().for_each(|anchors_record| {
+            Anchor::create_check_points(anchors_record, penalties, cutoff);
+        });
+        #[cfg(test)]
+        println!("3,gen_chkp,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
         Self {
-            anchors_by_index: anchors_by_index,
+            anchors_by_seq: anchors_by_seq,
         }
     }
-}
-
-/*****************************
-******* ANCHOR PRESET ********
-*****************************/
-#[derive(Debug, Clone)]
-struct AnchorsPreset {
-    ref_len: usize,
-    positions: Vec<(usize, Vec<usize>)>, // (qry idx, ref positions)
-}
-impl AnchorsPreset {
-    fn new(ref_len: usize) -> Self {
-        Self { ref_len, positions: Vec::new() }
-    }
-    fn add_anchors(&mut self, ref_positions: Vec<usize>, qry_idx: usize) {
-        self.positions.push((qry_idx, ref_positions));
-    }
-    fn to_anchors(
-        self,
-        kmer: usize,
-        qry_len: usize,
-        forward_bp: &Vec<usize>,
-        backward_bp: &Vec<usize>,
+    #[inline]
+    pub fn alignment(
+        &mut self,
+        penalties: &Penalties,
         cutoff: &Cutoff,
-    ) -> Vec<Anchor> {
-        let mut anchors: Vec<Anchor> = Vec::new(); // TODO: with cap?
-        let mut to_check_indices: Vec<usize> = Vec::new();
-        let mut pre_idx = 0;
-        let mut qry_pos;
-        
-        for (qry_idx, ref_positions) in self.positions {
-            let anchors_pre_count = anchors.len();
-            let mut added_anchors_count = 0;
-            let mut used_pre_indices: Vec<usize> = Vec::new();
-            qry_pos = qry_idx * kmer;
-            if pre_idx + 1 == qry_idx {
-                'ref_check: for ref_pos in ref_positions {
-                    // if break here: IE
-                    for to_check_idx in &to_check_indices {
-                        let pre_anchor = &mut anchors[*to_check_idx];
-                        if pre_anchor.position.1 + pre_anchor.size + kmer == ref_pos {
-                            pre_anchor.size += kmer;
-                            used_pre_indices.push(*to_check_idx);
-                            continue 'ref_check;
+        reference: &Reference,
+        query: &[u8],
+        get_minimum_penalty: bool,
+    ) -> AlignmentResult {
+        type AlignmentPreset = HashMap<usize, (usize, usize)>; // anchor index, (penalty, length)
+
+        let mut result: AlignmentResult = Vec::new();
+        let mut minimum_penalty: Penalty = Penalty::MAX;
+
+        let seq_records = &reference.sequence_records;
+        seq_records.iter().enumerate().zip(self.anchors_by_seq.iter_mut()).for_each(|((rec_idx, seq_rec), anchors)| {
+            #[cfg(test)]
+            let start_time = Instant::now();
+            // (1) Alignment hind
+            for idx in 0..anchors.len() {
+                Anchor::alignment(
+                    anchors,
+                    idx,
+                    &seq_rec.sequence,
+                    query,
+                    penalties,
+                    cutoff,
+                    HIND_BLOCK,
+                );
+            }
+            #[cfg(test)]
+            println!("4,hind,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
+            // (2) Alignment fore
+            for idx in (0..anchors.len()).rev() {
+                Anchor::alignment(
+                    anchors,
+                    idx,
+                    &seq_rec.sequence,
+                    query,
+                    penalties,
+                    cutoff,
+                    FORE_BLOCK,
+                );
+            }
+            println!("5,fore,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
+            // (3) Get AlignmentPreset of valid anchors
+            let alignment_preset: AlignmentPreset = if get_minimum_penalty {
+                
+                let mut anchors_map: AlignmentPreset = HashMap::new();
+                for (anchor_index, anchor) in anchors.iter_mut().enumerate() {
+                    if let Some((penalty, length)) = anchor.drop_with_penalty_length(cutoff) {
+                        if penalty < minimum_penalty {
+                            minimum_penalty = penalty;
+                            result.clear();
+                            anchors_map.clear();
+                            anchors_map.insert(anchor_index, (penalty, length));
+                        } else if penalty == minimum_penalty {
+                            anchors_map.insert(anchor_index, (penalty, length));
                         }
                     }
-                    // Not IE
-                    let mut total_length = 0;
-                    let mut total_penalty = 0;
-                    // length & penalty of fore block
-                    let fore_block = {
-                        let mut length = min(ref_pos, qry_pos);
-                        let block_count = length / kmer;
-                        let penalty: usize = backward_bp[qry_idx-block_count..qry_idx].iter().map(|p| {
-                            if *p != 0 { length += 1; };
-                            *p
-                        }).sum();
-                        total_length += length;
-                        total_penalty += penalty;
-                        AlignmentBlock::Estimated(penalty, length)
-                    };
-                    // length & penalty of hind block
-                    let hind_block = {
-                        let ref_left = self.ref_len - ref_pos;
-                        let qry_left = qry_len - qry_pos;
-                        let mut length = min(ref_left, qry_left);
-                        let block_count = length / kmer;
-                        let penalty: usize = forward_bp[qry_idx..qry_idx+block_count].iter().map(|p| {
-                            if *p != 0 { length += 1; };
-                            *p
-                        }).sum();
-                        total_length += length;
-                        total_penalty += penalty;
-                        AlignmentBlock::Estimated(penalty, length-kmer)
-                    };
-                    if (total_length >= cutoff.ml) && (total_penalty as f64/total_length as f64) <= cutoff.ppl {
-                        let new_anchor = Anchor {
-                            position: (ref_pos, qry_pos), // ref, qry
-                            size: kmer,
-                            fore: fore_block,
-                            hind: hind_block,
-                            check_points: (Vec::new(), Vec::new()), // fore, hind
-                            connected: HashSet::new(),
-                        };
-                        added_anchors_count += 1;
-                        anchors.push(new_anchor);
+                }
+                anchors_map
+            } else {
+                let mut anchors_map: AlignmentPreset = HashMap::new();
+                for (anchor_index, anchor) in anchors.iter_mut().enumerate() {
+                    if let Some((penalty, length)) = anchor.drop_with_penalty_length(cutoff) {
+                        anchors_map.insert(anchor_index, (penalty, length));
                     }
                 }
-            } else {
-                for ref_pos in ref_positions {
-                    let mut total_length = 0;
-                    let mut total_penalty = 0;
-                    // length & penalty of fore block
-                    let fore_block = {
-                        let mut length = min(ref_pos, qry_pos);
-                        let block_count = length / kmer;
-                        let penalty: usize = backward_bp[qry_idx-block_count..qry_idx].iter().map(|p| {
-                            if *p != 0 { length += 1; };
-                            *p
-                        }).sum();
-                        total_length += length;
-                        total_penalty += penalty;
-                        AlignmentBlock::Estimated(penalty, length)
-                    };
-                    // length & penalty of hind block
-                    let hind_block = {
-                        let ref_left = self.ref_len - ref_pos;
-                        let qry_left = qry_len - qry_pos;
-                        let mut length = min(ref_left, qry_left);
-                        let block_count = length / kmer;
-                        let penalty: usize = forward_bp[qry_idx..qry_idx+block_count].iter().map(|p| {
-                            if *p != 0 { length += 1; };
-                            *p
-                        }).sum();
-                        total_length += length;
-                        total_penalty += penalty;
-                        AlignmentBlock::Estimated(penalty, length-kmer)
-                    };
-                    if (total_length >= cutoff.ml) && (total_penalty as f64/total_length as f64) <= cutoff.ppl {
-                        let new_anchor = Anchor {
-                            position: (ref_pos, qry_pos), // ref, qry
-                            size: kmer,
-                            fore: fore_block,
-                            hind: hind_block,
-                            check_points: (Vec::new(), Vec::new()), // fore, hind
-                            connected: HashSet::new(),
-                        };
-                        added_anchors_count += 1;
-                        anchors.push(new_anchor);
-                    }
+                anchors_map
+            };
+            let valid_anchors: HashSet<usize> = alignment_preset.keys().map(|index| *index).collect();
+            println!("6,preset,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
+            // (4) Get unique anchors
+            let unique_anchors = unique_symbols_filtering(valid_anchors, &*anchors);
+            // (5) Get cigar & penalty
+            let ref_len = seq_rec.sequence.len();
+            let qry_len = query.len();
+            let res: Vec<Alignment> = unique_anchors.into_iter().map(|unique_anchor_index| {
+                let (clip_front, clip_end, cigar) = Anchor::clips_and_cigar(
+                    anchors,
+                    unique_anchor_index,
+                    ref_len,
+                    qry_len
+                ); // FIXME: can be ref to dropped
+                let (penalty, length) = alignment_preset.get(&unique_anchor_index).unwrap();
+                Alignment {
+                    penalty: *penalty,
+                    length: *length,
+                    clip_front: clip_front, 
+                    clip_end: clip_end,
+                    cigar: cigar, 
+                }
+            }).collect();
+            println!("7,get_unique,{}", start_time.elapsed().as_nanos()); let start_time = Instant::now();
+            if res.len() != 0 {
+                for a in res {
+                    result.push((rec_idx, a));
                 }
             }
-            used_pre_indices.extend(anchors_pre_count..anchors_pre_count+added_anchors_count);
-            to_check_indices = used_pre_indices;
-            pre_idx = qry_idx;
-        }
-        anchors
-    }
-
-    #[inline]
-    fn existence_to_bp(anchor_existence: Vec<bool>, block_penalty: &BlockPenalty) -> (Vec<Penalty>, Vec<Penalty>) {
-        let p_odd = block_penalty.odd;
-        let p_even = block_penalty.even;
-        // TODO: refine redundant code
-        // forward_bp
-        let mut last_is_odd = false;
-        let forward_bp: Vec<Penalty> = anchor_existence.iter().map(|&exist| {
-            if exist {
-                last_is_odd = false; 0
-            } else {
-                if last_is_odd { 
-                    last_is_odd = false; p_even
-                } else {
-                    last_is_odd = true; p_odd
-                }
-            }
-        }).collect();
-        // backward_bp
-        let mut last_is_odd = false;
-        let backward_bp: Vec<Penalty> = anchor_existence.iter().rev().map(|&exist| {
-            if exist {
-                last_is_odd = false; 0
-            } else {
-                if last_is_odd { 
-                    last_is_odd = false; p_even
-                } else {
-                    last_is_odd = true; p_odd
-                }
-            }
-        }).rev().collect();
-        (forward_bp, backward_bp)
+        });
+        result
     }
 }
 
-type IsHindBlock = bool;
-const HIND_BLOCK: bool = true;
-const FORE_BLOCK: bool = false;
+/*
 
-/*****************************
-********** ANCHOR ************
-*****************************/
+ANCHOR
+
+*/
+type AnchorsRecord = Vec<Anchor>; // Created from [AnchorsPreset]
 
 #[derive(Debug, Clone)]
 struct Anchor { 
-    position: (usize, usize), // ref, qry
-    size: usize,
-    fore: AlignmentBlock,
-    hind: AlignmentBlock,
-    check_points: (Vec<usize>, Vec<usize>), // fore, hind
-    connected: HashSet<usize>,
-}
-
-#[derive(Debug, Clone)]
-struct AnchorDep { 
     position: (usize, usize), // ref, qry
     size: usize,
     state: AlignmentState,
     check_points: (Vec<usize>, Vec<usize>), // fore, hind
     connected: HashSet<usize>,
 }
-
 #[derive(Debug, Clone)]
 enum AlignmentState {
     Dropped,
@@ -313,18 +327,18 @@ impl AlignmentBlock {
 }
 #[derive(Debug, Clone)]
 enum ExactAlignment {
-    Own(AlignedBlock, (usize, usize)), // AlignedBlock, (penalty, length)
+    Own(Cigar, (usize, usize)), // Cigar, (penalty, length)
     Ref(usize, (usize, usize)), // index of connected anchor, (penalty, length)
 }
 impl ExactAlignment {
     #[inline]
     fn get_cigar_ridx<'a>(
         &'a self,
-        anchors: &'a Vec<AnchorDep>,
+        anchors: &'a Vec<Anchor>,
         is_hind_block: IsHindBlock,
         ref_len: usize,
         qry_len: usize,
-    ) -> (Option<(&'a AlignedBlock, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
+    ) -> (Option<(&'a Cigar, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
         match self {
             ExactAlignment::Own(cigar, (_, length)) => {
                 if cigar.len() == 0 {
@@ -379,12 +393,12 @@ impl ExactAlignment {
     }
 }
 
-impl AnchorDep {
+impl Anchor {
     /*
     CHECK POINTS
     */
     #[inline]
-    fn create_check_points(anchors_record: &mut Vec<Self>, penalties: &Penalties, cutoff: &Cutoff) {
+    fn create_check_points(anchors_record: &mut AnchorsRecord, penalties: &Penalties, cutoff: &Cutoff) {
         let anchor_count = anchors_record.len();
         for fore_idx in 0..anchor_count {
             for hind_idx in fore_idx+1..anchor_count {
@@ -642,7 +656,7 @@ impl AnchorDep {
     fn clips_and_cigar(
         anchors: &Vec<Self>, current_anchor_index: usize,
         ref_len: SequenceLength, qry_len: SequenceLength
-    ) -> (Clip, Clip, AlignedBlock) {
+    ) -> (Clip, Clip, Cigar) {
         let current_anchor = &anchors[current_anchor_index];
         if let AlignmentState::Aligned(
             AlignmentBlock::Extended(fore),
@@ -662,7 +676,7 @@ impl AnchorDep {
                 qry_len-current_anchor.position.1-current_anchor.size,
             );
             // (2) Generate empty new cigar
-            let mut new_cigar: AlignedBlock = Vec::with_capacity(
+            let mut new_cigar: Cigar = Vec::with_capacity(
                 if let Some((_, cigar_length, _)) = fore_cigar{
                     cigar_length
                 } else {
@@ -708,10 +722,132 @@ impl AnchorDep {
     }
 }
 
+/*
+
+ANCHOR PRESET
+
+*/
+// Anchors preset by one fasta record
+#[derive(Debug, Clone)]
+struct AnchorsPreset {
+    pushed_positions: Vec<AnchorPosition>,
+    pre_positions: Vec<AnchorPosition>,
+}
+#[derive(Debug, Clone)]
+struct AnchorPosition {
+    ref_pos: usize,
+    qry_idx: usize,
+    size: usize,
+    used: bool,
+}
+
+impl AnchorsPreset {
+    #[inline]
+    fn new() -> Self {
+        Self {
+            pushed_positions: Vec::new(),
+            pre_positions: Vec::new(),
+        }
+    }
+    #[inline]
+    fn create_anchors(
+        self,
+        kmer: &usize,
+        qry_len: &usize,
+        forward_bp: &Vec<usize>,
+        backward_bp: &Vec<usize>,
+        ref_start_pos: &usize,
+        ref_end_pos: &usize,
+        cutoff: &Cutoff,
+    ) -> Vec<Anchor> {
+        self.pushed_positions.into_iter().filter_map(|anchor_position| {
+            let ref_pos = anchor_position.ref_pos - ref_start_pos;
+            let qry_idx = anchor_position.qry_idx;
+            let qry_pos = qry_idx * kmer;
+            let size = anchor_position.size;
+            let mut total_length = 0;
+            let mut total_penalty = 0;
+            // length & penalty of fore block
+            let fore_block = {
+                let mut length = min(ref_pos, qry_pos);
+                let block_count = length / kmer;
+                let penalty: usize = backward_bp[qry_idx-block_count..qry_idx].iter().map(|p| {
+                    if *p != 0 { length += 1; };
+                    *p
+                }).sum();
+                total_length += length;
+                total_penalty += penalty;
+                AlignmentBlock::Estimated(penalty, length)
+            };
+            // length & penalty of hind block
+            let hind_block = {
+                let ref_left = ref_end_pos - anchor_position.ref_pos;
+                let qry_left = qry_len - qry_pos;
+                let mut length = min(ref_left, qry_left);
+                let block_count = length / kmer;
+                let penalty: usize = forward_bp[qry_idx..qry_idx+block_count].iter().map(|p| {
+                    if *p != 0 { length += 1; };
+                    *p
+                }).sum();
+                total_length += length;
+                total_penalty += penalty;
+                AlignmentBlock::Estimated(penalty, length-size)
+            };
+            if (total_length >= cutoff.ml) && (total_penalty as f64/total_length as f64) <= cutoff.ppl {
+                Some(
+                    Anchor {
+                        position: (ref_pos, qry_pos), // ref, qry
+                        size: size,
+                        state: AlignmentState::Aligned(fore_block, hind_block),
+                        check_points: (Vec::new(), Vec::new()), // fore, hind
+                        connected: HashSet::new(),
+                    }
+                )
+            } else {
+                None
+            }
+        }).collect()
+    }
+}
+
+#[inline]
+fn existence_to_bp(anchor_existence: Vec<bool>, block_penalty: &BlockPenalty) -> (Vec<Penalty>, Vec<Penalty>) {
+    let p_odd = block_penalty.odd;
+    let p_even = block_penalty.even;
+    // TODO: refine redundant code
+    // forward_bp
+    let mut last_is_odd = false;
+    let forward_bp: Vec<Penalty> = anchor_existence.iter().map(|&exist| {
+        if exist {
+            last_is_odd = false; 0
+        } else {
+            if last_is_odd { 
+                last_is_odd = false; p_even
+            } else {
+                last_is_odd = true; p_odd
+            }
+        }
+    }).collect();
+    // backward_bp
+    let mut last_is_odd = false;
+    let backward_bp: Vec<Penalty> = anchor_existence.iter().rev().map(|&exist| {
+        if exist {
+            last_is_odd = false; 0
+        } else {
+            if last_is_odd { 
+                last_is_odd = false; p_even
+            } else {
+                last_is_odd = true; p_odd
+            }
+        }
+    }).rev().collect();
+    (forward_bp, backward_bp)
+}
+
 #[inline]
 fn unique_symbols_filtering(
     valid_anchors: HashSet<usize>,
-    anchors: &Vec<AnchorDep>,
+    anchors: &Vec<Anchor>,
 ) -> HashSet<usize>{
     // init
     let mut anchor_symbols: HashMap<usize, HashSet<usize>> = HashMap::with_capacity(valid_anchors.len());
@@ -751,10 +887,16 @@ fn unique_symbols_filtering(
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use crate::reference::*;
+    use crate::alignment_dep::*;
+    use crate::io::*;
     use super::*;
 
+    use std::time::{Duration, Instant};
+
     #[test]
-    fn test_new_anchor() {
+    fn test_with_two_files() {
+
         let ref_fasta = "./src/tests/fasta/ERR209055.fa";
         let qry_fasta = "./src/tests/fasta/ERR209056.fa";
         
@@ -770,7 +912,26 @@ mod tests {
 
         let cutoff = Cutoff::new(ml, ppl);
         let penalties = Penalties::new(x,o,e);
+        let reference = ReferenceConfig::new()
+            .contain_only_nucleotide(true)
+            .search_reverse_complement(true)
+            .set_kmer_size_for_klt(kmer_klt)
+            .set_sampling_ratio_for_sa(ssr)
+            .generate_reference_with_fasta_file(ref_fasta);
+        
+        let aligner = Aligner::new(cutoff, penalties, reference);
 
-        let aligner = alignment::Aligner::new(cutoff, penalties);
+        println!("0,set_aligner,{}", now.elapsed().as_nanos());
+
+        println!("#kmer: {:?}", aligner.kmer);
+        let mut qry_reader = fasta::fasta_records(qry_fasta);
+        while let Some(Ok(record)) = qry_reader.next() {
+            println!("#{}", record.id());
+            let res = aligner.alignment_with_sequence(
+                record.seq(),
+                false,
+            );
+            println!("#{:?}", res);
+        };
     }
 }

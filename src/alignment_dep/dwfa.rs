@@ -1,6 +1,6 @@
 use crate::{SequenceLength, OperationLength, Penalty};
-use super::{Penalties, AlignmentResult};
-use super::operation::{AlignedBlock, Operation};
+use crate::io::cigar::{Cigar, Operation};
+use super::{Penalties, Alignment};
 
 use std::collections::{HashSet, HashMap};
 use std::iter::FromIterator;
@@ -307,7 +307,7 @@ fn dropout_wf_next(
     (None, wfs_components)
 }
 
-pub type BacktraceResult = (AlignedBlock, SequenceLength); // cigar is reversed 
+pub type BacktraceResult = (Cigar, SequenceLength); // cigar is reversed 
 // (anchor index, size, checkpoint k, checkpoint fr)
 pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>;
 // key: index of passed anchor, val: (penalty, length)
@@ -325,7 +325,7 @@ pub fn dropout_wf_backtrace(
     let mut operation_length: usize = 0;
     let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
     // FIXME: check if this cap is enough.
-    let mut cigar: AlignedBlock = Vec::with_capacity(score);
+    let mut cigar: Cigar = Vec::with_capacity(score);
     let mut checkpoint_backtrace: RefToBacktrace = HashMap::with_capacity(check_points_values.len());
     
     // FIRST COMP
