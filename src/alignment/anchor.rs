@@ -22,7 +22,7 @@ use std::iter::FromIterator;
 ******** ANCHOR GROUP ********
 *****************************/
 #[derive(Debug)]
-struct AnchorsGroup {
+pub struct AnchorsGroup {
     anchors_by_index: HashMap<usize, Vec<Anchor>>,
 }
 impl AnchorsGroup {

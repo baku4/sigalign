@@ -2,7 +2,7 @@ pub mod operation;
 mod anchor;
 mod dwfa;
 
-use crate::{Penalty, SequenceLength};
+use crate::{Penalty, SequenceLength, database::{Database, SearchRange}};
 
 /// Result of alignment
 #[derive(Debug)]
@@ -83,19 +83,24 @@ impl Aligner {
         self.get_minimum_penalty = true; self
     }
     // Alignment
-    // #[inline]
-    // pub fn alignment_with_sequence(&self, reference: &[u8], query: &[u8], get_minimum_penalty: bool) -> Vec<AlignmentResult> {
-    //     let alignment_res = AnchorsGroup::alignment_with_anchor(
-    //         &self.penalties,
-    //         &self.cutoff,
-    //         &self.block_penalty,
-    //         &self.reference,
-    //         self.kmer,
-    //         query,
-    //         get_minimum_penalty,
-    //     );
-    //     alignment_res
-    // }
+    #[inline]
+    pub fn alignment_with_query(&self, database: &Database, search_range: &SearchRange, query: &[u8], get_minimum_penalty: bool) -> AlignmentResultForDB {
+        let mut anchors_group = anchor::AnchorsGroup::new(
+            database,
+            search_range,
+            &self.cutoff,
+            &self.block_penalty,
+            self.kmer,
+            query,
+        );
+        anchors_group.alignment(
+            database,
+            &self.penalties,
+            &self.cutoff,
+            query,
+            get_minimum_penalty
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
