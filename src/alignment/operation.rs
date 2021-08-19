@@ -2,12 +2,12 @@ use crate::{SequenceLength, OperationLength};
 
 /// Aligned seqeuence block  
 /// Vector of (type of operation, and its length)
-pub type AlignedBlock = Vec<(Operation, OperationLength)>;
+pub type Operations = Vec<(Opr, OperationLength)>;
 // ReverseIndex: (index from end, count offset, ins count, del count)
 pub type ReverseIndex = (usize, OperationLength, OperationLength, OperationLength);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Operation {
+pub enum Opr {
     Match,
     Subst,
     Ins,
@@ -42,20 +42,20 @@ impl Clip {
 }
 
 #[inline]
-pub fn get_reverse_index_from_own(reversed_cigar: &AlignedBlock) -> ReverseIndex { 
+pub fn get_reverse_index_from_own(reversed_cigar: &Operations) -> ReverseIndex { 
     let mut ins: u32 = 0;
     let mut del: u32 = 0;
     reversed_cigar.iter().for_each(|(op, count)| {
         match op {
-            Operation::Ins => { ins += count; },
-            Operation::Del => { del += count; },
+            Opr::Ins => { ins += count; },
+            Opr::Del => { del += count; },
             _ => (),
         }
     });
     (reversed_cigar.len(), reversed_cigar[reversed_cigar.len()-1].1, ins, del)
 }
 #[inline]
-pub fn get_reverse_index_from_ref(reversed_cigar: &AlignedBlock, length: &usize) -> ReverseIndex {
+pub fn get_reverse_index_from_ref(reversed_cigar: &Operations, length: &usize) -> ReverseIndex {
     let mut ins: u32 = 0;
     let mut del: u32 = 0;
     let mut index_from_end: usize = 1;
@@ -63,15 +63,15 @@ pub fn get_reverse_index_from_ref(reversed_cigar: &AlignedBlock, length: &usize)
     for &(op, count) in reversed_cigar {
         if count_offset <= count {
             match op {
-                Operation::Ins => { ins += count_offset; },
-                Operation::Del => { del += count_offset; },
+                Opr::Ins => { ins += count_offset; },
+                Opr::Del => { del += count_offset; },
                 _ => (),
             }
             break;
         } else {
             match op {
-                Operation::Ins => { ins += count; },
-                Operation::Del => { del += count; },
+                Opr::Ins => { ins += count; },
+                Opr::Del => { del += count; },
                 _ => (),
             }
             count_offset -= count;
@@ -81,8 +81,8 @@ pub fn get_reverse_index_from_ref(reversed_cigar: &AlignedBlock, length: &usize)
     (index_from_end, count_offset, ins, del)
 }
 #[inline]
-pub fn new_cigar_from_ref(ref_cigar: &AlignedBlock, reverse_index: &ReverseIndex) -> AlignedBlock {
-    let mut new_cigar: AlignedBlock = ref_cigar[ref_cigar.len()-reverse_index.0..].to_vec();
+pub fn new_cigar_from_ref(ref_cigar: &Operations, reverse_index: &ReverseIndex) -> Operations {
+    let mut new_cigar: Operations = ref_cigar[ref_cigar.len()-reverse_index.0..].to_vec();
     new_cigar[0].1 -= reverse_index.1;
     new_cigar
 }

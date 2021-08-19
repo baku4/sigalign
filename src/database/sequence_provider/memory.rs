@@ -1,11 +1,11 @@
 use crate::utils::get_reverse_complement;
 use crate::io::fasta::{FastaRecords, fasta_records};
 use crate::io::index::{read_lt_fm_index_from_file_path, read_lt_fm_index_from_inferred_path};
-use super::{SequenceProvider, AccumulatedLength};
+use super::{SequenceProvider, AccumulatedLength, Direction};
 
 use serde::{Serialize, Deserialize};
 
-const DEFAULT_LABEL: &str = "Reference";
+const DEFAULT_STRING_LABEL: &str = "Reference";
 
 /// [super::SequenceRecords] that stores sequences in memory.
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -19,15 +19,15 @@ impl OnMemoryProvider {
             let accumulated_length = vec![(0, seq_len as u64), (seq_len as u64, (seq_len*2) as u64)];
             let rc_seq = get_reverse_complement(&sequence);
             let sequence_records: Vec<SequenceRecord> = vec![
-                SequenceRecord::new(DEFAULT_LABEL, true, sequence),
-                SequenceRecord::new(DEFAULT_LABEL, false, rc_seq),
+                SequenceRecord::new(DEFAULT_STRING_LABEL, true, sequence),
+                SequenceRecord::new(DEFAULT_STRING_LABEL, false, rc_seq),
                 ];
             (Self{ records: sequence_records }, accumulated_length)
         } else {
             let seq_len = sequence.len();
             let accumulated_length = vec![(0, seq_len as u64)];
             let sequence_records: Vec<SequenceRecord> = vec![
-                SequenceRecord::new(DEFAULT_LABEL, true, sequence),
+                SequenceRecord::new(DEFAULT_STRING_LABEL, true, sequence),
                 ];
             (Self{ records: sequence_records }, accumulated_length)
         }
@@ -112,10 +112,4 @@ impl SequenceRecord {
         });
         concated_seq
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum Direction {
-    Forward,
-    Reverse,
 }

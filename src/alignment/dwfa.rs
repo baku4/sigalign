@@ -1,6 +1,6 @@
 use crate::{SequenceLength, OperationLength, Penalty};
 use super::{Penalties, AlignmentResult};
-use super::operation::{AlignedBlock, Operation};
+use super::operation::{Operations, Opr};
 
 use std::collections::{HashSet, HashMap};
 use std::iter::FromIterator;
@@ -307,7 +307,7 @@ fn dropout_wf_next(
     (None, wfs_components)
 }
 
-pub type BacktraceResult = (AlignedBlock, SequenceLength); // cigar is reversed 
+pub type BacktraceResult = (Operations, SequenceLength); // cigar is reversed 
 // (anchor index, size, checkpoint k, checkpoint fr)
 pub type AnchorsToPassCheck = Vec<(usize, i32, i32, i32)>;
 // key: index of passed anchor, val: (penalty, length)
@@ -325,7 +325,7 @@ pub fn dropout_wf_backtrace(
     let mut operation_length: usize = 0;
     let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
     // FIXME: check if this cap is enough.
-    let mut cigar: AlignedBlock = Vec::with_capacity(score);
+    let mut cigar: Operations = Vec::with_capacity(score);
     let mut checkpoint_backtrace: RefToBacktrace = HashMap::with_capacity(check_points_values.len());
     
     // FIRST COMP
@@ -356,14 +356,14 @@ pub fn dropout_wf_backtrace(
                         // (7) Add Cigar
                         let match_count = (fr - next_fr - 1) as OperationLength;
                         if match_count == 0 {
-                            if let Some((Operation::Subst, last_fr)) = cigar.last_mut() {
+                            if let Some((Opr::Subst, last_fr)) = cigar.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                cigar.push((Operation::Subst, 1));
+                                cigar.push((Opr::Subst, 1));
                             }
                         } else {
-                            cigar.push((Operation::Match, match_count));
-                            cigar.push((Operation::Subst, 1));
+                            cigar.push((Opr::Match, match_count));
+                            cigar.push((Opr::Subst, 1));
                         }
                         operation_length += (match_count + 1) as usize;
                         // (8) Check if anchor is passed
@@ -399,7 +399,7 @@ pub fn dropout_wf_backtrace(
                         // (7) Add Cigar
                         let match_count = (fr-next_fr) as OperationLength;
                         if match_count != 0 {
-                            cigar.push((Operation::Match, match_count));
+                            cigar.push((Opr::Match, match_count));
                         }
                         operation_length += match_count as usize;
                         // (8) Check if anchor is passed
@@ -435,7 +435,7 @@ pub fn dropout_wf_backtrace(
                         // (7) Add Cigar
                         let match_count = (fr-next_fr) as OperationLength;
                         if match_count != 0 {
-                            cigar.push((Operation::Match, match_count));
+                            cigar.push((Opr::Match, match_count));
                         }
                         operation_length += match_count as usize;
                         // (8) Check if anchor is passed
@@ -457,7 +457,7 @@ pub fn dropout_wf_backtrace(
                     },
                     _ => { // START_POINT
                         if fr != 0 {
-                            cigar.push((Operation::Match, fr as OperationLength));
+                            cigar.push((Opr::Match, fr as OperationLength));
                         };
                         operation_length += fr as usize;
                         // shrink
@@ -484,10 +484,10 @@ pub fn dropout_wf_backtrace(
                         // (6) Next fr
                         let next_fr = component.fr;
                         // (7) Add Cigar
-                        if let Some((Operation::Ins, last_fr)) = cigar.last_mut() {
+                        if let Some((Opr::Ins, last_fr)) = cigar.last_mut() {
                             *last_fr += 1;
                         } else {
-                            cigar.push((Operation::Ins, 1));
+                            cigar.push((Opr::Ins, 1));
                         }
                         operation_length += 1;
                         // (8) Check if anchor is passed
@@ -509,10 +509,10 @@ pub fn dropout_wf_backtrace(
                         // (6) Next fr
                         let next_fr = component.fr;
                         // (7) Add Cigar
-                        if let Some((Operation::Ins, last_fr)) = cigar.last_mut() {
+                        if let Some((Opr::Ins, last_fr)) = cigar.last_mut() {
                             *last_fr += 1;
                         } else {
-                            cigar.push((Operation::Ins, 1));
+                            cigar.push((Opr::Ins, 1));
                         }
                         operation_length += 1;
                         // (8) Check if anchor is passed
@@ -539,10 +539,10 @@ pub fn dropout_wf_backtrace(
                         // (6) Next fr
                         let next_fr = component.fr;
                         // (7) Add Cigar
-                        if let Some((Operation::Del, last_fr)) = cigar.last_mut() {
+                        if let Some((Opr::Del, last_fr)) = cigar.last_mut() {
                             *last_fr += 1;
                         } else {
-                            cigar.push((Operation::Del, 1));
+                            cigar.push((Opr::Del, 1));
                         }
                         operation_length += 1;
                         // (8) Check if anchor is passed
@@ -564,10 +564,10 @@ pub fn dropout_wf_backtrace(
                         // (6) Next fr
                         let next_fr = component.fr;
                         // (7) Add Cigar
-                        if let Some((Operation::Del, last_fr)) = cigar.last_mut() {
+                        if let Some((Opr::Del, last_fr)) = cigar.last_mut() {
                             *last_fr += 1;
                         } else {
-                            cigar.push((Operation::Del, 1));
+                            cigar.push((Opr::Del, 1));
                         }
                         operation_length += 1;
                         // (8) Check if anchor is passed

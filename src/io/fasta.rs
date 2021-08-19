@@ -4,6 +4,7 @@ use std::fs::File;
 
 /*  FASTA & FASTQ  */
 use bio::io::{fasta, fastq};
+use bio::io::fasta::IndexedReader;
 // From `Rust-Bio` crate  
 // https://crates.io/crates/bio  
 
@@ -20,3 +21,6 @@ pub type FastqRecords = fastq::Records<BufReader<File>>;
 pub fn fastq_records(file_path: &str) -> FastqRecords {
     fastq::Reader::from_file(file_path).expect("Errored in reading fastq").records()
 }
+
+// fasta with index
+//TODO: 

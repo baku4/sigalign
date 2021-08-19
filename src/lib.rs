@@ -15,5 +15,7 @@ pub type OperationLength = u32;
 /// Penalty(Score): Same as memory bandwidth
 pub type Penalty = usize;
 
+use anyhow::{Result, Error, anyhow};
+
 // #[cfg(test)]
 // mod tests;

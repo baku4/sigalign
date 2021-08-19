@@ -7,7 +7,7 @@ use super::dwfa::{
     dropout_wf_align, dropout_wf_backtrace
 };
 use super::operation::{
-    AlignedBlock, Operation, Clip, ReverseIndex,
+    Operations, Opr, Clip, ReverseIndex,
     get_reverse_index_from_own, get_reverse_index_from_ref,
 };
 use super::{Penalties, Cutoff, BlockPenalty, AlignmentResult, AlignmentResultByDbIndex};
@@ -402,7 +402,7 @@ impl AlignmentBlock {
         is_hind_block: IsHindBlock,
         ref_len: usize,
         qry_len: usize,
-    ) -> (Option<(&'a AlignedBlock, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
+    ) -> (Option<(&'a Operations, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
         match self {
             Self::Estimated(_, _) => {
                 panic!("Try to get rdix from estimated block") //TODO: err msg
@@ -421,7 +421,7 @@ impl AlignmentBlock {
 }
 #[derive(Debug, Clone)]
 enum ExactAlignment {
-    Own(AlignedBlock, (usize, usize)), // AlignedBlock, (penalty, length)
+    Own(Operations, (usize, usize)), // AlignedBlock, (penalty, length)
     Ref(usize, (usize, usize)), // index of connected anchor, (penalty, length)
 }
 impl ExactAlignment {
@@ -432,7 +432,7 @@ impl ExactAlignment {
         is_hind_block: IsHindBlock,
         ref_len: usize,
         qry_len: usize,
-    ) -> (Option<(&'a AlignedBlock, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
+    ) -> (Option<(&'a Operations, usize, u32)>, Clip) { // (cigar, cigar length, offset), Clip
         match self {
             ExactAlignment::Own(cigar, (_, length)) => {
                 if cigar.len() == 0 {
@@ -731,7 +731,7 @@ impl Anchor {
     fn clips_and_cigar(
         anchors: &Vec<Self>, current_anchor_index: usize,
         ref_len: SequenceLength, qry_len: SequenceLength
-    ) -> (Clip, Clip, AlignedBlock) {
+    ) -> (Clip, Clip, Operations) {
         let current_anchor = &anchors[current_anchor_index];
         // (1) Get cigar & ridx
         let (fore_cigar, fore_clip) = current_anchor.fore.get_cigar_ridx(
@@ -747,7 +747,7 @@ impl Anchor {
             qry_len-current_anchor.position.1-current_anchor.size,
         );
         // (2) Generate empty new cigar
-        let mut new_cigar: AlignedBlock = Vec::with_capacity(
+        let mut new_cigar: Operations = Vec::with_capacity(
             if let Some((_, cigar_length, _)) = fore_cigar{
                 cigar_length
             } else {
@@ -765,17 +765,17 @@ impl Anchor {
             new_cigar.last_mut().unwrap().1 = offset;
         };
         // (4) Deal with size
-        if let Some((Operation::Match, count)) = new_cigar.last_mut() {
+        if let Some((Opr::Match, count)) = new_cigar.last_mut() {
             *count += current_anchor.size as u32;
         } else {
-            new_cigar.push((Operation::Match, current_anchor.size as u32))
+            new_cigar.push((Opr::Match, current_anchor.size as u32))
         };
         // (5) Deal & generate clip with hind
         if let Some((cigar, cigar_length, offset)) = hind_cigar{
             // first index
             let first_cigar_op = cigar[cigar_length-1].0;
             match first_cigar_op {
-                Operation::Match => {
+                Opr::Match => {
                     new_cigar.last_mut().unwrap().1 += offset;
                 },
                 other_op => {

@@ -11,7 +11,7 @@ pub struct AlignmentResult {
     pub length: SequenceLength,
     pub clip_front: operation::Clip,
     pub clip_end: operation::Clip,
-    pub aligned_block: operation::AlignedBlock,
+    pub aligned_block: operation::Operations,
 }
 
 /// Result of alignment for database
