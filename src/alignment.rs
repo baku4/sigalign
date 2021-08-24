@@ -143,3 +143,53 @@ pub fn calculate_kmer(cutoff: &Cutoff, block_penalty: &BlockPenalty) -> usize {
     }
     kmer as usize
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn check_elapsed() {
+        use crate::database::*;
+        use crate::io::*;
+
+        let ref_fasta = "./src/tests/fasta/ERR209055.fa";
+        let qry_fasta = "./src/tests/fasta/ERR209056.fa";
+        
+        let kmer_klt = 13;
+        let ssr = 2;
+        let ml = 100;
+        let ppl = 0.05;
+        let x = 4;
+        let o = 6;
+        let e = 2;
+
+        let start = Instant::now();
+
+        let cutoff = Cutoff::new(ml, ppl);
+        let penalties = Penalties::new(x,o,e);
+
+        let aligner = alignment::Aligner::new(cutoff, penalties);
+        println!("kmer: {}", aligner.kmer);
+        let (seq_provider, _) = sequence_provider::OnMemoryProvider::from_fasta(true, ref_fasta);
+
+        let database_config = DatabaseConfig::new();
+
+        let database = database_config.create_db(&seq_provider);
+        let search_range = database.get_range();
+        println!("db setted: {}", start.elapsed().as_millis());
+
+        let start = Instant::now();
+
+        let mut qry_reader = fasta::fasta_records(qry_fasta);
+        while let Some(Ok(record)) = qry_reader.next() {
+            let res = aligner.alignment_with_query(
+                &database, &search_range, record.seq(), false,
+            );
+            println!("#{}\n{:#?}", record.id(), res);
+        };
+        println!("Alignment : {}", start.elapsed().as_millis());
+    }
+}
