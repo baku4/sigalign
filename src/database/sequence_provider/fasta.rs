@@ -3,7 +3,30 @@ use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 
+use super::SequenceProvider;
 use crate::{Result, anyhow};
+
+use bio::io::fasta::{Index, IndexedReader};
+
+pub struct FastaProvider<'a> {
+    fasta_path: &'a str,
+    index_reader: IndexedReader<File>,
+    record_count: usize,
+}
+impl<'a> FastaProvider<'a> {
+    fn new(fasta_path: &'a str) -> Result<Self> {
+        let (fai, record_count) = generate_fai_and_count(fasta_path)?;
+        let fasta = File::open(fasta_path)?;
+        let index_reader = IndexedReader::new(fasta, &*fai)?;
+
+        Ok(Self {
+            fasta_path,
+            index_reader,
+            record_count,
+        })
+    }
+}
+
 
 #[derive(Debug, Default, Clone)]
 struct FaiOneline {
@@ -48,18 +71,19 @@ impl Iterator for FastaBufReader {
 }
 
 // https://doc.rust-lang.org/rust-by-example/std_misc/file/read_lines.html
-fn read_fasta(fasta_file: &str) -> Result<()> {
-    let f = File::open(fasta_file)?;
+fn read_fasta(fasta_path: &str) -> Result<()> {
+    let f = File::open(fasta_path)?;
     let mut buf_reader = io::BufReader::new(f);
     let mut buf = String::new();
 
     Ok(())
 }
 
-fn generate_fai(fasta_file: &str) -> Result<Vec<u8>> {
+fn generate_fai_and_count(fasta_path: &str) -> Result<(Vec<u8>, usize)> {
     let mut fai: Vec<FaiOneline> = Vec::new();
+    let mut count = 0;
 
-    let mut fasta_buf_reader = FastaBufReader::new(fasta_file)?;
+    let mut fasta_buf_reader = FastaBufReader::new(fasta_path)?;
 
     let mut fai_oneline: FaiOneline = FaiOneline::new();
     let mut pre_offset = 0;
@@ -67,6 +91,7 @@ fn generate_fai(fasta_file: &str) -> Result<Vec<u8>> {
     let mut length = 0;
     // Init with first line
     let lt = if let Some(l) = fasta_buf_reader.next() {
+        count += 1;
         let name = get_name_from_desc(l.clone())?;
         fai_oneline.name = name;
 
@@ -85,6 +110,7 @@ fn generate_fai(fasta_file: &str) -> Result<Vec<u8>> {
     pre_offset = fai_oneline.offset;
     
     while let Some(l) = fasta_buf_reader.next() {
+        count += 1;
         if l.starts_with(">") { // line is desc
             // push last fai
             fai_oneline.length = length;
@@ -116,7 +142,7 @@ fn generate_fai(fasta_file: &str) -> Result<Vec<u8>> {
     let fai_bytes = fai.into_iter().map(|fai_oneline| {
         format!("{}\t{}\t{}\t{}\t{}", fai_oneline.name, fai_oneline.length, fai_oneline.offset, fai_oneline.linebases, fai_oneline.linewidth)
     }).collect::<Vec<String>>().join("\n").as_bytes().to_vec();
-    Ok(fai_bytes)
+    Ok((fai_bytes, count))
 }
 
 fn get_name_from_desc(l: String) -> Result<String> {
@@ -141,10 +167,6 @@ impl LineTerminator {
     }
 }
 
-pub struct FastaProvider<'a> {
-    file_path: &'a str
-}
-
 #[cfg(test)]
 mod tests {
     use crate::*;
@@ -152,7 +174,7 @@ mod tests {
     
     #[test]
     fn test_generate_fai() {
-        let fai_bytes = generate_fai("./src/tests/fasta/ERR209055.fa").unwrap();
-        println!("{:?}", String::from_utf8(fai_bytes).unwrap());
+        let fai_bytes = generate_fai_and_count("./src/tests/fasta/ERR209055.fa").unwrap();
+        println!("{:?}", String::from_utf8(fai_bytes.0).unwrap());
     }
 }
