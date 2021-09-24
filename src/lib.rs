@@ -1,1 +1,4 @@
-mod deprecated;
+
+
+#[doc(hidden)]
+pub mod deprecated;

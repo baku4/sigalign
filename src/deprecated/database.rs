@@ -4,7 +4,7 @@ use crate::deprecated::alignment::Aligner;
 
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use lt_fm_index::{FmIndex, FmIndexConfig};
+use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
 
 /// Records of Sequences
 pub trait SequenceProvider<'a> {
@@ -64,7 +64,7 @@ impl DatabaseConfig {
 pub struct Database<'a> {
     sequence_provider: &'a dyn SequenceProvider<'a>,
     // Index
-    fm_index: FmIndex,
+    fm_index: LtFmIndexAll,
     accumulated_length: AccumulatedLength,
     // DB options
     in_memory_index: bool,
@@ -78,13 +78,13 @@ impl<'a> Database<'a> {
     pub fn new<P: SequenceProvider<'a>>(database_config: &DatabaseConfig, sequence_provider: &'a P) -> Self {
         let concated_seq = sequence_provider.concated_sequence();
         let accumualated_length = sequence_provider.accumulated_length();
-        let mut fm_index_config = FmIndexConfig::new()
-            .set_suffix_array_sampling_ratio(database_config.sa_sampling_ratio)
-            .set_kmer_lookup_table(database_config.klt_kmer);
+        let mut fm_index_config = LtFmIndexConfig::for_nucleotide()
+            .change_sampling_ratio(database_config.sa_sampling_ratio).unwrap()
+            .change_kmer_size(database_config.klt_kmer).unwrap();
         if !database_config.only_nucleotide {
-            fm_index_config = fm_index_config.contain_non_nucleotide(); //TODO: change configs setting method
+            fm_index_config = fm_index_config.with_noise(); //TODO: change configs setting method
         }
-        let fm_index = fm_index_config.generate_fmindex(concated_seq);
+        let fm_index = fm_index_config.generate(concated_seq).unwrap();
         Self {
             sequence_provider: sequence_provider,
             fm_index: fm_index,
@@ -118,7 +118,7 @@ impl<'a> Database<'a> {
         ()
     }
     pub fn locate(&self, pattern: &[u8]) -> Vec<u64> {
-        self.fm_index.locate_w_klt(pattern) //TODO: locate
+        self.fm_index.locate(pattern) //TODO: locate
     }
     pub fn get_range(&self) -> Vec<usize> {
         (0..self.accumulated_length.len()).collect()
@@ -187,7 +187,7 @@ impl<'a> Database<'a> {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct SerializedDatabase {
     // Index
-    fm_index: FmIndex,
+    fm_index: LtFmIndexAll,
     accumulated_length: AccumulatedLength,
     // DB options
     in_memory_index: bool,
