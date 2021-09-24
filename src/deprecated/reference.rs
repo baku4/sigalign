@@ -1,9 +1,9 @@
 pub use lt_fm_index::{FmIndexConfig, FmIndex};
 use serde::{Serialize, Deserialize};
 
-use crate::io::fasta::{FastaRecords, fasta_records};
-use crate::io::index::{read_lt_fm_index_from_file_path, read_lt_fm_index_from_inferred_path}; //TODO: use inferred path
-use crate::utils::get_reverse_complement;
+use crate::deprecated::io::fasta::{FastaRecords, fasta_records};
+use crate::deprecated::io::index::{read_lt_fm_index_from_file_path, read_lt_fm_index_from_inferred_path}; //TODO: use inferred path
+use crate::deprecated::utils::get_reverse_complement;
 
 /// Configurations for `reference`
 pub struct ReferenceConfig {

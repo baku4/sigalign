@@ -1,4 +1,4 @@
-use crate::{SequenceLength, OperationLength};
+use crate::deprecated::{SequenceLength, OperationLength};
 
 pub type Cigar = Vec<(Operation, OperationLength)>;
 // ReverseIndex: (index from end, count offset, ins count, del count)

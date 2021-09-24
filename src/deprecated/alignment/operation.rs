@@ -1,4 +1,4 @@
-use crate::{SequenceLength, OperationLength};
+use crate::deprecated::{SequenceLength, OperationLength};
 
 /// Aligned seqeuence block  
 /// Vector of (type of operation, and its length)

@@ -1,4 +1,4 @@
-use crate::{SequenceLength, OperationLength, Penalty};
+use crate::deprecated::{SequenceLength, OperationLength, Penalty};
 use super::{Penalties, AlignmentResult};
 use super::operation::{Operations, Opr};
 

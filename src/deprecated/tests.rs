@@ -3,7 +3,7 @@ mod classic_wfa;
 mod dp_pairwise;
 mod multi_thread;
 
-use crate::{*, alignment_dep::{Cutoff, Penalties}};
+use crate::deprecated::{*, alignment_dep::{Cutoff, Penalties}};
 
 #[derive(Debug, Clone, Copy)]
 struct AlignmentOption {

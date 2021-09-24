@@ -1,21 +1,32 @@
-pub mod operation;
-mod anchor;
+//! Dropout alignment core
 mod dwfa;
+pub mod anchor;
+pub mod anchor_dep;
 
-use crate::{Penalty, SequenceLength, database::{Database, SearchRange}};
+use std::fmt::Debug;
 
-/// Result of alignment
+use crate::deprecated::database::Database;
+use crate::deprecated::{SequenceLength, Penalty};
+use crate::deprecated::io::cigar;
+use anchor::AnchorsGroup;
+
+// Alignment Result
+
+
+// Alignment Result
 #[derive(Debug)]
-pub struct AlignmentResult {
+pub struct Alignment {
     pub penalty: Penalty,
     pub length: SequenceLength,
-    pub clip_front: operation::Clip,
-    pub clip_end: operation::Clip,
-    pub aligned_block: operation::Operations,
+    pub clip_front: cigar::Clip,
+    pub clip_end: cigar::Clip,
+    pub cigar: cigar::Cigar,
 }
 
-/// Result of alignment for database
-pub type AlignmentResultByDbIndex = std::collections::HashMap<usize, Vec<AlignmentResult>>;
+pub type AlignmentResult = Vec<(usize, Alignment)>; // (Index of reference, Alignment)
+
+
+pub type AlignmentResultDep = Vec<(Alignment)>; // TODO: to dep
 
 /// Scoring scheme for alignment
 #[derive(Debug, Clone)]
@@ -34,7 +45,6 @@ impl Penalties {
     }
 }
 
-/// Cutoff for alignment
 #[derive(Debug, Clone)]
 pub struct Cutoff {
     ml: SequenceLength,
@@ -83,24 +93,19 @@ impl Aligner {
     pub fn get_minimum_penalty(mut self) -> Self {
         self.get_minimum_penalty = true; self
     }
-    /// Alignment with query sequence
+    /// Alignment
     #[inline]
-    pub fn alignment_with_query(&self, database: &Database, search_range: &SearchRange, query: &[u8], get_minimum_penalty: bool) -> AlignmentResultByDbIndex {
-        let mut anchors_group = anchor::AnchorsGroup::new(
-            database,
-            search_range,
-            &self.cutoff,
-            &self.block_penalty,
-            self.kmer,
-            query,
-        );
-        anchors_group.alignment(
-            database,
+    pub fn alignment_with_sequence(&self, query: &[u8], get_minimum_penalty: bool) -> AlignmentResult {
+        let alignment_res = AnchorsGroup::alignment_with_anchor(
             &self.penalties,
             &self.cutoff,
+            &self.block_penalty,
+            &self.reference,
+            self.kmer,
             query,
-            get_minimum_penalty
-        )
+            get_minimum_penalty,
+        );
+        alignment_res
     }
 }
 
@@ -142,54 +147,4 @@ pub fn calculate_kmer(cutoff: &Cutoff, block_penalty: &BlockPenalty) -> usize {
         }
     }
     kmer as usize
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-    use super::*;
-    use std::time::{Duration, Instant};
-
-    #[test]
-    fn check_elapsed() {
-        use crate::database::*;
-        use crate::io::*;
-
-        let ref_fasta = "./src/tests/fasta/ERR209055.fa";
-        let qry_fasta = "./src/tests/fasta/ERR209056.fa";
-        
-        let kmer_klt = 13;
-        let ssr = 2;
-        let ml = 100;
-        let ppl = 0.05;
-        let x = 4;
-        let o = 6;
-        let e = 2;
-
-        let start = Instant::now();
-
-        let cutoff = Cutoff::new(ml, ppl);
-        let penalties = Penalties::new(x,o,e);
-
-        let aligner = alignment::Aligner::new(cutoff, penalties);
-        println!("kmer: {}", aligner.kmer);
-        let (seq_provider, _) = sequence_provider::OnMemoryProvider::from_fasta(true, ref_fasta);
-
-        let database_config = DatabaseConfig::new();
-
-        let database = database_config.create_db(&seq_provider);
-        let search_range = database.get_range();
-        println!("db setted: {}", start.elapsed().as_millis());
-
-        let start = Instant::now();
-
-        let mut qry_reader = fasta::fasta_records(qry_fasta);
-        while let Some(Ok(record)) = qry_reader.next() {
-            let res = aligner.alignment_with_query(
-                &database, &search_range, record.seq(), false,
-            );
-            println!("#{}\n{:#?}", record.id(), res);
-        };
-        println!("Alignment : {}", start.elapsed().as_millis());
-    }
 }

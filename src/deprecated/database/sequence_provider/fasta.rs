@@ -4,7 +4,7 @@ use std::io::{self, BufRead, BufReader};
 use std::path::Path;
 
 use super::SequenceProvider;
-use crate::{Result, anyhow};
+use crate::deprecated::{Result, anyhow};
 
 use bio::io::fasta::{Index, IndexedReader};
 
@@ -174,7 +174,7 @@ mod tests {
     
     #[test]
     fn test_generate_fai() {
-        let fai_bytes = generate_fai_and_count("./src/tests/fasta/ERR209055.fa").unwrap();
+        let fai_bytes = generate_fai_and_count("./src/deprecated/tests/fasta/ERR209055.fa").unwrap();
         println!("{:?}", String::from_utf8(fai_bytes.0).unwrap());
     }
 }

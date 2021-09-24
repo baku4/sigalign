@@ -1,7 +1,7 @@
-use crate::database::{
+use crate::deprecated::database::{
     Database, AccumulatedLength, SearchRange,
 };
-use crate::{SequenceLength, Penalty};
+use crate::deprecated::{SequenceLength, Penalty};
 use super::dwfa::{
     WaveFront, AnchorsToPassCheck, CigarReference, BacktraceResult, RefToBacktrace,
     dropout_wf_align, dropout_wf_backtrace
@@ -831,16 +831,16 @@ fn unique_symbols_filtering(
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::deprecated::*;
     use super::*;
 
     #[test]
     fn test_new_anchor() {
-        use crate::database::*;
-        use crate::io::*;
+        use crate::deprecated::database::*;
+        use crate::deprecated::io::*;
 
-        let ref_fasta = "./src/tests/fasta/ERR209055.fa";
-        let qry_fasta = "./src/tests/fasta/ERR209056.fa";
+        let ref_fasta = "./src/deprecated/tests/fasta/ERR209055.fa";
+        let qry_fasta = "./src/deprecated/tests/fasta/ERR209056.fa";
         let qry_seq = {
             let mut qry_reader = fasta::fasta_records(qry_fasta);
             loop {

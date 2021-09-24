@@ -1,6 +1,6 @@
 pub mod sequence_provider;
 
-use crate::alignment::Aligner;
+use crate::deprecated::alignment::Aligner;
 
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
@@ -203,11 +203,10 @@ mod tests {
     use super::*;
     use crate::*;
     
-    #[test]
     fn test_create_db() {
         let reverse_complement = true;
 
-        let ref_fasta = "./src/tests/fasta/ERR209055.fa";
+        let ref_fasta = "./src/deprecated/tests/fasta/ERR209055.fa";
 
         let (seq_provider, _) = sequence_provider::OnMemoryProvider::from_fasta(
             reverse_complement,

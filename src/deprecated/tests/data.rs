@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::{self, BufReader};
 use std::path::Path;
 
-const FASTA_DIR: &str = "./src/tests/fasta";
-const FASTA_FILES: [&str; 2] = ["./src/tests/fasta/ERR209055.fa", "./src/tests/fasta/ERR209056.fa"];
+const FASTA_DIR: &str = "./src/deprecated/tests/fasta";
+const FASTA_FILES: [&str; 2] = ["./src/deprecated/tests/fasta/ERR209055.fa", "./src/deprecated/tests/fasta/ERR209056.fa"];
 
 type RecordsType = Records<BufReader<File>>;
 
