@@ -1,36 +1,63 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash};
 
 mod anchor;
-
 mod semi_global;
 mod local;
 
+use anchor::AnchorsPreset;
+
 type Query<'a> = &'a [u8];
 
-struct Algorithm();
-
-impl Algorithm {
-    fn create_anchors_by_record(
+trait Algorithm {
+    fn create_anchors(
         reference: &dyn Reference,
         query: Query,
         kmer: usize,
     ) {
+        let anchors_preset_by_record = Self::create_anchors_preset_by_record(reference, query, kmer);
+        
+    }
+    fn create_anchors_preset_by_record(
+        reference: &dyn Reference,
+        query: Query,
+        kmer: usize,
+    ) -> HashMap<usize, AnchorsPreset> {
         let qry_len = query.len();
         let pattern_count = qry_len / kmer;
 
-        let mut anchor_preset = anchor::AnchorPreset::new();
+        let mut anchors_preset_by_record: HashMap<usize, AnchorsPreset> = HashMap::new();
 
-        for pattern_idx in 0..pattern_count {
-            let qry_pos = pattern_idx * kmer;
+        for pattern_index in 0..pattern_count {
+            let qry_pos = pattern_index * kmer;
             let pattern = &query[qry_pos..qry_pos+kmer];
 
-            let sorted_ref_positions = reference.locate_positions(pattern, kmer);
+            let reference_location = reference.locate(pattern, kmer);
 
-            anchor_preset.add_positions_of_pattern(pattern_idx, sorted_ref_positions);
+            for record_location in reference_location {
+                match anchors_preset_by_record.get_mut(&record_location.index) {
+                    Some(anchors_preset) => {
+                        anchors_preset.add_new_position(pattern_index, record_location.positions)
+                    },
+                    None => {
+                        let mut new_anchors_preset = AnchorsPreset::new(pattern_count);
+                        new_anchors_preset.add_new_position(pattern_index, record_location.positions);
+                        anchors_preset_by_record.insert(record_location.index, new_anchors_preset);
+                    }
+                }
+            }
         }
 
-        // let anchors = anchor_preset.to_achors();
+        anchors_preset_by_record
     }
+}
+
+trait Reference {
+    fn locate(&self, pattern: Query, kmer: usize) -> Vec<RecordLocation>;
+}
+
+struct RecordLocation {
+    index: usize,
+    positions: Vec<usize>,
 }
 
 pub struct Penalties {
@@ -47,14 +74,4 @@ pub struct Cutoff {
 pub struct MinPenaltyForPattern {
     pub odd: usize,
     pub even: usize,
-}
-
-trait Reference {
-    fn locate_positions(&self, pattern: Query, kmer: usize) -> ReferencePositions;
-}
-
-struct ReferencePositions(HashMap<usize, Vec<usize>>); //TODO: vector can be used
-
-struct SearchRange {
-    sorted_vector: Vec<usize>,
 }

@@ -1,3 +1,5 @@
+use super::ReferencePositions;
+
 use std::collections::HashMap;
 
 pub struct AnchorPreset {
@@ -10,8 +12,8 @@ impl AnchorPreset {
             ref_positions: HashMap::new(),
         }
     }
-    pub fn add_positions_of_pattern(&mut self, pattern_idx: usize, sorted_ref_positions: HashMap<usize, Vec<usize>>) {
-        for (ref_idx, ref_sorted_positions) in sorted_ref_positions {
+    pub fn convert_positions_to_preset(&mut self, pattern_idx: usize, reference_positions: ReferencePositions) {
+        for (ref_idx, ref_sorted_positions) in reference_positions {
             let new_ref_position = RefPositionsOfPattern::new(pattern_idx, ref_sorted_positions);
             match self.ref_positions.get_mut(&ref_idx) {
                 Some(ref_positions) => {
