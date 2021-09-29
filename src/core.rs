@@ -2,21 +2,31 @@ use std::{collections::HashMap, hash::Hash};
 
 mod anchor_dep;
 mod anchor;
-mod semi_global;
-mod local;
 
-use anchor_dep::AnchorsPreset;
+use anchor::{AnchorsPreset, Anchors};
 
 type Query<'a> = &'a [u8];
 
 trait Algorithm {
-    fn create_anchors(
+    fn create_anchors_for_semi_global(
         reference: &dyn Reference,
         query: Query,
         kmer: usize,
+        min_penalty_for_pattern: &MinPenaltyForPattern,
     ) {
         let anchors_preset_by_record = Self::create_anchors_preset_by_record(reference, query, kmer);
-        
+        let anchors_by_record: HashMap<usize, Anchors> = anchors_preset_by_record.into_iter().map(|(record_index, anchors_preset)| {
+            let record_length = reference.length_of_record(record_index);
+            
+            let anchors = anchors_preset.to_anchors_for_semi_global(
+                kmer,
+                query.len(),
+                record_length,
+                min_penalty_for_pattern,
+            );
+
+            (record_index, anchors)
+        }).collect();
     }
     fn create_anchors_preset_by_record(
         reference: &dyn Reference,
@@ -48,12 +58,13 @@ trait Algorithm {
             }
         }
 
-        anchors_preset_by_record // -> anchors_by_record
+        anchors_preset_by_record
     }
 }
 
 trait Reference {
     fn locate(&self, pattern: Query, kmer: usize) -> Vec<RecordLocation>;
+    fn length_of_record(&self, record_index: usize) -> usize;
 }
 
 struct RecordLocation {

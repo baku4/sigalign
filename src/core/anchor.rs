@@ -2,7 +2,9 @@ use super::MinPenaltyForPattern;
 
 mod preset;
 
-type Anchors = Vec<Anchor>;
+pub use preset::AnchorsPreset;
+
+pub struct Anchors(Vec<Anchor>);
 
 struct Anchor {
     query_position: usize,
