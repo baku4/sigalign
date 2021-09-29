@@ -1,10 +1,11 @@
 use std::{collections::HashMap, hash::Hash};
 
+mod anchor_dep;
 mod anchor;
 mod semi_global;
 mod local;
 
-use anchor::AnchorsPreset;
+use anchor_dep::AnchorsPreset;
 
 type Query<'a> = &'a [u8];
 
@@ -47,7 +48,7 @@ trait Algorithm {
             }
         }
 
-        anchors_preset_by_record
+        anchors_preset_by_record // -> anchors_by_record
     }
 }
 
