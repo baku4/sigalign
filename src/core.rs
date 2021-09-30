@@ -1,77 +1,7 @@
-use std::{collections::HashMap, hash::Hash};
+mod anchoring;
+mod extending;
 
-mod anchor;
-mod extension;
-
-use anchor::{AnchorsPreset, Anchors};
-
-pub type Query<'a> = &'a [u8];
-
-trait Algorithm {
-    fn create_anchors_preset_by_record(
-        reference: &dyn Reference,
-        query: Query,
-        kmer: usize,
-    ) -> HashMap<usize, AnchorsPreset> {
-        let qry_len = query.len();
-        let pattern_count = qry_len / kmer;
-
-        let mut anchors_preset_by_record: HashMap<usize, AnchorsPreset> = HashMap::new();
-
-        for pattern_index in 0..pattern_count {
-            let qry_pos = pattern_index * kmer;
-            let pattern = &query[qry_pos..qry_pos+kmer];
-
-            let reference_location = reference.locate(pattern, kmer);
-
-            for record_location in reference_location {
-                match anchors_preset_by_record.get_mut(&record_location.index) {
-                    Some(anchors_preset) => {
-                        anchors_preset.add_new_position(pattern_index, record_location.positions)
-                    },
-                    None => {
-                        let mut new_anchors_preset = AnchorsPreset::new(pattern_count);
-                        new_anchors_preset.add_new_position(pattern_index, record_location.positions);
-                        anchors_preset_by_record.insert(record_location.index, new_anchors_preset);
-                    }
-                }
-            }
-        }
-
-        anchors_preset_by_record
-    }
-    fn create_anchors_from_preset_for_semi_global(
-        reference: &dyn Reference,
-        query: Query,
-        kmer: usize,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> HashMap<usize, Anchors> {
-        let anchors_preset_by_record = Self::create_anchors_preset_by_record(reference, query, kmer);
-        let anchors_by_record: HashMap<usize, Anchors> = anchors_preset_by_record.into_iter().map(|(record_index, anchors_preset)| {
-            let record_length = reference.length_of_record(record_index);
-            
-            let anchors = anchors_preset.to_anchors_for_semi_global(
-                kmer,
-                query.len(),
-                record_length,
-                min_penalty_for_pattern,
-            );
-
-            (record_index, anchors)
-        }).collect();
-        anchors_by_record
-    }
-}
-
-pub trait Reference {
-    fn locate(&self, pattern: Query, kmer: usize) -> Vec<RecordLocation>;
-    fn length_of_record(&self, record_index: usize) -> usize;
-}
-
-pub struct RecordLocation {
-    pub index: usize,
-    pub positions: Vec<usize>,
-}
+// CONDITIONS
 
 pub struct Penalties {
     pub x: usize,
@@ -89,37 +19,96 @@ pub struct MinPenaltyForPattern {
     pub even: usize,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// TEXT
 
-    use crate::reference::TestReference;
+pub type Query<'a> = &'a [u8];
 
-    struct TestAlgorithm;
+pub trait Reference {
+    fn locate(&self, pattern: Query, kmer: usize) -> Vec<RecordLocation>;
+    fn length_of_record(&self, record_index: usize) -> usize;
+}
 
-    impl Algorithm for TestAlgorithm {
-
-    }
-
-    #[test]
-    fn print_test_data() {
-        let test_alogrithm = TestAlgorithm;
-        let test_reference = TestReference::new();
-
-        let query = b"GTATCTGCGCCGGTAGAGAGCCATCAGCTGATGTCCCAGACAGATTGCG";
-
-        let penalties = Penalties {x: 4, o: 6, e: 3};
-        let cutoff = Cutoff { minimum_aligned_length: 50, penalty_per_length: 0.5 };
-        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
+pub struct RecordLocation {
+    pub index: usize,
+    pub positions: Vec<usize>,
+}
 
 
-        let test_anchors = TestAlgorithm::create_anchors_from_preset_for_semi_global(
-            &test_reference,
-            query,
-            10,
-            &min_penalty_for_pattern,
-        );
+// ANCHOR
 
-        println!("{:#?}", test_anchors);
+#[derive(Debug)]
+struct Anchors {
+    anchors: Vec<Anchor>,
+}
+
+#[derive(Debug)]
+struct Anchor {
+    query_position: usize,
+    record_position: usize,
+    size: usize,
+    left_estimation: Estimation,
+    right_estimation: Estimation,
+    left_check_points: CheckPoints,
+    right_check_points: CheckPoints,
+    left_extension: Option<Extension>,
+    right_extension: Option<Extension>,
+    dropped: bool,
+}
+
+#[derive(Debug)]
+struct Estimation {
+    penalty: usize,
+    length: usize,
+}
+
+#[derive(Debug)]
+enum Extension {
+    Own,
+    Ref,
+}
+
+#[derive(Debug)]
+pub struct CheckPoints(Vec<usize>);
+
+// RESULTS
+
+pub struct AlignmentResult {
+    dissimilarity: f32,
+    penalty: usize,
+    length: usize,
+    position: AlignmentPosition,
+    operations: Vec<AlignmentOperation>,
+}
+
+struct AlignmentPosition {
+    reference: (usize, usize),
+    query: (usize, usize),
+}
+
+struct AlignmentOperation {
+    alignment_type: AlignmentType,
+    count: u32,
+}
+
+enum AlignmentType {
+    Match,
+    MisMatch,
+    Insertion,
+    Deletion,
+}
+
+
+trait Algorithm {
+    fn semi_global_alignment(
+        reference: &dyn Reference,
+        query: Query,
+        pattern_size: usize,
+        cutoff: &Cutoff,
+        penalties: &Penalties,
+        min_penalty_for_pattern: &MinPenaltyForPattern,
+    ) {
+        let mut anchors_by_record  = Anchors::new_for_semi_global(reference, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
+
+
     }
 }

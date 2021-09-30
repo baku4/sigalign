@@ -1,17 +1,41 @@
 use super::{Cutoff, Penalties, MinPenaltyForPattern};
+use super::{Reference, Query};
+use super::{Anchors, Anchor, Estimation, CheckPoints};
 
 mod preset;
 
 pub use preset::AnchorsPreset;
 
+use std::collections::HashMap;
+
 const PATTERN_INDEX_GAP_FOR_CHECK_POINTS: usize = 3;
 
-#[derive(Debug)]
-pub struct Anchors {
-    anchors: Vec<Anchor>,
-}
-
 impl Anchors {
+    pub fn new_for_semi_global(
+        reference: &dyn Reference,
+        query: Query,
+        pattern_size: usize,
+        cutoff: &Cutoff,
+        penalties: &Penalties,
+        min_penalty_for_pattern: &MinPenaltyForPattern,
+    ) -> HashMap<usize, Self> { //TODO: To access record's length from anchoring module is not proper. Take out this method to core.
+        let anchors_preset_by_record = AnchorsPreset::create_anchors_preset_by_record(reference, query, pattern_size);
+        let anchors_by_record: HashMap<usize, Self> = anchors_preset_by_record.into_iter().map(|(record_index, anchors_preset)| {
+            let record_length = reference.length_of_record(record_index);
+            
+            let mut anchors = anchors_preset.to_anchors_for_semi_global(
+                pattern_size,
+                query.len(),
+                record_length,
+                min_penalty_for_pattern,
+            );
+
+            anchors.create_checkpoints_between_anchors(pattern_size, penalties, cutoff);
+
+            (record_index, anchors)
+        }).collect();
+        anchors_by_record
+    }
     fn create_checkpoints_between_anchors(
         &mut self,
         pattern_size: usize,
@@ -27,20 +51,6 @@ impl Anchors {
             left_anchor.create_checkpoint_to_rights(right_anchors, right_first_anchor_index, allowed_gap_between_query_position, penalties, cutoff);
         }
     }
-}
-
-#[derive(Debug)]
-struct Anchor {
-    query_position: usize,
-    record_position: usize,
-    size: usize,
-    left_estimation: Estimation,
-    right_estimation: Estimation,
-    left_check_points: CheckPoints,
-    right_check_points: CheckPoints,
-    left_extension: Option<Extension>,
-    right_extension: Option<Extension>,
-    dropped: bool,
 }
 
 impl Anchor {
@@ -103,12 +113,6 @@ impl Anchor {
     }
 }
 
-#[derive(Debug)]
-struct Estimation {
-    penalty: usize,
-    length: usize,
-}
-
 impl Estimation {
     fn new(penalty: usize, length: usize) -> Self {
         Self {
@@ -117,15 +121,6 @@ impl Estimation {
         }
     }
 }
-
-#[derive(Debug)]
-enum Extension {
-    Own,
-    Ref,
-}
-
-#[derive(Debug)]
-struct CheckPoints(Vec<usize>);
 
 impl CheckPoints {
     fn empty() -> Self {
@@ -151,7 +146,6 @@ mod tests {
 
     #[test]
     fn print_test_anchors_checkpoints() {
-        let test_alogrithm = TestAlgorithm;
         let test_reference = TestReference::new();
 
         let query = b"GTATCTGCGCCGGTAGAGAGCCATCAGCTGATGTCCCAGACAGATTGCG";
@@ -162,17 +156,16 @@ mod tests {
         let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.5 };
         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 
-        
-
-        let test_anchors = TestAlgorithm::create_anchors_from_preset_for_semi_global(
+        let test_anchors = Anchors::new_for_semi_global(
             &test_reference,
             query,
             kmer,
+            &cutoff,
+            &penalties,
             &min_penalty_for_pattern,
         );
 
         for (index, mut anchors) in test_anchors.into_iter() {
-            anchors.create_checkpoints_between_anchors(kmer, &penalties, &cutoff);
             println!("# index: {}", index);
             println!("{:#?}", anchors);
         }

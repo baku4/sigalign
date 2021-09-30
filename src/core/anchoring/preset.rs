@@ -1,4 +1,8 @@
-use super::{Anchors, Anchor, Estimation, CheckPoints, MinPenaltyForPattern};
+use super::MinPenaltyForPattern;
+use super::{Reference, Query};
+use super::{Anchors, Anchor, Estimation, CheckPoints};
+
+use std::collections::HashMap;
 
 pub struct AnchorsPreset {
     total_pattern_count: usize,
@@ -6,13 +10,45 @@ pub struct AnchorsPreset {
 }
 
 impl AnchorsPreset {
-    pub fn new(total_pattern_count: usize) -> Self {
+    pub fn create_anchors_preset_by_record(
+        reference: &dyn Reference,
+        query: Query,
+        pattern_size: usize,
+    ) -> HashMap<usize, AnchorsPreset> {
+        let qry_len = query.len();
+        let pattern_count = qry_len / pattern_size;
+
+        let mut anchors_preset_by_record: HashMap<usize, AnchorsPreset> = HashMap::new();
+
+        for pattern_index in 0..pattern_count {
+            let qry_pos = pattern_index * pattern_size;
+            let pattern = &query[qry_pos..qry_pos+pattern_size];
+
+            let reference_location = reference.locate(pattern, pattern_size);
+
+            for record_location in reference_location {
+                match anchors_preset_by_record.get_mut(&record_location.index) {
+                    Some(anchors_preset) => {
+                        anchors_preset.add_new_position(pattern_index, record_location.positions)
+                    },
+                    None => {
+                        let mut new_anchors_preset = Self::new(pattern_count);
+                        new_anchors_preset.add_new_position(pattern_index, record_location.positions);
+                        anchors_preset_by_record.insert(record_location.index, new_anchors_preset);
+                    }
+                }
+            }
+        }
+
+        anchors_preset_by_record
+    }
+    fn new(total_pattern_count: usize) -> Self {
         Self {
             total_pattern_count,
             matched_pattern_locations: Vec::new(),
         }
     }
-    pub fn add_new_position(&mut self, pattern_index: usize, record_positions: Vec<usize>) {
+    fn add_new_position(&mut self, pattern_index: usize, record_positions: Vec<usize>) {
         let new_pattern_location = PatternLocation {
             index: pattern_index,
             record_positions,
