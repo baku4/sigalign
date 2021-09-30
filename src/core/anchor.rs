@@ -6,6 +6,7 @@ pub use preset::AnchorsPreset;
 
 const PATTERN_INDEX_GAP_FOR_CHECK_POINTS: usize = 3;
 
+#[derive(Debug)]
 pub struct Anchors {
     anchors: Vec<Anchor>,
 }
@@ -28,6 +29,7 @@ impl Anchors {
     }
 }
 
+#[derive(Debug)]
 struct Anchor {
     query_position: usize,
     record_position: usize,
@@ -85,10 +87,9 @@ impl Anchor {
 
                             let penalty = self.left_estimation.penalty + right_anchor.right_estimation.penalty + min_penalty;
                             let length = self.left_estimation.length + self.size + right_anchor.right_estimation.length + max_gap;
-                            
                             let penalty_per_length = penalty as f32 / length as f32;
 
-                            (length >= cutoff.minimum_aligned_length) && (penalty_per_length >= cutoff.penalty_per_length)
+                            (length >= cutoff.minimum_aligned_length) && (penalty_per_length <= cutoff.penalty_per_length)
                         },
                     }
                 },
@@ -102,6 +103,7 @@ impl Anchor {
     }
 }
 
+#[derive(Debug)]
 struct Estimation {
     penalty: usize,
     length: usize,
@@ -116,11 +118,13 @@ impl Estimation {
     }
 }
 
+#[derive(Debug)]
 enum Extension {
     Own,
     Ref,
 }
 
+#[derive(Debug)]
 struct CheckPoints(Vec<usize>);
 
 impl CheckPoints {
@@ -129,5 +133,48 @@ impl CheckPoints {
     }
     fn add_new_checkpoint(&mut self, anchor_index: usize) {
         self.0.push(anchor_index);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::*;
+    use super::*;
+
+    use crate::reference::TestReference;
+
+    struct TestAlgorithm;
+
+    impl Algorithm for TestAlgorithm {
+
+    }
+
+    #[test]
+    fn print_test_anchors_checkpoints() {
+        let test_alogrithm = TestAlgorithm;
+        let test_reference = TestReference::new();
+
+        let query = b"GTATCTGCGCCGGTAGAGAGCCATCAGCTGATGTCCCAGACAGATTGCG";
+
+        let kmer = 10;
+
+        let penalties = Penalties {x: 4, o: 6, e: 3};
+        let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.5 };
+        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
+
+        
+
+        let test_anchors = TestAlgorithm::create_anchors_from_preset_for_semi_global(
+            &test_reference,
+            query,
+            kmer,
+            &min_penalty_for_pattern,
+        );
+
+        for (index, mut anchors) in test_anchors.into_iter() {
+            anchors.create_checkpoints_between_anchors(kmer, &penalties, &cutoff);
+            println!("# index: {}", index);
+            println!("{:#?}", anchors);
+        }
     }
 }
