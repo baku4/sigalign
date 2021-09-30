@@ -1,7 +1,7 @@
 use std::{collections::HashMap, hash::Hash};
 
-mod anchor_dep;
 mod anchor;
+mod extension;
 
 use anchor::{AnchorsPreset, Anchors};
 

@@ -1,4 +1,4 @@
-use super::{Anchors, Anchor, Alignment, Estimation, CheckPoints, MinPenaltyForPattern};
+use super::{Anchors, Anchor, Estimation, CheckPoints, MinPenaltyForPattern};
 
 pub struct AnchorsPreset {
     total_pattern_count: usize,
@@ -52,7 +52,9 @@ impl AnchorsPreset {
             anchors.append(&mut anchors_by_pattern.anchors)
         });
 
-        Anchors(anchors)
+        Anchors {
+            anchors
+        }
     }
     fn create_anchors_by_patterns_for_semi_global(
         self,
@@ -133,7 +135,7 @@ impl AnchorsPreset {
     }
 }
 
-struct AnchorsByPattern{
+struct AnchorsByPattern {
     pattern_index: usize,
     anchors: Vec<Anchor>,
 }
@@ -179,10 +181,12 @@ impl AnchorsByPattern {
                 query_position,
                 record_position,
                 size: pattern_size,
-                left_alignment: Alignment::Estimated(left_estimation),
+                left_estimation,
+                right_estimation,
                 left_check_points: CheckPoints::empty(),
-                right_alignment: Alignment::Estimated(right_estimation),
                 right_check_points: CheckPoints::empty(),
+                left_extension: None,
+                right_extension: None,
                 dropped: false,
             }
         }).collect();
@@ -228,10 +232,12 @@ impl AnchorsByPattern {
                 query_position,
                 record_position,
                 size: pattern_size,
-                left_alignment: Alignment::Estimated(left_estimation),
+                left_estimation,
+                right_estimation,
                 left_check_points: CheckPoints::empty(),
-                right_alignment: Alignment::Estimated(right_estimation),
                 right_check_points: CheckPoints::empty(),
+                left_extension: None,
+                right_extension: None,
                 dropped: false,
             }
         }).collect();
