@@ -1,7 +1,9 @@
 mod anchoring;
 mod extending;
 
+
 // CONDITIONS
+
 
 pub struct Penalties {
     pub x: usize,
@@ -19,7 +21,9 @@ pub struct MinPenaltyForPattern {
     pub even: usize,
 }
 
+
 // TEXT
+
 
 pub type Sequence<'a> = &'a [u8];
 
@@ -35,7 +39,39 @@ pub struct RecordLocation {
 }
 
 
+// RESULTS
+
+
+pub struct AlignmentResult {
+    dissimilarity: f32,
+    penalty: usize,
+    length: usize,
+    position: AlignmentPosition,
+    operations: Vec<AlignmentOperation>,
+}
+
+struct AlignmentPosition {
+    reference: (usize, usize),
+    query: (usize, usize),
+}
+
+#[derive(Debug)]
+struct AlignmentOperation {
+    alignment_type: AlignmentType,
+    count: u32,
+}
+
+#[derive(Debug)]
+enum AlignmentType {
+    Match,
+    MisMatch,
+    Insertion,
+    Deletion,
+}
+
+
 // ANCHOR
+
 
 #[derive(Debug)]
 struct Anchors {
@@ -63,42 +99,41 @@ struct Estimation {
 }
 
 #[derive(Debug)]
-enum Extension {
-    Own,
-    Ref,
+struct Extension {
+    penalty: usize,
+    length: usize,
+    operations: OperationsOfExtension,
+}
+
+#[derive(Debug)]
+enum OperationsOfExtension {
+    Own(OwnedOperations),
+    Ref(PointerToOperations),
+}
+
+#[derive(Debug)]
+struct OwnedOperations {
+    operations: Vec<AlignmentOperation>,
+}
+
+#[derive(Debug)]
+struct PointerToOperations {
+    anchor_index: usize,
+    start_point_of_operations: StartPointOfOperations,
+}
+
+#[derive(Debug)]
+struct StartPointOfOperations {
+    operation_index: usize,
+    operation_count: usize,
 }
 
 #[derive(Debug)]
 pub struct CheckPoints(Vec<usize>);
 
-// RESULTS
 
-pub struct AlignmentResult {
-    dissimilarity: f32,
-    penalty: usize,
-    length: usize,
-    position: AlignmentPosition,
-    operations: Vec<AlignmentOperation>,
-}
+// ALGORITHM
 
-struct AlignmentPosition {
-    reference: (usize, usize),
-    query: (usize, usize),
-}
-
-struct AlignmentOperation {
-    alignment_type: AlignmentType,
-    count: u32,
-}
-
-enum AlignmentType {
-    Match,
-    MisMatch,
-    Insertion,
-    Deletion,
-}
-
-// Algrithm
 
 trait Algorithm {
     fn semi_global_alignment(

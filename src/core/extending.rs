@@ -1,8 +1,11 @@
 use super::{Cutoff, Penalties};
 use super::{Sequence};
-use super::{Anchors, Anchor, Estimation, CheckPoints};
+use super::{AlignmentOperation, AlignmentType};
+use super::{Anchors, Anchor, Estimation, Extension, OwnedOperations, PointerToOperations, CheckPoints};
 
 mod dwfa;
+
+use dwfa::DropoffWaveFront;
 
 use std::collections::HashMap;
 
