@@ -1,5 +1,5 @@
 use super::{Cutoff, Penalties, MinPenaltyForPattern};
-use super::{Reference, Query};
+use super::{Reference, Sequence};
 use super::{Anchors, Anchor, Estimation, CheckPoints};
 
 mod preset;
@@ -11,30 +11,31 @@ use std::collections::HashMap;
 const PATTERN_INDEX_GAP_FOR_CHECK_POINTS: usize = 3;
 
 impl Anchors {
-    pub fn new_for_semi_global(
+    pub fn create_preset_by_record(
         reference: &dyn Reference,
-        query: Query,
+        query: Sequence,
+        pattern_size: usize,
+    ) -> HashMap<usize, AnchorsPreset> {
+        AnchorsPreset::new_by_record(reference, query, pattern_size)
+    }
+    pub fn from_preset(
+        anchors_preset: AnchorsPreset,
+        record_length: usize,
+        query: Sequence,
         pattern_size: usize,
         cutoff: &Cutoff,
         penalties: &Penalties,
         min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> HashMap<usize, Self> { //TODO: To access record's length from anchoring module is not proper. Take out this method to core.
-        let anchors_preset_by_record = AnchorsPreset::create_anchors_preset_by_record(reference, query, pattern_size);
-        let anchors_by_record: HashMap<usize, Self> = anchors_preset_by_record.into_iter().map(|(record_index, anchors_preset)| {
-            let record_length = reference.length_of_record(record_index);
-            
-            let mut anchors = anchors_preset.to_anchors_for_semi_global(
-                pattern_size,
-                query.len(),
-                record_length,
-                min_penalty_for_pattern,
-            );
-
-            anchors.create_checkpoints_between_anchors(pattern_size, penalties, cutoff);
-
-            (record_index, anchors)
-        }).collect();
-        anchors_by_record
+    ) -> Self {
+        let mut anchors = anchors_preset.to_anchors_for_semi_global(
+            pattern_size,
+            query.len(),
+            record_length,
+            min_penalty_for_pattern,
+        );
+        anchors.create_checkpoints_between_anchors(pattern_size, penalties, cutoff);
+        
+        anchors
     }
     fn create_checkpoints_between_anchors(
         &mut self,
@@ -132,6 +133,7 @@ impl CheckPoints {
 }
 
 #[cfg(test)]
+#[allow(unused)]
 mod tests {
     use super::super::*;
     use super::*;
@@ -156,17 +158,15 @@ mod tests {
         let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.5 };
         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 
-        let test_anchors = Anchors::new_for_semi_global(
-            &test_reference,
-            query,
-            kmer,
-            &cutoff,
-            &penalties,
-            &min_penalty_for_pattern,
-        );
+        let anchors_preset_by_record = Anchors::create_preset_by_record(&test_reference, query, kmer);
 
-        for (index, mut anchors) in test_anchors.into_iter() {
-            println!("# index: {}", index);
+        for (record_index, anchors_preset) in anchors_preset_by_record {
+            let record_sequence = test_reference.sequence_of_record(record_index);
+            let record_length = record_sequence.len();
+
+            let anchors = Anchors::from_preset(anchors_preset, record_length, query, kmer, &cutoff, &penalties, &min_penalty_for_pattern);
+
+            println!("# index: {}", record_index);
             println!("{:#?}", anchors);
         }
     }

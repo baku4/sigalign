@@ -21,10 +21,11 @@ pub struct MinPenaltyForPattern {
 
 // TEXT
 
-pub type Query<'a> = &'a [u8];
+pub type Sequence<'a> = &'a [u8];
 
 pub trait Reference {
-    fn locate(&self, pattern: Query, kmer: usize) -> Vec<RecordLocation>;
+    fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<RecordLocation>;
+    fn sequence_of_record(&self, record_index: usize) -> Sequence;
     fn length_of_record(&self, record_index: usize) -> usize;
 }
 
@@ -97,18 +98,26 @@ enum AlignmentType {
     Deletion,
 }
 
+// Algrithm
 
 trait Algorithm {
     fn semi_global_alignment(
         reference: &dyn Reference,
-        query: Query,
+        query: Sequence,
         pattern_size: usize,
         cutoff: &Cutoff,
         penalties: &Penalties,
         min_penalty_for_pattern: &MinPenaltyForPattern,
     ) {
-        let mut anchors_by_record  = Anchors::new_for_semi_global(reference, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
+        let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
+        for (record_index, anchors_preset) in anchors_preset_by_record {
+            let record_sequence = reference.sequence_of_record(record_index);
+            let record_length = record_sequence.len();
 
+            let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
+
+            anchors.extend(record_sequence, query);
+        }
     }
 }

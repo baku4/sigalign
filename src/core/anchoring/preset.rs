@@ -1,5 +1,5 @@
 use super::MinPenaltyForPattern;
-use super::{Reference, Query};
+use super::{Reference, Sequence};
 use super::{Anchors, Anchor, Estimation, CheckPoints};
 
 use std::collections::HashMap;
@@ -10,9 +10,9 @@ pub struct AnchorsPreset {
 }
 
 impl AnchorsPreset {
-    pub fn create_anchors_preset_by_record(
+    pub fn new_by_record(
         reference: &dyn Reference,
-        query: Query,
+        query: Sequence,
         pattern_size: usize,
     ) -> HashMap<usize, AnchorsPreset> {
         let qry_len = query.len();
