@@ -3,11 +3,12 @@ use crate::{Result, error_msg};
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
-use super::{OwnedOperations, PointerToOperations};
+use super::{Extension, OperationsOfExtension, OwnedOperations, RefToOperations, StartPointOfOperations};
 
 type MatchCounter<'a> = &'a dyn Fn(Sequence, Sequence, usize, usize) -> i32;
 
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
+use std::hash::Hash;
 
 pub struct DropoffWaveFront {
     last_score: usize,
@@ -20,7 +21,7 @@ impl DropoffWaveFront {
         qry_seq: Sequence,
         penalties: &Penalties,
         spare_penalty: usize,
-        position_gaps_of_checkpoints: HashMap<usize, (usize, usize)>,
+        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
     ) {
         let dropoff_wave_front = Self::new_with_align(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward);
 
@@ -124,7 +125,7 @@ impl DropoffWaveFront {
         wave_front_score.update(components_of_score);
         None
     }
-    fn new_components_and_k_range_of_score(&self, score: usize, penalties: &Penalties) -> (Components, Vec<i32>) {
+    fn new_components_and_k_range_of_score(&self, score: usize, penalties: &Penalties) -> (Components, Vec<i32>) { // TODO: Use const to indexing component
         let wave_front_score = &self.wave_front_scores[score];
         let mismatch_penalty = penalties.x;
         let gap_open_penalty = penalties.o;
@@ -250,24 +251,28 @@ impl DropoffWaveFront {
     fn backtrace_from_last_k(&self) {
 
     }
-    fn bactrace_from_point(&self, score: usize, k: i32) {
+    fn backtrace_from_point(
+        &self,
+        mut score: usize,
+        mut k: i32,
+        penalties: &Penalties,
+        current_anchor_index: usize,
+        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
+    ) {
+        let wave_front_scores = &self.wave_front_scores;
         let mut operation_length: usize = 0;
-        let mut to_check_index: HashSet<usize> = HashSet::from_iter(0..check_points_values.len());
-        // FIXME: check if this cap is enough.
-        let mut cigar: Operations = Vec::with_capacity(score);
-        let mut checkpoint_backtrace: RefToBacktrace = HashMap::with_capacity(check_points_values.len());
+        let mut operations: Vec<AlignmentOperation> = Vec::new(); // TODO: Capacity can be applied?
+        let mut backtrace_extension_of_checkpoints: HashMap<usize, Extension> = HashMap::with_capacity(position_of_checkpoints.len());
         
-        // FIRST COMP
-        let mut wfs: &WaveFrontScore = &wf[score];
-        let mut component_type: usize = 0;
-        let mut component: &Component = wfs.comp_with_k(k, 0);
-        let mut fr: WfFrPoint = component.fr;
-
-        // BACKTRACE
+        let mut wave_front_score: &WaveFrontScore = &wave_front_scores[score];
+        let mut component_type: usize = M_COMPONENT;
+        let mut component: &Component = wave_front_score.component_of_k(k, component_type);
+        let mut fr: i32 = component.fr;
+        
         loop {
             match component_type {
                 /* M */
-                0 => {
+                M_COMPONENT => {
                     match component.bt {
                         FROM_M => {
                             // (1) Next score
@@ -275,38 +280,66 @@ impl DropoffWaveFront {
                             // (2) Next k
                             // not change
                             // (3) Next WFS
-                            wfs = &wf[score];
+                            wave_front_score = &wave_front_scores[score];
                             // (4) Component type
-                            // not chnage
+                            // not change
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 0);
+                            component = wave_front_score.component_of_k(k, M_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
-                            // (7) Add Cigar
-                            let match_count = (fr - next_fr - 1) as OperationLength;
+                            // (7) Add operation
+                            let match_count = (fr - next_fr - 1) as u32;
                             if match_count == 0 {
-                                if let Some((Opr::Subst, last_fr)) = cigar.last_mut() {
+                                if let Some(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Subst,
+                                        count: last_fr
+                                    }) = operations.last_mut() {
                                     *last_fr += 1;
                                 } else {
-                                    cigar.push((Opr::Subst, 1));
+                                    operations.push(
+                                        AlignmentOperation {
+                                            alignment_type: AlignmentType::Subst,
+                                            count: 1
+                                        }
+                                    );
                                 }
                             } else {
-                                cigar.push((Opr::Match, match_count));
-                                cigar.push((Opr::Subst, 1));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Match,
+                                        count: match_count
+                                    }
+                                );
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Subst,
+                                        count: 1
+                                    }
+                                );
                             }
                             operation_length += (match_count + 1) as usize;
                             // (8) Check if anchor is passed
-                            for checkpoint_index in to_check_index.clone() {
-                                let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                                if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
-                                    checkpoint_backtrace.insert(
-                                        anchor_index,
-                                        (
-                                            score + penalties.x,
-                                            operation_length - (checkpoint_fr - next_fr) as usize,
-                                        ),
-                                    );
-                                    to_check_index.remove(&checkpoint_index);
+                            for (&anchor_index, position_of_checkpoint) in &position_of_checkpoints {
+                                if position_of_checkpoint.if_check_point_traversed(k, fr, next_fr) {
+                                    let penalty = score + penalties.x;
+                                    let length = operation_length - (position_of_checkpoint.fr - next_fr) as usize;
+                                    let ref_to_operations = RefToOperations {
+                                        anchor_index: current_anchor_index,
+                                        start_point_of_operations: StartPointOfOperations {
+                                            operation_index: operations.len() - 2,
+                                            operation_count: (position_of_checkpoint.fr - fr) as u32,
+                                        },
+                                    };
+
+                                    let extension = Extension {
+                                        penalty,
+                                        length, 
+                                        operations: OperationsOfExtension::Ref(ref_to_operations),
+                                    };
+
+                                    backtrace_extension_of_checkpoints.insert(anchor_index, extension);
+                                    position_of_checkpoints.remove(&anchor_index);
                                 }
                             }
                             // (9) Next fr to fr
@@ -322,17 +355,23 @@ impl DropoffWaveFront {
                             // (4) Component type
                             component_type = 1;
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 1);
+                            component = wave_front_score.component_of_k(k, I_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Add Cigar
-                            let match_count = (fr-next_fr) as OperationLength;
+                            let match_count = (fr-next_fr) as u32;
                             if match_count != 0 {
-                                cigar.push((Opr::Match, match_count));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Match,
+                                        count: match_count
+                                    }
+                                );
                             }
                             operation_length += match_count as usize;
                             // (8) Check if anchor is passed
-                            for checkpoint_index in to_check_index.clone() {
+                            /*
+                            for checkpoint_index in valid_checkpoints_index.clone() {
                                 let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
                                 if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
                                     checkpoint_backtrace.insert(
@@ -342,9 +381,10 @@ impl DropoffWaveFront {
                                             operation_length - (checkpoint_fr - next_fr) as usize,
                                         ),
                                     );
-                                    to_check_index.remove(&checkpoint_index);
+                                    valid_checkpoints_index.remove(&checkpoint_index);
                                 }
                             }
+                             */
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -358,17 +398,23 @@ impl DropoffWaveFront {
                             // (4) Component type
                             component_type = 2;
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 2);
+                            component = wave_front_score.component_of_k(k, D_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Add Cigar
-                            let match_count = (fr-next_fr) as OperationLength;
+                            let match_count = (fr-next_fr) as u32;
                             if match_count != 0 {
-                                cigar.push((Opr::Match, match_count));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Match,
+                                        count: match_count
+                                    }
+                                );
                             }
                             operation_length += match_count as usize;
                             // (8) Check if anchor is passed
-                            for checkpoint_index in to_check_index.clone() {
+                            /*
+                            for checkpoint_index in valid_checkpoints_index.clone() {
                                 let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
                                 if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
                                     checkpoint_backtrace.insert(
@@ -378,26 +424,32 @@ impl DropoffWaveFront {
                                             operation_length - (checkpoint_fr - next_fr) as usize,
                                         ),
                                     );
-                                    to_check_index.remove(&checkpoint_index);
+                                    valid_checkpoints_index.remove(&checkpoint_index);
                                 }
                             }
+                             */
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
                         _ => { // START_POINT
                             if fr != 0 {
-                                cigar.push((Opr::Match, fr as OperationLength));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Match,
+                                        count: fr as u32,
+                                    }
+                                );
                             };
                             operation_length += fr as usize;
                             // shrink
-                            cigar.shrink_to_fit();
-                            checkpoint_backtrace.shrink_to_fit();
-                            return ((cigar, operation_length), checkpoint_backtrace);
+                            operations.shrink_to_fit();
+                            backtrace_extension_of_checkpoints.shrink_to_fit();
+                            // return ((cigar, operation_length), checkpoint_backtrace); //FIXME:
                         }
                     }
                 },
                 /* I */
-                1 => {
+                I_COMPONENT => {
                     match component.bt {
                         FROM_M => {
                             // (1) Next score
@@ -405,18 +457,27 @@ impl DropoffWaveFront {
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wfs = &wf[score];
+                            wave_front_score = &wave_front_scores[score];
                             // (4) Component type
                             component_type = 0;
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 0);
+                            component = wave_front_score.component_of_k(k, M_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
-                            // (7) Add Cigar
-                            if let Some((Opr::Ins, last_fr)) = cigar.last_mut() {
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperation {
+                                    alignment_type: AlignmentType::Insertion,
+                                    count: last_fr
+                                }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                cigar.push((Opr::Ins, 1));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Insertion,
+                                        count: 1,
+                                    }
+                                )
                             }
                             operation_length += 1;
                             // (8) Check if anchor is passed
@@ -430,18 +491,27 @@ impl DropoffWaveFront {
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wfs = &wf[score];
+                            wave_front_score = &wave_front_scores[score];
                             // (4) Component type
                             // not change
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 1);
+                            component = wave_front_score.component_of_k(k, I_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
-                            // (7) Add Cigar
-                            if let Some((Opr::Ins, last_fr)) = cigar.last_mut() {
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperation {
+                                    alignment_type: AlignmentType::Insertion,
+                                    count: last_fr
+                                }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                cigar.push((Opr::Ins, 1));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Insertion,
+                                        count: 1,
+                                    }
+                                )
                             }
                             operation_length += 1;
                             // (8) Check if anchor is passed
@@ -460,18 +530,27 @@ impl DropoffWaveFront {
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wfs = &wf[score];
+                            wave_front_score = &wave_front_scores[score];
                             // (4) Component type
                             component_type = 0;
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 0);
+                            component = wave_front_score.component_of_k(k, M_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
-                            // (7) Add Cigar
-                            if let Some((Opr::Del, last_fr)) = cigar.last_mut() {
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperation {
+                                    alignment_type: AlignmentType::Deletion,
+                                    count: last_fr
+                                }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                cigar.push((Opr::Del, 1));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Deletion,
+                                        count: 1,
+                                    }
+                                )
                             }
                             operation_length += 1;
                             // (8) Check if anchor is passed
@@ -485,18 +564,27 @@ impl DropoffWaveFront {
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wfs = &wf[score];
+                            wave_front_score = &wave_front_scores[score];
                             // (4) Component type
                             // not change
                             // (5) Next component
-                            component = wfs.comp_with_k(k, 2);
+                            component = wave_front_score.component_of_k(k, D_COMPONENT);
                             // (6) Next fr
                             let next_fr = component.fr;
-                            // (7) Add Cigar
-                            if let Some((Opr::Del, last_fr)) = cigar.last_mut() {
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperation {
+                                    alignment_type: AlignmentType::Deletion,
+                                    count: last_fr
+                                }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                cigar.push((Opr::Del, 1));
+                                operations.push(
+                                    AlignmentOperation {
+                                        alignment_type: AlignmentType::Deletion,
+                                        count: 1,
+                                    }
+                                )
                             }
                             operation_length += 1;
                             // (8) Check if anchor is passed
@@ -536,7 +624,15 @@ impl WaveFrontScore {
     fn update(&mut self, new_components: Components) {
         self.components = new_components;
     }
+    fn component_of_k(&self, k: i32, component_type: usize) -> &Component {
+        &self.components[(self.max_k + k) as usize][component_type]
+    }
 }
+
+// Component Index
+const M_COMPONENT: usize = 0;
+const I_COMPONENT: usize = 1;
+const D_COMPONENT: usize = 2;
 
 type Components = Vec<[Component; 3]>;
 
@@ -582,4 +678,22 @@ fn consecutive_match_reverse(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize)
         }
     }
     fr_to_add
+}
+
+pub struct PositionOfCheckpoint {
+    k: i32,
+    fr: i32,
+    anchor_size: i32,
+}
+impl PositionOfCheckpoint {
+    pub fn new(ref_gap: usize, qry_gap: usize, anchor_size: usize) -> Self {
+        Self {
+            k: (ref_gap - qry_gap) as i32,
+            fr: ref_gap as i32,
+            anchor_size: anchor_size as i32,
+        }
+    }
+    fn if_check_point_traversed(&self, k: i32, fr: i32, next_fr: i32) -> bool {
+        (self.k == k) && (self.fr <= fr) && (self.fr - self.anchor_size >= next_fr)
+    }
 }

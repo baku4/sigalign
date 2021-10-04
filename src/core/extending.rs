@@ -1,7 +1,7 @@
 use super::{Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
-use super::{Anchors, Anchor, Estimation, Extension, OwnedOperations, PointerToOperations, CheckPoints};
+use super::{Anchors, Anchor, Estimation, Extension, OwnedOperations, OperationsOfExtension, RefToOperations, StartPointOfOperations, CheckPoints};
 
 mod dwfa;
 

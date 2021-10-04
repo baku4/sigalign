@@ -53,7 +53,4 @@ impl Reference for TestReference {
     fn sequence_of_record(&self, record_index: usize) -> &[u8] {
         &self.sequence_of_record[record_index]
     }
-    fn length_of_record(&self, record_index: usize) -> usize {
-        self.length_of_records[record_index]
-    }
 }

@@ -30,7 +30,6 @@ pub type Sequence<'a> = &'a [u8];
 pub trait Reference {
     fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<RecordLocation>;
     fn sequence_of_record(&self, record_index: usize) -> Sequence;
-    fn length_of_record(&self, record_index: usize) -> usize;
 }
 
 pub struct RecordLocation {
@@ -64,7 +63,7 @@ struct AlignmentOperation {
 #[derive(Debug)]
 enum AlignmentType {
     Match,
-    MisMatch,
+    Subst,
     Insertion,
     Deletion,
 }
@@ -108,7 +107,7 @@ struct Extension {
 #[derive(Debug)]
 enum OperationsOfExtension {
     Own(OwnedOperations),
-    Ref(PointerToOperations),
+    Ref(RefToOperations),
 }
 
 #[derive(Debug)]
@@ -117,7 +116,7 @@ struct OwnedOperations {
 }
 
 #[derive(Debug)]
-struct PointerToOperations {
+struct RefToOperations {
     anchor_index: usize,
     start_point_of_operations: StartPointOfOperations,
 }
@@ -125,7 +124,7 @@ struct PointerToOperations {
 #[derive(Debug)]
 struct StartPointOfOperations {
     operation_index: usize,
-    operation_count: usize,
+    operation_count: u32,
 }
 
 #[derive(Debug)]
