@@ -107,8 +107,8 @@ impl Anchor {
             };
 
             if can_be_connected {
-                self.right_check_points.add_new_checkpoint(right_anchor_index);
-                right_anchor.left_check_points.add_new_checkpoint(left_anchor_index);
+                self.right_checkpoints.add_new_checkpoint(right_anchor_index);
+                right_anchor.left_checkpoints.add_new_checkpoint(left_anchor_index);
             }
         }
     }

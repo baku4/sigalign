@@ -1,5 +1,4 @@
 // Dropoff Wave Front Algorithm
-use crate::{Result, error_msg};
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
@@ -7,9 +6,9 @@ use super::{Extension, OperationsOfExtension, OwnedOperations, RefToOperations, 
 
 type MatchCounter<'a> = &'a dyn Fn(Sequence, Sequence, usize, usize) -> i32;
 
-use std::collections::{HashSet, HashMap};
-use std::hash::Hash;
+use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct DropoffWaveFront {
     last_score: usize,
     last_k: Option<i32>,
@@ -17,16 +16,39 @@ pub struct DropoffWaveFront {
 }
 impl DropoffWaveFront {
     pub fn align_right_for_semi_global(
+        current_anchor_index: usize,
         ref_seq: Sequence,
         qry_seq: Sequence,
         penalties: &Penalties,
         spare_penalty: usize,
         position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
-    ) {
+    ) -> Option<(Extension, HashMap<usize, Extension>)> {
         let dropoff_wave_front = Self::new_with_align(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward);
 
         if dropoff_wave_front.is_extended_to_end() {
-            let owned_operations = dropoff_wave_front.backtrace_from_last_k(); //TODO: NEXT
+            Some(
+                dropoff_wave_front.backtrace_from_last_k(penalties, current_anchor_index, position_of_checkpoints)
+            )
+        } else {
+            None
+        }
+    }
+    pub fn align_left_for_semi_global(
+        current_anchor_index: usize,
+        ref_seq: Sequence,
+        qry_seq: Sequence,
+        penalties: &Penalties,
+        spare_penalty: usize,
+        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
+    ) -> Option<(Extension, HashMap<usize, Extension>)> {
+        let dropoff_wave_front = Self::new_with_align(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse);
+
+        if dropoff_wave_front.is_extended_to_end() {
+            Some(
+                dropoff_wave_front.backtrace_from_last_k(penalties, current_anchor_index, position_of_checkpoints)
+            )
+        } else {
+            None
         }
     }
     fn new_with_align(
@@ -46,20 +68,18 @@ impl DropoffWaveFront {
         dropoff_wave_front.wave_front_scores[0].add_first_components(first_match_count);
         
         if first_match_count as usize >= ref_len || first_match_count as usize >= qry_len {
-            dropoff_wave_front.update_if_aligned_to_end(0);
+            dropoff_wave_front.update_if_aligned_to_end(0, 0);
             return dropoff_wave_front;
         }
 
-        for score in 1..=spare_penalty {
-            let optional_last_k = dropoff_wave_front.fill_wave_front_score_and_exist_with_last_k(ref_seq, qry_seq, ref_len, qry_len, score, penalties, match_counter);
+        let optional_last_point = dropoff_wave_front.fill_and_exist_with_last_score_and_k(ref_seq, qry_seq, ref_len, qry_len, spare_penalty, penalties, match_counter);
 
-            if let Some(last_k) = optional_last_k {
-                dropoff_wave_front.update_if_aligned_to_end(last_k);
-                return dropoff_wave_front;
-            }
+        if let Some((last_score, last_k)) = optional_last_point {
+            dropoff_wave_front.update_if_aligned_to_end(last_score, last_k);
+            return dropoff_wave_front;
+        } else {
+            dropoff_wave_front
         }
-
-        dropoff_wave_front
     }
     fn allocated_empty(penalties: &Penalties, spare_penalty: usize) -> Self {
         let wave_front_score_count = spare_penalty + 1;
@@ -69,11 +89,12 @@ impl DropoffWaveFront {
         let mut wave_front_scores: Vec<WaveFrontScore> = Vec::with_capacity(wave_front_score_count);
 
         let first_wave_front_score = WaveFrontScore::with_max_k(0);
-        (0..gap_open_penalty + gap_extend_penalty).for_each(|_| {
-            wave_front_scores.push(first_wave_front_score.clone());
-        });
 
         if spare_penalty >= gap_open_penalty + gap_extend_penalty {
+            (0..gap_open_penalty + gap_extend_penalty).for_each(|_| {
+                wave_front_scores.push(first_wave_front_score.clone());
+            });
+
             let quot = ((spare_penalty - gap_open_penalty - gap_extend_penalty) / gap_extend_penalty) as i32;
             let rem = (spare_penalty - gap_open_penalty - gap_extend_penalty) % gap_extend_penalty;
             for max_k in 1..quot+1 {
@@ -84,6 +105,10 @@ impl DropoffWaveFront {
             (0..rem+1).for_each(|_| {
                 wave_front_scores.push(WaveFrontScore::with_max_k(quot+1));
             });
+        } else {
+            (0..spare_penalty+1).for_each(|_| {
+                wave_front_scores.push(first_wave_front_score.clone());
+            });
         }
 
         Self {
@@ -92,40 +117,42 @@ impl DropoffWaveFront {
             wave_front_scores,
         }
     }
-    fn fill_wave_front_score_and_exist_with_last_k(
+    fn fill_and_exist_with_last_score_and_k(
         &mut self,
         ref_seq: Sequence,
         qry_seq: Sequence,
         ref_len: usize,
         qry_len: usize,
-        score: usize,
+        spare_penalty: usize,
         penalties: &Penalties,
         match_counter: MatchCounter,
-    ) -> Option<i32> {
-        let (mut components_of_score, range_of_k) = self.new_components_and_k_range_of_score(score, penalties);
+    ) -> Option<(usize, i32)> {
+        for score in 1..=spare_penalty {
+            let (mut components_of_score, range_of_k) = self.new_components_and_k_range_of_score(score, penalties);
 
-        let wave_front_score = &mut self.wave_front_scores[score];
-
-        for ([m_component, _, _], k) in components_of_score.iter_mut().zip(range_of_k.into_iter()) {
-            if m_component.bt != EMPTY {
-                // Extend & update
-                let mut v = (m_component.fr - k) as usize;
-                let mut h = m_component.fr as usize;
-                let match_count = match_counter(ref_seq, qry_seq, v, h);
-                m_component.fr += match_count;
-                // Check exit condition
-                v += match_count as usize;
-                h += match_count as usize;
-                if h >= ref_len || v >= qry_len {
-                    wave_front_score.update(components_of_score);
-                    return Some(k);
-                }
+            let wave_front_score = &mut self.wave_front_scores[score];
+    
+            for ([m_component, _, _], k) in components_of_score.iter_mut().zip(range_of_k.into_iter()) {
+                if m_component.bt != EMPTY {
+                    // Extend & update
+                    let mut v = (m_component.fr - k) as usize;
+                    let mut h = m_component.fr as usize;
+                    let match_count = match_counter(ref_seq, qry_seq, v, h);
+                    m_component.fr += match_count;
+                    // Check exit condition
+                    v += match_count as usize;
+                    h += match_count as usize;
+                    if h >= ref_len || v >= qry_len {
+                        wave_front_score.update(components_of_score);
+                        return Some((score, k));
+                    }
+                };
             };
-        };
-        wave_front_score.update(components_of_score);
+            wave_front_score.update(components_of_score);
+        }
         None
     }
-    fn new_components_and_k_range_of_score(&self, score: usize, penalties: &Penalties) -> (Components, Vec<i32>) { // TODO: Use const to indexing component
+    fn new_components_and_k_range_of_score(&self, score: usize, penalties: &Penalties) -> (Components, Vec<i32>) {
         let wave_front_score = &self.wave_front_scores[score];
         let mismatch_penalty = penalties.x;
         let gap_open_penalty = penalties.o;
@@ -133,33 +160,29 @@ impl DropoffWaveFront {
 
         let range_of_k = wave_front_score.range_of_k();
 
-        let mut components: Components = vec![[Component::empty(); 3]; range_of_k.len()];
+        let mut new_components: Components = vec![[Component::empty(); 3]; range_of_k.len()];
     
         // (1) From score: s-o-e
         if let Some(pre_score) = score.checked_sub(gap_open_penalty + gap_extend_penalty) {
-            let max_k_of_pre_score = self.wave_front_scores[pre_score].max_k;
             let pre_wave_front_score = &self.wave_front_scores[pre_score];
             for (index_of_k, k) in range_of_k.iter().enumerate() {
-                let component_of_k = &mut components[index_of_k];
+                let new_component_of_k = &mut new_components[index_of_k];
                 // 1. Update I from M & M from I
-                let mut component_index = max_k_of_pre_score + k - 1;
-                if let Some([pre_m, _, _]) = pre_wave_front_score.components.get(component_index as usize) {
-                    if pre_m.bt != EMPTY {
+                if let Some(pre_m_component) = pre_wave_front_score.component_of_k_checked(k-1, M_COMPONENT) {
+                    if pre_m_component.bt != EMPTY {
                         // Update I
-                        component_of_k[1] = Component {
-                            fr: pre_m.fr + 1,
+                        new_component_of_k[I_COMPONENT] = Component {
+                            fr: pre_m_component.fr + 1,
                             bt: FROM_M,
                         };
-                        
                     }
                 }
                 // 2. Update D from M & M from D
-                component_index += 2;
-                if let Some([pre_m, _, _]) = pre_wave_front_score.components.get(component_index as usize) {
-                    if pre_m.bt != EMPTY {
+                if let Some(pre_m_component) = pre_wave_front_score.component_of_k_checked(k+1, M_COMPONENT) {
+                    if pre_m_component.bt != EMPTY {
                         // Update D
-                        component_of_k[2] = Component {
-                            fr: pre_m.fr,
+                        new_component_of_k[D_COMPONENT] = Component {
+                            fr: pre_m_component.fr,
                             bt: FROM_M,
                         };
                     }
@@ -170,28 +193,27 @@ impl DropoffWaveFront {
         if let Some(pre_score) = score.checked_sub(gap_extend_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score];
             range_of_k.iter().enumerate().for_each(|(index_of_k, k)| {
-                let component_of_k = &mut components[index_of_k];
+                let new_component_of_k = &mut new_components[index_of_k];
                 // 1. Update I from I
-                let mut component_index = pre_wave_front_score.max_k + k - 1;
-                if let Some([_, pre_i, _]) = pre_wave_front_score.components.get(component_index as usize) {
-                    if pre_i.bt != EMPTY {
+                println!("pre i comp idx: {}", (pre_wave_front_score.max_k + k - 1));
+                if let Some(pre_i_component) = pre_wave_front_score.component_of_k_checked(k-1, I_COMPONENT) {
+                    if pre_i_component.bt != EMPTY {
                         // Update I
-                        if component_of_k[1].bt == EMPTY || component_of_k[1].fr > pre_i.fr + 1 {
-                            component_of_k[1] = Component {
-                                fr: pre_i.fr + 1,
+                        if new_component_of_k[I_COMPONENT].bt == EMPTY || new_component_of_k[I_COMPONENT].fr < pre_i_component.fr + 1 {
+                            new_component_of_k[I_COMPONENT] = Component {
+                                fr: pre_i_component.fr + 1,
                                 bt: FROM_I,
                             };
                         };
                     }
                 }
                 // 2. Update D from D
-                component_index += 2;
-                if let Some([_, _, pre_d]) = pre_wave_front_score.components.get(component_index as usize) {
-                    if pre_d.bt != EMPTY {
+                if let Some(pre_d_component) = pre_wave_front_score.component_of_k_checked(k+1, D_COMPONENT) {
+                    if pre_d_component.bt != EMPTY {
                         // Update D
-                        if component_of_k[2].bt == EMPTY || component_of_k[2].fr > pre_d.fr {
-                            component_of_k[2] = Component {
-                                fr: pre_d.fr,
+                        if new_component_of_k[D_COMPONENT].bt == EMPTY || new_component_of_k[D_COMPONENT].fr < pre_d_component.fr {
+                            new_component_of_k[D_COMPONENT] = Component {
+                                fr: pre_d_component.fr,
                                 bt: FROM_D,
                             };
                         };
@@ -203,30 +225,30 @@ impl DropoffWaveFront {
         if let Some(pre_score) = score.checked_sub(mismatch_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score];
             range_of_k.iter().enumerate().for_each(|(index_of_k, k)| {
-                let component_of_k = &mut components[index_of_k];
+                let component_of_s_k = &mut new_components[index_of_k];
                 // 1. Update M from M
-                let component_index = pre_wave_front_score.max_k + k;
-                if let Some([pre_m, _, _]) = pre_wave_front_score.components.get(component_index as usize) {
+                let pre_component_index = (pre_wave_front_score.max_k + k) as usize;
+                if let Some([pre_m_component, _, _]) = pre_wave_front_score.components.get(pre_component_index) {
                     // Update M
-                    component_of_k[0] = Component {
-                        fr: pre_m.fr + 1,
+                    component_of_s_k[M_COMPONENT] = Component {
+                        fr: pre_m_component.fr + 1,
                         bt: FROM_M,
                     };
                 }
                 // 2. Update M from I
-                if component_of_k[1].bt != EMPTY {
-                    if component_of_k[0].bt == EMPTY || component_of_k[1].fr >= component_of_k[0].fr {
-                        component_of_k[0] = Component {
-                            fr: component_of_k[1].fr,
+                if component_of_s_k[I_COMPONENT].bt != EMPTY {
+                    if component_of_s_k[M_COMPONENT].bt == EMPTY || component_of_s_k[I_COMPONENT].fr >= component_of_s_k[M_COMPONENT].fr {
+                        component_of_s_k[M_COMPONENT] = Component {
+                            fr: component_of_s_k[I_COMPONENT].fr,
                             bt: FROM_I,
                         };
                     };
                 }
                 // 3. Update M from D
-                if component_of_k[2].bt != EMPTY {
-                    if component_of_k[0].bt == EMPTY || component_of_k[2].fr >= component_of_k[0].fr {
-                        component_of_k[0] = Component {
-                            fr: component_of_k[2].fr,
+                if component_of_s_k[D_COMPONENT].bt != EMPTY {
+                    if component_of_s_k[M_COMPONENT].bt == EMPTY || component_of_s_k[D_COMPONENT].fr >= component_of_s_k[M_COMPONENT].fr {
+                        component_of_s_k[M_COMPONENT] = Component {
+                            fr: component_of_s_k[D_COMPONENT].fr,
                             bt: FROM_D,
                         };
                     };
@@ -234,11 +256,10 @@ impl DropoffWaveFront {
             });
         }
 
-        (components, range_of_k)
+        (new_components, range_of_k)
     }
-    fn update_if_aligned_to_end(&mut self, last_k: i32) {
-        let last_score = self.wave_front_scores.len() + 1;
-        self.wave_front_scores.truncate(last_score);
+    fn update_if_aligned_to_end(&mut self, last_score: usize, last_k: i32) {
+        self.wave_front_scores.truncate(last_score + 1);
         self.last_score = last_score;
         self.last_k = Some(last_k);
     }
@@ -248,8 +269,19 @@ impl DropoffWaveFront {
             None => false,
         }
     }
-    fn backtrace_from_last_k(&self) {
-
+    fn backtrace_from_last_k(
+        &self,
+        penalties: &Penalties,
+        current_anchor_index: usize,
+        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>
+    ) -> (Extension, HashMap<usize, Extension>) {
+        self.backtrace_from_point(
+            self.last_score,
+            self.last_k.unwrap(),
+            penalties,
+            current_anchor_index,
+            position_of_checkpoints,
+        )
     }
     fn backtrace_from_point(
         &self,
@@ -257,12 +289,12 @@ impl DropoffWaveFront {
         mut k: i32,
         penalties: &Penalties,
         current_anchor_index: usize,
-        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
-    ) {
+        mut position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
+    ) -> (Extension, HashMap<usize, Extension>) {
         let wave_front_scores = &self.wave_front_scores;
         let mut operation_length: usize = 0;
         let mut operations: Vec<AlignmentOperation> = Vec::new(); // TODO: Capacity can be applied?
-        let mut backtrace_extension_of_checkpoints: HashMap<usize, Extension> = HashMap::with_capacity(position_of_checkpoints.len());
+        let mut extension_of_traversed_checkpoints: HashMap<usize, Extension> = HashMap::with_capacity(position_of_checkpoints.len());
         
         let mut wave_front_score: &WaveFrontScore = &wave_front_scores[score];
         let mut component_type: usize = M_COMPONENT;
@@ -320,28 +352,17 @@ impl DropoffWaveFront {
                             }
                             operation_length += (match_count + 1) as usize;
                             // (8) Check if anchor is passed
-                            for (&anchor_index, position_of_checkpoint) in &position_of_checkpoints {
-                                if position_of_checkpoint.if_check_point_traversed(k, fr, next_fr) {
-                                    let penalty = score + penalties.x;
-                                    let length = operation_length - (position_of_checkpoint.fr - next_fr) as usize;
-                                    let ref_to_operations = RefToOperations {
-                                        anchor_index: current_anchor_index,
-                                        start_point_of_operations: StartPointOfOperations {
-                                            operation_index: operations.len() - 2,
-                                            operation_count: (position_of_checkpoint.fr - fr) as u32,
-                                        },
-                                    };
-
-                                    let extension = Extension {
-                                        penalty,
-                                        length, 
-                                        operations: OperationsOfExtension::Ref(ref_to_operations),
-                                    };
-
-                                    backtrace_extension_of_checkpoints.insert(anchor_index, extension);
-                                    position_of_checkpoints.remove(&anchor_index);
-                                }
-                            }
+                            PositionOfCheckpoint::remove_traversed_checkpoints_and_push_extension(
+                                &mut position_of_checkpoints,
+                                &mut extension_of_traversed_checkpoints,
+                                current_anchor_index,
+                                score + penalties.x,
+                                operation_length,
+                                operations.len() - 2,
+                                k,
+                                fr,
+                                next_fr,
+                            );
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -368,23 +389,20 @@ impl DropoffWaveFront {
                                     }
                                 );
                             }
+
                             operation_length += match_count as usize;
                             // (8) Check if anchor is passed
-                            /*
-                            for checkpoint_index in valid_checkpoints_index.clone() {
-                                let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                                if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
-                                    checkpoint_backtrace.insert(
-                                        anchor_index,
-                                        (
-                                            score,
-                                            operation_length - (checkpoint_fr - next_fr) as usize,
-                                        ),
-                                    );
-                                    valid_checkpoints_index.remove(&checkpoint_index);
-                                }
-                            }
-                             */
+                            PositionOfCheckpoint::remove_traversed_checkpoints_and_push_extension(
+                                &mut position_of_checkpoints,
+                                &mut extension_of_traversed_checkpoints,
+                                current_anchor_index,
+                                score,
+                                operation_length,
+                                operations.len() - 1,
+                                k,
+                                fr,
+                                next_fr,
+                            );
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -413,21 +431,17 @@ impl DropoffWaveFront {
                             }
                             operation_length += match_count as usize;
                             // (8) Check if anchor is passed
-                            /*
-                            for checkpoint_index in valid_checkpoints_index.clone() {
-                                let &(anchor_index, size, checkpoint_k, checkpoint_fr) = &check_points_values[checkpoint_index];
-                                if (checkpoint_k == k) && (checkpoint_fr <= fr) && (checkpoint_fr - size >= next_fr) {
-                                    checkpoint_backtrace.insert(
-                                        anchor_index,
-                                        (
-                                            score,
-                                            operation_length - (checkpoint_fr - next_fr) as usize,
-                                        ),
-                                    );
-                                    valid_checkpoints_index.remove(&checkpoint_index);
-                                }
-                            }
-                             */
+                            PositionOfCheckpoint::remove_traversed_checkpoints_and_push_extension(
+                                &mut position_of_checkpoints,
+                                &mut extension_of_traversed_checkpoints,
+                                current_anchor_index,
+                                score,
+                                operation_length,
+                                operations.len() - 1,
+                                k,
+                                fr,
+                                next_fr,
+                            );
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -443,8 +457,18 @@ impl DropoffWaveFront {
                             operation_length += fr as usize;
                             // shrink
                             operations.shrink_to_fit();
-                            backtrace_extension_of_checkpoints.shrink_to_fit();
-                            // return ((cigar, operation_length), checkpoint_backtrace); //FIXME:
+                            extension_of_traversed_checkpoints.shrink_to_fit();
+                            // extension of current anchor
+                            let extension = Extension {
+                                penalty: score,
+                                length: operation_length,
+                                operations: OperationsOfExtension::Own(
+                                    OwnedOperations {
+                                        operations: operations,
+                                    }
+                                )
+                            };
+                            return (extension, extension_of_traversed_checkpoints);
                         }
                     }
                 },
@@ -627,6 +651,16 @@ impl WaveFrontScore {
     fn component_of_k(&self, k: i32, component_type: usize) -> &Component {
         &self.components[(self.max_k + k) as usize][component_type]
     }
+    fn component_of_k_checked(&self, k: i32, component_type: usize) -> Option<&Component> {
+        println!("# val {:?}", (self.max_k + k) as usize);
+        println!("# {:?}", self.components.get((self.max_k + k) as usize));
+        match self.components.get((self.max_k + k) as usize) {
+            Some(components) => {
+                Some(&components[component_type])
+            },
+            None => None,
+        }
+    }
 }
 
 // Component Index
@@ -691,6 +725,45 @@ impl PositionOfCheckpoint {
             k: (ref_gap - qry_gap) as i32,
             fr: ref_gap as i32,
             anchor_size: anchor_size as i32,
+        }
+    }
+    fn remove_traversed_checkpoints_and_push_extension(
+        position_of_checkpoints: &mut HashMap<usize, Self>,
+        backtrace_extension_of_checkpoints: &mut HashMap<usize, Extension>,
+        current_anchor_index: usize,
+        penalty: usize,
+        operation_length: usize,
+        index_of_operations: usize,
+        k: i32,
+        fr: i32,
+        next_fr: i32,
+    ) {
+        let mut anchor_index_to_remove: Vec<usize> = Vec::new();
+
+        for (&anchor_index, position_of_checkpoint) in position_of_checkpoints.iter() {
+            if position_of_checkpoint.if_check_point_traversed(k, fr, next_fr) {
+                let length = operation_length - (position_of_checkpoint.fr - next_fr) as usize;
+                let ref_to_operations = RefToOperations {
+                    anchor_index: current_anchor_index,
+                    start_point_of_operations: StartPointOfOperations {
+                        operation_index: index_of_operations,
+                        operation_count: (fr - position_of_checkpoint.fr) as u32,
+                    },
+                };
+
+                let extension = Extension {
+                    penalty,
+                    length, 
+                    operations: OperationsOfExtension::Ref(ref_to_operations),
+                };
+
+                backtrace_extension_of_checkpoints.insert(anchor_index, extension);
+                anchor_index_to_remove.push(anchor_index);
+            }
+        }
+        
+        for anchor_index in anchor_index_to_remove {
+            position_of_checkpoints.remove(&anchor_index);
         }
     }
     fn if_check_point_traversed(&self, k: i32, fr: i32, next_fr: i32) -> bool {

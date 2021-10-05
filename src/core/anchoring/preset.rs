@@ -4,6 +4,7 @@ use super::{Anchors, Anchor, Estimation, CheckPoints};
 
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct AnchorsPreset {
     total_pattern_count: usize,
     matched_pattern_locations: Vec<PatternLocation>,
@@ -219,11 +220,12 @@ impl AnchorsByPattern {
                 size: pattern_size,
                 left_estimation,
                 right_estimation,
-                left_check_points: CheckPoints::empty(),
-                right_check_points: CheckPoints::empty(),
+                left_checkpoints: CheckPoints::empty(),
+                right_checkpoints: CheckPoints::empty(),
                 left_extension: None,
                 right_extension: None,
                 dropped: false,
+                connected_anchors: Vec::new(),
             }
         }).collect();
 
@@ -270,11 +272,12 @@ impl AnchorsByPattern {
                 size: pattern_size,
                 left_estimation,
                 right_estimation,
-                left_check_points: CheckPoints::empty(),
-                right_check_points: CheckPoints::empty(),
+                left_checkpoints: CheckPoints::empty(),
+                right_checkpoints: CheckPoints::empty(),
                 left_extension: None,
                 right_extension: None,
                 dropped: false,
+                connected_anchors: Vec::new(),
             }
         }).collect();
 
@@ -323,6 +326,7 @@ impl AnchorsByPattern {
     }
 }
 
+#[derive(Debug)]
 struct PatternLocation {
     index: usize,
     record_positions: Vec<usize>,
