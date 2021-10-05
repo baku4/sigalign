@@ -195,7 +195,6 @@ impl DropoffWaveFront {
             range_of_k.iter().enumerate().for_each(|(index_of_k, k)| {
                 let new_component_of_k = &mut new_components[index_of_k];
                 // 1. Update I from I
-                println!("pre i comp idx: {}", (pre_wave_front_score.max_k + k - 1));
                 if let Some(pre_i_component) = pre_wave_front_score.component_of_k_checked(k-1, I_COMPONENT) {
                     if pre_i_component.bt != EMPTY {
                         // Update I
@@ -652,8 +651,6 @@ impl WaveFrontScore {
         &self.components[(self.max_k + k) as usize][component_type]
     }
     fn component_of_k_checked(&self, k: i32, component_type: usize) -> Option<&Component> {
-        println!("# val {:?}", (self.max_k + k) as usize);
-        println!("# {:?}", self.components.get((self.max_k + k) as usize));
         match self.components.get((self.max_k + k) as usize) {
             Some(components) => {
                 Some(&components[component_type])

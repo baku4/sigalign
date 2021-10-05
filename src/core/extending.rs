@@ -118,9 +118,6 @@ impl Anchor {
 
         let spare_penalty = self.spare_penalty_of_right(penalties, cutoff, query_slice_length, record_slice_length);
 
-        #[cfg(test)]
-        println!("# spare penalty right: {}", spare_penalty);
-
         DropoffWaveFront::align_right_for_semi_global(
             current_anchor_index,
             record_slice,
@@ -146,9 +143,6 @@ impl Anchor {
         let query_slice_length = query_slice.len();
 
         let spare_penalty = self.spare_penalty_of_left(penalties, cutoff, query_slice_length, record_slice_length);
-
-        #[cfg(test)]
-        println!("# spare penalty left: {}", spare_penalty);
 
         DropoffWaveFront::align_left_for_semi_global(
             current_anchor_index,
