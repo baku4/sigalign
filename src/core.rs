@@ -1,5 +1,6 @@
 mod anchoring;
 mod extending;
+mod evaluating;
 
 
 // CONDITIONS
@@ -54,13 +55,13 @@ struct AlignmentPosition {
     query: (usize, usize),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AlignmentOperation {
     alignment_type: AlignmentType,
     count: u32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum AlignmentType {
     Match,
     Subst,
@@ -98,38 +99,46 @@ struct Estimation {
     length: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Extension {
     penalty: usize,
     length: usize,
     operations: OperationsOfExtension,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum OperationsOfExtension {
     Own(OwnedOperations),
     Ref(RefToOperations),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct OwnedOperations {
     operations: Vec<AlignmentOperation>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct RefToOperations {
     anchor_index: usize,
     start_point_of_operations: StartPointOfOperations,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct StartPointOfOperations {
     operation_index: usize,
     operation_count: u32,
 }
 
 #[derive(Debug)]
-pub struct CheckPoints(Vec<usize>);
+pub struct CheckPoints(Vec<CheckPoint>);
+
+#[derive(Debug)]
+pub struct CheckPoint {
+    anchor_index: usize,
+    anchor_size: u32,
+    record_position_gap: u32,
+    query_position_gap: u32,
+}
 
 
 // ALGORITHM

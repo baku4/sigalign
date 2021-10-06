@@ -2,11 +2,9 @@
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
-use super::{Extension, OperationsOfExtension, OwnedOperations, RefToOperations, StartPointOfOperations};
+use super::{Extension, OperationsOfExtension, OwnedOperations};
 
 type MatchCounter<'a> = &'a dyn Fn(Sequence, Sequence, usize, usize) -> i32;
-
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct DropoffWaveFront {
@@ -16,36 +14,32 @@ pub struct DropoffWaveFront {
 }
 impl DropoffWaveFront {
     pub fn align_right_for_semi_global(
-        current_anchor_index: usize,
         ref_seq: Sequence,
         qry_seq: Sequence,
         penalties: &Penalties,
         spare_penalty: usize,
-        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
-    ) -> Option<(Extension, HashMap<usize, Extension>)> {
+    ) -> Option<Extension> {
         let dropoff_wave_front = Self::new_with_align(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward);
 
         if dropoff_wave_front.is_extended_to_end() {
             Some(
-                dropoff_wave_front.backtrace_from_last_k(penalties, current_anchor_index, position_of_checkpoints)
+                dropoff_wave_front.backtrace_from_last_k(penalties)
             )
         } else {
             None
         }
     }
     pub fn align_left_for_semi_global(
-        current_anchor_index: usize,
         ref_seq: Sequence,
         qry_seq: Sequence,
         penalties: &Penalties,
         spare_penalty: usize,
-        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
-    ) -> Option<(Extension, HashMap<usize, Extension>)> {
+    ) -> Option<Extension> {
         let dropoff_wave_front = Self::new_with_align(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse);
 
         if dropoff_wave_front.is_extended_to_end() {
             Some(
-                dropoff_wave_front.backtrace_from_last_k(penalties, current_anchor_index, position_of_checkpoints)
+                dropoff_wave_front.backtrace_from_last_k(penalties)
             )
         } else {
             None
@@ -271,15 +265,11 @@ impl DropoffWaveFront {
     fn backtrace_from_last_k(
         &self,
         penalties: &Penalties,
-        current_anchor_index: usize,
-        position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>
-    ) -> (Extension, HashMap<usize, Extension>) {
+    ) -> Extension {
         self.backtrace_from_point(
             self.last_score,
             self.last_k.unwrap(),
             penalties,
-            current_anchor_index,
-            position_of_checkpoints,
         )
     }
     fn backtrace_from_point(
@@ -287,13 +277,10 @@ impl DropoffWaveFront {
         mut score: usize,
         mut k: i32,
         penalties: &Penalties,
-        current_anchor_index: usize,
-        mut position_of_checkpoints: HashMap<usize, PositionOfCheckpoint>,
-    ) -> (Extension, HashMap<usize, Extension>) {
+    ) -> Extension {
         let wave_front_scores = &self.wave_front_scores;
         let mut operation_length: usize = 0;
         let mut operations: Vec<AlignmentOperation> = Vec::new(); // TODO: Capacity can be applied?
-        let mut extension_of_traversed_checkpoints: HashMap<usize, Extension> = HashMap::with_capacity(position_of_checkpoints.len());
         
         let mut wave_front_score: &WaveFrontScore = &wave_front_scores[score];
         let mut component_type: usize = M_COMPONENT;
@@ -350,18 +337,6 @@ impl DropoffWaveFront {
                                 );
                             }
                             operation_length += (match_count + 1) as usize;
-                            // (8) Check if anchor is passed
-                            PositionOfCheckpoint::remove_traversed_checkpoints_and_push_extension(
-                                &mut position_of_checkpoints,
-                                &mut extension_of_traversed_checkpoints,
-                                current_anchor_index,
-                                score + penalties.x,
-                                operation_length,
-                                operations.len() - 2,
-                                k,
-                                fr,
-                                next_fr,
-                            );
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -390,18 +365,6 @@ impl DropoffWaveFront {
                             }
 
                             operation_length += match_count as usize;
-                            // (8) Check if anchor is passed
-                            PositionOfCheckpoint::remove_traversed_checkpoints_and_push_extension(
-                                &mut position_of_checkpoints,
-                                &mut extension_of_traversed_checkpoints,
-                                current_anchor_index,
-                                score,
-                                operation_length,
-                                operations.len() - 1,
-                                k,
-                                fr,
-                                next_fr,
-                            );
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -429,18 +392,6 @@ impl DropoffWaveFront {
                                 );
                             }
                             operation_length += match_count as usize;
-                            // (8) Check if anchor is passed
-                            PositionOfCheckpoint::remove_traversed_checkpoints_and_push_extension(
-                                &mut position_of_checkpoints,
-                                &mut extension_of_traversed_checkpoints,
-                                current_anchor_index,
-                                score,
-                                operation_length,
-                                operations.len() - 1,
-                                k,
-                                fr,
-                                next_fr,
-                            );
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -456,7 +407,6 @@ impl DropoffWaveFront {
                             operation_length += fr as usize;
                             // shrink
                             operations.shrink_to_fit();
-                            extension_of_traversed_checkpoints.shrink_to_fit();
                             // extension of current anchor
                             let extension = Extension {
                                 penalty: score,
@@ -467,7 +417,7 @@ impl DropoffWaveFront {
                                     }
                                 )
                             };
-                            return (extension, extension_of_traversed_checkpoints);
+                            return extension;
                         }
                     }
                 },
@@ -503,8 +453,6 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
-                            // (8) Check if anchor is passed
-                            // not needed
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -537,8 +485,6 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
-                            // (8) Check if anchor is passed
-                            // not needed
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -576,8 +522,6 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
-                            // (8) Check if anchor is passed
-                            // not needed
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -610,8 +554,6 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
-                            // (8) Check if anchor is passed
-                            // not needed
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -709,61 +651,4 @@ fn consecutive_match_reverse(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize)
         }
     }
     fr_to_add
-}
-
-pub struct PositionOfCheckpoint {
-    k: i32,
-    fr: i32,
-    anchor_size: i32,
-}
-impl PositionOfCheckpoint {
-    pub fn new(ref_gap: usize, qry_gap: usize, anchor_size: usize) -> Self {
-        Self {
-            k: (ref_gap - qry_gap) as i32,
-            fr: ref_gap as i32,
-            anchor_size: anchor_size as i32,
-        }
-    }
-    fn remove_traversed_checkpoints_and_push_extension(
-        position_of_checkpoints: &mut HashMap<usize, Self>,
-        backtrace_extension_of_checkpoints: &mut HashMap<usize, Extension>,
-        current_anchor_index: usize,
-        penalty: usize,
-        operation_length: usize,
-        index_of_operations: usize,
-        k: i32,
-        fr: i32,
-        next_fr: i32,
-    ) {
-        let mut anchor_index_to_remove: Vec<usize> = Vec::new();
-
-        for (&anchor_index, position_of_checkpoint) in position_of_checkpoints.iter() {
-            if position_of_checkpoint.if_check_point_traversed(k, fr, next_fr) {
-                let length = operation_length - (position_of_checkpoint.fr - next_fr) as usize;
-                let ref_to_operations = RefToOperations {
-                    anchor_index: current_anchor_index,
-                    start_point_of_operations: StartPointOfOperations {
-                        operation_index: index_of_operations,
-                        operation_count: (fr - position_of_checkpoint.fr) as u32,
-                    },
-                };
-
-                let extension = Extension {
-                    penalty,
-                    length, 
-                    operations: OperationsOfExtension::Ref(ref_to_operations),
-                };
-
-                backtrace_extension_of_checkpoints.insert(anchor_index, extension);
-                anchor_index_to_remove.push(anchor_index);
-            }
-        }
-        
-        for anchor_index in anchor_index_to_remove {
-            position_of_checkpoints.remove(&anchor_index);
-        }
-    }
-    fn if_check_point_traversed(&self, k: i32, fr: i32, next_fr: i32) -> bool {
-        (self.k == k) && (self.fr <= fr) && (self.fr - self.anchor_size >= next_fr)
-    }
 }

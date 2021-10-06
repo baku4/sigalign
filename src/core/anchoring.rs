@@ -1,6 +1,6 @@
 use super::{Cutoff, Penalties, MinPenaltyForPattern};
 use super::{Reference, Sequence};
-use super::{Anchors, Anchor, Estimation, CheckPoints};
+use super::{Anchors, Anchor, Estimation, CheckPoints, CheckPoint};
 
 mod preset;
 
@@ -70,7 +70,7 @@ impl Anchor {
             right_anchor_index += 1;
 
             let query_optional_gap = right_anchor.query_position.checked_sub(self.query_position + self.size);
-            let can_be_connected = match query_optional_gap {
+            match query_optional_gap {
                 None => {
                     continue
                 },
@@ -100,16 +100,25 @@ impl Anchor {
                             let length = self.left_estimation.length + self.size + right_anchor.right_estimation.length + max_gap;
                             let penalty_per_length = penalty as f32 / length as f32;
 
-                            (length >= cutoff.minimum_aligned_length) && (penalty_per_length <= cutoff.penalty_per_length)
+                            let can_be_connected = (length >= cutoff.minimum_aligned_length) && (penalty_per_length <= cutoff.penalty_per_length);
+                            if can_be_connected {
+                                self.right_checkpoints.add_new_checkpoint(
+                                    right_anchor_index,
+                                    right_anchor.size,
+                                    record_gap,
+                                    query_gap
+                                );
+                                right_anchor.left_checkpoints.add_new_checkpoint(
+                                    left_anchor_index,
+                                    self.size,
+                                    record_gap,
+                                    query_gap
+                                );
+                            }
                         },
                     }
                 },
             };
-
-            if can_be_connected {
-                self.right_checkpoints.add_new_checkpoint(right_anchor_index);
-                right_anchor.left_checkpoints.add_new_checkpoint(left_anchor_index);
-            }
         }
     }
 }
@@ -127,8 +136,13 @@ impl CheckPoints {
     fn empty() -> Self {
         Self(Vec::new())
     }
-    fn add_new_checkpoint(&mut self, anchor_index: usize) {
-        self.0.push(anchor_index);
+    fn add_new_checkpoint(&mut self, anchor_index: usize, anchor_size: usize, record_position_gap: usize, query_position_gap: usize) {
+        self.0.push(CheckPoint {
+            anchor_index,
+            anchor_size: anchor_size as u32,
+            record_position_gap: record_position_gap as u32,
+            query_position_gap: query_position_gap as u32,
+        });
     }
 }
 
