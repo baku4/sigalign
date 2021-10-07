@@ -42,7 +42,13 @@ pub struct RecordLocation {
 // RESULTS
 
 
-pub struct AlignmentResult {
+pub struct AlignmentResults {
+    record_index: usize,
+    alignment_result: AlignmentResultOfRecord,
+}
+
+#[derive(Debug)]
+pub struct AlignmentResultOfRecord {
     dissimilarity: f32,
     penalty: usize,
     length: usize,
@@ -50,8 +56,9 @@ pub struct AlignmentResult {
     operations: Vec<AlignmentOperation>,
 }
 
+#[derive(Debug)]
 struct AlignmentPosition {
-    reference: (usize, usize),
+    record: (usize, usize),
     query: (usize, usize),
 }
 
@@ -146,6 +153,8 @@ pub struct CheckPoint {
 // ALGORITHM
 
 
+use std::collections::HashMap;
+
 trait Algorithm {
     fn semi_global_alignment(
         reference: &dyn Reference,
@@ -157,19 +166,22 @@ trait Algorithm {
     ) {
         let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-        for (record_index, anchors_preset) in anchors_preset_by_record {
+        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
             let record_sequence = reference.sequence_of_record(record_index);
             let record_length = record_sequence.len();
 
             let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
 
-            println!("# record_index: {}", record_index);
-            println!("# Anchoring:\n{:#?}", anchors);
-
             anchors.extend_for_semi_global(record_sequence, query, penalties, cutoff);
-            
-            println!("# Extending:\n{:#?}", anchors);
-        }
+
+            let alignment_results = anchors.get_alignment_result_for_semi_global(cutoff);
+
+            if alignment_results.len() == 0 {
+                None
+            } else {
+                Some(alignment_results)
+            }
+        });
     }
 }
 
