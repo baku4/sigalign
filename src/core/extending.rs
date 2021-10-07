@@ -96,7 +96,7 @@ impl Anchors {
             }
         }
     }
-    fn right_traverse_check_from_owned_extension(
+    fn right_traverse_check_from_owned_extension( //FIXME: deduplicate code
         &mut self,
         original_anchor_index: usize,
         original_owned_extension: Extension,
@@ -113,6 +113,8 @@ impl Anchors {
         
         let original_penalty = original_owned_extension.penalty;
         let original_length = original_owned_extension.length;
+        let original_insertion_count = original_owned_extension.insertion_count;
+        let original_deletion_count = original_owned_extension.deletion_count;
         let original_operations = match original_owned_extension.operations {
             OperationsOfExtension::Own(owned_operations) => {
                 owned_operations.operations
@@ -124,9 +126,6 @@ impl Anchors {
         let mut accumulated_length = 0;
         let mut insertion_count = 0;
         let mut deletion_count = 0;
-        
-        #[cfg(test)]
-        println!("{:#?}", traverse_candidates);
 
         for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
             match alignment_type {
@@ -140,8 +139,6 @@ impl Anchors {
                             count
                         ) {
                             TraverseMarker::Traversed(count_of_checkpoint) => {
-                                #[cfg(test)]
-                                println!("# Traversed");
                                 let traversed_anchor_index = traverse_candidates[traverse_candidate_index].checkpoint.anchor_index;
                                 let checkpoint_anchor = &mut self.anchors[traversed_anchor_index];
 
@@ -157,11 +154,11 @@ impl Anchors {
                                                 operation_count: count_of_checkpoint,
                                             }
                                         };
-                                        #[cfg(test)]
-                                        println!("original_penalty - accumulated_penalty {} {}",original_penalty, accumulated_penalty);
                                         let ref_extension = Extension {
                                             penalty: original_penalty - accumulated_penalty,
                                             length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
+                                            insertion_count: original_insertion_count - insertion_count,
+                                            deletion_count: original_deletion_count - deletion_count,
                                             operations: OperationsOfExtension::Ref(ref_to_operations),
                                         };
 
@@ -186,13 +183,9 @@ impl Anchors {
                             },
                             TraverseMarker::NotYetTraversed => {
                                 // nothing to do
-                                #[cfg(test)]
-                                println!("# NotYetTraversed");
                             },
                             TraverseMarker::Passed => {
                                 to_delete_traverse_candidates.push(traverse_candidate_index);
-                                #[cfg(test)]
-                                println!("# Passed");
                             },
                         }
                     }
@@ -243,6 +236,8 @@ impl Anchors {
         
         let original_penalty = original_owned_extension.penalty;
         let original_length = original_owned_extension.length;
+        let original_insertion_count = original_owned_extension.insertion_count;
+        let original_deletion_count = original_owned_extension.deletion_count;
         let original_operations = match original_owned_extension.operations {
             OperationsOfExtension::Own(owned_operations) => {
                 owned_operations.operations
@@ -285,6 +280,8 @@ impl Anchors {
                                         let ref_extension = Extension {
                                             penalty: original_penalty - accumulated_penalty,
                                             length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
+                                            insertion_count: original_insertion_count - insertion_count,
+                                            deletion_count: original_deletion_count - deletion_count,
                                             operations: OperationsOfExtension::Ref(ref_to_operations),
                                         };
 
@@ -433,11 +430,9 @@ impl Anchor {
             _ => false,
         }
     }
-}
-
-impl Extension {
-    fn traverse_check() {
-
+    fn add_owned_extension_and_get_right_traverse_candidates(&mut self, original_anchor_index: usize, original_owned_extension: &Extension) -> Vec<TraverseCandidate> {
+        self.right_extension = Some(original_owned_extension.clone());
+        self.right_checkpoints.to_first_traverse_candidates(original_anchor_index)
     }
 }
 

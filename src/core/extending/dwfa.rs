@@ -280,6 +280,8 @@ impl DropoffWaveFront {
     ) -> Extension {
         let wave_front_scores = &self.wave_front_scores;
         let mut operation_length: usize = 0;
+        let mut insertion_count: u32 = 0;
+        let mut deletion_count: u32 = 0;
         let mut operations: Vec<AlignmentOperation> = Vec::new(); // TODO: Capacity can be applied?
         
         let mut wave_front_score: &WaveFrontScore = &wave_front_scores[score];
@@ -411,6 +413,8 @@ impl DropoffWaveFront {
                             let extension = Extension {
                                 penalty: self.last_score,
                                 length: operation_length,
+                                insertion_count,
+                                deletion_count,
                                 operations: OperationsOfExtension::Own(
                                     OwnedOperations {
                                         operations: operations,
@@ -453,6 +457,7 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
+                            insertion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -485,6 +490,7 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
+                            insertion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -522,6 +528,7 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
+                            deletion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -554,6 +561,7 @@ impl DropoffWaveFront {
                                 )
                             }
                             operation_length += 1;
+                            deletion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },

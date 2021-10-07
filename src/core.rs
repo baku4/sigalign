@@ -103,6 +103,8 @@ struct Estimation {
 pub struct Extension {
     penalty: usize,
     length: usize,
+    insertion_count: u32,
+    deletion_count: u32,
     operations: OperationsOfExtension,
 }
 
