@@ -22,11 +22,11 @@ impl Anchors {
         self.extend_right_for_semi_global(record_sequence, query, penalties, cutoff);
         #[cfg(test)]
         println!("{:#?}", self);
-        #[cfg(test)]
-        println!("# extend left");
+        // #[cfg(test)]
+        // println!("# extend left");
         self.extend_left_for_semi_global(record_sequence, query, penalties, cutoff);
-        #[cfg(test)]
-        println!("{:#?}", self);
+        // #[cfg(test)]
+        // println!("{:#?}", self);
     }
     fn extend_right_for_semi_global(
         &mut self,
@@ -49,7 +49,11 @@ impl Anchors {
 
                 match extension {
                     Some(owned_extension) => {
-                        // TODO:
+                        self.right_traverse_check_from_owned_extension(
+                            current_anchor_index,
+                            owned_extension,
+                            penalties
+                        );
                     },
                     None => {
                         self.anchors[current_anchor_index].dropped = true;
@@ -79,12 +83,265 @@ impl Anchors {
 
                 match extension {
                     Some(owned_extension) => {
-                        // TODO:
+                        self.left_traverse_check_from_owned_extension(
+                            current_anchor_index,
+                            owned_extension,
+                            penalties
+                        );
                     },
                     None => {
                         self.anchors[current_anchor_index].dropped = true;
                     },
                 }
+            }
+        }
+    }
+    fn right_traverse_check_from_owned_extension(
+        &mut self,
+        original_anchor_index: usize,
+        original_owned_extension: Extension,
+        penalties: &Penalties,
+    ) {
+        let mut traverse_candidates = {
+            let original_anchor = &mut self.anchors[original_anchor_index];
+
+            original_anchor.right_extension = Some(original_owned_extension.clone());
+            
+            let checkpoints = &original_anchor.right_checkpoints;
+            checkpoints.to_first_traverse_candidates(original_anchor_index)
+        };
+        
+        let original_penalty = original_owned_extension.penalty;
+        let original_length = original_owned_extension.length;
+        let original_operations = match original_owned_extension.operations {
+            OperationsOfExtension::Own(owned_operations) => {
+                owned_operations.operations
+            },
+            _ => panic!("") // TODO: Write err msg
+        };
+
+        let mut accumulated_penalty = 0;
+        let mut accumulated_length = 0;
+        let mut insertion_count = 0;
+        let mut deletion_count = 0;
+        
+        #[cfg(test)]
+        println!("{:#?}", traverse_candidates);
+
+        for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
+            match alignment_type {
+                AlignmentType::Match => {
+                    let mut to_delete_traverse_candidates = Vec::new();
+
+                    for traverse_candidate_index in 0..traverse_candidates.len() {
+                        match traverse_candidates[traverse_candidate_index].checkpoint.is_traversed(
+                            accumulated_length - deletion_count,
+                            accumulated_length - insertion_count,
+                            count
+                        ) {
+                            TraverseMarker::Traversed(count_of_checkpoint) => {
+                                #[cfg(test)]
+                                println!("# Traversed");
+                                let traversed_anchor_index = traverse_candidates[traverse_candidate_index].checkpoint.anchor_index;
+                                let checkpoint_anchor = &mut self.anchors[traversed_anchor_index];
+
+                                let checkpoints_of_checkpoint_anchor = &checkpoint_anchor.right_checkpoints;
+
+                                // Add extension to checkpoint
+                                match checkpoint_anchor.right_extension {
+                                    None => {
+                                        let ref_to_operations = RefToOperations {
+                                            anchor_index: original_anchor_index,
+                                            start_point_of_operations: StartPointOfOperations {
+                                                operation_index: operation_index, 
+                                                operation_count: count_of_checkpoint,
+                                            }
+                                        };
+                                        #[cfg(test)]
+                                        println!("original_penalty - accumulated_penalty {} {}",original_penalty, accumulated_penalty);
+                                        let ref_extension = Extension {
+                                            penalty: original_penalty - accumulated_penalty,
+                                            length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
+                                            operations: OperationsOfExtension::Ref(ref_to_operations),
+                                        };
+
+                                        checkpoint_anchor.right_extension = Some(ref_extension)
+                                    },
+                                    _ => {},
+                                }
+
+                                // Add new traverse candidate to candidates
+                                for checkpoint_of_checkpoint_anchor in &checkpoints_of_checkpoint_anchor.0 {
+                                    let new_traverse_candidate = traverse_candidates[traverse_candidate_index].to_new_candidate(checkpoint_of_checkpoint_anchor);
+                                    traverse_candidates.push(new_traverse_candidate);
+                                }
+
+                                // Add this checkpoint to connected list of all previous anchor
+                                for &previous_anchor_index in &traverse_candidates[traverse_candidate_index].previous_anchors {
+                                    self.anchors[previous_anchor_index].connected_anchors.push(traversed_anchor_index);
+                                }
+
+                                // Add this traverse candidate to delete list
+                                to_delete_traverse_candidates.push(traverse_candidate_index);
+                            },
+                            TraverseMarker::NotYetTraversed => {
+                                // nothing to do
+                                #[cfg(test)]
+                                println!("# NotYetTraversed");
+                            },
+                            TraverseMarker::Passed => {
+                                to_delete_traverse_candidates.push(traverse_candidate_index);
+                                #[cfg(test)]
+                                println!("# Passed");
+                            },
+                        }
+                    }
+                    
+                    for to_delete_traverse_candidate_index in to_delete_traverse_candidates.into_iter().rev() {
+                        traverse_candidates.remove(to_delete_traverse_candidate_index);
+                    }
+
+                    if traverse_candidates.is_empty() {
+                        return;
+                    }
+
+                    accumulated_length += count;
+                },
+                AlignmentType::Subst => {
+                    accumulated_penalty += penalties.x * count as usize;
+                    accumulated_length += count;
+                },
+                AlignmentType::Insertion => {
+                    accumulated_penalty += penalties.o;
+                    accumulated_penalty += penalties.e * count as usize;
+                    accumulated_length += count;
+                    insertion_count += count;
+                },
+                AlignmentType::Deletion => {
+                    accumulated_penalty += penalties.o;
+                    accumulated_penalty += penalties.e * count as usize;
+                    accumulated_length += count;
+                    deletion_count += count;
+                },
+            }
+        }
+    }
+    fn left_traverse_check_from_owned_extension( //FIXME: deduplicate code
+        &mut self,
+        original_anchor_index: usize,
+        original_owned_extension: Extension,
+        penalties: &Penalties,
+    ) {
+        let mut traverse_candidates = {
+            let original_anchor = &mut self.anchors[original_anchor_index];
+
+            original_anchor.left_extension = Some(original_owned_extension.clone());
+            
+            let checkpoints = &original_anchor.left_checkpoints;
+            checkpoints.to_first_traverse_candidates(original_anchor_index)
+        };
+        
+        let original_penalty = original_owned_extension.penalty;
+        let original_length = original_owned_extension.length;
+        let original_operations = match original_owned_extension.operations {
+            OperationsOfExtension::Own(owned_operations) => {
+                owned_operations.operations
+            },
+            _ => panic!("") // TODO: Write err msg
+        };
+
+        let mut accumulated_penalty = 0;
+        let mut accumulated_length = 0;
+        let mut insertion_count = 0;
+        let mut deletion_count = 0;
+        
+        for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
+            match alignment_type {
+                AlignmentType::Match => {
+                    let mut to_delete_traverse_candidates = Vec::new();
+
+                    for traverse_candidate_index in 0..traverse_candidates.len() {
+                        match traverse_candidates[traverse_candidate_index].checkpoint.is_traversed(
+                            accumulated_length - deletion_count,
+                            accumulated_length - insertion_count,
+                            count
+                        ) {
+                            TraverseMarker::Traversed(count_of_checkpoint) => {
+                                let traversed_anchor_index = traverse_candidates[traverse_candidate_index].checkpoint.anchor_index;
+                                let checkpoint_anchor = &mut self.anchors[traversed_anchor_index];
+
+                                let checkpoints_of_checkpoint_anchor = &checkpoint_anchor.left_checkpoints;
+
+                                // Add extension to checkpoint
+                                match checkpoint_anchor.left_extension {
+                                    None => {
+                                        let ref_to_operations = RefToOperations {
+                                            anchor_index: original_anchor_index,
+                                            start_point_of_operations: StartPointOfOperations {
+                                                operation_index: operation_index, 
+                                                operation_count: count_of_checkpoint,
+                                            }
+                                        };
+                                        let ref_extension = Extension {
+                                            penalty: original_penalty - accumulated_penalty,
+                                            length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
+                                            operations: OperationsOfExtension::Ref(ref_to_operations),
+                                        };
+
+                                        checkpoint_anchor.left_extension = Some(ref_extension)
+                                    },
+                                    _ => {},
+                                }
+
+                                // Add new traverse candidate to candidates
+                                for checkpoint_of_checkpoint_anchor in &checkpoints_of_checkpoint_anchor.0 {
+                                    let new_traverse_candidate = traverse_candidates[traverse_candidate_index].to_new_candidate(checkpoint_of_checkpoint_anchor);
+                                    traverse_candidates.push(new_traverse_candidate);
+                                }
+
+                                // Add this checkpoint to connected list of all previous anchor
+                                for &previous_anchor_index in &traverse_candidates[traverse_candidate_index].previous_anchors {
+                                    self.anchors[previous_anchor_index].connected_anchors.push(traversed_anchor_index);
+                                }
+
+                                // Add this traverse candidate to delete list
+                                to_delete_traverse_candidates.push(traverse_candidate_index);
+                            },
+                            TraverseMarker::NotYetTraversed => {
+                                // nothing to do
+                            },
+                            TraverseMarker::Passed => {
+                                to_delete_traverse_candidates.push(traverse_candidate_index);
+                            },
+                        }
+                    }
+                    
+                    for to_delete_traverse_candidate_index in to_delete_traverse_candidates.into_iter().rev() {
+                        traverse_candidates.remove(to_delete_traverse_candidate_index);
+                    }
+
+                    if traverse_candidates.is_empty() {
+                        return;
+                    }
+
+                    accumulated_length += count;
+                },
+                AlignmentType::Subst => {
+                    accumulated_penalty += penalties.x * count as usize;
+                    accumulated_length += count;
+                },
+                AlignmentType::Insertion => {
+                    accumulated_penalty += penalties.o;
+                    accumulated_penalty += penalties.e * count as usize;
+                    accumulated_length += count;
+                    insertion_count += count;
+                },
+                AlignmentType::Deletion => {
+                    accumulated_penalty += penalties.o;
+                    accumulated_penalty += penalties.e * count as usize;
+                    accumulated_length += count;
+                    deletion_count += count;
+                },
             }
         }
     }
@@ -178,6 +435,24 @@ impl Anchor {
     }
 }
 
+impl Extension {
+    fn traverse_check() {
+
+    }
+}
+
+impl CheckPoints {
+    fn to_first_traverse_candidates(&self, original_anchor_index: usize) -> Vec<TraverseCandidate> {
+        let previous_anchors = vec![original_anchor_index];
+        self.0.iter().map(|checkpoint| {
+            TraverseCandidate {
+                previous_anchors: previous_anchors.clone(),
+                checkpoint: checkpoint.clone(),
+            }
+        }).collect()
+    }
+}
+
 impl CheckPoint {
     fn is_traversed(
         &self,
@@ -185,8 +460,8 @@ impl CheckPoint {
         query_position_of_match_start: u32,
         count: u32,
     ) -> TraverseMarker {
-        if let Some(record_gap_from_operation) = record_position_of_match_start.checked_sub(self.record_position_gap) {
-            if let Some(query_gap_from_operation) = query_position_of_match_start.checked_sub(self.query_position_gap) {
+        if let Some(record_gap_from_operation) = self.record_position_gap.checked_sub(record_position_of_match_start) {
+            if let Some(query_gap_from_operation) = self.query_position_gap.checked_sub(query_position_of_match_start) {
                 if record_gap_from_operation == query_gap_from_operation {
                     if let Some(count_of_checkpoint) = count.checked_sub(record_gap_from_operation + self.anchor_size) {
                         return TraverseMarker::Traversed(count_of_checkpoint);
@@ -213,7 +488,18 @@ enum TraverseMarker {
     Passed,
 }
 
-struct TraverseCandidates {
+#[derive(Debug)]
+struct TraverseCandidate {
     previous_anchors: Vec<usize>,
     checkpoint: CheckPoint,
+}
+impl TraverseCandidate {
+    fn to_new_candidate(&self, new_checkpoint: &CheckPoint) -> Self {
+        let mut new_previous_anchors = self.previous_anchors.clone();
+        new_previous_anchors.push(self.checkpoint.anchor_index);
+        Self {
+            previous_anchors: new_previous_anchors,
+            checkpoint: new_checkpoint.from_previous_checkpoint(&self.checkpoint)
+        }
+    }
 }

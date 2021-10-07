@@ -409,7 +409,7 @@ impl DropoffWaveFront {
                             operations.shrink_to_fit();
                             // extension of current anchor
                             let extension = Extension {
-                                penalty: score,
+                                penalty: self.last_score,
                                 length: operation_length,
                                 operations: OperationsOfExtension::Own(
                                     OwnedOperations {

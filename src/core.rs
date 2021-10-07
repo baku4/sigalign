@@ -132,7 +132,7 @@ struct StartPointOfOperations {
 #[derive(Debug)]
 pub struct CheckPoints(Vec<CheckPoint>);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CheckPoint {
     anchor_index: usize,
     anchor_size: u32,
