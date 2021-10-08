@@ -1,14 +1,13 @@
-use bio::io::fastq::Reader;
-use num::integer;
-
-mod alignment_result;
-
 use crate::{Result, error_msg};
-use alignment_result::AlignmentResult;
+
+use super::core::*;
+
+use num::integer;
 
 pub struct Aligner {
     penalties: Penalties,
     cutoff: Cutoff,
+    min_penalty_for_pattern: MinPenaltyForPattern,
     gcd: usize,
     kmer: usize,
 }
@@ -25,6 +24,7 @@ impl Aligner {
         Self {
             penalties,
             cutoff,
+            min_penalty_for_pattern,
             gcd,
             kmer: max_kmer,
         }
@@ -51,17 +51,6 @@ impl Aligner {
             n += 1;
         }
     }
-
-    pub fn semi_global(&self, reference: &dyn Reference, query: Query) { //-> Result<AlignmentResult> {
-        
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Penalties {
-    x: usize,
-    o: usize,
-    e: usize,
 }
 
 impl Penalties {
@@ -82,11 +71,6 @@ impl Penalties {
     }
 }
 
-pub struct Cutoff {
-    minimum_aligned_length: usize,
-    penalty_per_length: f32,
-}
-
 impl Cutoff {
     pub fn new(minimum_aligned_length: usize, penalty_per_length: f32) -> Self {
         Self {
@@ -97,11 +81,6 @@ impl Cutoff {
     fn divide_by_gcd(&mut self, gcd: usize) {
         self.penalty_per_length /= gcd as f32;
     }
-}
-
-pub struct MinPenaltyForPattern {
-    odd: usize,
-    even: usize,
 }
 
 impl MinPenaltyForPattern {
@@ -125,17 +104,6 @@ impl MinPenaltyForPattern {
         }
     }
 }
-
-pub trait Reference {
-    
-}
-
-struct SearchRange {
-    sorted_vector: Vec<usize>,
-}
-
-type Query<'a> = &'a [u8];
-
 
 #[cfg(test)]
 mod tests {

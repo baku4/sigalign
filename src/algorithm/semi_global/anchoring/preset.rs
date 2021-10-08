@@ -6,8 +6,8 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct AnchorsPreset {
-    total_pattern_count: usize,
-    matched_pattern_locations: Vec<PatternLocation>,
+    pub total_pattern_count: usize,
+    pub matched_pattern_locations: Vec<PatternLocation>,
 }
 
 impl AnchorsPreset {
@@ -28,14 +28,14 @@ impl AnchorsPreset {
             let reference_location = reference.locate(pattern, pattern_size);
 
             for record_location in reference_location {
-                match anchors_preset_by_record.get_mut(&record_location.index) {
+                match anchors_preset_by_record.get_mut(&record_location.record_index) {
                     Some(anchors_preset) => {
                         anchors_preset.add_new_position(pattern_index, record_location.positions)
                     },
                     None => {
                         let mut new_anchors_preset = Self::new(pattern_count);
                         new_anchors_preset.add_new_position(pattern_index, record_location.positions);
-                        anchors_preset_by_record.insert(record_location.index, new_anchors_preset);
+                        anchors_preset_by_record.insert(record_location.record_index, new_anchors_preset);
                     }
                 }
             }
@@ -56,25 +56,14 @@ impl AnchorsPreset {
         };
         self.matched_pattern_locations.push(new_pattern_location);
     }
-    pub fn to_anchors_for_semi_global(
+    pub fn to_anchors(
         self,
         pattern_size: usize,
         query_length: usize,
         record_length: usize,
         min_penalty_for_pattern: &MinPenaltyForPattern,
     ) -> Anchors {
-        let anchors_by_patterns = self.create_anchors_by_patterns_for_semi_global(pattern_size, query_length, record_length, min_penalty_for_pattern);
-
-        Self::anchors_by_patterns_to_anchors(anchors_by_patterns)
-    }
-    pub fn to_anchors_for_local(
-        self,
-        pattern_size: usize,
-        query_length: usize,
-        record_length: usize,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> Anchors {
-        let anchors_by_patterns = self.create_anchors_by_patterns_for_local(pattern_size, query_length, record_length, min_penalty_for_pattern);
+        let anchors_by_patterns = self.create_anchors_by_patterns(pattern_size, query_length, record_length, min_penalty_for_pattern);
 
         Self::anchors_by_patterns_to_anchors(anchors_by_patterns)
     }
@@ -93,7 +82,7 @@ impl AnchorsPreset {
             anchors
         }
     }
-    fn create_anchors_by_patterns_for_semi_global(
+    fn create_anchors_by_patterns(
         self,
         pattern_size: usize,
         query_length: usize,
@@ -105,7 +94,7 @@ impl AnchorsPreset {
             self.total_pattern_count,
             &matched_pattern_index_list
         );
-        let penalty_per_pattern = PenaltyPerPattern::new(
+        let penalty_per_pattern = PenaltyPerPattern::new_for_semi_global(
             self.total_pattern_count,
             min_penalty_for_pattern,
             matched_pattern_index_list
@@ -123,39 +112,11 @@ impl AnchorsPreset {
             )
         }).collect();
 
-        Self::concat_ungapped_anchors_by_patterns(&mut anchors_by_patterns);
+        Self::concatenate_ungapped_anchors_by_patterns(&mut anchors_by_patterns);
 
         anchors_by_patterns
     }
-    fn create_anchors_by_patterns_for_local(
-        self,
-        pattern_size: usize,
-        query_length: usize,
-        record_length: usize,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> Vec<AnchorsByPattern> {
-        let matched_pattern_index_list = self.matched_pattern_index_list();
-        let each_pattern_matches = EachPatternMatches::new(
-            self.total_pattern_count,
-            &matched_pattern_index_list
-        );
-
-        let mut anchors_by_patterns: Vec<AnchorsByPattern> = self.matched_pattern_locations.into_iter().map(|pattern_location| {
-            AnchorsByPattern::new_for_local(
-                pattern_location.index,
-                pattern_size,
-                query_length,
-                record_length,
-                pattern_location.record_positions,
-                &each_pattern_matches
-            )
-        }).collect();
-
-        Self::concat_ungapped_anchors_by_patterns(&mut anchors_by_patterns);
-
-        anchors_by_patterns
-    }
-    fn concat_ungapped_anchors_by_patterns(anchors_by_patterns: &mut Vec<AnchorsByPattern>) {
+    fn concatenate_ungapped_anchors_by_patterns(anchors_by_patterns: &mut Vec<AnchorsByPattern>) {
         for i in (1..anchors_by_patterns.len()).rev() {
             let (left, right) = anchors_by_patterns[i-1..=i].split_at_mut(1);
 
@@ -208,63 +169,11 @@ impl AnchorsByPattern {
             let left_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(left_pattern_start_index, left_pattern_end_index);
             let right_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(right_pattern_start_index, right_pattern_end_index);
 
-            let left_min_penalty = penalty_per_pattern.minimum_penalty_of_left(left_pattern_start_index, left_pattern_end_index);
-            let right_min_penalty = penalty_per_pattern.minimum_penalty_of_right(right_pattern_start_index, right_pattern_end_index);
+            let left_min_penalty = penalty_per_pattern.minimum_penalty_of_left_for_semi_global(left_pattern_start_index, left_pattern_end_index);
+            let right_min_penalty = penalty_per_pattern.minimum_penalty_of_right_for_semi_global(right_pattern_start_index, right_pattern_end_index);
 
             let left_estimation = Estimation::new(left_min_penalty, left_min_length + left_unmatched_pattern_count);
             let right_estimation = Estimation::new(right_min_penalty, right_min_length + right_unmatched_pattern_count);
-
-            Anchor {
-                query_position,
-                record_position,
-                size: pattern_size,
-                left_estimation,
-                right_estimation,
-                left_checkpoints: CheckPoints::empty(),
-                right_checkpoints: CheckPoints::empty(),
-                left_extension: None,
-                right_extension: None,
-                dropped: false,
-                connected_anchors: Vec::new(),
-            }
-        }).collect();
-
-        Self {
-            pattern_index,
-            anchors,
-        }
-    }
-    fn new_for_local(
-        pattern_index: usize,
-        pattern_size: usize,
-        query_length: usize,
-        record_length: usize,
-        record_positions: Vec<usize>,
-        each_pattern_matches: &EachPatternMatches,
-    ) -> Self {
-        let query_position = pattern_index * pattern_size;
-        let left_query_length = query_position;
-        let right_query_length = query_length - query_position - pattern_size;
-
-        let anchors: Vec<Anchor> = record_positions.into_iter().map(|record_position| {
-            let left_record_length = record_position;
-            let right_record_length = record_length - record_position - pattern_size;
-
-            let left_min_length = left_query_length.min(left_record_length);
-            let left_pattern_count = left_min_length / pattern_size;
-            let right_min_length = right_query_length.min(right_record_length);
-            let right_pattern_count = right_min_length / pattern_size;
-
-            let left_pattern_start_index = pattern_index - left_pattern_count;
-            let left_pattern_end_index = pattern_index;
-            let right_pattern_start_index = pattern_index + 1;
-            let right_pattern_end_index = pattern_index + right_pattern_count + 1;
-
-            let left_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(left_pattern_start_index, left_pattern_end_index);
-            let right_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(right_pattern_start_index, right_pattern_end_index);
-
-            let left_estimation = Estimation::new(0, left_min_length + left_unmatched_pattern_count);
-            let right_estimation = Estimation::new(0, right_min_length + right_unmatched_pattern_count);
 
             Anchor {
                 query_position,
@@ -327,7 +236,7 @@ impl AnchorsByPattern {
 }
 
 #[derive(Debug)]
-struct PatternLocation {
+pub struct PatternLocation {
     index: usize,
     record_positions: Vec<usize>,
 }
@@ -357,18 +266,13 @@ struct PenaltyPerPattern {
 }
 
 impl PenaltyPerPattern {
-    fn new(
+    fn new_for_semi_global(
         total_pattern_count: usize,
         min_penalty_for_pattern: &MinPenaltyForPattern,
         matched_pattern_index_list: Vec<usize>,
     ) -> Self {
         let penalty_for_odd = min_penalty_for_pattern.odd;
         let penalty_for_even = min_penalty_for_pattern.even;
-
-        let mut existence = vec![false; total_pattern_count];
-        for &matched_pattern_index in &matched_pattern_index_list {
-            existence[matched_pattern_index] = true;
-        };
 
         let mut forward = vec![0; total_pattern_count];
         let mut reverse = vec![0; total_pattern_count];
@@ -406,18 +310,36 @@ impl PenaltyPerPattern {
             }
 
             next_index_to_fill = matched_pattern_index + 1;
+            filled_pre_is_odd = false;
         }
+
+        Self::accumulate_forward(&mut forward);
+        Self::accumulate_reverse(&mut reverse);
 
         Self {
             forward,
             reverse,
         }
     }
-    fn minimum_penalty_of_left(&self, start_index: usize, end_index: usize) -> usize {
-        self.reverse[start_index..end_index].iter().sum()
+    fn accumulate_forward(forward: &mut Vec<usize>) {
+        let mut accumulated_penalty = 0;
+        forward.iter_mut().for_each(|value| {
+            accumulated_penalty += *value;
+            *value = accumulated_penalty;
+        });
     }
-    fn minimum_penalty_of_right(&self, start_index: usize, end_index: usize) -> usize {
-        self.forward[start_index..end_index].iter().sum()
+    fn accumulate_reverse(reverse: &mut Vec<usize>) {
+        let mut accumulated_penalty = 0;
+        reverse.iter_mut().rev().for_each(|value| {
+            accumulated_penalty += *value;
+            *value = accumulated_penalty;
+        });
+    }
+    fn minimum_penalty_of_left_for_semi_global(&self, start_index: usize, end_index: usize) -> usize {
+        self.reverse[start_index] - self.reverse[end_index]
+    }
+    fn minimum_penalty_of_right_for_semi_global(&self, start_index: usize, end_index: usize) -> usize {
+        self.forward[end_index] - self.forward[start_index]
     }
 }
 
@@ -434,12 +356,12 @@ mod tests {
         };
         let matched_pattern_index_list = vec![2, 6, 9];
 
-        let penalty_per_pattern = PenaltyPerPattern::new(total_pattern_count, &min_penalty_for_pattern, matched_pattern_index_list);
+        let penalty_per_pattern = PenaltyPerPattern::new_for_semi_global(total_pattern_count, &min_penalty_for_pattern, matched_pattern_index_list);
         
         let forward = penalty_per_pattern.forward;
         let reverse = penalty_per_pattern.reverse;
 
-        assert_eq!(forward, vec![4, 6, 0, 4, 6, 4, 0, 6, 4, 0]);
-        assert_eq!(reverse, vec![6, 4, 0, 4, 6, 4, 0, 4, 6, 0]);
+        assert_eq!(forward, vec![4, 10, 10, 14, 20, 24, 24, 30, 34, 34]);
+        assert_eq!(reverse, vec![34, 28, 24, 24, 20, 14, 10, 10, 6, 0]);
     }
 }

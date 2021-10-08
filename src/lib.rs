@@ -1,7 +1,9 @@
 use anyhow::{Result, bail as error_msg};
 
-// Core algorithm
+#[doc(hidden)]
 mod core;
+#[doc(hidden)]
+mod algorithm;
 
 // Aligner
 mod aligner;

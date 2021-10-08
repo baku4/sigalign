@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 mod anchoring;
 mod extending;
 mod evaluating;
@@ -6,6 +8,7 @@ mod evaluating;
 // CONDITIONS
 
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Penalties {
     pub x: usize,
     pub o: usize,
@@ -29,12 +32,12 @@ pub struct MinPenaltyForPattern {
 pub type Sequence<'a> = &'a [u8];
 
 pub trait Reference {
-    fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<RecordLocation>;
+    fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<PatternLocation>;
     fn sequence_of_record(&self, record_index: usize) -> Sequence;
 }
 
-pub struct RecordLocation {
-    pub index: usize,
+pub struct PatternLocation {
+    pub record_index: usize,
     pub positions: Vec<usize>,
 }
 
@@ -42,34 +45,31 @@ pub struct RecordLocation {
 // RESULTS
 
 
-pub struct AlignmentResults {
-    record_index: usize,
-    alignment_result: AlignmentResultOfRecord,
+pub type AlignmentResultsByRecord = HashMap<usize, Vec<AlignmentResult>>;
+
+#[derive(Debug)]
+pub struct AlignmentResult {
+    pub dissimilarity: f32,
+    pub penalty: usize,
+    pub length: usize,
+    pub position: AlignmentPosition,
+    pub operations: Vec<AlignmentOperation>,
 }
 
 #[derive(Debug)]
-pub struct AlignmentResultOfRecord {
-    dissimilarity: f32,
-    penalty: usize,
-    length: usize,
-    position: AlignmentPosition,
-    operations: Vec<AlignmentOperation>,
-}
-
-#[derive(Debug)]
-struct AlignmentPosition {
-    record: (usize, usize),
-    query: (usize, usize),
+pub struct AlignmentPosition {
+    pub record: (usize, usize),
+    pub query: (usize, usize),
 }
 
 #[derive(Debug, Clone)]
-struct AlignmentOperation {
-    alignment_type: AlignmentType,
-    count: u32,
+pub struct AlignmentOperation {
+    pub alignment_type: AlignmentType,
+    pub count: u32,
 }
 
 #[derive(Debug, Clone)]
-enum AlignmentType {
+pub enum AlignmentType {
     Match,
     Subst,
     Insertion,
@@ -80,120 +80,18 @@ enum AlignmentType {
 // ANCHOR
 
 
-#[derive(Debug)]
-struct Anchors {
-    anchors: Vec<Anchor>,
-}
-
-#[derive(Debug)]
-struct Anchor {
-    query_position: usize,
-    record_position: usize,
-    size: usize,
-    left_estimation: Estimation,
-    right_estimation: Estimation,
-    left_checkpoints: CheckPoints,
-    right_checkpoints: CheckPoints,
-    left_extension: Option<Extension>,
-    right_extension: Option<Extension>,
-    dropped: bool,
-    connected_anchors: Vec<usize>,
-}
-
-#[derive(Debug)]
-struct Estimation {
-    penalty: usize,
-    length: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct Extension {
-    penalty: usize,
-    length: usize,
-    insertion_count: u32,
-    deletion_count: u32,
-    operations: OperationsOfExtension,
-}
-
-#[derive(Debug, Clone)]
-enum OperationsOfExtension {
-    Own(OwnedOperations),
-    Ref(RefToOperations),
-}
-
-#[derive(Debug, Clone)]
-struct OwnedOperations {
-    operations: Vec<AlignmentOperation>,
-}
-
-#[derive(Debug, Clone)]
-struct RefToOperations {
-    anchor_index: usize,
-    start_point_of_operations: StartPointOfOperations,
-}
-
-#[derive(Debug, Clone)]
-struct StartPointOfOperations {
-    operation_index: usize,
-    operation_count: u32,
-}
-
-#[derive(Debug)]
-pub struct CheckPoints(Vec<CheckPoint>);
-
-#[derive(Debug, Clone)]
-pub struct CheckPoint {
-    anchor_index: usize,
-    anchor_size: u32,
-    record_position_gap: u32,
-    query_position_gap: u32,
+pub trait Anchors {
+    // fn from_preset(anchor_preset: AnchorsPreset) -> Self;
 }
 
 
-// ALGORITHM
-
-
-use std::collections::HashMap;
-
-trait Algorithm {
-    fn semi_global_alignment(
-        reference: &dyn Reference,
-        query: Sequence,
-        pattern_size: usize,
-        penalties: &Penalties,
-        cutoff: &Cutoff,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) {
-        let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
-
-        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            let record_sequence = reference.sequence_of_record(record_index);
-            let record_length = record_sequence.len();
-
-            let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
-
-            anchors.extend_for_semi_global(record_sequence, query, penalties, cutoff);
-
-            let alignment_results = anchors.get_alignment_result_for_semi_global(cutoff);
-
-            if alignment_results.len() == 0 {
-                None
-            } else {
-                Some(alignment_results)
-            }
-        });
-    }
-}
+/*
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use crate::reference::TestReference;
-
-    struct TestAlgorithm;
-
-    impl Algorithm for TestAlgorithm {}
 
     fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
         let mut n = 1;
@@ -219,7 +117,7 @@ mod tests {
     }
 
     #[test]
-    fn test_semi_global() {
+    fn print_results_of_semi_global_alignment() {
         let test_reference = TestReference::new();
 
         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
@@ -230,7 +128,7 @@ mod tests {
 
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
-        let t = TestAlgorithm::semi_global_alignment(
+        let alignment_results = semi_global_alignment(
             &test_reference,
             query,
             kmer,
@@ -238,5 +136,32 @@ mod tests {
             &cutoff,
             &min_penalty_for_pattern
         );
+
+        println!("alignment_results:\n{:#?}", alignment_results);
+    }
+    #[test]
+    fn print_results_of_local_alignment() {
+        let test_reference = TestReference::new();
+
+        let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
+
+        let penalties = Penalties {x: 4, o: 5, e: 2};
+        let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.3 };
+        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
+
+        let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+
+        let alignment_results = local_alignment(
+            &test_reference,
+            query,
+            kmer,
+            &penalties,
+            &cutoff,
+            &min_penalty_for_pattern
+        );
+
+        println!("alignment_results:\n{:#?}", alignment_results);
     }
 }
+
+*/
