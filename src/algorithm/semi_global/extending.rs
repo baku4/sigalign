@@ -2,13 +2,13 @@ use super::{Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
 use super::{Anchors, Anchor, Extension, OperationsOfExtension, OwnedOperations, RefToOperations, StartPointOfOperations, CheckPoints, CheckPoint};
+use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
+use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
 
 mod dwfa;
 
-use dwfa::DropoffWaveFront;
-
 impl Anchors {
-    pub fn extend_for_semi_global(
+    pub fn extend(
         &mut self,
         record_sequence: Sequence,
         query: Sequence,

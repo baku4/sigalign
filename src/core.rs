@@ -4,6 +4,9 @@ mod anchoring;
 mod extending;
 mod evaluating;
 
+pub use extending::{DropoffWaveFront, WaveFrontScore, Components, Component};
+pub use extending::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+
 
 // CONDITIONS
 

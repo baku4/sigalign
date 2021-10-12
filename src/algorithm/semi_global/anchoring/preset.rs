@@ -101,7 +101,7 @@ impl AnchorsPreset {
         );
 
         let mut anchors_by_patterns: Vec<AnchorsByPattern> = self.matched_pattern_locations.into_iter().map(|pattern_location| {
-            AnchorsByPattern::new_for_semi_global(
+            AnchorsByPattern::new(
                 pattern_location.index,
                 pattern_size,
                 query_length,
@@ -139,7 +139,7 @@ struct AnchorsByPattern {
 }
 
 impl AnchorsByPattern {
-    fn new_for_semi_global(
+    fn new(
         pattern_index: usize,
         pattern_size: usize,
         query_length: usize,

@@ -1,6 +1,8 @@
 use super::{Penalties, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, Reference, PatternLocation};
 use super::{AlignmentResultsByRecord, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
+use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
+use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
 
 mod anchoring;
 mod extending;
@@ -99,7 +101,7 @@ pub fn semi_global_alignment(
 
         let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
 
-        anchors.extend_for_semi_global(record_sequence, query, penalties, cutoff);
+        anchors.extend(record_sequence, query, penalties, cutoff);
 
         let alignment_results = anchors.get_alignment_result_for_semi_global(cutoff);
 
