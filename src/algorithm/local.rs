@@ -57,6 +57,7 @@ pub fn local_alignment(
 ) {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
+    /*
     anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
         let record_sequence = reference.sequence_of_record(record_index);
         let record_length = record_sequence.len();
@@ -75,4 +76,5 @@ pub fn local_alignment(
 
         None
     });
+    */
 }
