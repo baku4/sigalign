@@ -22,16 +22,10 @@ struct Anchor {
     query_position: usize,
     record_position: usize,
     size: usize,
-    left_estimation: Estimation,
+    spare_penalty_padding_of_left: f32,
     left_extension: Option<Extension>,
     right_extension: Option<Extension>,
     dropped: bool,
-}
-
-#[derive(Debug, Clone)]
-struct Estimation {
-    penalty: usize,
-    length: usize,
 }
 
 #[derive(Debug, Clone)]

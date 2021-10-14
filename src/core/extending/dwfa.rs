@@ -17,7 +17,7 @@ impl<C: Component> DropoffWaveFront<C> {
         penalties: &Penalties,
         spare_penalty: usize,
     ) -> Self {
-        Self::aligned(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward)
+        Self::new_aligned(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward)
     }
     pub fn aligned_reverse(
         ref_seq: Sequence,
@@ -25,9 +25,9 @@ impl<C: Component> DropoffWaveFront<C> {
         penalties: &Penalties,
         spare_penalty: usize,
     ) -> Self {
-        Self::aligned(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
+        Self::new_aligned(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
     }
-    fn aligned(
+    fn new_aligned(
         ref_seq: Sequence,
         qry_seq: Sequence,
         penalties: &Penalties,
@@ -154,9 +154,9 @@ impl<C: Component> WaveFrontScore<C> {
     }
     fn add_first_components(&mut self, first_match: i32) {
         self.components = vec![[
-            C::start_point(first_match), //FIXME: todel { fr: first_match, bt: START },
+            C::start_point(first_match),
             C::empty(),
-            C::empty(), // Component { fr: 0, bt: EMPTY } ,
+            C::empty(),
         ]];
     }
     pub fn range_of_k(&self) -> Vec<i32> {

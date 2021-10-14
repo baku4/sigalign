@@ -1,6 +1,6 @@
 use super::{Cutoff, Penalties, MinPenaltyForPattern};
 use super::{Reference, Sequence};
-use super::{Anchors, Anchor, Estimation};
+use super::{Anchors, Anchor};
 
 mod preset;
 
