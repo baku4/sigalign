@@ -103,7 +103,7 @@ pub fn semi_global_alignment(
 
         anchors.extend(record_sequence, query, penalties, cutoff);
 
-        let alignment_results = anchors.get_alignment_result_for_semi_global(cutoff);
+        let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
 
         if alignment_results.len() == 0 {
             None

@@ -38,7 +38,7 @@ impl DropoffWaveFront<ComponentLocal> {
     ) -> Extension {
         self.backtrace_from_point(score, start_index_of_components, penalties)
     }
-    fn backtrace_from_point(
+    fn backtrace_from_point( // TODO: length can be calculated directly from deletion count and fr.
         &self,
         mut score: usize,
         start_index_of_components: usize,

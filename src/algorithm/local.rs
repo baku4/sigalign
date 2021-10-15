@@ -51,7 +51,6 @@ pub fn local_alignment(
 ) {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-    /*
     anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
         let record_sequence = reference.sequence_of_record(record_index);
         let record_length = record_sequence.len();
@@ -59,16 +58,13 @@ pub fn local_alignment(
         let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
 
         anchors.extend(record_sequence, query, penalties, cutoff);
+       
+        let alignment_results = anchors.get_alignment_results_for_local();
 
-        // let alignment_results = anchors.get_alignment_result_local(cutoff);
-
-        // if alignment_results.len() == 0 {
-        //     None
-        // } else {
-        //     Some((record_index, alignment_results))
-        // }
-
-        None
+        if alignment_results.len() == 0 {
+            None
+        } else {
+            Some((record_index, alignment_results))
+        }
     });
-    */
 }

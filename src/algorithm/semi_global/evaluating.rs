@@ -7,7 +7,7 @@ use std::collections::HashSet;
 type AnchorSymbol = Vec<usize>;
 
 impl Anchors {
-    pub fn get_alignment_result_for_semi_global(
+    pub fn get_alignment_results_for_semi_global(
         self,
         cutoff: &Cutoff,
     ) -> Vec<AlignmentResult> {
@@ -42,7 +42,7 @@ impl Anchors {
             query: alignment_position_of_query,
         };
 
-        let mut left_operations = match &left_extension.operations {
+        let left_operations = match &left_extension.operations {
             OperationsOfExtension::Own(owned_operations) => owned_operations.operations.clone(),
             OperationsOfExtension::Ref(ref_to_operations) => {
                 let original_operation = match &self.anchors[ref_to_operations.anchor_index].left_extension.as_ref().unwrap().operations {
@@ -53,7 +53,7 @@ impl Anchors {
             },
         };
 
-        let mut right_operations = match &right_extension.operations {
+        let right_operations = match &right_extension.operations {
             OperationsOfExtension::Own(owned_operations) => owned_operations.operations.clone(),
             OperationsOfExtension::Ref(ref_to_operations) => {
                 let original_operation = match &self.anchors[ref_to_operations.anchor_index].right_extension.as_ref().unwrap().operations {
@@ -63,45 +63,15 @@ impl Anchors {
                 original_operation.get_alignment_operations_from_start_point(&ref_to_operations.start_point_of_operations)
             },
         };
-        right_operations.reverse();
 
-        // Add anchor sized Match operation to left operations
-        if let AlignmentOperation {
-            alignment_type: AlignmentType::Match,
-            count,
-        } = left_operations.last_mut().unwrap() {
-            *count += anchor.size as u32;
-        } else {
-            left_operations.push(
-                AlignmentOperation {
-                    alignment_type: AlignmentType::Match,
-                    count: anchor.size as u32,
-                }
-            );
-        };
-
-        // Add right operations to left operations
-        if let AlignmentOperation {
-            alignment_type: AlignmentType::Match,
-            count: right_count,
-        } = right_operations.first_mut().unwrap() {
-            if let AlignmentOperation {
-                alignment_type: AlignmentType::Match,
-                count: left_count,
-            } = left_operations.last_mut().unwrap() {
-                *left_count += *right_count;
-            }
-            right_operations.remove(0);
-        };
-
-        left_operations.append(&mut right_operations);
+        let alignment_operations = AlignmentOperation::concatenate_operations(left_operations, right_operations, anchor.size as u32);
 
         AlignmentResult {
             dissimilarity: penalty as f32 / length as f32,
             penalty,
             length,
             position: alignment_position,
-            operations: left_operations,
+            operations: alignment_operations,
         }
     }
     fn get_unique_anchors(
