@@ -1,12 +1,13 @@
-use std::collections::HashMap;
-
-mod anchoring;
 mod extending;
 mod evaluating;
 
 pub use extending::{DropoffWaveFront, WaveFrontScore, Components, Component};
 pub use extending::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
 pub use evaluating::AlignmentHashSet;
+
+use serde::{Deserialize, Serialize};
+
+use std::collections::HashMap;
 
 
 // CONDITIONS
@@ -38,6 +39,7 @@ pub type Sequence<'a> = &'a [u8];
 pub trait Reference {
     fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<PatternLocation>;
     fn sequence_of_record(&self, record_index: usize) -> Sequence;
+    fn is_searchable(&self, pattern: Sequence) -> bool;
 }
 
 pub struct PatternLocation {
@@ -51,7 +53,7 @@ pub struct PatternLocation {
 
 pub type AlignmentResultsByRecord = HashMap<usize, Vec<AlignmentResult>>;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct AlignmentResult {
     pub dissimilarity: f32,
     pub penalty: usize,
@@ -60,19 +62,19 @@ pub struct AlignmentResult {
     pub operations: Vec<AlignmentOperation>,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct AlignmentPosition {
     pub record: (usize, usize),
     pub query: (usize, usize),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlignmentOperation {
     pub alignment_type: AlignmentType,
     pub count: u32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AlignmentType {
     Match,
     Subst,
@@ -81,91 +83,16 @@ pub enum AlignmentType {
 }
 
 
-// ANCHOR
+// ALGORITHM
 
 
-pub trait Anchors {
-    // fn from_preset(anchor_preset: AnchorsPreset) -> Self;
+pub trait Algorithm {
+    fn alignment(
+        reference: &dyn Reference,
+        query: Sequence,
+        pattern_size: usize,
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        min_penalty_for_pattern: &MinPenaltyForPattern,
+    ) -> AlignmentResultsByRecord;
 }
-
-
-/*
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::reference::TestReference;
-
-    fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
-        let mut n = 1;
-        loop {
-            let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
-            let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
-            let max_penalty = (
-                ((n*(min_penalty_for_pattern.odd + min_penalty_for_pattern.even)) as f32
-                + 4_f32*cutoff.penalty_per_length) /
-                (2_f32*cutoff.penalty_per_length*(n+1) as f32)
-                - 2_f32
-            ).ceil();
-
-            let kmer = max_penalty.min(upper_bound);
-            #[cfg(test)]
-            println!("#n {}\nu {}\nl {}\nmp {}\nk {}", n, upper_bound, lower_bound, max_penalty, kmer);
-
-            if kmer >= lower_bound {
-                return kmer as usize
-            }
-            n += 1;
-        }
-    }
-
-    #[test]
-    fn print_results_of_semi_global_alignment() {
-        let test_reference = TestReference::new();
-
-        let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
-
-        let penalties = Penalties {x: 4, o: 5, e: 2};
-        let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.3 };
-        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
-
-        let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
-
-        let alignment_results = semi_global_alignment(
-            &test_reference,
-            query,
-            kmer,
-            &penalties,
-            &cutoff,
-            &min_penalty_for_pattern
-        );
-
-        println!("alignment_results:\n{:#?}", alignment_results);
-    }
-    #[test]
-    fn print_results_of_local_alignment() {
-        let test_reference = TestReference::new();
-
-        let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
-
-        let penalties = Penalties {x: 4, o: 5, e: 2};
-        let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.3 };
-        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
-
-        let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
-
-        let alignment_results = local_alignment(
-            &test_reference,
-            query,
-            kmer,
-            &penalties,
-            &cutoff,
-            &min_penalty_for_pattern
-        );
-
-        println!("alignment_results:\n{:#?}", alignment_results);
-    }
-}
-
-*/

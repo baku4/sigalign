@@ -5,11 +5,15 @@ mod core;
 #[doc(hidden)]
 mod algorithm;
 
-// Aligner
-mod aligner;
+mod alignment_result;
 
 // Reference
 mod reference;
+
+// Aligner
+mod aligner;
+
+
 
 #[doc(hidden)]
 pub mod deprecated;

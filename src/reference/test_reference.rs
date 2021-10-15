@@ -53,4 +53,7 @@ impl Reference for TestReference {
     fn sequence_of_record(&self, record_index: usize) -> &[u8] {
         &self.sequence_of_record[record_index]
     }
+    fn is_searchable(&self, pattern: Sequence) -> bool {
+        true
+    }
 }

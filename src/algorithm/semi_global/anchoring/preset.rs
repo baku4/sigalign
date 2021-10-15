@@ -162,15 +162,13 @@ impl AnchorsByPattern {
             let right_pattern_count = right_min_length / pattern_size;
 
             let left_pattern_start_index = pattern_index - left_pattern_count;
-            let left_pattern_end_index = pattern_index;
-            let right_pattern_start_index = pattern_index + 1;
-            let right_pattern_end_index = pattern_index + right_pattern_count + 1;
+            let right_pattern_end_index = pattern_index + right_pattern_count;
 
-            let left_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(left_pattern_start_index, left_pattern_end_index);
-            let right_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(right_pattern_start_index, right_pattern_end_index);
+            let left_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(left_pattern_start_index, pattern_index);
+            let right_unmatched_pattern_count = each_pattern_matches.count_unmatched_pattern(pattern_index, right_pattern_end_index);
 
-            let left_min_penalty = penalty_per_pattern.minimum_penalty_of_left_for_semi_global(left_pattern_start_index, left_pattern_end_index);
-            let right_min_penalty = penalty_per_pattern.minimum_penalty_of_right_for_semi_global(right_pattern_start_index, right_pattern_end_index);
+            let left_min_penalty = penalty_per_pattern.minimum_penalty_of_left_for_semi_global(left_pattern_start_index, pattern_index);
+            let right_min_penalty = penalty_per_pattern.minimum_penalty_of_right_for_semi_global(pattern_index, right_pattern_end_index);
 
             let left_estimation = Estimation::new(left_min_penalty, left_min_length + left_unmatched_pattern_count);
             let right_estimation = Estimation::new(right_min_penalty, right_min_length + right_unmatched_pattern_count);
@@ -241,6 +239,7 @@ pub struct PatternLocation {
     record_positions: Vec<usize>,
 }
 
+#[derive(Debug)]
 struct EachPatternMatches(Vec<bool>);
 
 impl EachPatternMatches {

@@ -1,6 +1,8 @@
 use crate::{Result, error_msg};
 
-use super::core::*;
+pub use crate::algorithm::{Reference, Sequence};
+pub use crate::algorithm::{Penalties, Cutoff, MinPenaltyForPattern};
+pub use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 
 use num::integer;
 
@@ -13,7 +15,27 @@ pub struct Aligner {
 }
 
 impl Aligner {
-    pub fn new(mut penalties: Penalties, mut cutoff: Cutoff) -> Self {
+    pub fn new(
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        penalty_per_length: f32,
+    ) -> Result<Self> {
+        if gap_extend_penalty == 0 {
+            error_msg!(""); //TODO: Err msg
+        } else if penalty_per_length <= 0.0 {
+            error_msg!(""); //TODO: Err msg
+        }
+
+        let penalties = Penalties::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
+        let cutoff = Cutoff::new(minimum_aligned_length, penalty_per_length);
+
+        let aligner = Self::new_with_penalties_and_cutoff(penalties, cutoff);
+
+        Ok(aligner)
+    }
+    pub fn new_with_penalties_and_cutoff(mut penalties: Penalties, mut cutoff: Cutoff) -> Self {
         let gcd = penalties.gcd_of_penalties();
         penalties.divide_by_gcd(gcd);
         cutoff.divide_by_gcd(gcd);
@@ -50,6 +72,26 @@ impl Aligner {
             }
             n += 1;
         }
+    }
+    pub fn semi_global_alignment(
+        &self,
+        reference: &dyn Reference,
+        query: Sequence,
+    ) { // -> Result<AlignmentResultsByRecord> {
+        // let query_is_searchable = reference.is_searchable(query);
+        
+        // if query_is_searchable {
+        //     Ok(
+        //         SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern)
+        //     )
+        // } else {
+        //     error_msg!("") //TODO: Err msg
+        // }
+
+        SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
+    }
+    pub fn local_alignment(&self, reference: &dyn Reference, query: Sequence) {
+        LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
     }
 }
 
@@ -127,8 +169,8 @@ mod tests {
     fn print_calculate_maximum_kmer() {
         let penalties = Penalties::new(4, 6, 2);
         let cutoff = Cutoff::new(50, 0.15);
-        let mpfp = MinPenaltyForPattern::new(&penalties);
-        let kmer = Aligner::max_kmer_satisfying_cutoff(&cutoff, &mpfp);
+        let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
+        let kmer = Aligner::max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
         println!("{}", kmer);
     }
 }
