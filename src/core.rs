@@ -6,6 +6,7 @@ mod evaluating;
 
 pub use extending::{DropoffWaveFront, WaveFrontScore, Components, Component};
 pub use extending::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+pub use evaluating::AlignmentHashSet;
 
 
 // CONDITIONS
@@ -59,7 +60,7 @@ pub struct AlignmentResult {
     pub operations: Vec<AlignmentOperation>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct AlignmentPosition {
     pub record: (usize, usize),
     pub query: (usize, usize),

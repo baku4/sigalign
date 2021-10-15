@@ -370,16 +370,30 @@ impl PointOfMaximumLength {
 
         let mut right_start_index = 0;
 
-        'left_loop: for left_index in (0..left_sorted_point.len()).rev() {
-            'right_loop: for right_index in (right_start_index..right_sorted_point.len()).rev() {
+        #[cfg(test)]
+        {
+            println!("left_sorted_point: {:?}", left_sorted_point);
+            println!("right_sorted_point: {:?}", right_sorted_point);
+            println!("anchor_size: {:?}", anchor_size);
+        }
+
+        let left_sorted_point_count = left_sorted_point.len();
+        let right_sorted_point_count = right_sorted_point.len();
+
+        'left_loop: for left_index in (0..left_sorted_point_count).rev() {
+            'right_loop: for right_index in (right_start_index..right_sorted_point_count).rev() {
                 let &(left_penalty, (left_index_of_components, left_length)) = &left_sorted_point[left_index];
                 let &(right_penalty, (right_index_of_components, right_length)) = &right_sorted_point[right_index];
 
                 let length =  (left_length + right_length) as usize + anchor_size;
 
-                if (length < cutoff.minimum_aligned_length) && (length < length_of_start_point) {
-                    right_start_index = right_index;
-                    break 'right_loop;
+                if (length < cutoff.minimum_aligned_length) || (length < length_of_start_point) {
+                    right_start_index = right_index + 1;
+                    if right_start_index < right_sorted_point_count {
+                        break 'right_loop;
+                    } else {
+                        break 'left_loop;
+                    }
                 } else {
                     let penalty = left_penalty + right_penalty;
                     let penalty_per_length = penalty as f32 / length as f32;
@@ -397,8 +411,16 @@ impl PointOfMaximumLength {
                         optional_start_point_of_wave_front = Some(start_point_of_wave_front);
                     }
                 }
+
+                #[cfg(test)]
+                {
+                    println!("left_sorted_point[{}]: {:?}", left_index, left_sorted_point[left_index]);
+                    println!("right_sorted_point[{}]: {:?}", right_index, right_sorted_point[right_index]);
+                    println!("optional_start_point_of_wave_front: {:?}", optional_start_point_of_wave_front);
+                }
             }
         }
+        
         if optional_start_point_of_wave_front.is_some() {
             optional_start_point_of_wave_front
         } else {
@@ -407,6 +429,7 @@ impl PointOfMaximumLength {
     }
 }
 
+#[derive(Debug)]
 pub struct StartPointOfWaveFront {
     pub left_score: usize,
     pub left_index_of_components: usize,

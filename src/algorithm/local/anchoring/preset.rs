@@ -4,8 +4,6 @@ use super::{Anchors, Anchor};
 
 use std::collections::HashMap;
 
-//TODO: Delete unused variables
-
 #[derive(Debug)]
 pub struct AnchorsPreset {
     total_pattern_count: usize,

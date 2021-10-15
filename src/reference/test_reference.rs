@@ -5,7 +5,7 @@ use lt_fm_index::{FmIndex, LtFmIndexConfig, LtFmIndexAll, IO};
 pub struct TestReference {
     fm_index_of_records: Vec<LtFmIndexAll>,
     sequence_of_record: Vec<Vec<u8>>,
-    length_of_records: Vec<usize>,
+    // length_of_records: Vec<usize>,
 }
 
 impl TestReference {
@@ -16,9 +16,9 @@ impl TestReference {
             b"ATCGGTATCTACCACATAGCCGTGGTTCTGAGAGGAAATATATACTCTTCCGGTCATCAGATCCTTTACCGGATGGTTGCCTCCTCTGTGTCCGTATTTCATTTTATGGGTATCTGCGCCGGTAGCCAGAGCCATCAGCTGATGTCCCAGACAGATTGCGAAAATAGGGATCTCGGTATCGTATAACTTTTTGATCTCGGCGATCACACCGGTACACTCCTTGGGGTCTCCCGGTCCGTTACTTAACATGATACCGTCGGGATTATCATCAATGATCTCCTGTGCTGGAGTTCCTGCGGGGTATACGGTCACCTCACAGCCTCTCTCTGCCAGGGATCTGGCGATATTTCTCTTGGCTCCCA".to_vec()
         ];
         
-        let length_of_records: Vec<usize> = ref_texts.iter().map(|x| {
-            x.len()
-        }).collect();
+        // let length_of_records: Vec<usize> = ref_texts.iter().map(|x| {
+        //     x.len()
+        // }).collect();
         let fm_index_of_records = ref_texts.iter().map(|text| {
             LtFmIndexConfig::for_nucleotide().generate(text.clone()).unwrap()
         }).collect();
@@ -26,7 +26,7 @@ impl TestReference {
         Self {
             fm_index_of_records,
             sequence_of_record: ref_texts,
-            length_of_records,
+            // length_of_records,
         }
     }
 }
