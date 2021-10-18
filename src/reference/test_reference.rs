@@ -1,4 +1,4 @@
-use crate::core::{Sequence, Reference, PatternLocation};
+use crate::core::{Sequence, ReferenceInterface, PatternLocation};
 
 use lt_fm_index::{FmIndex, LtFmIndexConfig, LtFmIndexAll, IO};
 
@@ -31,8 +31,8 @@ impl TestReference {
     }
 }
 
-impl Reference for TestReference {
-    fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<PatternLocation> {
+impl ReferenceInterface for TestReference {
+    fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {
         let mut res: Vec<PatternLocation> = Vec::new();
         for (index, fm_index) in self.fm_index_of_records.iter().enumerate() {
             let location = fm_index.locate(pattern);

@@ -36,8 +36,8 @@ pub struct MinPenaltyForPattern {
 
 pub type Sequence<'a> = &'a [u8];
 
-pub trait Reference {
-    fn locate(&self, pattern: Sequence, kmer: usize) -> Vec<PatternLocation>;
+pub trait ReferenceInterface {
+    fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
     fn sequence_of_record(&self, record_index: usize) -> Sequence;
     fn is_searchable(&self, pattern: Sequence) -> bool;
 }
@@ -88,7 +88,7 @@ pub enum AlignmentType {
 
 pub trait Algorithm {
     fn alignment(
-        reference: &dyn Reference,
+        reference: &dyn ReferenceInterface,
         query: Sequence,
         pattern_size: usize,
         penalties: &Penalties,

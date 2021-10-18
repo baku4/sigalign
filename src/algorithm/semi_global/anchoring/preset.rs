@@ -1,5 +1,5 @@
 use super::MinPenaltyForPattern;
-use super::{Reference, Sequence};
+use super::{ReferenceInterface, Sequence};
 use super::{Anchors, Anchor, Estimation, CheckPoints};
 
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ pub struct AnchorsPreset {
 
 impl AnchorsPreset {
     pub fn new_by_record(
-        reference: &dyn Reference,
+        reference: &dyn ReferenceInterface,
         query: Sequence,
         pattern_size: usize,
     ) -> HashMap<usize, AnchorsPreset> {
@@ -25,7 +25,7 @@ impl AnchorsPreset {
             let qry_pos = pattern_index * pattern_size;
             let pattern = &query[qry_pos..qry_pos+pattern_size];
 
-            let reference_location = reference.locate(pattern, pattern_size);
+            let reference_location = reference.locate(pattern);
 
             for record_location in reference_location {
                 match anchors_preset_by_record.get_mut(&record_location.record_index) {

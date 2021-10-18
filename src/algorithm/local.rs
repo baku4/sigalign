@@ -1,5 +1,5 @@
 use super::{Penalties, Cutoff, MinPenaltyForPattern};
-use super::{Sequence, Reference, PatternLocation};
+use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecord, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
@@ -46,7 +46,7 @@ pub struct LocalAlgorithm;
 
 impl Algorithm for LocalAlgorithm {
     fn alignment(
-        reference: &dyn Reference,
+        reference: &dyn ReferenceInterface,
         query: Sequence,
         pattern_size: usize,
         penalties: &Penalties,

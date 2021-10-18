@@ -1,6 +1,6 @@
 use crate::{Result, error_msg};
 
-pub use crate::algorithm::{Reference, Sequence};
+pub use crate::algorithm::{ReferenceInterface, Sequence};
 pub use crate::algorithm::{Penalties, Cutoff, MinPenaltyForPattern};
 pub use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 
@@ -75,7 +75,7 @@ impl Aligner {
     }
     pub fn semi_global_alignment(
         &self,
-        reference: &dyn Reference,
+        reference: &dyn ReferenceInterface,
         query: Sequence,
     ) { // -> Result<AlignmentResultsByRecord> {
         // let query_is_searchable = reference.is_searchable(query);
@@ -90,7 +90,7 @@ impl Aligner {
 
         SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
     }
-    pub fn local_alignment(&self, reference: &dyn Reference, query: Sequence) {
+    pub fn local_alignment(&self, reference: &dyn ReferenceInterface, query: Sequence) {
         LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
     }
 }
