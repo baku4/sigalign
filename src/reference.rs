@@ -10,25 +10,29 @@ pub use test_reference::TestReference;
 
 use serde::{Deserialize, Serialize};
 
-use std::marker::PhantomData;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Reference<'a, S> where S: SequenceProvider<'a> {
+struct Reference<'a, S, L> where
+    S: SequenceProvider<'a>,
+    L: LtFmIndexInterface {
     sequence_type: SequenceType,
     total_record_count: usize,
     search_range: SearchRange,
-    pattern_locater: PatternLocater,
+    pattern_locater: PatternLocater<L>,
     sequence_provider: S,
     phantom_data: PhantomData<&'a S>,
 }
 
-impl<'a, S> ReferenceInterface for Reference<'a, S> where S: SequenceProvider<'a> {
+impl<'a, S, L>ReferenceInterface for Reference<'a, S, L> where
+    S: SequenceProvider<'a>,
+    L: LtFmIndexInterface {
     fn is_searchable(&self, query: Sequence) -> bool {
         self.sequence_type.is_searchable(query)
     }
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {
-        self.pattern_locater.locate_in_search_range(pattern)
+        self.pattern_locater.locate_in_search_range(pattern, &self.search_range)
     }
     fn sequence_of_record(&self, record_index: usize) -> Sequence {
         self.sequence_provider.sequence_of_record(record_index)
@@ -62,15 +66,19 @@ enum SequenceTypeMarker {
 #[derive(Debug, Serialize, Deserialize)]
 struct SearchRange(Vec<usize>);
 
+trait LtFmIndexInterface {
+    fn locate(&self, pattern: Sequence) -> Vec<u64>;
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-struct PatternLocater {
-    lt_fm_index: LtFmIndex,
+struct PatternLocater<L: LtFmIndexInterface> {
+    lt_fm_index: L,
     /// Accumulated lengths of records for locating k-sized pattern
     ///  - Length of vector is record count + 1
     ///  - First element must be 0
     accumulated_length: Vec<u64>,
 }
-impl PatternLocater {
+impl<L: LtFmIndexInterface> PatternLocater<L> {
     fn locate_in_search_range(&self, pattern: Sequence, search_range: &SearchRange) -> Vec<PatternLocation> {
         let sorted_locations = self.sorted_locations_of_pattern(pattern);
 
