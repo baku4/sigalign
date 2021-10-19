@@ -1,10 +1,11 @@
 use super::*;
 
-use lt_fm_index::{LtFmIndexConfig, LtFmIndexAll, IO};
+use lt_fm_index::{LtFmIndexConfig, LtFmIndexAll};
 use lt_fm_index::use_case::*;
 
-struct FmIndex {
-    lt_fm_index: LtFmIndexConfig,
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FmIndex {
+    lt_fm_index: LtFmIndexAll,
 }
 
 struct FmIndexOption {

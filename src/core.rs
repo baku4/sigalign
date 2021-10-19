@@ -37,9 +37,9 @@ pub struct MinPenaltyForPattern {
 pub type Sequence<'a> = &'a [u8];
 
 pub trait ReferenceInterface {
+    fn is_searchable(&self, query: Sequence) -> bool;
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
     fn sequence_of_record(&self, record_index: usize) -> Sequence;
-    fn is_searchable(&self, pattern: Sequence) -> bool;
 }
 
 pub struct PatternLocation {
