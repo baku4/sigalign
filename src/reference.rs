@@ -2,6 +2,8 @@ use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
 
 mod pattern_matching;
+mod sequence_provider;
+
 use pattern_matching::LtFmIndex;
 
 // For test
@@ -14,16 +16,15 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Reference<'a, S> where S: SequenceProvider<'a> {
+struct Reference<S: SequenceProvider> {
     sequence_type: SequenceType,
     total_record_count: usize,
     search_range: Vec<usize>,
     pattern_locater: PatternLocater,
     sequence_provider: S,
-    phantom_data: PhantomData<&'a S>,
 }
 
-impl<'a, S> ReferenceInterface for Reference<'a, S> where S: SequenceProvider<'a> {
+impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
     fn is_searchable(&self, query: Sequence) -> bool {
         self.sequence_type.is_searchable(query)
     }
@@ -35,8 +36,7 @@ impl<'a, S> ReferenceInterface for Reference<'a, S> where S: SequenceProvider<'a
     }
 }
 
-
-impl<'a, S> Reference<'a, S> where S: SequenceProvider<'a> {
+impl<S: SequenceProvider> Reference<S> {
     fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, sequence_provider: S) -> Self {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
@@ -56,7 +56,6 @@ impl<'a, S> Reference<'a, S> where S: SequenceProvider<'a> {
             search_range,
             pattern_locater,
             sequence_provider,
-            phantom_data: PhantomData,
         }
     }
     fn set_search_range(&mut self, mut search_range: Vec<usize>) {
@@ -257,9 +256,9 @@ impl LtFmIndexConfig {
     }
 }
 
-pub trait SequenceProvider<'a> {
+pub trait SequenceProvider {
     fn total_record_count(&self) -> usize;
-    fn sequence_of_record(&self, record_index: usize) -> &'a [u8];
+    fn sequence_of_record(&self, record_index: usize) -> &[u8];
     fn joined_sequence_and_accumulated_lengths(&self) -> (Vec<u8>, Vec<u64>) {
         let total_record_count = self.total_record_count();
         let mut accumulated_lengths = Vec::with_capacity(total_record_count + 1);
