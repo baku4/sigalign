@@ -11,22 +11,19 @@ pub use test_reference::TestReference;
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
-use std::fmt::DebugList;
 use std::marker::PhantomData;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Reference<'a, S> where
-    S: SequenceProvider<'a> {
+struct Reference<'a, S> where S: SequenceProvider<'a> {
     sequence_type: SequenceType,
     total_record_count: usize,
-    search_range: SearchRange,
+    search_range: Vec<usize>,
     pattern_locater: PatternLocater,
     sequence_provider: S,
     phantom_data: PhantomData<&'a S>,
 }
 
-impl<'a, S> ReferenceInterface for Reference<'a, S> where
-    S: SequenceProvider<'a> {
+impl<'a, S> ReferenceInterface for Reference<'a, S> where S: SequenceProvider<'a> {
     fn is_searchable(&self, query: Sequence) -> bool {
         self.sequence_type.is_searchable(query)
     }
@@ -39,11 +36,10 @@ impl<'a, S> ReferenceInterface for Reference<'a, S> where
 }
 
 
-impl<'a, S> Reference<'a, S> where
-    S: SequenceProvider<'a> {
+impl<'a, S> Reference<'a, S> where S: SequenceProvider<'a> {
     fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, sequence_provider: S) -> Self {
         let total_record_count = sequence_provider.total_record_count();
-        let search_range = SearchRange::new(total_record_count);
+        let search_range = (0..total_record_count).collect();
 
         let (joined_sequence, accumulated_lengths) = sequence_provider.joined_sequence_and_accumulated_lengths();
 
@@ -63,24 +59,31 @@ impl<'a, S> Reference<'a, S> where
             phantom_data: PhantomData,
         }
     }
+    fn set_search_range(&mut self, mut search_range: Vec<usize>) {
+        search_range.sort();
+        self.set_search_range_unchecked(search_range);
+    }
+    fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
+        self.search_range = search_range;
+    }
 }
 
 const NucleotideUTF8: [u8; 4] = [65, 67, 71, 84]; // A, C, G, T
 const AminoAcidUTF8: [u8; 20] = [65, 67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 89]; // A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
 
 #[derive(Debug, Serialize, Deserialize)]
-struct SequenceType {
+pub struct SequenceType {
     allowed_type: AllowedSequenceType,
     utf8_chr_of_type: Vec<u8>,
 }
 impl SequenceType {
-    fn nucleotide_only() -> Self {
+    pub fn nucleotide_only() -> Self {
         Self {
             allowed_type: AllowedSequenceType::NucleotideOnly,
             utf8_chr_of_type: NucleotideUTF8.to_vec(),
         }
     }
-    fn nucleotide_with_noise(character_for_noise: u8) -> Self {
+    pub fn nucleotide_with_noise(character_for_noise: u8) -> Self {
         let mut utf8_chr_of_type = NucleotideUTF8.to_vec();
         utf8_chr_of_type.push(character_for_noise);
         Self {
@@ -88,13 +91,13 @@ impl SequenceType {
             utf8_chr_of_type,
         }
     }
-    fn aminoacid_only() -> Self {
+    pub fn aminoacid_only() -> Self {
         Self {
             allowed_type: AllowedSequenceType::AminoacidOnly,
             utf8_chr_of_type: AminoAcidUTF8.to_vec(),
         }
     }
-    fn aminoacid_with_noise(character_for_noise: u8) -> Self {
+    pub fn aminoacid_with_noise(character_for_noise: u8) -> Self {
         let mut utf8_chr_of_type = AminoAcidUTF8.to_vec();
         utf8_chr_of_type.push(character_for_noise);
         Self {
@@ -115,15 +118,6 @@ enum AllowedSequenceType {
     NucleotideWithNoise, // NN
     AminoacidOnly, // AO
     AminoacidWithNoise, // AN
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct SearchRange(Vec<usize>);
-
-impl SearchRange {
-    fn new(total_record_count: usize) -> Self {
-        Self((0..total_record_count).collect())
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -162,14 +156,14 @@ impl PatternLocater {
             accumulated_lengths,
         }
     }
-    fn locate_in_search_range(&self, pattern: Sequence, search_range: &SearchRange) -> Vec<PatternLocation> {
+    fn locate_in_search_range(&self, pattern: Sequence, search_range: &Vec<usize>) -> Vec<PatternLocation> {
         let sorted_locations = self.sorted_locations_of_pattern(pattern);
 
         let mut positions_by_record: HashMap<usize, Vec<usize>> = HashMap::new();
         // TODO: (1) Apply capacity (2) Change to faster hasher
 
         let pattern_size = pattern.len() as u64;
-        let search_range_count = search_range.0.len();
+        let search_range_count = search_range.len();
 
         let mut size;
         let mut left;
@@ -185,7 +179,7 @@ impl PatternLocater {
     
             while left < right {
                 mid = left + size / 2;
-                index = search_range.0[mid];
+                index = search_range[mid];
                 
                 let start = self.accumulated_lengths[index];
                 let end = self.accumulated_lengths[index + 1];
@@ -229,7 +223,7 @@ impl PatternLocater {
     }
 }
 
-struct LtFmIndexConfig {
+pub struct LtFmIndexConfig {
     use_bwt_size_of_128: bool,
     sa_sampling_ratio: u64,
     kmer_size_for_lookup_table: Option<usize>, // Use default if not specified
@@ -246,18 +240,18 @@ impl Default for LtFmIndexConfig {
 }
 
 impl LtFmIndexConfig {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
-    fn use_bwt_size_of_128(mut self) -> Self {
+    pub fn use_bwt_size_of_128(mut self) -> Self {
         self.use_bwt_size_of_128 = true;
         self
     }
-    fn change_sampling_ratio(mut self, sa_sampling_ratio: u64) -> Self {
+    pub fn change_sampling_ratio(mut self, sa_sampling_ratio: u64) -> Self {
         self.sa_sampling_ratio = sa_sampling_ratio;
         self
     }
-    fn change_kmer_size_for_lookup_table(mut self, kmer_size: usize) -> Self {
+    pub fn change_kmer_size_for_lookup_table(mut self, kmer_size: usize) -> Self {
         self.kmer_size_for_lookup_table = Some(kmer_size);
         self
     }
