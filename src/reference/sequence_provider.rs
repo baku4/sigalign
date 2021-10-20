@@ -5,6 +5,7 @@ use super::SequenceProvider;
 mod file_reader;
 mod on_memory;
 mod indexed_fasta;
+mod sqlite;
 
 use file_reader::FastaReader;
 

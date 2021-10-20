@@ -39,7 +39,7 @@ pub type Sequence<'a> = &'a [u8];
 pub trait ReferenceInterface {
     fn is_searchable(&self, query: Sequence) -> bool;
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
-    fn sequence_of_record(&self, record_index: usize) -> Sequence;
+    fn sequence_of_record(&mut self, record_index: usize) -> Sequence;
 }
 
 pub struct PatternLocation {

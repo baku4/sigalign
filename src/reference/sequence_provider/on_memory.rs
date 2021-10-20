@@ -7,6 +7,7 @@ use std::path::Path;
 
 const DEFAULT_LABEL: &str = "Reference";
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OnMemoryProvider {
     records: Vec<SequenceRecord>,
 }
@@ -15,7 +16,7 @@ impl SequenceProvider for OnMemoryProvider {
     fn total_record_count(&self) -> usize {
         self.records.len()
     }
-    fn sequence_of_record(&self, record_index: usize) -> &[u8] {
+    fn sequence_of_record(&mut self, record_index: usize) -> &[u8] {
         self.records[record_index].sequence()
     }
 }
@@ -85,6 +86,7 @@ impl OnMemoryProvider {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 struct SequenceRecord {
     label: String,
     direction: Direction,
@@ -120,6 +122,7 @@ impl SequenceRecord {
     }
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 enum Direction {
     Forward,
     Reverse,

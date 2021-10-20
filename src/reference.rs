@@ -13,7 +13,6 @@ pub use test_reference::TestReference;
 use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
-use std::marker::PhantomData;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Reference<S: SequenceProvider> {
@@ -31,7 +30,7 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {
         self.pattern_locater.locate_in_search_range(pattern, &self.search_range)
     }
-    fn sequence_of_record(&self, record_index: usize) -> Sequence {
+    fn sequence_of_record(&mut self, record_index: usize) -> Sequence {
         self.sequence_provider.sequence_of_record(record_index)
     }
 }
@@ -258,18 +257,18 @@ impl LtFmIndexConfig {
 
 pub trait SequenceProvider {
     fn total_record_count(&self) -> usize;
-    fn sequence_of_record(&self, record_index: usize) -> &[u8];
-    fn joined_sequence_and_accumulated_lengths(&self) -> (Vec<u8>, Vec<u64>) {
+    fn sequence_of_record(&mut self, record_index: usize) -> &[u8];
+    fn joined_sequence_and_accumulated_lengths(&mut self) -> (Vec<u8>, Vec<u64>) {
         let total_record_count = self.total_record_count();
         let mut accumulated_lengths = Vec::with_capacity(total_record_count + 1);
         accumulated_lengths.push(0);
 
         let joined_sequence: Vec<u8> = (0..total_record_count).map(|record_index| {
-            let record = self.sequence_of_record(record_index);
+            let record = self.sequence_of_record(record_index).to_vec();
             accumulated_lengths.push(record.len() as u64);
 
             record
-        }).flatten().map(|character| *character).collect();
+        }).flatten().collect();
 
         (joined_sequence, accumulated_lengths)
     }
