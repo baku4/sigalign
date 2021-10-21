@@ -90,7 +90,7 @@ pub struct SemiGlobalAlgorithm;
 
 impl Algorithm for SemiGlobalAlgorithm {
     fn alignment(
-        reference: &dyn ReferenceInterface,
+        reference: &mut dyn ReferenceInterface,
         query: Sequence,
         pattern_size: usize,
         penalties: &Penalties,
@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     fn print_results_of_semi_global_alignment() {
-        let test_reference = TestReference::new();
+        let mut test_reference = TestReference::new();
 
         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
 
@@ -161,7 +161,7 @@ mod tests {
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
         let alignment_results = SemiGlobalAlgorithm::alignment(
-            &test_reference,
+            &mut test_reference,
             query,
             kmer,
             &penalties,
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn print_json_results_of_semi_global_alignment() {
-        let test_reference = TestReference::new();
+        let mut test_reference = TestReference::new();
 
         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
 
@@ -185,7 +185,7 @@ mod tests {
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
         let alignment_results = SemiGlobalAlgorithm::alignment(
-            &test_reference,
+            &mut test_reference,
             query,
             kmer,
             &penalties,

@@ -88,7 +88,7 @@ pub enum AlignmentType {
 
 pub trait Algorithm {
     fn alignment(
-        reference: &dyn ReferenceInterface,
+        reference: &mut dyn ReferenceInterface,
         query: Sequence,
         pattern_size: usize,
         penalties: &Penalties,

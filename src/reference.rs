@@ -36,7 +36,7 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
-    fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, sequence_provider: S) -> Self {
+    fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Self {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
 

@@ -75,7 +75,7 @@ impl Aligner {
     }
     pub fn semi_global_alignment(
         &self,
-        reference: &dyn ReferenceInterface,
+        reference: &mut dyn ReferenceInterface,
         query: Sequence,
     ) { // -> Result<AlignmentResultsByRecord> {
         // let query_is_searchable = reference.is_searchable(query);
@@ -90,7 +90,7 @@ impl Aligner {
 
         SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
     }
-    pub fn local_alignment(&self, reference: &dyn ReferenceInterface, query: Sequence) {
+    pub fn local_alignment(&self, reference: &mut dyn ReferenceInterface, query: Sequence) {
         LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
     }
 }

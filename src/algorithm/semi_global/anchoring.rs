@@ -156,7 +156,7 @@ mod tests {
 
     #[test]
     fn print_test_anchors_checkpoints() {
-        let test_reference = TestReference::new();
+        let mut test_reference = TestReference::new();
 
         let query = b"GTATCTGCGCCGGTAGAGAGCCATCAGCTGATGTCCCAGACAGATTGCG";
 
