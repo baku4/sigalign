@@ -66,8 +66,8 @@ impl<S: SequenceProvider> Reference<S> {
     }
 }
 
-const NucleotideUTF8: [u8; 4] = [65, 67, 71, 84]; // A, C, G, T
-const AminoAcidUTF8: [u8; 20] = [65, 67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 89]; // A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
+const NUCLEOTIDE_UTF8: [u8; 4] = [65, 67, 71, 84]; // A, C, G, T
+const AMINO_ACID_UTF8: [u8; 20] = [65, 67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 89]; // A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SequenceType {
@@ -78,11 +78,11 @@ impl SequenceType {
     pub fn nucleotide_only() -> Self {
         Self {
             allowed_type: AllowedSequenceType::NucleotideOnly,
-            utf8_chr_of_type: NucleotideUTF8.to_vec(),
+            utf8_chr_of_type: NUCLEOTIDE_UTF8.to_vec(),
         }
     }
     pub fn nucleotide_with_noise(character_for_noise: u8) -> Self {
-        let mut utf8_chr_of_type = NucleotideUTF8.to_vec();
+        let mut utf8_chr_of_type = NUCLEOTIDE_UTF8.to_vec();
         utf8_chr_of_type.push(character_for_noise);
         Self {
             allowed_type: AllowedSequenceType::NucleotideWithNoise,
@@ -92,11 +92,11 @@ impl SequenceType {
     pub fn aminoacid_only() -> Self {
         Self {
             allowed_type: AllowedSequenceType::AminoacidOnly,
-            utf8_chr_of_type: AminoAcidUTF8.to_vec(),
+            utf8_chr_of_type: AMINO_ACID_UTF8.to_vec(),
         }
     }
     pub fn aminoacid_with_noise(character_for_noise: u8) -> Self {
-        let mut utf8_chr_of_type = AminoAcidUTF8.to_vec();
+        let mut utf8_chr_of_type = AMINO_ACID_UTF8.to_vec();
         utf8_chr_of_type.push(character_for_noise);
         Self {
             allowed_type: AllowedSequenceType::AminoacidWithNoise,

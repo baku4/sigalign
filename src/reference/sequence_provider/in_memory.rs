@@ -8,11 +8,11 @@ use std::path::Path;
 const DEFAULT_LABEL: &str = "Reference";
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct OnMemoryProvider {
+pub struct InMemoryProvider {
     records: Vec<SequenceRecord>,
 }
 
-impl SequenceProvider for OnMemoryProvider {
+impl SequenceProvider for InMemoryProvider {
     fn total_record_count(&self) -> usize {
         self.records.len()
     }
@@ -21,7 +21,7 @@ impl SequenceProvider for OnMemoryProvider {
     }
 }
 
-impl OnMemoryProvider {
+impl InMemoryProvider {
     pub fn from_sequence(sequence: Vec<u8>) -> Self {
         let sequence_record = SequenceRecord::new_forward(DEFAULT_LABEL.to_string(), sequence);
 
