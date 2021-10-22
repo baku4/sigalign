@@ -1,10 +1,12 @@
+use crate::{Result, error_msg};
 use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
 
 mod pattern_matching;
-mod sequence_provider;
+pub mod sequence_provider;
 
 use pattern_matching::LtFmIndex;
+pub use sequence_provider::{InMemoryProvider, IndexedFastaProvider, SqliteProvider};
 
 // For test
 mod test_reference;
@@ -15,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Reference<S: SequenceProvider> {
+pub struct Reference<S: SequenceProvider> {
     sequence_type: SequenceType,
     total_record_count: usize,
     search_range: Vec<usize>,
@@ -36,7 +38,34 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
-    fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Self {
+    fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Result<Self> {
+        let total_record_count = sequence_provider.total_record_count();
+        let search_range = (0..total_record_count).collect();
+
+        let (joined_sequence, accumulated_lengths) = sequence_provider.joined_sequence_and_accumulated_lengths();
+
+        if !sequence_type.is_searchable(&joined_sequence) {
+            error_msg!("Sequence provider supply unsearchable sequence.");
+        }
+
+        let pattern_locater = PatternLocater::new(
+            &sequence_type,
+            lt_fm_index_config,
+            joined_sequence,
+            accumulated_lengths
+        );
+
+        Ok(
+            Self {
+                sequence_type,
+                total_record_count,
+                search_range,
+                pattern_locater,
+                sequence_provider,
+            }
+        )
+    }
+    fn new_unchecked(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Self {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
 
@@ -57,9 +86,19 @@ impl<S: SequenceProvider> Reference<S> {
             sequence_provider,
         }
     }
-    fn set_search_range(&mut self, mut search_range: Vec<usize>) {
+    fn set_search_range(&mut self, mut search_range: Vec<usize>) -> Result<()> {
         search_range.sort();
-        self.set_search_range_unchecked(search_range);
+        match search_range.last() {
+            Some(&last_record_index) => {
+                if last_record_index > self.total_record_count {
+                    error_msg!("Search range is out of reference bound.")
+                } else {
+                    self.set_search_range_unchecked(search_range);
+                    Ok(())
+                }
+            },
+            None => error_msg!("Search range is empty.")
+        }
     }
     fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
         self.search_range = search_range;
@@ -272,4 +311,8 @@ pub trait SequenceProvider {
 
         (joined_sequence, accumulated_lengths)
     }
+}
+
+pub trait Labeling {
+    fn label_of_record(&mut self, record_index: usize) -> &str;
 }

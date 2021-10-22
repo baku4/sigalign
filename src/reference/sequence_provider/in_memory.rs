@@ -1,5 +1,5 @@
 use crate::{Result, error_msg};
-use super::{SequenceProvider, FastaReader, reverse_complement_of_nucleotide_sequence};
+use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
 
@@ -18,6 +18,12 @@ impl SequenceProvider for InMemoryProvider {
     }
     fn sequence_of_record(&mut self, record_index: usize) -> &[u8] {
         self.records[record_index].sequence()
+    }
+}
+
+impl Labeling for InMemoryProvider {
+    fn label_of_record(&mut self, record_index: usize) -> &str {
+        self.records[record_index].label()
     }
 }
 
@@ -82,7 +88,7 @@ impl InMemoryProvider {
     pub fn label_and_is_forward_of_record(&self, record_index: usize) -> (String, bool) {
         let record = &self.records[record_index];
 
-        (record.label(), record.is_forward())
+        (record.label().to_string(), record.is_forward())
     }
 }
 
@@ -111,8 +117,8 @@ impl SequenceRecord {
     fn sequence(&self) -> &[u8] {
         &self.sequence
     }
-    fn label(&self) -> String {
-        self.label.clone() 
+    fn label(&self) -> &str {
+        &self.label
     }
     fn is_forward(&self) -> bool {
         match self.direction {

@@ -1,6 +1,6 @@
 use crate::{Result, error_msg};
-
 pub use crate::algorithm::{ReferenceInterface, Sequence};
+pub use crate::algorithm::{AlignmentResultsByRecord, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 pub use crate::algorithm::{Penalties, Cutoff, MinPenaltyForPattern};
 pub use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 
@@ -77,21 +77,43 @@ impl Aligner {
         &self,
         reference: &mut dyn ReferenceInterface,
         query: Sequence,
-    ) { // -> Result<AlignmentResultsByRecord> {
-        // let query_is_searchable = reference.is_searchable(query);
-        
-        // if query_is_searchable {
-        //     Ok(
-        //         SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern)
-        //     )
-        // } else {
-        //     error_msg!("") //TODO: Err msg
-        // }
+    ) -> Result<AlignmentResultsByRecord> {
+        Self::query_is_in_reference_bound(reference, query)?;
 
-        SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
+        Ok(self.semi_global_alignment_unchecked(reference, query))
     }
-    pub fn local_alignment(&self, reference: &mut dyn ReferenceInterface, query: Sequence) {
-        LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
+    pub fn semi_global_alignment_unchecked(
+        &self,
+        reference: &mut dyn ReferenceInterface,
+        query: Sequence,
+    ) -> AlignmentResultsByRecord {
+        SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern)
+    }
+    pub fn local_alignment(
+        &self,
+        reference: &mut dyn ReferenceInterface,
+        query: Sequence
+    ) -> Result<AlignmentResultsByRecord> {
+        Self::query_is_in_reference_bound(reference, query)?;
+
+        Ok(self.local_alignment_unchecked(reference, query))
+    }
+    pub fn local_alignment_unchecked(
+        &self,
+        reference: &mut dyn ReferenceInterface,
+        query: Sequence
+    ) -> AlignmentResultsByRecord {
+        LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern)
+    }
+    fn query_is_in_reference_bound(
+        reference: &mut dyn ReferenceInterface,
+        query: Sequence,
+    ) -> Result<()> {
+        if reference.is_searchable(query) {
+            Ok(())
+        } else {
+            error_msg!("Query string is not included in the sequence type of reference.")
+        }
     }
 }
 

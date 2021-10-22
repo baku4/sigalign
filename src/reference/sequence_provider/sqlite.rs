@@ -1,15 +1,16 @@
 use crate::{Result, error_msg};
-use super::{SequenceProvider, FastaReader, reverse_complement_of_nucleotide_sequence};
+use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use rusqlite::{Connection, Statement, params};
 
 use std::path::Path;
 
 #[derive(Debug)]
-struct SqliteProvider {
+pub struct SqliteProvider {
     total_record_count: usize,
     connection: Connection,
     sequence_buffer: Vec<u8>,
+    label_buffer: String,
 }
 
 impl SequenceProvider for SqliteProvider {
@@ -26,6 +27,20 @@ impl SequenceProvider for SqliteProvider {
         self.sequence_buffer = sequence;
 
         &self.sequence_buffer
+    }
+}
+
+impl Labeling for SqliteProvider {
+    fn label_of_record(&mut self, record_index: usize) -> &str {
+        let label: String = self.connection.query_row(
+            "SELECT label FROM record WHERE id = (?1)",
+            params![record_index + 1],
+            |row| row.get(0)
+        ).unwrap();
+
+        self.label_buffer = label;
+
+        &self.label_buffer
     }
 }
 
@@ -62,6 +77,7 @@ impl SqliteProvider {
                 total_record_count,
                 connection,
                 sequence_buffer: Vec::new(),
+                label_buffer: String::new(),
             }
         )
     }
@@ -80,6 +96,7 @@ impl SqliteProvider {
                         total_record_count: 0,
                         connection,
                         sequence_buffer: Vec::new(),
+                        label_buffer: String::new(),
                     }
                 )
             },
@@ -183,6 +200,9 @@ mod tests {
 
     //     let record_string = String::from_utf8(record.to_vec()).unwrap();
 
+    //     let label = sqlite_provider.label_of_record(1);
+
+    //     println!("{:?}", label);
     //     println!("{:?}", record_string);
     // }
 }

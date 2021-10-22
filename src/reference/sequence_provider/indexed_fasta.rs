@@ -1,5 +1,5 @@
 use crate::{Result, error_msg};
-use super::{SequenceProvider, FastaReader, reverse_complement_of_nucleotide_sequence};
+use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 mod fai;
 
@@ -17,6 +17,7 @@ pub struct IndexedFastaProvider {
     record_count: usize,
     indexed_reader: IndexedReader<File>,
     sequence_buffer: Vec<u8>,
+    label_buffer: String,
 }
 
 impl IndexedFastaProvider {
@@ -33,6 +34,7 @@ impl IndexedFastaProvider {
             record_count,
             indexed_reader,
             sequence_buffer: Vec::new(),
+            label_buffer: String::new(),
         })
     }
     fn clear_sequence_buffer(&mut self) {
@@ -53,3 +55,5 @@ impl SequenceProvider for IndexedFastaProvider {
         &self.sequence_buffer
     }
 }
+
+// TODO: Add Labeling trait for IndexedFastaProvider

@@ -1,6 +1,5 @@
 // Default implementations for sequence provider
-
-use super::SequenceProvider;
+use super::{SequenceProvider, Labeling};
 
 mod file_reader;
 mod in_memory;
@@ -11,6 +10,7 @@ use file_reader::FastaReader;
 
 pub use in_memory::InMemoryProvider;
 pub use indexed_fasta::IndexedFastaProvider;
+pub use sqlite::SqliteProvider;
 
 const A_UTF8: u8 = 65;
 const C_UTF8: u8 = 67;
