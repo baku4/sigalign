@@ -1,6 +1,6 @@
 use super::{Penalties, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
-use super::{AlignmentResultsByRecord, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
+use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
 use super::Algorithm;
@@ -52,34 +52,36 @@ impl Algorithm for LocalAlgorithm {
         penalties: &Penalties,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> AlignmentResultsByRecord {
+    ) -> AlignmentResultsByRecordIndex {
         let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            let record_sequence = reference.sequence_of_record(record_index);
-            let record_length = record_sequence.len();
+        AlignmentResultsByRecordIndex(
+                anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
+                let record_sequence = reference.sequence_of_record(record_index);
+                let record_length = record_sequence.len();
 
-            let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
+                let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
 
-            #[cfg(test)]
-            println!("# Anchoring:\n{:#?}", anchors);
+                #[cfg(test)]
+                println!("# Anchoring:\n{:#?}", anchors);
 
-            anchors.extend(record_sequence, query, penalties, cutoff);
+                anchors.extend(record_sequence, query, penalties, cutoff);
 
-            #[cfg(test)]
-            println!("# Extending:\n{:#?}", anchors);
-        
-            let alignment_results = anchors.get_alignment_results_for_local();
+                #[cfg(test)]
+                println!("# Extending:\n{:#?}", anchors);
+            
+                let alignment_results = anchors.get_alignment_results_for_local();
 
-            #[cfg(test)]
-            println!("# Evaluating:\n{:#?}", alignment_results);
+                #[cfg(test)]
+                println!("# Evaluating:\n{:#?}", alignment_results);
 
-            if alignment_results.len() == 0 {
-                None
-            } else {
-                Some((record_index, alignment_results))
-            }
-        }).collect()
+                if alignment_results.len() == 0 {
+                    None
+                } else {
+                    Some((record_index, alignment_results))
+                }
+            }).collect()
+        )
     }
 }
 

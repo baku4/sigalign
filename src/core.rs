@@ -51,7 +51,11 @@ pub struct PatternLocation {
 // RESULTS
 
 
-pub type AlignmentResultsByRecord = HashMap<usize, Vec<AlignmentResult>>;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AlignmentResultsByRecordIndex(pub HashMap<usize, Vec<AlignmentResult>>);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AlignmentResultsByRecordLabel(pub HashMap<String, Vec<AlignmentResult>>);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AlignmentResult {
@@ -94,5 +98,5 @@ pub trait Algorithm {
         penalties: &Penalties,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> AlignmentResultsByRecord;
+    ) -> AlignmentResultsByRecordIndex;
 }

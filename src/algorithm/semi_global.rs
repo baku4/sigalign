@@ -1,6 +1,6 @@
 use super::{Penalties, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
-use super::{AlignmentResultsByRecord, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
+use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
 use super::Algorithm;
@@ -96,25 +96,27 @@ impl Algorithm for SemiGlobalAlgorithm {
         penalties: &Penalties,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
-    ) -> AlignmentResultsByRecord {
+    ) -> AlignmentResultsByRecordIndex {
         let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            let record_sequence = reference.sequence_of_record(record_index);
-            let record_length = record_sequence.len();
-
-            let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
-
-            anchors.extend(record_sequence, query, penalties, cutoff);
-
-            let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
-
-            if alignment_results.len() == 0 {
-                None
-            } else {
-                Some((record_index, alignment_results))
-            }
-        }).collect()
+        AlignmentResultsByRecordIndex(
+            anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
+                let record_sequence = reference.sequence_of_record(record_index);
+                let record_length = record_sequence.len();
+    
+                let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
+    
+                anchors.extend(record_sequence, query, penalties, cutoff);
+    
+                let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
+    
+                if alignment_results.len() == 0 {
+                    None
+                } else {
+                    Some((record_index, alignment_results))
+                }
+            }).collect()
+        )
     }
 }
 

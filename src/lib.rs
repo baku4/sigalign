@@ -1,21 +1,24 @@
 use anyhow::{Result, bail as error_msg};
+use serde::{Serialize, Deserialize, de::DeserializeOwned};
 
 #[doc(hidden)]
+// Core
 mod core;
 #[doc(hidden)]
+// Algorithm
 mod algorithm;
-
-mod alignment_result;
 
 // Reference
 mod reference;
-
 // Aligner
 mod aligner;
 
-// Result Interpreter
-mod result_Interpreter;
-
-
 #[doc(hidden)]
 pub mod deprecated;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    
+}

@@ -1,8 +1,13 @@
+use std::collections::HashMap;
+
 use crate::{Result, error_msg};
-pub use crate::algorithm::{ReferenceInterface, Sequence};
-pub use crate::algorithm::{AlignmentResultsByRecord, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
-pub use crate::algorithm::{Penalties, Cutoff, MinPenaltyForPattern};
-pub use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
+use crate::core::{ReferenceInterface, Sequence};
+use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsByRecordLabel, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
+use crate::core::{Penalties, Cutoff, MinPenaltyForPattern};
+use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
+use crate::reference::{Reference, SequenceProvider, Labeling};
+
+mod interpreter;
 
 use num::integer;
 
@@ -73,37 +78,107 @@ impl Aligner {
             n += 1;
         }
     }
-    pub fn semi_global_alignment(
+    pub fn semi_global_alignment<S: SequenceProvider>(
         &self,
-        reference: &mut dyn ReferenceInterface,
+        reference: &mut Reference<S>,
         query: Sequence,
-    ) -> Result<AlignmentResultsByRecord> {
+    ) -> Result<String> {
+        Self::query_is_in_reference_bound(reference, query)?;
+        let alignment_results_raw = self.semi_global_alignment_unchecked(reference, query);
+        let alignment_results = alignment_results_raw.to_json()?;
+
+        Ok(alignment_results)
+    }
+    pub fn semi_global_alignment_raw<S: SequenceProvider>(
+        &self,
+        reference: &mut Reference<S>,
+        query: Sequence,
+    ) -> Result<AlignmentResultsByRecordIndex> {
         Self::query_is_in_reference_bound(reference, query)?;
 
         Ok(self.semi_global_alignment_unchecked(reference, query))
     }
-    pub fn semi_global_alignment_unchecked(
+    pub fn semi_global_alignment_labeled<SL: SequenceProvider + Labeling>(
         &self,
-        reference: &mut dyn ReferenceInterface,
-        query: Sequence,
-    ) -> AlignmentResultsByRecord {
-        SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern)
-    }
-    pub fn local_alignment(
-        &self,
-        reference: &mut dyn ReferenceInterface,
+        reference: &mut Reference<SL>,
         query: Sequence
-    ) -> Result<AlignmentResultsByRecord> {
+    ) -> Result<String> {
+        Self::query_is_in_reference_bound(reference, query)?;
+        let alignment_results_labeled_raw = self.semi_global_alignment_labeled_raw(reference, query)?;
+        let alignment_results_labeled = alignment_results_labeled_raw.to_json()?;
+
+        Ok(alignment_results_labeled)
+    }
+    pub fn semi_global_alignment_labeled_raw<SL: SequenceProvider + Labeling>(
+        &self,
+        reference: &mut Reference<SL>,
+        query: Sequence
+    ) -> Result<AlignmentResultsByRecordLabel> {
+        Self::query_is_in_reference_bound(reference, query)?;
+        let alignment_results_raw = self.semi_global_alignment_raw(reference, query)?;
+        let alignment_results_labeled_raw = alignment_results_raw.to_labeled_results(reference);
+
+        Ok(alignment_results_labeled_raw)
+    }
+    pub fn semi_global_alignment_unchecked<S: SequenceProvider>(
+        &self,
+        reference: &mut Reference<S>,
+        query: Sequence,
+    ) -> AlignmentResultsByRecordIndex {
+        let mut alignment_results_by_record = SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
+        self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
+        alignment_results_by_record
+    }
+    pub fn local_alignment<S: SequenceProvider>(
+        &self,
+        reference: &mut Reference<S>,
+        query: Sequence
+    ) -> Result<String> {
+        Self::query_is_in_reference_bound(reference, query)?;
+        let alignment_results_raw = self.local_alignment_unchecked(reference, query);
+        let alignment_results = alignment_results_raw.to_json()?;
+
+        Ok(alignment_results)
+    }
+    pub fn local_alignment_raw<S: SequenceProvider>(
+        &self,
+        reference: &mut Reference<S>,
+        query: Sequence
+    ) -> Result<AlignmentResultsByRecordIndex> {
         Self::query_is_in_reference_bound(reference, query)?;
 
         Ok(self.local_alignment_unchecked(reference, query))
     }
-    pub fn local_alignment_unchecked(
+    pub fn local_alignment_labeled<SL: SequenceProvider + Labeling>(
         &self,
-        reference: &mut dyn ReferenceInterface,
+        reference: &mut Reference<SL>,
         query: Sequence
-    ) -> AlignmentResultsByRecord {
-        LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern)
+    ) -> Result<String> {
+        Self::query_is_in_reference_bound(reference, query)?;
+        let alignment_results_labeled_raw = self.local_alignment_labeled_raw(reference, query)?;
+        let alignment_results_labeled = alignment_results_labeled_raw.to_json()?;
+
+        Ok(alignment_results_labeled)
+    }
+    pub fn local_alignment_labeled_raw<SL: SequenceProvider + Labeling>(
+        &self,
+        reference: &mut Reference<SL>,
+        query: Sequence
+    ) -> Result<AlignmentResultsByRecordLabel> {
+        Self::query_is_in_reference_bound(reference, query)?;
+        let alignment_results_raw = self.local_alignment_raw(reference, query)?;
+        let alignment_results_labeled_raw = alignment_results_raw.to_labeled_results(reference);
+
+        Ok(alignment_results_labeled_raw)
+    }
+    pub fn local_alignment_unchecked<S: SequenceProvider>(
+        &self,
+        reference: &mut Reference<S>,
+        query: Sequence
+    ) -> AlignmentResultsByRecordIndex {
+        let mut alignment_results_by_record = LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
+        self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
+        alignment_results_by_record
     }
     fn query_is_in_reference_bound(
         reference: &mut dyn ReferenceInterface,
@@ -114,6 +189,29 @@ impl Aligner {
         } else {
             error_msg!("Query string is not included in the sequence type of reference.")
         }
+    }
+    fn multiply_gcd_to_alignment_results(
+        &self,
+        alignment_results_by_record_index: &mut AlignmentResultsByRecordIndex
+    ) {
+        alignment_results_by_record_index.multiply_gcd(self.gcd)
+    }
+}
+
+impl AlignmentResultsByRecordIndex {
+    fn multiply_gcd(&mut self, gcd: usize) {
+        self.0.iter_mut().for_each(|(_, alignment_results)| {
+            alignment_results.iter_mut().for_each(|alignment_result| {
+                alignment_result.multiply_gcd(gcd);
+            })
+        })
+    }
+}
+
+impl AlignmentResult {
+    fn multiply_gcd(&mut self, gcd: usize) {
+        self.dissimilarity *= gcd as f32;
+        self.penalty *= gcd;
     }
 }
 

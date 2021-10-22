@@ -4,17 +4,20 @@ use crate::core::{ReferenceInterface, PatternLocation};
 
 mod pattern_matching;
 pub mod sequence_provider;
+mod io;
+#[cfg(test)]
+mod test_reference;
 
 use pattern_matching::LtFmIndex;
 pub use sequence_provider::{InMemoryProvider, IndexedFastaProvider, SqliteProvider};
-
-// For test
-mod test_reference;
+#[cfg(test)]
 pub use test_reference::TestReference;
 
 use serde::{Deserialize, Serialize};
-
 use std::collections::HashMap;
+use std::path::Path;
+use std::fs::File;
+use std::io::{Read, Write};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Reference<S: SequenceProvider> {
@@ -38,7 +41,7 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
-    fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Result<Self> {
+    pub fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Result<Self> {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
 
@@ -102,6 +105,12 @@ impl<S: SequenceProvider> Reference<S> {
     }
     fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
         self.search_range = search_range;
+    }
+}
+
+impl<SL: SequenceProvider + Labeling> Reference<SL> {
+    pub fn label_of_record(&mut self, record_index: usize) -> &str {
+        self.sequence_provider.label_of_record(record_index)
     }
 }
 
