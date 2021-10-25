@@ -17,8 +17,4 @@ mod aligner;
 pub mod deprecated;
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    
-}
+mod tests;

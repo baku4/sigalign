@@ -15,9 +15,6 @@ pub use test_reference::TestReference;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::Path;
-use std::fs::File;
-use std::io::{Read, Write};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Reference<S: SequenceProvider> {
@@ -159,7 +156,7 @@ impl SequenceType {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-enum AllowedSequenceType {
+pub enum AllowedSequenceType {
     NucleotideOnly, // NO
     NucleotideWithNoise, // NN
     AminoacidOnly, // AO

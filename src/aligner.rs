@@ -12,11 +12,11 @@ mod interpreter;
 use num::integer;
 
 pub struct Aligner {
-    penalties: Penalties,
-    cutoff: Cutoff,
-    min_penalty_for_pattern: MinPenaltyForPattern,
-    gcd: usize,
-    kmer: usize,
+    pub penalties: Penalties,
+    pub cutoff: Cutoff,
+    pub min_penalty_for_pattern: MinPenaltyForPattern,
+    pub gcd: usize,
+    pub kmer: usize,
 }
 
 impl Aligner {
