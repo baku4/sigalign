@@ -50,9 +50,15 @@ pub fn semi_global_alignment_with_position(
     let right_alignment = right_aligner.custom(right_record, right_query);
 
     // Position & Operation
-    let mut position = AlignmentPosition {
-        record: (left_alignment.xstart, left_alignment.xend),
-        query: (right_alignment.ystart, right_alignment.yend),
+    let position = AlignmentPosition {
+        record: (
+            left_alignment.xstart,
+            record_start_position + pattern_size + right_alignment.xend
+        ),
+        query: (
+            left_alignment.ystart,
+            query_start_position + pattern_size + right_alignment.yend
+        ),
     };
 
     let mut operations: Vec<AlignmentOperation> = Vec::new();
@@ -73,11 +79,8 @@ pub fn semi_global_alignment_with_position(
     });
 
     // Cutoff Check
-    let mut length = 0;
-    let mut penalty = 0;
-    
     let length: u32 = operations.iter()
-        .map(|AlignmentOperation { alignment_type: _, count: count }| *count)
+        .map(|AlignmentOperation { alignment_type: _, count }| *count)
         .sum();
     let length = length as usize;
     
@@ -110,17 +113,17 @@ fn add_one_operation(
         _ => return
     };
 
-    if let Some(AlignmentOperation {
-        alignment_type: alignment_type_to_add,
-        count
-    }) = alignment_operations.last_mut() {
-        *count += 1;
-    } else {
-        alignment_operations.push(
-            AlignmentOperation {
-                alignment_type: alignment_type_to_add,
-                count: 1,
-            }
-        );
+    if let Some(alignment_operation) = alignment_operations.last_mut() {
+        if alignment_type_to_add == alignment_operation.alignment_type {
+            alignment_operation.count += 1;
+            return
+        }
     }
+
+    alignment_operations.push(
+        AlignmentOperation {
+            alignment_type: alignment_type_to_add,
+            count: 1,
+        }
+    );
 }

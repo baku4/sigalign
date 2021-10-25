@@ -6,10 +6,7 @@ use alignment::semi_global_alignment_with_position;
 
 use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
 
-use bio::io::{fasta, fastq};
-use bio::io::fasta::IndexedReader;
-
-struct StandardAligner {
+pub struct StandardAligner {
     mismatch_penalty: usize,
     gap_open_penalty: usize,
     gap_extend_penalty: usize,
@@ -48,10 +45,10 @@ impl StandardAligner {
     }
     pub fn semi_global_alignment_raw(
         &self,
-        sample_reference: &StandardReference,
+        standard_reference: &StandardReference,
         query: Sequence,
     ) -> AlignmentResultsByRecordIndex {
-        sample_reference.semi_global_alignment_results(
+        standard_reference.semi_global_alignment_results(
             query,
             self.mismatch_penalty,
             self.gap_open_penalty,
@@ -63,34 +60,33 @@ impl StandardAligner {
     }
 }
 
-struct StandardReference {
+pub struct StandardReference {
     total_record_count: usize,
     records: Vec<StandardRecord>,
 }
 
 impl StandardReference {
-    fn new_from_fasta<P: AsRef<Path> + std::fmt::Debug>(
-        allowed_sequence_type: &AllowedSequenceType,
+    pub fn new_from_fasta<P: AsRef<Path> + std::fmt::Debug>(
+        sequence_type: SequenceType,
         fasta_path: P,
     ) -> Self {
-        let mut fasta_records = fasta::Reader::from_file(fasta_path).unwrap().records();
+        let allowed_sequence_type = sequence_type.allowed_type();
+
+        let fasta_records = FastaReader::from_file_path(fasta_path).unwrap();
 
         let mut total_record_count = 0;
-        let mut records = Vec::new(); 
+        let mut records = Vec::new();
 
-        while let Some(Ok(record)) = fasta_records.next() {
-            let label = record.id().to_string();
-            let sequence = record.seq().to_vec();
-
+        for (label, sequence) in fasta_records {
             let record = StandardRecord::new(
-                allowed_sequence_type,
+                &allowed_sequence_type,
                 label,
                 sequence
             );
 
             total_record_count += 1;
             records.push(record);
-        };
+        }
 
         Self {
             total_record_count,
@@ -171,6 +167,7 @@ impl StandardRecord {
         let pattern_count = query_length / pattern_size;
 
         let mut alignment_results = Vec::new();
+        let mut used_alignment_results: HashSet<(usize, AlignmentPosition)> = HashSet::new();
 
         for pattern_index in 0..pattern_count {
             let query_start_position = pattern_index * pattern_size;
@@ -195,7 +192,15 @@ impl StandardRecord {
                 );
 
                 if let Some(alignment_result) = optional_alignment_result {
-                    alignment_results.push(alignment_result);
+                    let hashable_symbol_of_alignment_result = (
+                        alignment_result.penalty,
+                        alignment_result.position.clone()
+                    );
+                    let new_alignment_result = used_alignment_results.insert(hashable_symbol_of_alignment_result);
+
+                    if new_alignment_result {
+                        alignment_results.push(alignment_result);
+                    }
                 }
 ;            }
         }

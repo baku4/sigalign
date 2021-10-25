@@ -20,11 +20,13 @@ pub struct Penalties {
     pub e: usize,
 }
 
+#[derive(Debug)]
 pub struct Cutoff {
     pub minimum_aligned_length: usize,
     pub penalty_per_length: f32,
 }
 
+#[derive(Debug)]
 pub struct MinPenaltyForPattern {
     pub odd: usize,
     pub even: usize,
@@ -42,6 +44,7 @@ pub trait ReferenceInterface {
     fn sequence_of_record(&mut self, record_index: usize) -> Sequence;
 }
 
+#[derive(Debug)]
 pub struct PatternLocation {
     pub record_index: usize,
     pub positions: Vec<usize>,
@@ -72,13 +75,13 @@ pub struct AlignmentPosition {
     pub query: (usize, usize),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct AlignmentOperation {
     pub alignment_type: AlignmentType,
     pub count: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub enum AlignmentType {
     Match,
     Subst,

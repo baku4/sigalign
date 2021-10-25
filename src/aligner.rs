@@ -11,6 +11,7 @@ mod interpreter;
 
 use num::integer;
 
+#[derive(Debug)]
 pub struct Aligner {
     pub penalties: Penalties,
     pub cutoff: Cutoff,
@@ -69,8 +70,6 @@ impl Aligner {
             ).ceil();
 
             let kmer = max_penalty.min(upper_bound);
-            #[cfg(test)]
-            println!("#n {}\nu {}\nl {}\nmp {}\nk {}", n, upper_bound, lower_bound, max_penalty, kmer);
 
             if kmer >= lower_bound {
                 return kmer as usize

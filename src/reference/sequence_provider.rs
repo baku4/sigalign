@@ -6,7 +6,7 @@ mod in_memory;
 mod indexed_fasta;
 mod sqlite;
 
-use file_reader::FastaReader;
+pub use file_reader::FastaReader;
 
 pub use in_memory::InMemoryProvider;
 pub use indexed_fasta::IndexedFastaProvider;

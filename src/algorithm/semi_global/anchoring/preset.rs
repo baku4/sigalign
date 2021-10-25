@@ -7,7 +7,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct AnchorsPreset {
     pub total_pattern_count: usize,
-    pub matched_pattern_locations: Vec<PatternLocation>,
+    pub matched_pattern_locations: Vec<PatternLocationPreset>,
 }
 
 impl AnchorsPreset {
@@ -50,7 +50,7 @@ impl AnchorsPreset {
         }
     }
     fn add_new_position(&mut self, pattern_index: usize, record_positions: Vec<usize>) {
-        let new_pattern_location = PatternLocation {
+        let new_pattern_location = PatternLocationPreset {
             index: pattern_index,
             record_positions,
         };
@@ -234,7 +234,7 @@ impl AnchorsByPattern {
 }
 
 #[derive(Debug)]
-pub struct PatternLocation {
+pub struct PatternLocationPreset {
     index: usize,
     record_positions: Vec<usize>,
 }

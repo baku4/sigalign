@@ -114,7 +114,7 @@ impl<SL: SequenceProvider + Labeling> Reference<SL> {
 const NUCLEOTIDE_UTF8: [u8; 4] = [65, 67, 71, 84]; // A, C, G, T
 const AMINO_ACID_UTF8: [u8; 20] = [65, 67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 89]; // A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SequenceType {
     allowed_type: AllowedSequenceType,
     utf8_chr_of_type: Vec<u8>,
@@ -148,6 +148,9 @@ impl SequenceType {
             utf8_chr_of_type,
         }
     }
+    pub fn allowed_type(&self) -> AllowedSequenceType {
+        self.allowed_type.clone()
+    }
     fn is_searchable(&self, query: Sequence) -> bool {
         query.iter().all(|character| {
             self.utf8_chr_of_type.contains(character)
@@ -155,7 +158,7 @@ impl SequenceType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AllowedSequenceType {
     NucleotideOnly, // NO
     NucleotideWithNoise, // NN
@@ -307,13 +310,16 @@ pub trait SequenceProvider {
         let total_record_count = self.total_record_count();
         let mut accumulated_lengths = Vec::with_capacity(total_record_count + 1);
         accumulated_lengths.push(0);
+        let mut accumulated_length = 0;
 
         let joined_sequence: Vec<u8> = (0..total_record_count).map(|record_index| {
             let record = self.sequence_of_record(record_index).to_vec();
-            accumulated_lengths.push(record.len() as u64);
+            accumulated_length += record.len() as u64;
+            accumulated_lengths.push(accumulated_length);
 
             record
         }).flatten().collect();
+        
 
         (joined_sequence, accumulated_lengths)
     }

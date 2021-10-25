@@ -15,16 +15,8 @@ impl Anchors {
         penalties: &Penalties,
         cutoff: &Cutoff,
     ) {
-        #[cfg(test)]
-        println!("# extend right");
         self.extend_right_for_semi_global(record_sequence, query, penalties, cutoff);
-        #[cfg(test)]
-        println!("{:#?}", self);
-        // #[cfg(test)]
-        // println!("# extend left");
         self.extend_left_for_semi_global(record_sequence, query, penalties, cutoff);
-        // #[cfg(test)]
-        // println!("{:#?}", self);
     }
     fn extend_right_for_semi_global(
         &mut self,
