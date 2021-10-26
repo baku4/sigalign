@@ -53,7 +53,7 @@ fn test_results_of_nucleotide_only<S: SequenceProvider>(
     // For this crate
     let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
-    println!("{:?}", aligner);
+    println!("Aligner: {:?}", aligner);
 
     let sequence_type = SequenceType::nucleotide_only();
 
@@ -73,6 +73,8 @@ fn test_results_of_nucleotide_only<S: SequenceProvider>(
 
     // For comparison
     let standard_aligner = StandardAligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length);
+
+    println!("Standard Aligner: {:?}", standard_aligner);
 
     let standard_reference = {
         let start_time = Instant::now();

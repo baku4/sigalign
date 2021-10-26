@@ -6,12 +6,13 @@ use alignment::semi_global_alignment_with_position;
 
 use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
 
+#[derive(Debug)]
 pub struct StandardAligner {
     mismatch_penalty: usize,
     gap_open_penalty: usize,
     gap_extend_penalty: usize,
     minimum_aligned_length: usize,
-    penalty_per_million: usize,
+    penalty_per_scale: usize,
     pattern_size: usize,
 }
 
@@ -31,7 +32,7 @@ impl StandardAligner {
         let gap_open_penalty = aligner.penalties.o * gcd;
         let gap_extend_penalty = aligner.penalties.e * gcd;
         let minimum_aligned_length = minimum_aligned_length;
-        let penalty_per_million = ((1_000_000.0 * penalty_per_length) * gcd as f32) as usize;
+        let penalty_per_scale = (PRECISION_SCALE as f32 * penalty_per_length) as usize;
         let pattern_size = aligner.kmer;
 
         Self {
@@ -39,7 +40,7 @@ impl StandardAligner {
             gap_open_penalty,
             gap_extend_penalty,
             minimum_aligned_length,
-            penalty_per_million,
+            penalty_per_scale,
             pattern_size,
         }
     }
@@ -54,7 +55,7 @@ impl StandardAligner {
             self.gap_open_penalty,
             self.gap_extend_penalty,
             self.minimum_aligned_length,
-            self.penalty_per_million,
+            self.penalty_per_scale,
             self.pattern_size
         )
     }
@@ -100,12 +101,12 @@ impl StandardReference {
         gap_open_penalty: usize,
         gap_extend_penalty: usize,
         minimum_aligned_length: usize,
-        penalty_per_million: usize,
+        penalty_per_scale: usize,
         pattern_size: usize,
     ) -> AlignmentResultsByRecordIndex {        
         AlignmentResultsByRecordIndex(
             self.records.iter().enumerate().filter_map(|(record_index, standard_record)| {
-                let alignment_results = standard_record.semi_global_alignment_results(query, mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_million, pattern_size);
+                let alignment_results = standard_record.semi_global_alignment_results(query, mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_scale, pattern_size);
 
                 if alignment_results.len() != 0 {
                     Some((record_index, alignment_results))
@@ -158,7 +159,7 @@ impl StandardRecord {
         gap_open_penalty: usize,
         gap_extend_penalty: usize,
         minimum_aligned_length: usize,
-        penalty_per_million: usize,
+        penalty_per_scale: usize,
         pattern_size: usize,
     ) -> Vec<AlignmentResult> {
         let query_length = query.len();
@@ -188,7 +189,7 @@ impl StandardRecord {
                     gap_open_penalty,
                     gap_extend_penalty,
                     minimum_aligned_length,
-                    penalty_per_million,
+                    penalty_per_scale,
                 );
 
                 if let Some(alignment_result) = optional_alignment_result {
