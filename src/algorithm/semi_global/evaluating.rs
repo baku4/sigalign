@@ -1,4 +1,4 @@
-use super::{Cutoff, OwnedOperations};
+use super::{PRECISION_SCALE, Cutoff, OwnedOperations};
 use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{Anchors, Anchor, OperationsOfExtension, StartPointOfOperations};
 
@@ -119,7 +119,7 @@ impl Anchors {
                 let length = left_extension.length + anchor.size + right_extension.length;
                 
                 length >= cutoff.minimum_aligned_length
-                && (1_000_000 * penalty / length) <= cutoff.penalty_per_million
+                && (PRECISION_SCALE * penalty / length) <= cutoff.penalty_per_scale
             } {
                 Some(anchor_index)
             } else {

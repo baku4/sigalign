@@ -20,10 +20,12 @@ pub struct Penalties {
     pub e: usize,
 }
 
+pub const PRECISION_SCALE: usize = 10_000; // Ensuring accuracy to the third decimal place.
+
 #[derive(Debug)]
 pub struct Cutoff {
     pub minimum_aligned_length: usize,
-    pub penalty_per_million: usize,
+    pub penalty_per_scale: usize,
 }
 
 #[derive(Debug)]

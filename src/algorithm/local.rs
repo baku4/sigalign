@@ -1,4 +1,4 @@
-use super::{Penalties, Cutoff, MinPenaltyForPattern};
+use super::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
@@ -25,7 +25,7 @@ struct Anchor {
     query_position: usize,
     record_position: usize,
     size: usize,
-    spare_penalty_determinant_of_left: usize,
+    spare_penalty_determinant_of_left: i64,
     left_extension: Option<Extension>,
     right_extension: Option<Extension>,
     dropped: bool,
@@ -102,10 +102,10 @@ mod tests {
             let max_penalty = (
                 (
                     (
-                        (1_000_000 * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                        (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
                     )
-                    + 4 * cutoff.penalty_per_million
-                ) as f32 / (2 * (n+1) * cutoff.penalty_per_million) as f32
+                    + 4 * cutoff.penalty_per_scale
+                ) as f32 / (2 * (n+1) * cutoff.penalty_per_scale) as f32
             ).ceil() - 2_f32;
 
             let kmer = max_penalty.min(upper_bound);
@@ -128,7 +128,7 @@ mod tests {
         let penalties = Penalties {x: 4, o: 5, e: 2};
         let cutoff = Cutoff {
             minimum_aligned_length: 30,
-            penalty_per_million: 300_000,
+            penalty_per_scale: 300_000,
         };
         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 

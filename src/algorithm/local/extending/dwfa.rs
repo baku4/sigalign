@@ -1,4 +1,4 @@
-use super::{Cutoff, Penalties};
+use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
 use super::{Anchors, Anchor, Extension};
@@ -344,14 +344,14 @@ impl PointOfMaximumLength {
     pub fn spare_penalty_determinant(
         &self,
         cutoff: &Cutoff,
-    ) -> usize {
+    ) -> i64 {
         // Spare penalty determinant:
         // penalty per million * length - 1,000,000 * penalty
-        let mut maximum_determinant: usize = usize::MIN;
+        let mut maximum_determinant: i64 = i64::MIN;
 
-        let penalty_per_million = cutoff.penalty_per_million;
+        let penalty_per_scale = cutoff.penalty_per_scale as i64;
         self.index_of_components_and_maximum_length_of_scores.iter().for_each(|(score, (_, length))| {
-            let determinant = penalty_per_million * *length as usize - 1_000_000 * *score;
+            let determinant = penalty_per_scale * *length as i64 - (PRECISION_SCALE * *score) as i64;
             if maximum_determinant < determinant {
                 maximum_determinant = determinant;
             }
@@ -367,7 +367,7 @@ impl PointOfMaximumLength {
 
         let mut optional_start_point_of_wave_front: Option<StartPointOfWaveFront> = None;
         let mut length_of_start_point = 0;
-        let mut penalty_per_million_of_start_point = usize::MAX;
+        let mut penalty_per_scale_of_start_point = usize::MAX;
 
         let mut right_start_index = 0;
 
@@ -397,11 +397,11 @@ impl PointOfMaximumLength {
                     }
                 } else {
                     let penalty = left_penalty + right_penalty;
-                    let penalty_per_million = 1_000_000 * penalty / length;
+                    let penalty_per_scale = PRECISION_SCALE * penalty / length;
 
-                    if (penalty_per_million <= cutoff.penalty_per_million) && (penalty_per_million < penalty_per_million_of_start_point) {
+                    if (penalty_per_scale <= cutoff.penalty_per_scale) && (penalty_per_scale < penalty_per_scale_of_start_point) {
                         length_of_start_point = length;
-                        penalty_per_million_of_start_point = penalty_per_million;
+                        penalty_per_scale_of_start_point = penalty_per_scale;
 
                         let start_point_of_wave_front = StartPointOfWaveFront {
                             left_score: left_penalty,

@@ -1,4 +1,4 @@
-use super::{Cutoff, Penalties};
+use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
 use super::{Anchors, Anchor, Extension};
@@ -85,28 +85,31 @@ impl Anchor {
     fn spare_penalty_of_right(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
         self.spare_penalty(self.spare_penalty_determinant_of_left, penalties, cutoff, query_slice_length, record_slice_length)
     }
-    fn spare_penalty_of_left(&self, spare_penalty_determinant_of_right: usize, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
+    fn spare_penalty_of_left(&self, spare_penalty_determinant_of_right: i64, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
         self.spare_penalty(spare_penalty_determinant_of_right, penalties, cutoff, query_slice_length, record_slice_length)
     }
     fn spare_penalty(
         &self,
-        spare_penalty_determinant: usize,
+        spare_penalty_determinant: i64,
         penalties: &Penalties,
         cutoff: &Cutoff,
         query_length_this_side: usize,
         record_length_this_side: usize,
     ) -> usize {
-        penalties.o.max(
+        i64::max(
+            penalties.o as i64,
             (
-                penalties.e * spare_penalty_determinant
-                + cutoff.penalty_per_million * (
-                    penalties.e * (
-                        self.size + query_length_this_side.min(record_length_this_side)
-                    ) - penalties.o
+                penalties.e as i64 * spare_penalty_determinant
+                + cutoff.penalty_per_scale as i64 * (
+                    (
+                        penalties.e * (
+                            self.size + query_length_this_side.min(record_length_this_side)
+                        )
+                    ) as i64 - penalties.o as i64
                 )
             ) / (
-                1_000_000 * penalties.e - cutoff.penalty_per_million
-            ) + 1
-        )
+                PRECISION_SCALE * penalties.e - cutoff.penalty_per_scale
+            ) as i64 + 1
+        ) as usize
     }
 }

@@ -1,4 +1,4 @@
-use super::{Cutoff, MinPenaltyForPattern};
+use super::{PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use super::{ReferenceInterface, Sequence};
 use super::{Anchors, Anchor};
 
@@ -225,7 +225,7 @@ impl EachPatternMatches {
 // Spare penalty determinant:
 // penalty per million * length - 1,000,000 * penalty
 #[derive(Debug)]
-struct SparePenaltyDeterminantPerPattern(Vec<usize>);
+struct SparePenaltyDeterminantPerPattern(Vec<i64>);
 
 impl SparePenaltyDeterminantPerPattern {
     fn new(
@@ -238,15 +238,17 @@ impl SparePenaltyDeterminantPerPattern {
         let penalty_for_odd = min_penalty_for_pattern.odd;
         let penalty_for_even = min_penalty_for_pattern.even;
 
-        let mega_penalty_cutoff_per_pattern = pattern_size * cutoff.penalty_per_million;
-        let mega_penalty_determinant_to_next_pattern = (pattern_size - 1) * cutoff.penalty_per_million;
+        let scaled_penalty_cutoff_per_pattern = (pattern_size * cutoff.penalty_per_scale) as i64;
+        let scaled_penalty_determinant_to_next_pattern = (
+            (pattern_size - 1) * cutoff.penalty_per_scale
+        ) as i64;
 
         let mut existence = vec![false; total_pattern_count];
         for &matched_pattern_index in &matched_pattern_index_list {
             existence[matched_pattern_index] = true;
         };
 
-        let mut accumulated_penalty_determinant: Vec<usize> = vec![0; total_pattern_count];
+        let mut accumulated_penalty_determinant: Vec<i64> = vec![0; total_pattern_count];
 
         let mut start_index_to_fill = 0;
         let mut filled_pre_is_odd = false;
@@ -254,10 +256,10 @@ impl SparePenaltyDeterminantPerPattern {
         for &matched_pattern_index in matched_pattern_index_list.iter().chain([total_pattern_count].iter()) {
             for i in (start_index_to_fill..matched_pattern_index).rev() {
                 if filled_pre_is_odd {
-                    accumulated_penalty_determinant[i] = 1_000_000 * penalty_for_even;
+                    accumulated_penalty_determinant[i] = (PRECISION_SCALE * penalty_for_even) as i64;
                     filled_pre_is_odd = false;
                 } else {
-                    accumulated_penalty_determinant[i] = 1_000_000 * penalty_for_odd;
+                    accumulated_penalty_determinant[i] = (PRECISION_SCALE * penalty_for_odd) as i64;
                     filled_pre_is_odd = true;
                 }
             }
@@ -268,11 +270,11 @@ impl SparePenaltyDeterminantPerPattern {
 
         let mut accumulated_penalty_determinant_per_pattern_from_right = Self::accumulate_with_normalized_determinant(
             accumulated_penalty_determinant,
-            mega_penalty_cutoff_per_pattern,
+            scaled_penalty_cutoff_per_pattern,
         );
         accumulated_penalty_determinant_per_pattern_from_right.reverse();
 
-        let mut last_max = usize::MIN;
+        let mut last_max = i64::MIN;
         let mut index_of_last_max = 0;
         let end_index_of_pattern: Vec<usize> = accumulated_penalty_determinant_per_pattern_from_right.iter().enumerate().map(|(index, &score)| {
             if score >= last_max {
@@ -282,10 +284,10 @@ impl SparePenaltyDeterminantPerPattern {
             index_of_last_max
         }).collect();
 
-        let mut spare_penalty_determinants: Vec<usize> = end_index_of_pattern.into_iter().enumerate().map(|(start_index, end_index)| {
+        let mut spare_penalty_determinants: Vec<i64> = end_index_of_pattern.into_iter().enumerate().map(|(start_index, end_index)| {
             let mut spare_penalty_determinant = &accumulated_penalty_determinant_per_pattern_from_right[end_index] - &accumulated_penalty_determinant_per_pattern_from_right[start_index];
 
-            spare_penalty_determinant += mega_penalty_determinant_to_next_pattern;
+            spare_penalty_determinant += scaled_penalty_determinant_to_next_pattern;
 
             spare_penalty_determinant
         }).collect();
@@ -296,12 +298,12 @@ impl SparePenaltyDeterminantPerPattern {
     }
 
     fn accumulate_with_normalized_determinant(
-        penalty_per_pattern: Vec<usize>,
-        mega_penalty_cutoff_per_pattern: usize,
-    ) -> Vec<usize> {
-        let mut accumulated_penalty: usize = 0;
-        penalty_per_pattern.into_iter().rev().map(|value| {
-            accumulated_penalty += mega_penalty_cutoff_per_pattern - value;
+        accumulated_penalty_determinant: Vec<i64>,
+        scaled_penalty_cutoff_per_pattern: i64,
+    ) -> Vec<i64> {
+        let mut accumulated_penalty: i64 = 0;
+        accumulated_penalty_determinant.into_iter().rev().map(|value| {
+            accumulated_penalty += scaled_penalty_cutoff_per_pattern - value;
             accumulated_penalty
         }).collect()
     }
@@ -325,7 +327,7 @@ mod tests {
             5,
             &Cutoff {
                 minimum_aligned_length: 100,
-                penalty_per_million: 100_000,
+                penalty_per_scale: 1_000,
             },
             &min_penalty_for_pattern,
             matched_pattern_index_list

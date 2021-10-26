@@ -1,4 +1,4 @@
-use super::{Cutoff, Penalties, MinPenaltyForPattern};
+use super::{PRECISION_SCALE, Cutoff, Penalties, MinPenaltyForPattern};
 use super::{ReferenceInterface, Sequence};
 use super::{Anchors, Anchor};
 

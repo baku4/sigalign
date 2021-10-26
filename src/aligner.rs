@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use crate::{Result, error_msg};
 use crate::core::{ReferenceInterface, Sequence};
 use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsByRecordLabel, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
-use crate::core::{Penalties, Cutoff, MinPenaltyForPattern};
+use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
 
@@ -65,10 +63,10 @@ impl Aligner {
             let max_penalty = (
                 (
                     (
-                        (1_000_000 * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                        (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
                     )
-                    + 4 * cutoff.penalty_per_million
-                ) as f32 / (2 * (n+1) * cutoff.penalty_per_million) as f32
+                    + 4 * cutoff.penalty_per_scale
+                ) as f32 / (2 * (n+1) * cutoff.penalty_per_scale) as f32
             ).ceil() - 2_f32;
 
             let kmer = max_penalty.min(upper_bound);
@@ -236,14 +234,14 @@ impl Penalties {
 
 impl Cutoff {
     pub fn new(minimum_aligned_length: usize, penalty_per_length: f32) -> Self {
-        let penalty_per_million = (penalty_per_length * 1_000_000.0) as usize;
+        let penalty_per_scale = (penalty_per_length * PRECISION_SCALE as f32) as usize;
         Self {
             minimum_aligned_length,
-            penalty_per_million,
+            penalty_per_scale,
         }
     }
     fn divide_by_gcd(&mut self, gcd: usize) {
-        self.penalty_per_million /= gcd;
+        self.penalty_per_scale /= gcd;
     }
 }
 

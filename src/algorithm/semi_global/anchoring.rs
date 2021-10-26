@@ -1,4 +1,4 @@
-use super::{Cutoff, Penalties, MinPenaltyForPattern};
+use super::{PRECISION_SCALE, Cutoff, Penalties, MinPenaltyForPattern};
 use super::{ReferenceInterface, Sequence};
 use super::{Anchors, Anchor, Estimation, CheckPoints, CheckPoint};
 
@@ -98,9 +98,9 @@ impl Anchor {
 
                             let penalty = self.left_estimation.penalty + right_anchor.right_estimation.penalty + min_penalty;
                             let length = self.left_estimation.length + self.size + right_anchor.right_estimation.length + max_gap;
-                            let penalty_per_million = 1_000_000 * penalty / length;
+                            let penalty_per_scale = PRECISION_SCALE * penalty / length;
 
-                            let can_be_connected = (length >= cutoff.minimum_aligned_length) && (penalty_per_million <= cutoff.penalty_per_million);
+                            let can_be_connected = (length >= cutoff.minimum_aligned_length) && (penalty_per_scale <= cutoff.penalty_per_scale);
                             if can_be_connected {
                                 self.right_checkpoints.add_new_checkpoint(
                                     right_anchor_index,
@@ -165,7 +165,7 @@ mod tests {
         let penalties = Penalties {x: 4, o: 6, e: 3};
         let cutoff = Cutoff {
             minimum_aligned_length: 30,
-            penalty_per_million: 500_000
+            penalty_per_scale: 5_000
         };
         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 

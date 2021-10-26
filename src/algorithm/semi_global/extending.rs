@@ -1,4 +1,4 @@
-use super::{Cutoff, Penalties};
+use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
 use super::{Anchors, Anchor, Extension, OperationsOfExtension, OwnedOperations, RefToOperations, StartPointOfOperations, CheckPoints, CheckPoint};
@@ -391,22 +391,33 @@ impl Anchor {
 
         self.spare_penalty(penalty_opposite_side, length_opposite_side, penalties, cutoff, query_slice_length, record_slice_length)
     }
-    fn spare_penalty(&self, penalty_opposite_side:usize, length_opposite_side: usize, penalties: &Penalties, cutoff: &Cutoff, query_length_this_side: usize, record_length_this_side: usize) -> usize {
-        penalties.o.max(
+    fn spare_penalty(
+        &self,
+        penalty_opposite_side:usize,
+        length_opposite_side: usize,
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        query_length_this_side: usize,
+        record_length_this_side: usize,
+    ) -> usize {
+        i64::max(
+            penalties.o as i64,
             (
-                penalties.e * (
-                    cutoff.penalty_per_million * length_opposite_side
-                    - 1_000_000 * penalty_opposite_side
+                penalties.e as i64 * (
+                    (cutoff.penalty_per_scale * length_opposite_side) as i64
+                    - (penalties.e * PRECISION_SCALE * penalty_opposite_side) as i64
                 )
-                + cutoff.penalty_per_million * (
-                    penalties.e * (
-                        self.size + query_length_this_side.min(record_length_this_side)
-                    ) - penalties.o
+                + cutoff.penalty_per_scale as i64 * (
+                    (
+                        penalties.e  * (
+                            self.size + query_length_this_side.min(record_length_this_side)
+                        )
+                    ) as i64 - penalties.o as i64
                 )
             ) / (
-                1_000_000 * penalties.e - cutoff.penalty_per_million
-            ) + 1
-        )
+                PRECISION_SCALE * penalties.e - cutoff.penalty_per_scale
+            ) as i64 + 1
+        ) as usize
     }
     fn need_right_extension(&self) -> bool {
         !self.dropped && match self.right_extension {
