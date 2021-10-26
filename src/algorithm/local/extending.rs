@@ -54,8 +54,8 @@ impl Anchor {
         let left_query_slice = &query[..self.query_position];
         let left_record_slice_length = left_record_slice.len();
         let left_query_slice_length = left_query_slice.len();
-        let spare_penalty_padding_of_right = right_point_of_maximum_length.spare_penalty_padding(cutoff);
-        let left_spare_penalty = self.spare_penalty_of_left(spare_penalty_padding_of_right, penalties, cutoff, left_query_slice_length, left_record_slice_length);
+        let spare_penalty_determinant_of_right = right_point_of_maximum_length.spare_penalty_determinant(cutoff);
+        let left_spare_penalty = self.spare_penalty_of_left(spare_penalty_determinant_of_right, penalties, cutoff, left_query_slice_length, left_record_slice_length);
 
         let left_dropoff_wave_front = DropoffWaveFront::aligned_left_for_local(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_point_of_maximum_length = left_dropoff_wave_front.point_of_maximum_length();
@@ -83,22 +83,30 @@ impl Anchor {
         }
     }
     fn spare_penalty_of_right(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        self.spare_penalty(self.spare_penalty_padding_of_left, penalties, cutoff, query_slice_length, record_slice_length)
+        self.spare_penalty(self.spare_penalty_determinant_of_left, penalties, cutoff, query_slice_length, record_slice_length)
     }
-    fn spare_penalty_of_left(&self, spare_penalty_padding_of_right: f32, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        self.spare_penalty(spare_penalty_padding_of_right, penalties, cutoff, query_slice_length, record_slice_length)
+    fn spare_penalty_of_left(&self, spare_penalty_determinant_of_right: usize, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
+        self.spare_penalty(spare_penalty_determinant_of_right, penalties, cutoff, query_slice_length, record_slice_length)
     }
-    fn spare_penalty(&self, spare_penalty_padding: f32, penalties: &Penalties, cutoff: &Cutoff, query_length_this_side: usize, record_length_this_side: usize) -> usize {
+    fn spare_penalty(
+        &self,
+        spare_penalty_determinant: usize,
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        query_length_this_side: usize,
+        record_length_this_side: usize,
+    ) -> usize {
         penalties.o.max(
             (
-                penalties.e as f32 * (spare_penalty_padding + (
-                    self.size + query_length_this_side.min(record_length_this_side)
-                ) as f32) - (
-                    cutoff.penalty_per_length * penalties.o as f32
-                ) / (
-                    penalties.e as f32 - cutoff.penalty_per_length
+                penalties.e * spare_penalty_determinant
+                + cutoff.penalty_per_million * (
+                    penalties.e * (
+                        self.size + query_length_this_side.min(record_length_this_side)
+                    ) - penalties.o
                 )
-            ).ceil() as usize
+            ) / (
+                1_000_000 * penalties.e - cutoff.penalty_per_million
+            ) + 1
         )
     }
 }

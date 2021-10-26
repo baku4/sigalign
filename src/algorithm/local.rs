@@ -18,12 +18,14 @@ pub struct Anchors {
     anchors: Vec<Anchor>,
 }
 
+// Spare penalty determinant:
+// penalty per million * length - 1,000,000 * penalty
 #[derive(Debug)]
 struct Anchor {
     query_position: usize,
     record_position: usize,
     size: usize,
-    spare_penalty_padding_of_left: f32,
+    spare_penalty_determinant_of_left: usize,
     left_extension: Option<Extension>,
     right_extension: Option<Extension>,
     dropped: bool,
@@ -98,11 +100,13 @@ mod tests {
             let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
             let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
             let max_penalty = (
-                ((n*(min_penalty_for_pattern.odd + min_penalty_for_pattern.even)) as f32
-                + 4_f32*cutoff.penalty_per_length) /
-                (2_f32*cutoff.penalty_per_length*(n+1) as f32)
-                - 2_f32
-            ).ceil();
+                (
+                    (
+                        (1_000_000 * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                    )
+                    + 4 * cutoff.penalty_per_million
+                ) as f32 / (2 * (n+1) * cutoff.penalty_per_million) as f32
+            ).ceil() - 2_f32;
 
             let kmer = max_penalty.min(upper_bound);
             #[cfg(test)]
@@ -122,7 +126,10 @@ mod tests {
         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
 
         let penalties = Penalties {x: 4, o: 5, e: 2};
-        let cutoff = Cutoff { minimum_aligned_length: 30, penalty_per_length: 0.3 };
+        let cutoff = Cutoff {
+            minimum_aligned_length: 30,
+            penalty_per_million: 300_000,
+        };
         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);

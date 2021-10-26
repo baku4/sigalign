@@ -59,15 +59,17 @@ impl Aligner {
     }
     fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
         let mut n = 1;
-        loop {
+        loop { // TODO: Optimize
             let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
             let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
             let max_penalty = (
-                ((n*(min_penalty_for_pattern.odd + min_penalty_for_pattern.even)) as f32
-                + 4_f32*cutoff.penalty_per_length) /
-                (2_f32*cutoff.penalty_per_length*(n+1) as f32)
-                - 2_f32
-            ).ceil();
+                (
+                    (
+                        (1_000_000 * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                    )
+                    + 4 * cutoff.penalty_per_million
+                ) as f32 / (2 * (n+1) * cutoff.penalty_per_million) as f32
+            ).ceil() - 2_f32;
 
             let kmer = max_penalty.min(upper_bound);
 
@@ -234,13 +236,14 @@ impl Penalties {
 
 impl Cutoff {
     pub fn new(minimum_aligned_length: usize, penalty_per_length: f32) -> Self {
+        let penalty_per_million = (penalty_per_length * 1_000_000.0) as usize;
         Self {
             minimum_aligned_length,
-            penalty_per_length,
+            penalty_per_million,
         }
     }
     fn divide_by_gcd(&mut self, gcd: usize) {
-        self.penalty_per_length /= gcd as f32;
+        self.penalty_per_million /= gcd;
     }
 }
 

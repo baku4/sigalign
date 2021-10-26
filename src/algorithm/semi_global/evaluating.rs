@@ -118,7 +118,8 @@ impl Anchors {
                 let penalty = left_extension.penalty + right_extension.penalty;
                 let length = left_extension.length + anchor.size + right_extension.length;
                 
-                length >= cutoff.minimum_aligned_length && (penalty as f32 / length as f32) <= cutoff.penalty_per_length
+                length >= cutoff.minimum_aligned_length
+                && (1_000_000 * penalty / length) <= cutoff.penalty_per_million
             } {
                 Some(anchor_index)
             } else {

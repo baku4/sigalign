@@ -23,7 +23,7 @@ pub struct Penalties {
 #[derive(Debug)]
 pub struct Cutoff {
     pub minimum_aligned_length: usize,
-    pub penalty_per_length: f32,
+    pub penalty_per_million: usize,
 }
 
 #[derive(Debug)]

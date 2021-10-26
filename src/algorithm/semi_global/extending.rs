@@ -394,18 +394,18 @@ impl Anchor {
     fn spare_penalty(&self, penalty_opposite_side:usize, length_opposite_side: usize, penalties: &Penalties, cutoff: &Cutoff, query_length_this_side: usize, record_length_this_side: usize) -> usize {
         penalties.o.max(
             (
-                (
-                    cutoff.penalty_per_length * (
-                        penalties.e * (
-                            length_opposite_side + self.size + query_length_this_side.min(record_length_this_side)
-                        ) - penalties.o
-                    ) as f32 - (
-                        penalty_opposite_side * penalties.e
-                    ) as f32
-                ) / (
-                    penalties.e as f32 - cutoff.penalty_per_length
+                penalties.e * (
+                    cutoff.penalty_per_million * length_opposite_side
+                    - 1_000_000 * penalty_opposite_side
                 )
-            ).ceil() as usize
+                + cutoff.penalty_per_million * (
+                    penalties.e * (
+                        self.size + query_length_this_side.min(record_length_this_side)
+                    ) - penalties.o
+                )
+            ) / (
+                1_000_000 * penalties.e - cutoff.penalty_per_million
+            ) + 1
         )
     }
     fn need_right_extension(&self) -> bool {

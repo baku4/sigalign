@@ -77,7 +77,7 @@ impl AnchorsPreset {
         min_penalty_for_pattern: &MinPenaltyForPattern,
     ) -> Vec<AnchorsByPattern> {
         let matched_pattern_index_list = self.matched_pattern_index_list();
-        let estimation_per_pattern = SparePenaltyPaddingPerPattern::new(self.total_pattern_count, pattern_size, cutoff, min_penalty_for_pattern, matched_pattern_index_list);
+        let estimation_per_pattern = SparePenaltyDeterminantPerPattern::new(self.total_pattern_count, pattern_size, cutoff, min_penalty_for_pattern, matched_pattern_index_list);
 
         let mut anchors_by_patterns: Vec<AnchorsByPattern> = self.matched_pattern_locations.into_iter().map(|pattern_location| {
             AnchorsByPattern::new(
@@ -137,7 +137,7 @@ impl AnchorsByPattern {
         query_length: usize,
         record_length: usize,
         record_positions: Vec<usize>,
-        estimation_per_pattern: &SparePenaltyPaddingPerPattern,
+        spare_penalty_determinant_per_pattern: &SparePenaltyDeterminantPerPattern,
     ) -> Self {
         let query_position = pattern_index * pattern_size;
 
@@ -146,7 +146,7 @@ impl AnchorsByPattern {
                 query_position,
                 record_position,
                 size: pattern_size,
-                spare_penalty_padding_of_left: estimation_per_pattern.spare_penalty_paddings[pattern_index].clone(),
+                spare_penalty_determinant_of_left: spare_penalty_determinant_per_pattern.0[pattern_index],
                 left_extension: None,
                 right_extension: None,
                 dropped: false,
@@ -180,7 +180,7 @@ impl AnchorsByPattern {
                         if record_position_gap == 0 { // Right record position == Left record position
                             to_remove_right_anchors_index.push(right_anchor_index);
                             left_anchor.size += right_anchor.size;
-                            left_anchor.spare_penalty_padding_of_left = right_anchor.spare_penalty_padding_of_left;
+                            left_anchor.spare_penalty_determinant_of_left = right_anchor.spare_penalty_determinant_of_left;
                         } else { // Right record position > Left record position
                             left_anchor_index += 1;
                         }
@@ -222,12 +222,12 @@ impl EachPatternMatches {
     }
 }
 
+// Spare penalty determinant:
+// penalty per million * length - 1,000,000 * penalty
 #[derive(Debug)]
-struct SparePenaltyPaddingPerPattern {
-    spare_penalty_paddings: Vec<f32>,
-}
+struct SparePenaltyDeterminantPerPattern(Vec<usize>);
 
-impl SparePenaltyPaddingPerPattern {
+impl SparePenaltyDeterminantPerPattern {
     fn new(
         total_pattern_count: usize,
         pattern_size: usize,
@@ -238,17 +238,15 @@ impl SparePenaltyPaddingPerPattern {
         let penalty_for_odd = min_penalty_for_pattern.odd;
         let penalty_for_even = min_penalty_for_pattern.even;
 
-        let normalized_penalty_cutoff_per_pattern = pattern_size as f32 * cutoff.penalty_per_length;
-        let maximum_padding_to_next_pattern = (pattern_size-1) as f32 * cutoff.penalty_per_length;
-
-        println!("maximum_padding_to_next_pattern: {:?}", maximum_padding_to_next_pattern);
+        let mega_penalty_cutoff_per_pattern = pattern_size * cutoff.penalty_per_million;
+        let mega_penalty_determinant_to_next_pattern = (pattern_size - 1) * cutoff.penalty_per_million;
 
         let mut existence = vec![false; total_pattern_count];
         for &matched_pattern_index in &matched_pattern_index_list {
             existence[matched_pattern_index] = true;
         };
 
-        let mut accumulated_penalty_padding: Vec<usize> = vec![0; total_pattern_count];
+        let mut accumulated_penalty_determinant: Vec<usize> = vec![0; total_pattern_count];
 
         let mut start_index_to_fill = 0;
         let mut filled_pre_is_odd = false;
@@ -256,10 +254,10 @@ impl SparePenaltyPaddingPerPattern {
         for &matched_pattern_index in matched_pattern_index_list.iter().chain([total_pattern_count].iter()) {
             for i in (start_index_to_fill..matched_pattern_index).rev() {
                 if filled_pre_is_odd {
-                    accumulated_penalty_padding[i] = penalty_for_even;
+                    accumulated_penalty_determinant[i] = 1_000_000 * penalty_for_even;
                     filled_pre_is_odd = false;
                 } else {
-                    accumulated_penalty_padding[i] = penalty_for_odd;
+                    accumulated_penalty_determinant[i] = 1_000_000 * penalty_for_odd;
                     filled_pre_is_odd = true;
                 }
             }
@@ -268,23 +266,15 @@ impl SparePenaltyPaddingPerPattern {
             filled_pre_is_odd = false;
         }
 
-        #[cfg(test)]
-        println!("{:?}", accumulated_penalty_padding);
+        let mut accumulated_penalty_determinant_per_pattern_from_right = Self::accumulate_with_normalized_determinant(
+            accumulated_penalty_determinant,
+            mega_penalty_cutoff_per_pattern,
+        );
+        accumulated_penalty_determinant_per_pattern_from_right.reverse();
 
-        let mut accumulated_penalty_padding_per_pattern_from_right = Self::accumulate_with_normalized_padding(accumulated_penalty_padding, normalized_penalty_cutoff_per_pattern);
-        accumulated_penalty_padding_per_pattern_from_right.reverse();
-
-        // #[cfg(test)]
-        // println!("{:?}", {
-        //     let mut temp = accumulated_penalty_padding_per_pattern_from_right.clone();
-        //     temp.reverse();
-        //     temp
-        // });
-        println!("{:?}", accumulated_penalty_padding_per_pattern_from_right);
-
-        let mut last_max = f32::MIN;
+        let mut last_max = usize::MIN;
         let mut index_of_last_max = 0;
-        let end_index_of_pattern: Vec<usize> = accumulated_penalty_padding_per_pattern_from_right.iter().enumerate().map(|(index, &score)| {
+        let end_index_of_pattern: Vec<usize> = accumulated_penalty_determinant_per_pattern_from_right.iter().enumerate().map(|(index, &score)| {
             if score >= last_max {
                 last_max = score;
                 index_of_last_max = index;
@@ -292,33 +282,26 @@ impl SparePenaltyPaddingPerPattern {
             index_of_last_max
         }).collect();
 
-        #[cfg(test)]
-        println!("{:?}", &end_index_of_pattern);
+        let mut spare_penalty_determinants: Vec<usize> = end_index_of_pattern.into_iter().enumerate().map(|(start_index, end_index)| {
+            let mut spare_penalty_determinant = &accumulated_penalty_determinant_per_pattern_from_right[end_index] - &accumulated_penalty_determinant_per_pattern_from_right[start_index];
 
-        let mut spare_penalty_paddings: Vec<f32> = end_index_of_pattern.into_iter().enumerate().map(|(start_index, end_index)| {
-            let mut spare_penalty_padding = &accumulated_penalty_padding_per_pattern_from_right[end_index] - &accumulated_penalty_padding_per_pattern_from_right[start_index];
+            spare_penalty_determinant += mega_penalty_determinant_to_next_pattern;
 
-            spare_penalty_padding += maximum_padding_to_next_pattern;
-
-            spare_penalty_padding
+            spare_penalty_determinant
         }).collect();
 
-        spare_penalty_paddings[0] = 0.0; // First padding is always zero
+        spare_penalty_determinants[0] = 0; // First determinant is always zero
 
-        #[cfg(test)]
-        println!("{:?}", spare_penalty_paddings);
-
-        Self {
-            spare_penalty_paddings: spare_penalty_paddings,
-        }
+        Self(spare_penalty_determinants)
     }
-    fn accumulate_with_normalized_padding(
+
+    fn accumulate_with_normalized_determinant(
         penalty_per_pattern: Vec<usize>,
-        normalized_penalty_cutoff_per_pattern: f32,
-    ) -> Vec<f32> {
-        let mut accumulated_penalty: f32 = 0.0;
+        mega_penalty_cutoff_per_pattern: usize,
+    ) -> Vec<usize> {
+        let mut accumulated_penalty: usize = 0;
         penalty_per_pattern.into_iter().rev().map(|value| {
-            accumulated_penalty += normalized_penalty_cutoff_per_pattern - value as f32;
+            accumulated_penalty += mega_penalty_cutoff_per_pattern - value;
             accumulated_penalty
         }).collect()
     }
@@ -329,7 +312,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn print_spare_penalty_padding() {
+    fn print_spare_penalty_determinant() {
         let total_pattern_count = 10;
         let min_penalty_for_pattern = MinPenaltyForPattern {
             odd: 4,
@@ -337,10 +320,13 @@ mod tests {
         };
         let matched_pattern_index_list = vec![2, 3, 5, 9];
 
-        let spare_penalty_padding = SparePenaltyPaddingPerPattern::new(
+        let spare_penalty_determinant = SparePenaltyDeterminantPerPattern::new(
             total_pattern_count,
             5,
-            &Cutoff { minimum_aligned_length: 100, penalty_per_length: 0.1 },
+            &Cutoff {
+                minimum_aligned_length: 100,
+                penalty_per_million: 100_000,
+            },
             &min_penalty_for_pattern,
             matched_pattern_index_list
         );

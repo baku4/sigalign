@@ -14,7 +14,7 @@ pub fn semi_global_alignment_with_position(
     gap_open_penalty: usize,
     gap_extend_penalty: usize,
     minimum_aligned_length: usize,
-    penalty_per_length: f32,
+    penalty_per_million: usize,
 ) -> Option<AlignmentResult> {
     // Sequence to align
     let left_record = &record[..record_start_position];
@@ -86,11 +86,11 @@ pub fn semi_global_alignment_with_position(
     
     let penalty = ((left_alignment.score + right_alignment.score) * -1) as usize;
 
-    let dissimilarity = penalty as f32 / length as f32;
+    let penalty_per_million_of_this_alignment = 1_000_000 * penalty / length;
 
-    if (length >= minimum_aligned_length) && (dissimilarity <= penalty_per_length) {
+    if (length >= minimum_aligned_length) && (penalty_per_million_of_this_alignment <= penalty_per_million) {
         Some(AlignmentResult {
-            dissimilarity,
+            dissimilarity: penalty_per_million_of_this_alignment as f32 / 1_000_000.0,
             penalty,
             length,
             position,

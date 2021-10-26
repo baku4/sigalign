@@ -341,22 +341,23 @@ pub struct PointOfMaximumLength {
 }
 
 impl PointOfMaximumLength {
-    pub fn spare_penalty_padding(
+    pub fn spare_penalty_determinant(
         &self,
         cutoff: &Cutoff,
-    ) -> f32 {
-        // Spare penalty padding: penalty per length * length - penalty
-        let mut maximum_padding: f32 = f32::MIN;
+    ) -> usize {
+        // Spare penalty determinant:
+        // penalty per million * length - 1,000,000 * penalty
+        let mut maximum_determinant: usize = usize::MIN;
 
-        let penalty_per_length = cutoff.penalty_per_length;
+        let penalty_per_million = cutoff.penalty_per_million;
         self.index_of_components_and_maximum_length_of_scores.iter().for_each(|(score, (_, length))| {
-            let padding = penalty_per_length * *length as f32 - *score as f32;
-            if maximum_padding < padding {
-                maximum_padding = padding;
+            let determinant = penalty_per_million * *length as usize - 1_000_000 * *score;
+            if maximum_determinant < determinant {
+                maximum_determinant = determinant;
             }
         });
 
-        maximum_padding
+        maximum_determinant
     }
     pub fn get_optional_start_point_of_wave_front(left: Self, right: Self, anchor_size: usize, cutoff: &Cutoff) -> Option<StartPointOfWaveFront> {
         let mut left_sorted_point = left.index_of_components_and_maximum_length_of_scores;
@@ -366,7 +367,7 @@ impl PointOfMaximumLength {
 
         let mut optional_start_point_of_wave_front: Option<StartPointOfWaveFront> = None;
         let mut length_of_start_point = 0;
-        let mut penalty_per_length_of_start_point = f32::MAX;
+        let mut penalty_per_million_of_start_point = usize::MAX;
 
         let mut right_start_index = 0;
 
@@ -396,11 +397,11 @@ impl PointOfMaximumLength {
                     }
                 } else {
                     let penalty = left_penalty + right_penalty;
-                    let penalty_per_length = penalty as f32 / length as f32;
+                    let penalty_per_million = 1_000_000 * penalty / length;
 
-                    if (penalty_per_length <= cutoff.penalty_per_length) && (penalty_per_length < penalty_per_length_of_start_point) {
+                    if (penalty_per_million <= cutoff.penalty_per_million) && (penalty_per_million < penalty_per_million_of_start_point) {
                         length_of_start_point = length;
-                        penalty_per_length_of_start_point = penalty_per_length;
+                        penalty_per_million_of_start_point = penalty_per_million;
 
                         let start_point_of_wave_front = StartPointOfWaveFront {
                             left_score: left_penalty,
