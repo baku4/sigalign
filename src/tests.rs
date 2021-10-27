@@ -349,11 +349,12 @@ fn print_alignment_results_by_index_are_same(
             result_of_standard.0.get(&key).unwrap()
         );
 
-        if first_results_set == second_results_set {
-            println!("Same")
+        if first_results_set != second_results_set {
+            println!("Same in record index: {}", key);
         } else {
-            println!("result_of_this_crate:\n{:#?}", result_of_this_crate);
-            println!("result_of_standard:\n{:#?}", result_of_standard);
+            println!("Different in record index: {}", key);
+            println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate);
+            println!(" - result_of_standard:\n{:#?}", result_of_standard);
         }
     }
 }

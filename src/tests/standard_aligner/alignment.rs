@@ -272,7 +272,7 @@ pub fn local_alignment_with_position(
 
     let mut previous_alignment_operation = AlignmentOperationFromCrateBio::Match;
 
-    right_operations.iter().enumerate().rev().for_each(|(end_index, operation_from_crate_bio)| {
+    right_operations.iter().enumerate().for_each(|(end_index, operation_from_crate_bio)| {
         match operation_from_crate_bio {
             AlignmentOperationFromCrateBio::Match => {
                 right_accumulated_length += 1;

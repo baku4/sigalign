@@ -303,9 +303,9 @@ impl StandardRecord {
             'position_loop: for position in positions_in_record {
                 for anchor_index in 0..anchors.len() {
                     let previous_anchor = &mut anchors[anchor_index];
-                    let pattern_size_of_anchor = previous_anchor.pattern_size;
-                    if previous_anchor.record_start_position + pattern_size_of_anchor == position as usize
-                    && previous_anchor.query_start_position + pattern_size_of_anchor == pattern_index * pattern_size {
+                    let pattern_size_of_previous_anchor = previous_anchor.pattern_size;
+                    if previous_anchor.record_start_position + pattern_size_of_previous_anchor == position as usize
+                    && previous_anchor.query_start_position + pattern_size_of_previous_anchor == pattern_index * pattern_size {
                         // extend pre anchor
                         previous_anchor.pattern_size += pattern_size;
 
@@ -357,6 +357,7 @@ impl StandardRecord {
     }
 }
 
+#[derive(Debug)]
 struct StandardAnchor {
     record_start_position: usize,
     query_start_position: usize,
