@@ -223,7 +223,7 @@ impl EachPatternMatches {
 }
 
 // Spare penalty determinant:
-// penalty per million * length - 1,000,000 * penalty
+// penalty per scale * length - PRECISION_SCALE * penalty
 #[derive(Debug)]
 struct SparePenaltyDeterminantPerPattern(Vec<i64>);
 
@@ -267,7 +267,7 @@ impl SparePenaltyDeterminantPerPattern {
             start_index_to_fill = matched_pattern_index + 1;
             filled_pre_is_odd = false;
         }
-
+        
         let mut accumulated_penalty_determinant_per_pattern_from_right = Self::accumulate_with_normalized_determinant(
             accumulated_penalty_determinant,
             scaled_penalty_cutoff_per_pattern,

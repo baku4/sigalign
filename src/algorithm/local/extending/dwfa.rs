@@ -44,6 +44,8 @@ impl DropoffWaveFront<ComponentLocal> {
         start_index_of_components: usize,
         penalties: &Penalties,
     ) -> Extension {
+        let penalty_from_start_point = score;
+
         let wave_front_scores = &self.wave_front_scores;
         let mut operation_length: usize = 0;
         let mut insertion_count: u32 = 0;
@@ -179,7 +181,7 @@ impl DropoffWaveFront<ComponentLocal> {
                             operations.shrink_to_fit();
                             // extension of current anchor
                             let extension = Extension {
-                                penalty: self.last_score,
+                                penalty: penalty_from_start_point,
                                 length: operation_length,
                                 insertion_count,
                                 deletion_count,
@@ -336,8 +338,9 @@ impl DropoffWaveFront<ComponentLocal> {
     }
 }
 
+#[derive(Debug)]
 pub struct PointOfMaximumLength {
-    index_of_components_and_maximum_length_of_scores: Vec<(usize, (usize, i32))>,
+    index_of_components_and_maximum_length_of_scores: Vec<(usize, (usize, i32))>, // (score, (index, length))
 }
 
 impl PointOfMaximumLength {
@@ -346,7 +349,7 @@ impl PointOfMaximumLength {
         cutoff: &Cutoff,
     ) -> i64 {
         // Spare penalty determinant:
-        // penalty per million * length - 1,000,000 * penalty
+        // penalty per scale * length - PRECISION_SCALE * penalty
         let mut maximum_determinant: i64 = i64::MIN;
 
         let penalty_per_scale = cutoff.penalty_per_scale as i64;
@@ -371,12 +374,12 @@ impl PointOfMaximumLength {
 
         let mut right_start_index = 0;
 
-        #[cfg(test)]
-        {
-            println!("left_sorted_point: {:?}", left_sorted_point);
-            println!("right_sorted_point: {:?}", right_sorted_point);
-            println!("anchor_size: {:?}", anchor_size);
-        }
+        // #[cfg(test)]
+        // {
+        //     println!("left_sorted_point: {:?}", left_sorted_point);
+        //     println!("right_sorted_point: {:?}", right_sorted_point);
+        //     println!("anchor_size: {:?}", anchor_size);
+        // }
 
         let left_sorted_point_count = left_sorted_point.len();
         let right_sorted_point_count = right_sorted_point.len();
@@ -413,20 +416,16 @@ impl PointOfMaximumLength {
                     }
                 }
 
-                #[cfg(test)]
-                {
-                    println!("left_sorted_point[{}]: {:?}", left_index, left_sorted_point[left_index]);
-                    println!("right_sorted_point[{}]: {:?}", right_index, right_sorted_point[right_index]);
-                    println!("optional_start_point_of_wave_front: {:?}", optional_start_point_of_wave_front);
-                }
+                // #[cfg(test)]
+                // {
+                //     println!("left_sorted_point[{}]: {:?}", left_index, left_sorted_point[left_index]);
+                //     println!("right_sorted_point[{}]: {:?}", right_index, right_sorted_point[right_index]);
+                //     println!("optional_start_point_of_wave_front: {:?}", optional_start_point_of_wave_front);
+                // }
             }
         }
-        
-        if optional_start_point_of_wave_front.is_some() {
-            optional_start_point_of_wave_front
-        } else {
-            None
-        }
+
+        optional_start_point_of_wave_front
     }
 }
 
@@ -440,9 +439,13 @@ pub struct StartPointOfWaveFront {
 
 impl WaveFrontScore<ComponentLocal> {
     fn index_and_maximum_length(&self) -> (usize, i32) {
-        let optional_index_and_maximum_length = self.components.iter().map(|[m_component, _, _]| {
-            m_component.length()
-        }).enumerate().max_by_key(|(_, length)| *length);
+        let optional_index_and_maximum_length = self.components.iter().enumerate()
+            .filter_map(|(component_index, [m_component, _, _])| {
+                match m_component.optional_length() {
+                    Some(length) => Some((component_index, length)),
+                    None => None,
+                }
+            }).max_by_key(|(_, length)| *length);
 
         match optional_index_and_maximum_length {
             Some(index_and_maximum_length) => {
@@ -463,8 +466,12 @@ pub struct ComponentLocal {
 }
 
 impl ComponentLocal {
-    fn length(&self) -> i32 {
-        self.fr + self.deletion_count as i32
+    fn optional_length(&self) -> Option<i32> {
+        if self.bt == EMPTY {
+            None
+        } else {
+            Some(self.fr + self.deletion_count as i32)
+        }
     }
 }
 

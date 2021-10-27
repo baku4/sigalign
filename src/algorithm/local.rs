@@ -19,7 +19,7 @@ pub struct Anchors {
 }
 
 // Spare penalty determinant:
-// penalty per million * length - 1,000,000 * penalty
+// penalty per scale * length - PRECISION_SCALE * penalty
 #[derive(Debug)]
 struct Anchor {
     query_position: usize,
@@ -64,18 +64,9 @@ impl Algorithm for LocalAlgorithm {
 
                 let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
 
-                #[cfg(test)]
-                println!("# Anchoring:\n{:#?}", anchors);
-
                 anchors.extend(record_sequence, query, penalties, cutoff);
-
-                #[cfg(test)]
-                println!("# Extending:\n{:#?}", anchors);
             
                 let alignment_results = anchors.get_alignment_results_for_local();
-
-                #[cfg(test)]
-                println!("# Evaluating:\n{:#?}", alignment_results);
 
                 if alignment_results.len() == 0 {
                     None

@@ -2,7 +2,10 @@ use std::path::Path;
 use super::*;
 
 mod alignment;
-use alignment::semi_global_alignment_with_position;
+use alignment::{
+    semi_global_alignment_with_position,
+    local_alignment_with_position,
+};
 
 use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
 
@@ -50,6 +53,21 @@ impl StandardAligner {
         query: Sequence,
     ) -> AlignmentResultsByRecordIndex {
         standard_reference.semi_global_alignment_results(
+            query,
+            self.mismatch_penalty,
+            self.gap_open_penalty,
+            self.gap_extend_penalty,
+            self.minimum_aligned_length,
+            self.penalty_per_scale,
+            self.pattern_size
+        )
+    }
+    pub fn local_alignment_raw(
+        &self,
+        standard_reference: &StandardReference,
+        query: Sequence,
+    ) -> AlignmentResultsByRecordIndex {
+        standard_reference.local_alignment_results(
             query,
             self.mismatch_penalty,
             self.gap_open_penalty,
@@ -116,6 +134,28 @@ impl StandardReference {
             }).collect()
         )
     }
+    fn local_alignment_results(
+        &self,
+        query: Sequence,
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        penalty_per_scale: usize,
+        pattern_size: usize,
+    ) -> AlignmentResultsByRecordIndex {        
+        AlignmentResultsByRecordIndex(
+            self.records.iter().enumerate().filter_map(|(record_index, standard_record)| {
+                let alignment_results = standard_record.local_alignment_results(query, mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_scale, pattern_size);
+
+                if alignment_results.len() != 0 {
+                    Some((record_index, alignment_results))
+                } else {
+                    None
+                }
+            }).collect()
+        )
+    }
 }
 
 struct StandardRecord {
@@ -170,6 +210,8 @@ impl StandardRecord {
         let mut alignment_results = Vec::new();
         let mut used_alignment_results: HashSet<(usize, AlignmentPosition)> = HashSet::new();
 
+        let mut anchors: Vec<StandardAnchor> = Vec::new();
+
         for pattern_index in 0..pattern_count {
             let query_start_position = pattern_index * pattern_size;
             let query_end_position = query_start_position + pattern_size;
@@ -178,32 +220,134 @@ impl StandardRecord {
 
             let positions_in_record = self.locate_pattern(pattern);
 
-            for position in positions_in_record {
-                let optional_alignment_result = semi_global_alignment_with_position(
-                    &self.sequence,
-                    query,
-                    position as usize,
-                    pattern_index * pattern_size,
-                    pattern_size,
-                    mismatch_penalty,
-                    gap_open_penalty,
-                    gap_extend_penalty,
-                    minimum_aligned_length,
-                    penalty_per_scale,
-                );
+            'position_loop: for position in positions_in_record {
+                for anchor_index in 0..anchors.len() {
+                    let previous_anchor = &mut anchors[anchor_index];
+                    let pattern_size_of_anchor = previous_anchor.pattern_size;
+                    if previous_anchor.record_start_position + pattern_size_of_anchor == position as usize
+                    && previous_anchor.query_start_position + pattern_size_of_anchor == pattern_index * pattern_size {
+                        // extend pre anchor
+                        previous_anchor.pattern_size += pattern_size;
 
-                if let Some(alignment_result) = optional_alignment_result {
-                    let hashable_symbol_of_alignment_result = (
-                        alignment_result.penalty,
-                        alignment_result.position.clone()
-                    );
-                    let new_alignment_result = used_alignment_results.insert(hashable_symbol_of_alignment_result);
-
-                    if new_alignment_result {
-                        alignment_results.push(alignment_result);
+                        continue 'position_loop;
                     }
                 }
-;            }
+
+                anchors.push(
+                    StandardAnchor {
+                        record_start_position: position as usize,
+                        query_start_position: pattern_index * pattern_size,
+                        pattern_size: pattern_size,
+                    }
+                );
+            }
+        }
+
+        for anchor in anchors {
+            let optional_alignment_result = semi_global_alignment_with_position(
+                &self.sequence,
+                query,
+                anchor.record_start_position,
+                anchor.query_start_position,
+                anchor.pattern_size,
+                mismatch_penalty,
+                gap_open_penalty,
+                gap_extend_penalty,
+                minimum_aligned_length,
+                penalty_per_scale,
+            );
+
+            if let Some(alignment_result) = optional_alignment_result {
+                let hashable_symbol_of_alignment_result = (
+                    alignment_result.penalty,
+                    alignment_result.position.clone()
+                );
+                let new_alignment_result = used_alignment_results.insert(hashable_symbol_of_alignment_result);
+
+                if new_alignment_result {
+                    alignment_results.push(alignment_result);
+                }
+            }
+        }
+
+        alignment_results
+    }
+    fn local_alignment_results(
+        &self,
+        query: Sequence,
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        penalty_per_scale: usize,
+        pattern_size: usize,
+    ) -> Vec<AlignmentResult> {
+        let query_length = query.len();
+        let record_length = self.sequence.len();
+
+        let pattern_count = query_length / pattern_size;
+
+        let mut alignment_results = Vec::new();
+        let mut used_alignment_results: HashSet<(usize, AlignmentPosition)> = HashSet::new();
+
+        let mut anchors: Vec<StandardAnchor> = Vec::new();
+
+        for pattern_index in 0..pattern_count {
+            let query_start_position = pattern_index * pattern_size;
+            let query_end_position = query_start_position + pattern_size;
+
+            let pattern = &query[query_start_position..query_end_position];
+
+            let positions_in_record = self.locate_pattern(pattern);
+
+            'position_loop: for position in positions_in_record {
+                for anchor_index in 0..anchors.len() {
+                    let previous_anchor = &mut anchors[anchor_index];
+                    let pattern_size_of_anchor = previous_anchor.pattern_size;
+                    if previous_anchor.record_start_position + pattern_size_of_anchor == position as usize
+                    && previous_anchor.query_start_position + pattern_size_of_anchor == pattern_index * pattern_size {
+                        // extend pre anchor
+                        previous_anchor.pattern_size += pattern_size;
+
+                        continue 'position_loop;
+                    }
+                }
+
+                anchors.push(
+                    StandardAnchor {
+                        record_start_position: position as usize,
+                        query_start_position: pattern_index * pattern_size,
+                        pattern_size: pattern_size,
+                    }
+                );
+            }
+        }
+
+        for anchor in anchors {
+            let optional_alignment_result = local_alignment_with_position(
+                &self.sequence,
+                query,
+                anchor.record_start_position,
+                anchor.query_start_position,
+                anchor.pattern_size,
+                mismatch_penalty,
+                gap_open_penalty,
+                gap_extend_penalty,
+                minimum_aligned_length,
+                penalty_per_scale,
+            );
+
+            if let Some(alignment_result) = optional_alignment_result {
+                let hashable_symbol_of_alignment_result = (
+                    alignment_result.penalty,
+                    alignment_result.position.clone()
+                );
+                let new_alignment_result = used_alignment_results.insert(hashable_symbol_of_alignment_result);
+
+                if new_alignment_result {
+                    alignment_results.push(alignment_result);
+                }
+            }
         }
 
         alignment_results
@@ -211,4 +355,10 @@ impl StandardRecord {
     fn locate_pattern(&self, pattern: Sequence) -> Vec<u64> {
         self.lt_fm_index.locate(pattern)
     }
+}
+
+struct StandardAnchor {
+    record_start_position: usize,
+    query_start_position: usize,
+    pattern_size: usize,
 }

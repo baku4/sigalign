@@ -18,7 +18,7 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 #[test]
-fn test_results_of_nucleotide_only_with_in_memory_provider() {
+fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
     println!("Use In-Memory Provider");
 
     let fasta_file_for_reference = NUCLEOTIDE_ONLY_FA_PATH_1;
@@ -32,13 +32,13 @@ fn test_results_of_nucleotide_only_with_in_memory_provider() {
         sequence_provider
     };
     
-    test_results_of_nucleotide_only(
+    test_results_of_nucleotide_only_for_semi_global(
         fasta_file_for_reference,
         sequence_provider,
     );
 }
 
-fn test_results_of_nucleotide_only<S: SequenceProvider>(
+fn test_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
     fasta_file_for_reference: &str,
     sequence_provider: S,
 ) {
@@ -118,6 +118,115 @@ fn test_results_of_nucleotide_only<S: SequenceProvider>(
     }
 }
 
+#[test]
+fn test_results_of_nucleotide_only_for_local_with_in_memory_provider() {
+    println!("Use In-Memory Provider");
+
+    let fasta_file_for_reference = NUCLEOTIDE_ONLY_FA_PATH_1;
+
+    let sequence_provider = {
+        let start_time = Instant::now();
+        let sequence_provider = InMemoryProvider::from_fasta_file(fasta_file_for_reference).unwrap();
+        let duration = start_time.elapsed().as_millis();
+        println!("Generate sequence provider: {:?}", duration);
+
+        sequence_provider
+    };
+    
+    test_results_of_nucleotide_only_for_local(
+        fasta_file_for_reference,
+        sequence_provider,
+    );
+}
+
+fn test_results_of_nucleotide_only_for_local<S: SequenceProvider>(
+    fasta_file_for_reference: &str,
+    sequence_provider: S,
+) {
+    let mismatch_penalty = 4;
+    let gap_open_penalty = 6;
+    let gap_extend_penalty = 2;
+    let minimum_aligned_length = 100;
+    let penalty_per_length = 0.1;
+
+    let kmer_size_for_lookup_table = 4;
+
+    // For this crate
+    let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+
+    println!("Aligner: {:?}", aligner);
+
+    let sequence_type = SequenceType::nucleotide_only();
+
+    let mut reference = {
+        let start_time = Instant::now();
+
+        let lt_fm_index_config = LtFmIndexConfig::new()
+            .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
+
+        let reference = Reference::new(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        
+        let duration = start_time.elapsed().as_millis();
+        println!("Generate reference: {:?}", duration);
+
+        reference
+    };
+
+    // For comparison
+    let standard_aligner = StandardAligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length);
+
+    println!("Standard Aligner: {:?}", standard_aligner);
+
+    let standard_reference = {
+        let start_time = Instant::now();
+
+        let standard_reference = StandardReference::new_from_fasta(
+            sequence_type,
+            fasta_file_for_reference
+        );
+
+        let duration = start_time.elapsed().as_millis();
+        println!("Generate standard reference: {:?}", duration);
+
+        standard_reference
+    };  
+
+    let query_fasta_records = FastaReader::from_file_path(NUCLEOTIDE_ONLY_FA_PATH_2).unwrap();
+
+    for (query_record_index, (label, query)) in query_fasta_records.into_iter().enumerate() {
+        println!("{:?} - {:?}", query_record_index, label);
+
+        // if query_record_index <= 290 {
+        //     println!("SKIP");
+        //     continue
+        // }
+
+        let start_time_1 = Instant::now();
+        let result_of_this_crate = aligner.local_alignment_unchecked(
+            &mut reference,
+            &query
+        );
+        let duration_1 = start_time_1.elapsed().as_millis();
+    
+        let start_time_2 = Instant::now();
+        let result_of_standard = standard_aligner.local_alignment_raw(
+            &standard_reference,
+            &query
+        );
+        let duration_2 = start_time_2.elapsed().as_millis();
+
+        println!("Time elapsed: {}, {}", duration_1, duration_2);
+
+        // println!("result_of_this_crate:\n{:#?}", result_of_this_crate);
+        // println!("result_of_standard:\n{:#?}", result_of_standard);
+
+        assert_alignment_results_by_index_are_same(
+            &result_of_this_crate,
+            &result_of_standard,
+        );
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct CmpableAlignmentResult {
     penalty: usize,
@@ -158,8 +267,12 @@ fn assert_alignment_results_by_index_are_same(
     println!("Results count: {}", first_keys.len());
 
     for key in first_keys {
-        let first_results_set = CmpableAlignmentResult::from_alignment_results(first_results.0.get(&key).unwrap());
-        let second_results_set = CmpableAlignmentResult::from_alignment_results(second_results.0.get(&key).unwrap());
+        let first_results_set = CmpableAlignmentResult::from_alignment_results(
+            first_results.0.get(&key).unwrap()
+        );
+        let second_results_set = CmpableAlignmentResult::from_alignment_results(
+            second_results.0.get(&key).unwrap()
+        );
 
         assert_eq!(first_results_set, second_results_set);
     }
