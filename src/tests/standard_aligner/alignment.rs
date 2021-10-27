@@ -282,7 +282,7 @@ pub fn local_alignment_with_position(
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
-                    end_index_of_operations: end_index + 1,
+                    end_index_of_operations: end_index,
                 });
 
                 right_accumulated_length += 1;
@@ -293,7 +293,7 @@ pub fn local_alignment_with_position(
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
-                    end_index_of_operations: end_index + 1,
+                    end_index_of_operations: end_index,
                 });
 
                 right_accumulated_length += 1;
@@ -308,7 +308,7 @@ pub fn local_alignment_with_position(
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
-                    end_index_of_operations: end_index + 1,
+                    end_index_of_operations: end_index,
                 });
 
                 right_accumulated_length += 1;

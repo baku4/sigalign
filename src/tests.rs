@@ -196,6 +196,10 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
     for (query_record_index, (label, query)) in query_fasta_records.into_iter().enumerate() {
         println!("{:?} - {:?}", query_record_index, label);
 
+        if query_record_index < 1212 {
+            continue
+        }
+
         let start_time_1 = Instant::now();
         let result_of_this_crate = aligner.local_alignment_unchecked(
             &mut reference,
