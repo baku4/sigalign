@@ -282,7 +282,7 @@ pub fn local_alignment_with_position(
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
-                    end_index_of_operations: end_index,
+                    end_index_of_operations: end_index + 1,
                 });
 
                 right_accumulated_length += 1;
@@ -293,7 +293,7 @@ pub fn local_alignment_with_position(
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
-                    end_index_of_operations: end_index,
+                    end_index_of_operations: end_index + 1,
                 });
 
                 right_accumulated_length += 1;
@@ -308,7 +308,7 @@ pub fn local_alignment_with_position(
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
-                    end_index_of_operations: end_index,
+                    end_index_of_operations: end_index + 1,
                 });
 
                 right_accumulated_length += 1;
@@ -325,9 +325,9 @@ pub fn local_alignment_with_position(
 
     // Add last
     right_points_of_local.push(RightPointOfLocalAlignment {
-        penalty: right_accumulated_penalty,
-        length: right_accumulated_length,
-        end_index_of_operations: right_operations.len() - 1,
+        penalty: right_semi_global_penalty,
+        length: right_semi_global_length,
+        end_index_of_operations: right_operations.len(),
     });
 
     // Get best position
@@ -375,7 +375,7 @@ pub fn local_alignment_with_position(
         };
 
         // Add right
-        for operation in &right_operations[..=best_position.1.end_index_of_operations] {
+        for operation in &right_operations[..best_position.1.end_index_of_operations] {
             add_one_operation(
                 &mut operations,
                 operation
@@ -403,7 +403,7 @@ pub fn local_alignment_with_position(
         }
     });
 
-    right_operations[..=best_position.1.end_index_of_operations].iter().for_each(|x| {
+    right_operations[..best_position.1.end_index_of_operations].iter().for_each(|x| {
         match x {
             AlignmentOperationFromCrateBio::Ins => {
                 right_inbound_insertion_count += 1;
