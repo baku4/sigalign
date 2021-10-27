@@ -349,6 +349,10 @@ pub fn local_alignment_with_position(
         }
     }
 
+    // println!("left_points_of_local:\n{:?}", left_points_of_local);
+    // println!("right_points_of_local:\n{:?}", right_points_of_local);
+    // println!("best_position:\n{:?}", best_position);
+
     let best_position = match best_position {
         Some(best_position) => best_position,
         None => return None
@@ -417,11 +421,11 @@ pub fn local_alignment_with_position(
 
     let position = AlignmentPosition {
         record: (
-            record_start_position - best_position.0.length + left_inbound_deletion_count,
+            record_start_position + left_inbound_deletion_count- best_position.0.length,
             record_start_position + pattern_size + best_position.1.length - right_inbound_deletion_count
         ),
         query: (
-            query_start_position - best_position.0.length + left_inbound_insertion_count,
+            query_start_position + left_inbound_insertion_count - best_position.0.length,
             query_start_position + pattern_size + best_position.1.length - right_inbound_insertion_count
         ),
     };
