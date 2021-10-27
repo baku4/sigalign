@@ -32,13 +32,13 @@ fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
         sequence_provider
     };
     
-    test_results_of_nucleotide_only_for_semi_global(
+    print_results_of_nucleotide_only_for_semi_global(
         fasta_file_for_reference,
         sequence_provider,
     );
 }
 
-fn test_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
+fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
     fasta_file_for_reference: &str,
     sequence_provider: S,
 ) {
@@ -111,7 +111,7 @@ fn test_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
 
         println!("Time elapsed: {}, {}", duration_1, duration_2);
 
-        assert_alignment_results_by_index_are_same(
+        print_alignment_results_by_index_are_same(
             &result_of_this_crate,
             &result_of_standard,
         );
@@ -133,13 +133,13 @@ fn test_results_of_nucleotide_only_for_local_with_in_memory_provider() {
         sequence_provider
     };
     
-    test_results_of_nucleotide_only_for_local(
+    print_results_of_nucleotide_only_for_local(
         fasta_file_for_reference,
         sequence_provider,
     );
 }
 
-fn test_results_of_nucleotide_only_for_local<S: SequenceProvider>(
+fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
     fasta_file_for_reference: &str,
     sequence_provider: S,
 ) {
@@ -196,11 +196,6 @@ fn test_results_of_nucleotide_only_for_local<S: SequenceProvider>(
     for (query_record_index, (label, query)) in query_fasta_records.into_iter().enumerate() {
         println!("{:?} - {:?}", query_record_index, label);
 
-        // if query_record_index <= 290 {
-        //     println!("SKIP");
-        //     continue
-        // }
-
         let start_time_1 = Instant::now();
         let result_of_this_crate = aligner.local_alignment_unchecked(
             &mut reference,
@@ -217,24 +212,21 @@ fn test_results_of_nucleotide_only_for_local<S: SequenceProvider>(
 
         println!("Time elapsed: {}, {}", duration_1, duration_2);
 
-        // println!("result_of_this_crate:\n{:#?}", result_of_this_crate);
-        // println!("result_of_standard:\n{:#?}", result_of_standard);
-
-        assert_alignment_results_by_index_are_same(
+        print_alignment_results_by_index_are_same(
             &result_of_this_crate,
             &result_of_standard,
         );
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Hash, Clone)]
 struct CmpableAlignmentResult {
     penalty: usize,
     length: usize,
     position: AlignmentPosition,
 }
 impl CmpableAlignmentResult {
-    fn from_alignment_results(alignment_results: &Vec<AlignmentResult>) -> HashSet<Self> {
+    fn alignment_results_to_hash_set_selves(alignment_results: &Vec<AlignmentResult>) -> HashSet<Self> {
         alignment_results.iter().map(|AlignmentResult {
             dissimilarity: _,
             penalty,
@@ -249,14 +241,70 @@ impl CmpableAlignmentResult {
             }
         }).collect()
     }
+    fn alignment_results_to_sorted_selves(alignment_results: &Vec<AlignmentResult>) -> Vec<Self> {
+        let mut vector_of_selves: Vec<Self> = alignment_results.iter().map(|AlignmentResult {
+            dissimilarity: _,
+            penalty,
+            length,
+            position,
+            operations: _,
+        } | {
+            Self {
+                penalty: *penalty,
+                length: *length,
+                position: position.clone(),
+            }
+        }).collect();
+
+        vector_of_selves.sort_by(|a, b| {
+            if a.penalty == b.penalty {
+                if a.length == b.length {
+                    if a.position.record == b.position.record {
+                        a.position.query.partial_cmp(&b.position.query).unwrap()
+                    } else {
+                        a.position.record.partial_cmp(&b.position.record).unwrap()
+                    }
+                } else {
+                    a.length.partial_cmp(&b.length).unwrap()
+                }
+            } else {
+                a.penalty.partial_cmp(&b.penalty).unwrap()
+            }
+        });
+
+        vector_of_selves
+    }
 }
 
+impl PartialEq for CmpableAlignmentResult {
+    fn eq(&self, other: &Self) -> bool {
+        (
+            self.penalty == other.penalty
+            && self.position == other.position
+        ) || (
+            self.penalty == other.penalty
+            && self.length == other.length
+            && (
+                (
+                    self.position.record.0 == other.position.record.0
+                    && self.position.query.0 == other.position.query.0
+                ) || (
+                    self.position.record.1 == other.position.record.1
+                    && self.position.query.1 == other.position.query.1
+                )
+            )
+        )
+    }
+}
+
+impl Eq for CmpableAlignmentResult {}
+
 fn assert_alignment_results_by_index_are_same(
-    first_results: &AlignmentResultsByRecordIndex,
-    second_results: &AlignmentResultsByRecordIndex,
+    result_of_this_crate: &AlignmentResultsByRecordIndex,
+    result_of_standard: &AlignmentResultsByRecordIndex,
 ) {
-    let mut first_keys: Vec<usize> = first_results.0.keys().map(|x| {*x}).collect();
-    let mut second_keys: Vec<usize> = second_results.0.keys().map(|x| {*x}).collect();
+    let mut first_keys: Vec<usize> = result_of_this_crate.0.keys().map(|x| {*x}).collect();
+    let mut second_keys: Vec<usize> = result_of_standard.0.keys().map(|x| {*x}).collect();
 
     first_keys.sort();
     second_keys.sort();
@@ -267,13 +315,45 @@ fn assert_alignment_results_by_index_are_same(
     println!("Results count: {}", first_keys.len());
 
     for key in first_keys {
-        let first_results_set = CmpableAlignmentResult::from_alignment_results(
-            first_results.0.get(&key).unwrap()
+        let first_sorted_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
+            result_of_this_crate.0.get(&key).unwrap()
         );
-        let second_results_set = CmpableAlignmentResult::from_alignment_results(
-            second_results.0.get(&key).unwrap()
+        let second_sorted_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
+            result_of_standard.0.get(&key).unwrap()
         );
 
-        assert_eq!(first_results_set, second_results_set);
+        assert_eq!(first_sorted_results, second_sorted_results);
+    }
+}
+
+fn print_alignment_results_by_index_are_same(
+    result_of_this_crate: &AlignmentResultsByRecordIndex,
+    result_of_standard: &AlignmentResultsByRecordIndex,
+) {
+    let mut first_keys: Vec<usize> = result_of_this_crate.0.keys().map(|x| {*x}).collect();
+    let mut second_keys: Vec<usize> = result_of_standard.0.keys().map(|x| {*x}).collect();
+
+    first_keys.sort();
+    second_keys.sort();
+
+    // Check if keys are same
+    assert_eq!(first_keys, second_keys);
+
+    println!("Results count: {}", first_keys.len());
+
+    for key in first_keys {
+        let first_results_set = CmpableAlignmentResult::alignment_results_to_hash_set_selves(
+            result_of_this_crate.0.get(&key).unwrap()
+        );
+        let second_results_set = CmpableAlignmentResult::alignment_results_to_hash_set_selves(
+            result_of_standard.0.get(&key).unwrap()
+        );
+
+        if first_results_set == second_results_set {
+            println!("Same")
+        } else {
+            println!("result_of_this_crate:\n{:#?}", result_of_this_crate);
+            println!("result_of_standard:\n{:#?}", result_of_standard);
+        }
     }
 }

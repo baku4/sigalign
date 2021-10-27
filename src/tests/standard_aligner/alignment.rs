@@ -182,152 +182,152 @@ pub fn local_alignment_with_position(
     //
     // (1) Left
     let mut left_points_of_local: Vec<LeftPointOfLocalAlignment> = Vec::new();
-    
-    let left_semi_global_penalty = (left_alignment.score * -1) as usize;
-    let left_semi_global_length = left_alignment.operations.iter().filter(|&x| {
-        match x {
-            AlignmentOperationFromCrateBio::Xclip(_) => false,
-            AlignmentOperationFromCrateBio::Yclip(_) => false,
-            _ => true,
-        }
-    }).count();
 
-    let mut left_operations: Vec<AlignmentOperation> = Vec::new();
-    left_alignment.operations.iter().for_each(|operation| {
-        add_one_operation(
-            &mut left_operations,
-            operation
-        );
+    let left_operations: Vec<AlignmentOperationFromCrateBio> = left_alignment.operations.iter().filter_map(|&x| {
+        match x {
+            AlignmentOperationFromCrateBio::Xclip(_) | AlignmentOperationFromCrateBio::Yclip(_) => None,
+            _ => Some(x),
+        }
+    }).collect();
+    let left_semi_global_penalty = (left_alignment.score * -1) as usize;
+    let left_semi_global_length = left_operations.len();
+
+    let mut left_accumulated_penalty = 0;
+    let mut left_accumulated_length = 0;
+
+    let mut previous_alignment_operation = AlignmentOperationFromCrateBio::Match;
+
+    left_operations.iter().enumerate().rev().for_each(|(start_index, operation_from_crate_bio)| {
+        match operation_from_crate_bio {
+            AlignmentOperationFromCrateBio::Match => {
+                left_accumulated_length += 1;
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Match;
+            },
+            AlignmentOperationFromCrateBio::Subst => {
+                left_points_of_local.push(LeftPointOfLocalAlignment {
+                    penalty: left_accumulated_penalty,
+                    length: left_accumulated_length,
+                    start_index_of_operations: start_index,
+                });
+
+                left_accumulated_length += 1;
+                left_accumulated_penalty += mismatch_penalty;
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Subst;
+            },
+            AlignmentOperationFromCrateBio::Ins => {
+                left_points_of_local.push(LeftPointOfLocalAlignment {
+                    penalty: left_accumulated_penalty,
+                    length: left_accumulated_length,
+                    start_index_of_operations: start_index,
+                });
+
+                left_accumulated_length += 1;
+                if previous_alignment_operation ==  AlignmentOperationFromCrateBio::Ins {
+                    left_accumulated_penalty += gap_extend_penalty;
+                } else {
+                    left_accumulated_penalty += gap_open_penalty + gap_extend_penalty;
+                }
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Ins;
+            },
+            AlignmentOperationFromCrateBio::Del => {
+                left_points_of_local.push(LeftPointOfLocalAlignment {
+                    penalty: left_accumulated_penalty,
+                    length: left_accumulated_length,
+                    start_index_of_operations: start_index,
+                });
+
+                left_accumulated_length += 1;
+                if previous_alignment_operation ==  AlignmentOperationFromCrateBio::Del {
+                    left_accumulated_penalty += gap_extend_penalty;
+                } else {
+                    left_accumulated_penalty += gap_open_penalty + gap_extend_penalty;
+                }
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Del;
+            },
+            _ => {},
+        }
     });
-    // Add first
+
+    // Add last
     left_points_of_local.push(LeftPointOfLocalAlignment {
         penalty: left_semi_global_penalty,
         length: left_semi_global_length,
         start_index_of_operations: 0,
     });
 
-    let mut left_accumulated_penalty = 0;
-    let mut left_accumulated_length = 0;
-    left_operations.iter().enumerate().for_each(|(
-        start_index, AlignmentOperation { alignment_type, count }
-    )| {
-        match alignment_type {
-            AlignmentType::Match => {
-                left_accumulated_length += *count as usize;
-            },
-            AlignmentType::Subst => {
-                left_points_of_local.push(LeftPointOfLocalAlignment {
-                    penalty: left_semi_global_penalty - left_accumulated_penalty,
-                    length: left_semi_global_length - left_accumulated_length,
-                    start_index_of_operations: start_index,
-                });
-
-                for _ in 0..*count {
-                    left_accumulated_penalty += mismatch_penalty;
-                    left_accumulated_length += 1;
-
-                    left_points_of_local.push(LeftPointOfLocalAlignment {
-                        penalty: left_semi_global_penalty - left_accumulated_penalty,
-                        length: left_semi_global_length - left_accumulated_length,
-                        start_index_of_operations: start_index,
-                    });
-                }
-            },
-            AlignmentType::Insertion | AlignmentType::Deletion => {
-                left_points_of_local.push(LeftPointOfLocalAlignment {
-                    penalty: left_semi_global_penalty - left_accumulated_penalty,
-                    length: left_semi_global_length - left_accumulated_length,
-                    start_index_of_operations: start_index,
-                });
-
-                left_accumulated_penalty += gap_open_penalty;
-                for _ in 0..*count {
-                    left_accumulated_penalty += gap_extend_penalty;
-                    left_accumulated_length += 1;
-
-                    left_points_of_local.push(LeftPointOfLocalAlignment {
-                        penalty: left_semi_global_penalty - left_accumulated_penalty,
-                        length: left_semi_global_length - left_accumulated_length,
-                        start_index_of_operations: start_index,
-                    });
-                }
-            },
-        }
-    });
-
     // (2) Right
     let mut right_points_of_local: Vec<RightPointOfLocalAlignment> = Vec::new();
 
-    let mut right_operations: Vec<AlignmentOperation> = Vec::new();
-    right_alignment.operations.iter().for_each(|operation| {
-        add_one_operation(
-            &mut right_operations,
-            operation
-        );
-    });
+    let right_operations: Vec<AlignmentOperationFromCrateBio> = right_alignment.operations.iter().filter_map(|&x| {
+        match x {
+            AlignmentOperationFromCrateBio::Xclip(_) | AlignmentOperationFromCrateBio::Yclip(_) => None,
+            _ => Some(x),
+        }
+    }).collect();
+    let right_semi_global_penalty = (right_alignment.score * -1) as usize;
+    let right_semi_global_length = right_operations.len();
 
     let mut right_accumulated_penalty = 0;
     let mut right_accumulated_length = 0;
-    right_operations.iter().enumerate().for_each(|(
-        end_index, AlignmentOperation { alignment_type, count }
-    )| {
-        match alignment_type {
-            AlignmentType::Match => {
-                right_accumulated_length += *count as usize;
+
+    let mut previous_alignment_operation = AlignmentOperationFromCrateBio::Match;
+
+    right_operations.iter().enumerate().rev().for_each(|(end_index, operation_from_crate_bio)| {
+        match operation_from_crate_bio {
+            AlignmentOperationFromCrateBio::Match => {
+                right_accumulated_length += 1;
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Match;
             },
-            AlignmentType::Subst => {
+            AlignmentOperationFromCrateBio::Subst => {
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
                     end_index_of_operations: end_index,
                 });
 
-                for _ in 0..*count {
-                    right_accumulated_penalty += mismatch_penalty;
-                    right_accumulated_length += 1;
-
-                    right_points_of_local.push(RightPointOfLocalAlignment {
-                        penalty: right_accumulated_penalty,
-                        length: right_accumulated_length,
-                        end_index_of_operations: end_index,
-                    });
-                }
+                right_accumulated_length += 1;
+                right_accumulated_penalty += mismatch_penalty;
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Subst;
             },
-            AlignmentType::Insertion | AlignmentType::Deletion  => {
+            AlignmentOperationFromCrateBio::Ins => {
                 right_points_of_local.push(RightPointOfLocalAlignment {
                     penalty: right_accumulated_penalty,
                     length: right_accumulated_length,
                     end_index_of_operations: end_index,
                 });
 
-                right_accumulated_penalty += gap_open_penalty;
-                for _ in 0..*count {
+                right_accumulated_length += 1;
+                if previous_alignment_operation ==  AlignmentOperationFromCrateBio::Ins {
                     right_accumulated_penalty += gap_extend_penalty;
-                    right_accumulated_length += 1;
-
-                    right_points_of_local.push(RightPointOfLocalAlignment {
-                        penalty: right_accumulated_penalty,
-                        length: right_accumulated_length,
-                        end_index_of_operations: end_index,
-                    });
+                } else {
+                    right_accumulated_penalty += gap_open_penalty + gap_extend_penalty;
                 }
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Ins;
             },
+            AlignmentOperationFromCrateBio::Del => {
+                right_points_of_local.push(RightPointOfLocalAlignment {
+                    penalty: right_accumulated_penalty,
+                    length: right_accumulated_length,
+                    end_index_of_operations: end_index,
+                });
+
+                right_accumulated_length += 1;
+                if previous_alignment_operation ==  AlignmentOperationFromCrateBio::Del {
+                    right_accumulated_penalty += gap_extend_penalty;
+                } else {
+                    right_accumulated_penalty += gap_open_penalty + gap_extend_penalty;
+                }
+                previous_alignment_operation = AlignmentOperationFromCrateBio::Del;
+            },
+            _ => {},
         }
     });
-    // Add last
-    let right_semi_global_penalty = (right_alignment.score * -1) as usize;
-    let right_semi_global_length = right_alignment.operations.iter().filter(|&x| {
-        match x {
-            AlignmentOperationFromCrateBio::Xclip(_) => false,
-            AlignmentOperationFromCrateBio::Yclip(_) => false,
-            _ => true,
-        }
-    }).count();
 
+    // Add last
     right_points_of_local.push(RightPointOfLocalAlignment {
-        penalty: right_semi_global_penalty,
-        length: right_semi_global_length,
-        end_index_of_operations: right_operations.len(),
+        penalty: right_accumulated_penalty,
+        length: right_accumulated_length,
+        end_index_of_operations: right_operations.len() - 1,
     });
 
     // Get best position
@@ -349,51 +349,38 @@ pub fn local_alignment_with_position(
         }
     }
 
-    // println!("left_points_of_local:\n{:?}", left_points_of_local);
-    // println!("right_points_of_local:\n{:?}", right_points_of_local);
-
     let best_position = match best_position {
         Some(best_position) => best_position,
         None => return None
     };
 
-    // println!("best_position:\n{:?}", best_position);
-
     // Get operations
     let operations = {
         let mut operations: Vec<AlignmentOperation> = Vec::new();
-        operations.extend_from_slice(&left_operations[best_position.0.start_index_of_operations..]);
 
-        if let Some(AlignmentOperation {
-            alignment_type: AlignmentType::Match,
-            count,
-        }) = operations.last_mut() {
-            *count += pattern_size as u32;
-        } else {
-            operations.push(
-                AlignmentOperation {
-                    alignment_type: AlignmentType::Match,
-                    count: pattern_size as u32,
-                }
-            )
-        }
+        // Add left
+        for operation in &left_operations[best_position.0.start_index_of_operations..] {
+            add_one_operation(
+                &mut operations,
+                operation
+            );
+        };
 
-        if let Some(AlignmentOperation {
-            alignment_type: AlignmentType::Match,
-            count,
-        }) = right_operations.first() {
-            {
-                let last_operation = operations.last_mut().unwrap();
-                last_operation.count += *count;
-            }
-            operations.extend_from_slice(
-                &right_operations[1..best_position.1.end_index_of_operations]
+        // Add pattern sized 'Match'
+        for _ in 0..pattern_size {
+            add_one_operation(
+                &mut operations,
+                &AlignmentOperationFromCrateBio::Match,
             );
-        } else {
-            operations.extend_from_slice(
-                &right_operations[..best_position.1.end_index_of_operations]
+        };
+
+        // Add right
+        for operation in &right_operations[..=best_position.1.end_index_of_operations] {
+            add_one_operation(
+                &mut operations,
+                operation
             );
-        }
+        };
 
         operations
     };
@@ -404,27 +391,27 @@ pub fn local_alignment_with_position(
     let mut right_inbound_insertion_count = 0;
     let mut right_inbound_deletion_count = 0;
 
-    left_operations[best_position.0.start_index_of_operations..].iter().for_each(|AlignmentOperation { alignment_type, count }| {
-        match alignment_type {
-            AlignmentType::Insertion => {
-                left_inbound_insertion_count += *count as usize;
+    left_operations[best_position.0.start_index_of_operations..].iter().for_each(|x| {
+        match x {
+            AlignmentOperationFromCrateBio::Ins => {
+                left_inbound_insertion_count += 1;
             },
-            AlignmentType::Deletion => {
-                left_inbound_deletion_count += *count as usize;
+            AlignmentOperationFromCrateBio::Del => {
+                left_inbound_deletion_count += 1;
             },
-            _ => (),
+            _ => {},
         }
     });
 
-    right_operations[..best_position.1.end_index_of_operations].iter().for_each(|AlignmentOperation { alignment_type, count }| {
-        match alignment_type {
-            AlignmentType::Insertion => {
-                right_inbound_insertion_count += *count as usize;
+    right_operations[..=best_position.1.end_index_of_operations].iter().for_each(|x| {
+        match x {
+            AlignmentOperationFromCrateBio::Ins => {
+                right_inbound_insertion_count += 1;
             },
-            AlignmentType::Deletion => {
-                right_inbound_deletion_count += *count as usize;
+            AlignmentOperationFromCrateBio::Del => {
+                right_inbound_deletion_count += 1;
             },
-            _ => (),
+            _ => {},
         }
     });
 
