@@ -341,7 +341,12 @@ fn print_alignment_results_by_index_are_same(
     second_keys.sort();
 
     // Check if keys are same
-    assert_eq!(first_keys, second_keys);
+    
+    if first_keys != second_keys {
+        println!("Keys are different");
+        println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate);
+        println!(" - result_of_standard:\n{:#?}", result_of_standard);
+    }
 
     println!("Results count: {}", first_keys.len());
 
