@@ -346,6 +346,7 @@ fn print_alignment_results_by_index_are_same(
         println!("Keys are different");
         println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate);
         println!(" - result_of_standard:\n{:#?}", result_of_standard);
+        return
     }
 
     println!("Results count: {}", first_keys.len());
