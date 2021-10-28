@@ -11,9 +11,6 @@ use sample_data::*;
 mod standard_aligner;
 use standard_aligner::*; 
 
-mod fasta_reader;
-use fasta_reader::*;
-
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 

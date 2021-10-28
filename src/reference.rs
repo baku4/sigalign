@@ -38,7 +38,11 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
-    pub fn new(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Result<Self> {
+    pub fn new(
+        sequence_type: SequenceType,
+        lt_fm_index_config: LtFmIndexConfig,
+        mut sequence_provider: S
+    ) -> Result<Self> {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
 
@@ -65,7 +69,11 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
-    fn new_unchecked(sequence_type: SequenceType, lt_fm_index_config: LtFmIndexConfig, mut sequence_provider: S) -> Self {
+    pub fn new_unchecked(
+        sequence_type: SequenceType,
+        lt_fm_index_config: LtFmIndexConfig,
+        mut sequence_provider: S
+    ) -> Self {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
 
@@ -86,7 +94,7 @@ impl<S: SequenceProvider> Reference<S> {
             sequence_provider,
         }
     }
-    fn set_search_range(&mut self, mut search_range: Vec<usize>) -> Result<()> {
+    pub fn set_search_range(&mut self, mut search_range: Vec<usize>) -> Result<()> {
         search_range.sort();
         match search_range.last() {
             Some(&last_record_index) => {
@@ -100,7 +108,7 @@ impl<S: SequenceProvider> Reference<S> {
             None => error_msg!("Search range is empty.")
         }
     }
-    fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
+    pub fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
         self.search_range = search_range;
     }
 }

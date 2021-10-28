@@ -1,6 +1,6 @@
 use crate::{Result, error_msg};
 use crate::core::{ReferenceInterface, Sequence};
-use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsByRecordLabel, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
+use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
@@ -112,7 +112,7 @@ impl Aligner {
         &self,
         reference: &mut Reference<SL>,
         query: Sequence
-    ) -> Result<AlignmentResultsByRecordLabel> {
+    ) -> Result<AlignmentResultsWithLabelByRecordIndex> {
         Self::query_is_in_reference_bound(reference, query)?;
         let alignment_results_raw = self.semi_global_alignment_raw(reference, query)?;
         let alignment_results_labeled_raw = alignment_results_raw.to_labeled_results(reference);
@@ -163,7 +163,7 @@ impl Aligner {
         &self,
         reference: &mut Reference<SL>,
         query: Sequence
-    ) -> Result<AlignmentResultsByRecordLabel> {
+    ) -> Result<AlignmentResultsWithLabelByRecordIndex> {
         Self::query_is_in_reference_bound(reference, query)?;
         let alignment_results_raw = self.local_alignment_raw(reference, query)?;
         let alignment_results_labeled_raw = alignment_results_raw.to_labeled_results(reference);

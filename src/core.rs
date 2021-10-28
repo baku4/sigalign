@@ -60,7 +60,9 @@ pub struct PatternLocation {
 pub struct AlignmentResultsByRecordIndex(pub HashMap<usize, Vec<AlignmentResult>>);
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AlignmentResultsByRecordLabel(pub HashMap<String, Vec<AlignmentResult>>);
+pub struct AlignmentResultsWithLabelByRecordIndex(
+    pub HashMap<usize, (String, Vec<AlignmentResult>)>
+);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AlignmentResult {
