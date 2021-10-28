@@ -1,3 +1,4 @@
+// #![allow(dead_code, unused)]
 use super::*;
 use crate::core::*;
 use crate::reference::*;
@@ -60,7 +61,7 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
         let lt_fm_index_config = LtFmIndexConfig::new()
             .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
 
-        let reference = Reference::new_with_sequence_type(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = Reference::new_with_config(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
         
         let duration = start_time.elapsed().as_millis();
         println!("Generate reference: {:?}", duration);
@@ -161,7 +162,7 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
         let lt_fm_index_config = LtFmIndexConfig::new()
             .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
 
-        let reference = Reference::new_with_sequence_type(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = Reference::new_with_config(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
         
         let duration = start_time.elapsed().as_millis();
         println!("Generate reference: {:?}", duration);
@@ -363,5 +364,40 @@ fn print_alignment_results_by_index_are_same(
             println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate.0.get(&key).unwrap());
             println!(" - result_of_standard:\n{:#?}", result_of_standard.0.get(&key).unwrap());
         }
+    }
+}
+
+mod example {
+    #[test]
+    fn print_library_example_quick_start() {
+        use crate::{Reference, Aligner};
+        use crate::reference::InMemoryProvider;
+
+        // (1) Make `Reference`
+        let mut sequence_provider = InMemoryProvider::new_empty();
+        sequence_provider.add_labeled_sequence(
+            "record_1".to_string(),
+            b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA".to_vec(),
+        );
+        sequence_provider.add_labeled_sequence(
+            "record_2".to_string(),
+            b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT".to_vec(),
+        );
+        let mut reference = Reference::new_with_default_config(sequence_provider).unwrap();
+
+        // (2) Make `Aligner`
+        let aligner = Aligner::new(4, 6, 2, 100, 0.1).unwrap();
+
+        // (3) Alignment with query
+        let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+        // - Semi-global alignment
+        let result_semi_global: String = aligner.semi_global_alignment_labeled(&mut reference, query).unwrap();
+        // - Local alignment
+        let result_local: String = aligner.local_alignment_labeled(&mut reference, query).unwrap();
+
+        println!("aligner:\n{:#?}", aligner);
+
+        println!("{:#?}", result_semi_global);
+        println!("{:#?}", result_local);
     }
 }

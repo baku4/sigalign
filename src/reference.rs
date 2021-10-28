@@ -9,6 +9,7 @@ mod io;
 mod test_reference;
 
 use pattern_matching::LtFmIndex;
+/// Default implementations for [SequenceProvider]
 pub use sequence_provider::{InMemoryProvider, IndexedFastaProvider, SqliteProvider};
 #[cfg(test)]
 pub use test_reference::TestReference;
@@ -38,7 +39,33 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
-    pub fn new(
+    pub fn new_with_default_config(mut sequence_provider: S) -> Result<Self> {
+        let total_record_count = sequence_provider.total_record_count();
+        let search_range = (0..total_record_count).collect();
+
+        let (joined_sequence, accumulated_lengths) = sequence_provider.joined_sequence_and_accumulated_lengths();
+
+        let sequence_type = SequenceType::inferred_from_sequence(&joined_sequence)?;
+        let lt_fm_index_config = LtFmIndexConfig::new();
+
+        let pattern_locater = PatternLocater::new(
+            &sequence_type,
+            lt_fm_index_config,
+            joined_sequence,
+            accumulated_lengths
+        );
+
+        Ok(
+            Self {
+                sequence_type,
+                total_record_count,
+                search_range,
+                pattern_locater,
+                sequence_provider,
+            }
+        )
+    }
+    pub fn new_with_lt_fm_index_config(
         lt_fm_index_config: LtFmIndexConfig,
         mut sequence_provider: S
     ) -> Result<Self> {
@@ -66,7 +93,7 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
-    pub fn new_with_sequence_type(
+    pub fn new_with_config(
         sequence_type: SequenceType,
         lt_fm_index_config: LtFmIndexConfig,
         mut sequence_provider: S

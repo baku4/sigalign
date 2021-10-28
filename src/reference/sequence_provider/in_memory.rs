@@ -28,28 +28,42 @@ impl Labeling for InMemoryProvider {
 }
 
 impl InMemoryProvider {
-    pub fn from_sequence(sequence: Vec<u8>) -> Self {
-        let sequence_record = SequenceRecord::new_forward(DEFAULT_LABEL.to_string(), sequence);
-
+    pub fn new_empty() -> Self {
         Self {
-            records: vec![sequence_record]
+            records: Vec::new(),
         }
     }
-    pub fn from_sequence_of_nucleotide_with_reverse_complement(sequence: Vec<u8>) -> Self {
+    pub fn add_labeled_sequence(&mut self, label: String, sequence: Vec<u8>) {
+        let sequence_record = SequenceRecord::new_forward(label, sequence);
+
+        self.records.push(sequence_record);
+    }
+    pub fn add_labeled_sequence_of_nucleotide_with_reverse_complement(&mut self, label: String, sequence: Vec<u8>) {
         let reverse_complement_sequence = reverse_complement_of_nucleotide_sequence(&sequence);
 
         let sequence_record_forward = SequenceRecord::new_forward(
-            DEFAULT_LABEL.to_string(),
+            label.clone(),
             sequence,
         );
         let sequence_record_reverse = SequenceRecord::new_reverse(
-            DEFAULT_LABEL.to_string(),
+            label,
             reverse_complement_sequence,
         );
 
-        Self {
-            records: vec![sequence_record_forward, sequence_record_reverse]
-        }
+        self.records.push(sequence_record_forward);
+        self.records.push(sequence_record_reverse);
+    }
+    pub fn from_one_sequence(sequence: Vec<u8>) -> Self {
+        let mut in_memory_provider = Self::new_empty();
+        in_memory_provider.add_labeled_sequence(DEFAULT_LABEL.to_string(), sequence);
+
+        in_memory_provider
+    }
+    pub fn from_one_sequence_of_nucleotide_with_reverse_complement(sequence: Vec<u8>) -> Self {
+        let mut in_memory_provider = Self::new_empty();
+        in_memory_provider.add_labeled_sequence_of_nucleotide_with_reverse_complement(DEFAULT_LABEL.to_string(), sequence);
+
+        in_memory_provider
     }
     pub fn from_fasta_file<P: AsRef<Path> + std::fmt::Debug>(
         file_path: P,
