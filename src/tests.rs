@@ -60,7 +60,7 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
         let lt_fm_index_config = LtFmIndexConfig::new()
             .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
 
-        let reference = Reference::new(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = Reference::new_with_sequence_type(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
         
         let duration = start_time.elapsed().as_millis();
         println!("Generate reference: {:?}", duration);
@@ -161,7 +161,7 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
         let lt_fm_index_config = LtFmIndexConfig::new()
             .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
 
-        let reference = Reference::new(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = Reference::new_with_sequence_type(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
         
         let duration = start_time.elapsed().as_millis();
         println!("Generate reference: {:?}", duration);

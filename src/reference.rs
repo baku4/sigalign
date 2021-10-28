@@ -39,6 +39,34 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 
 impl<S: SequenceProvider> Reference<S> {
     pub fn new(
+        lt_fm_index_config: LtFmIndexConfig,
+        mut sequence_provider: S
+    ) -> Result<Self> {
+        let total_record_count = sequence_provider.total_record_count();
+        let search_range = (0..total_record_count).collect();
+
+        let (joined_sequence, accumulated_lengths) = sequence_provider.joined_sequence_and_accumulated_lengths();
+
+        let sequence_type = SequenceType::inferred_from_sequence(&joined_sequence)?;
+
+        let pattern_locater = PatternLocater::new(
+            &sequence_type,
+            lt_fm_index_config,
+            joined_sequence,
+            accumulated_lengths
+        );
+
+        Ok(
+            Self {
+                sequence_type,
+                total_record_count,
+                search_range,
+                pattern_locater,
+                sequence_provider,
+            }
+        )
+    }
+    pub fn new_with_sequence_type(
         sequence_type: SequenceType,
         lt_fm_index_config: LtFmIndexConfig,
         mut sequence_provider: S
@@ -122,12 +150,82 @@ impl<SL: SequenceProvider + Labeling> Reference<SL> {
 const NUCLEOTIDE_UTF8: [u8; 4] = [65, 67, 71, 84]; // A, C, G, T
 const AMINO_ACID_UTF8: [u8; 20] = [65, 67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 89]; // A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SequenceType {
     allowed_type: AllowedSequenceType,
     utf8_chr_of_type: Vec<u8>,
 }
 impl SequenceType {
+    pub fn inferred_from_sequence(sequence: Sequence) -> Result<Self> {
+        let mut presume_nucleotide = true;
+        let mut noise_of_nucleotide = None;
+        let mut noise_of_amino_acid = None;
+
+        for &character in sequence {
+            match character {
+                65 | 67 | 71 | 84 => { // ACGT
+                    // nothing to do
+                },
+                68 | 69 | 70 | 72 | 73 | 75 | 76 | 77 | 78
+                | 80 | 81 | 82 | 83 | 86 | 87 | 89 => { // Non ACGT Aminoacid
+                    if presume_nucleotide {
+                        match noise_of_nucleotide {
+                            Some(noise) => {
+                                if noise != character {
+                                    presume_nucleotide = false;
+                                }
+                            },
+                            None => {
+                                noise_of_nucleotide = Some(character);
+                            },
+                        }
+                    }
+                },
+                _ => {
+                    if presume_nucleotide {
+                        match noise_of_nucleotide {
+                            Some(_) => {},
+                            None => {
+                                noise_of_nucleotide = Some(character);
+                            },
+                        }
+                    }
+                    match noise_of_amino_acid {
+                        Some(noise) => {
+                            if noise != character {
+                                error_msg!("Sequence is not supported type")
+                            }
+                        },
+                        None => {
+                            noise_of_amino_acid = Some(character);
+                        },
+                    }
+                },
+            }
+        }
+
+        Ok(
+            if presume_nucleotide {
+                match noise_of_nucleotide {
+                    Some(noise) => {
+                        Self::nucleotide_with_noise(noise)
+                    },
+                    None => {
+                        Self::nucleotide_only()
+                    },
+                }
+            } else {
+                match noise_of_amino_acid {
+                    Some(noise) => {
+                        Self::aminoacid_with_noise(noise)
+                    },
+                    None => {
+                        Self::aminoacid_only()
+                    },
+                }
+            }
+        )
+    }
     pub fn nucleotide_only() -> Self {
         Self {
             allowed_type: AllowedSequenceType::NucleotideOnly,
@@ -166,7 +264,7 @@ impl SequenceType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllowedSequenceType {
     NucleotideOnly, // NO
     NucleotideWithNoise, // NN
@@ -335,4 +433,41 @@ pub trait SequenceProvider {
 
 pub trait Labeling {
     fn label_of_record(&mut self, record_index: usize) -> &str;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_infer_sequence_type() {
+        let nucleotide_only_sequence = b"ACGTACGT";
+        let nucleotide_with_noise_sequence = b"ACGTNACGTN";
+        let amino_acid_only_sequence = b"ACDEFGHIKLMNPQRSTVWYACDEFGHIKLMNPQRSTVWY";
+        let amino_acid_with_noise_sequence = b"ACDEFGHIKLMNPQRSTVWYXACDEFGHIKLMNPQRSTVWYX";
+
+        let errored_sequence = b"ACGTXZ";
+
+        assert_eq!(
+            SequenceType::inferred_from_sequence(nucleotide_only_sequence).unwrap(),
+            SequenceType::nucleotide_only(),
+        );
+
+        assert_eq!(
+            SequenceType::inferred_from_sequence(nucleotide_with_noise_sequence).unwrap(),
+            SequenceType::nucleotide_with_noise(b'N'),
+        );
+
+        assert_eq!(
+            SequenceType::inferred_from_sequence(amino_acid_only_sequence).unwrap(),
+            SequenceType::aminoacid_only(),
+        );
+
+        assert_eq!(
+            SequenceType::inferred_from_sequence(amino_acid_with_noise_sequence).unwrap(),
+            SequenceType::aminoacid_with_noise(b'X'),
+        );
+
+        assert!(SequenceType::inferred_from_sequence(errored_sequence).is_err());
+    }
 }
