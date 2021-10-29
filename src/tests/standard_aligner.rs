@@ -1,4 +1,3 @@
-use std::path::Path;
 use super::*;
 
 mod alignment;
@@ -8,6 +7,9 @@ use alignment::{
 };
 
 use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
+
+use std::path::Path;
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub struct StandardAligner {

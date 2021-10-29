@@ -1,6 +1,6 @@
 /*!
 # sigalign
-## Similarity Guided Alignment Algorithm
+Similarity Guided Alignment Algorithm
 ---
 # Quick Start
 ```rust
@@ -30,6 +30,7 @@ let result_semi_global: String = aligner.semi_global_alignment_labeled(&mut refe
 let result_local: String = aligner.local_alignment_labeled(&mut reference, query).unwrap();
 ```
 */
+
 use anyhow::{Result, bail as error_msg};
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
 

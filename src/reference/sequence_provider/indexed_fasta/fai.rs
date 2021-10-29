@@ -37,8 +37,8 @@ pub fn fai_bytes_and_count_of_fasta_file<P>(file_path: P) -> Result<(Vec<u8>, us
     pre_offset = fai_one_line.offset;
     
     while let Some(l) = fasta_buf_reader.next() {
-        count += 1;
         if l.starts_with(">") { // line is desc
+            count += 1;
             // push last fai
             fai_one_line.length = length;
             fai.push(fai_one_line.clone());

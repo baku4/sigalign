@@ -45,28 +45,42 @@ impl Labeling for SqliteProvider {
 }
 
 impl SqliteProvider {
-    pub fn new_db_from_fasta(db_path: &str, fasta_file_path: &str) -> Result<Self> {
-        let mut sqlite_provider = Self::new_from_db_path(db_path)?;
+    pub fn new_with_in_memory_db_from_fasta(fasta_file_path: &str) -> Result<Self> {
+        let connection = Connection::open_in_memory()?;
+        let mut sqlite_provider = Self {
+            total_record_count: 0,
+            connection,
+            sequence_buffer: Vec::new(),
+            label_buffer: String::new(),
+        };
+        
+        sqlite_provider.create_new_table()?;
+        sqlite_provider.update_rows_with_fasta(fasta_file_path)?;
+
+        Ok(sqlite_provider)
+    }
+    pub fn new_making_db_file_from_fasta(db_file_path: &str, fasta_file_path: &str) -> Result<Self> {
+        let mut sqlite_provider = Self::new_from_db_file(db_file_path)?;
         sqlite_provider.create_new_table()?;
 
         sqlite_provider.update_rows_with_fasta(fasta_file_path)?;
 
         Ok(sqlite_provider)
     }
-    pub fn new_db_from_fasta_of_nucleotide_with_reverse_complement(db_path: &str, fasta_file_path: &str) -> Result<Self> {
-        let mut sqlite_provider = Self::new_from_db_path(db_path)?;
+    pub fn new_making_db_file_from_fasta_of_nucleotide_with_reverse_complement(db_path: &str, fasta_file_path: &str) -> Result<Self> {
+        let mut sqlite_provider = Self::new_from_db_file(db_path)?;
         sqlite_provider.create_new_table()?;
 
         sqlite_provider.update_rows_with_fasta_of_nucleotide_with_reverse_complement(fasta_file_path)?;
 
         Ok(sqlite_provider)
     }
-    pub fn load_from_db_path(db_path: &str) -> Result<Self> {
-        if !Self::db_file_already_exist(db_path) {
+    pub fn load_from_db_file(db_file_path: &str) -> Result<Self> {
+        if !Self::db_file_already_exist(db_file_path) {
             error_msg!("Sqlite database file not exists.")
         }
 
-        let connection = match Connection::open(db_path) {
+        let connection = match Connection::open(db_file_path) {
             Ok(connection) => connection,
             Err(err) => error_msg!("{}", err), 
         };
@@ -81,15 +95,12 @@ impl SqliteProvider {
             }
         )
     }
-    fn new_from_db_path(db_path: &str) -> Result<Self> {
-        #[cfg(test)]
-        std::fs::remove_file(db_path); // TODO: Delete this
-
-        if Self::db_file_already_exist(db_path) {
+    fn new_from_db_file(db_file_path: &str) -> Result<Self> {
+        if Self::db_file_already_exist(db_file_path) {
             error_msg!("Sqlite database file already exists.")
         }
 
-        match Connection::open(db_path) {
+        match Connection::open(db_file_path) {
             Ok(connection) => {
                 Ok(
                     Self {
@@ -103,8 +114,8 @@ impl SqliteProvider {
             Err(err) => error_msg!("{}", err), 
         }
     }
-    fn db_file_already_exist(db_path: &str) -> bool {
-        Path::new(db_path).exists()
+    fn db_file_already_exist(db_file_path: &str) -> bool {
+        Path::new(db_file_path).exists()
     }
     fn create_new_table(&self) -> Result<()> {
         match self.connection.execute(
@@ -126,7 +137,7 @@ impl SqliteProvider {
 
         let mut fasta_reader = FastaReader::from_file_path(fasta_file_path)?;
 
-        while let Some((mut label, sequence)) = fasta_reader.next() {
+        while let Some((label, sequence)) = fasta_reader.next() {
             Self::execute_statement(&mut stmt, label, sequence)?;
             self.total_record_count += 1;
         }

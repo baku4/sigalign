@@ -1,5 +1,5 @@
 # sigalign
-## Similarity Guided Alignment Algorithm
+Similarity Guided Alignment Algorithm
 ---
 # Quick Start
 ```rust
