@@ -1,16 +1,79 @@
+/*! Alignment target [Reference]
+
+`Reference` is a bundle of alignment target sequences.
+
+# (1) Parameters to generate `Reference`
+1. [SequenceType]
+    - Definition of type of Sequence
+        - **Four** types are supported.
+            - Nucleotide only
+                - A, C, G, T
+            - Nucleotide with noise
+                - A, C, G, T + One unspecified character
+            - Aminoacid only
+                - A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
+            - Aminoacid with noise
+                - A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y + One unspecified character
+    - `SequenceType` is optional parameter for `Reference` generation because it can be inferred automatically. If passed, however, the `Reference` generation is faster because the inferring process can be skipped.
+2. [LtFmIndexConfig]
+    - Configurations for `fm-index` data structure of [`lt-fm-index` crate](https://crates.io/crates/lt-fm-index).
+    - There are **three** options.
+        - BWT size
+            - Whether the size of the BWT block is 64 or 128.
+            - Default is using 64 sized block.
+            - Using 128 sized block lowers the memory usage of the `lt-fm-index` but slows the algorithm.
+        - Sampling ratio
+            - Sampling ratio for suffix array in `lt-fm-index`.
+            - Default is 2.
+            - The larger the value, the lower the memory usage, but the slower the algorithm.
+        - Kmer size for lookup table
+            - Kmer size for lookup table in `lt-fm-index`.
+                - Lookup table is pre-calculated count array.
+                - Using k-sized lookup table can skip first k LF-mapping operations.
+            - Default value is depending on `lt-fm-index` crate.
+                - [Configuration for `lt-fm-index`](https://docs.rs/lt-fm-index/0.4.0/lt_fm_index/struct.LtFmIndexConfig.html)
+            - The larger the value, the larger the memory usage, but the faster the algorithm.
+            - Since memory usage increases exponentially with the number of characters supported by the sequence type, it is not recommended to increase this value too much.
+    - `LtFmIndexConfig` is optional parameter for `Reference` generation. If `LtFmIndexConfig` is not passed, the default config is used.
+3. [SequenceProvider]
+    - `SequenceProvider` is `trait` to provide sequence to `Reference`.
+    - It require **two** methods.
+        - `total_record_count` to get the number of records.
+        - `sequence_of_record` to get sequence from index of record.
+    - Method of `joined_sequence_and_accumulated_lengths` can be overrode for better performance.
+        - `joined_sequence_and_accumulated_lengths` supply two vectors in tuple.
+            - The "joined_sequence" means the sequence of concatenated sequences of all record.
+            - The "accumulated_lengths" means the accumulated sequence lengths from 0 to the sum of the lengths of all sequences.
+            - For examples, if there are three records with "ATT", "CC", "GGGG", the "joined_sequence" is "ATTCCGGGG" and the "accumulated_lengths" is [0, 3, 5, 9].
+        - Since this "joined_sequence" can be very large in size (because there is all sequence), the strategy of memory allocation can be different for each sequence provider. For example, if the length of the entire sequence can be known in advance, allocating whole memory at once is faster than summing up each sequence.
+        - Therefore, according to the size of the entire sequence and the characteristics of the sequence provider, whether to override this method or not can be determined by user.
+    - `SequenceProvider` is mutable inside the `Reference`.
+        - A buffer or pointer may be required.
+
+# (2) Search range
+- The search range is a list(`Vec` in Rust) of indexes of records to be searched.
+- Search range can be set after `Reference` generation.
+- When a reference is generated, it is set for the entire record (0..the number of records).
+*/
+
 use crate::{Result, error_msg};
 use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
 
 mod pattern_matching;
+/// 
 pub mod sequence_provider;
 mod io;
 #[cfg(test)]
 mod test_reference;
 
 use pattern_matching::LtFmIndex;
-/// Default implementations for [SequenceProvider]
-pub use sequence_provider::{InMemoryProvider, IndexedFastaProvider, SqliteProvider};
+/// Default implementation for [SequenceProvider] storing sequences in-memory.
+pub use sequence_provider::InMemoryProvider;
+/// Default implementation for [SequenceProvider] parsing sequences from fasta file using index.
+pub use sequence_provider::IndexedFastaProvider;
+/// Default implementation for [SequenceProvider] storing sequences to SQLite database.
+pub use sequence_provider::SqliteProvider;
 #[cfg(test)]
 pub use test_reference::TestReference;
 
@@ -419,17 +482,21 @@ impl Default for LtFmIndexConfig {
 }
 
 impl LtFmIndexConfig {
+    /// New default configuration
     pub fn new() -> Self {
         Self::default()
     }
+    /// Change the BWT block size from **64** to **128**.
     pub fn use_bwt_size_of_128(mut self) -> Self {
         self.use_bwt_size_of_128 = true;
         self
     }
+    /// Change sampling ratio for suffix array
     pub fn change_sampling_ratio(mut self, sa_sampling_ratio: u64) -> Self {
         self.sa_sampling_ratio = sa_sampling_ratio;
         self
     }
+    /// Change kmer size for lookup table
     pub fn change_kmer_size_for_lookup_table(mut self, kmer_size: usize) -> Self {
         self.kmer_size_for_lookup_table = Some(kmer_size);
         self

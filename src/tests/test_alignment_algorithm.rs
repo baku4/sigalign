@@ -1,8 +1,82 @@
 use super::*;
 
 use std::collections::HashSet;
+use std::collections::hash_map::RandomState;
+use std::collections::hash_set::Intersection;
 use std::time::{Duration, Instant};
 
+#[test]
+fn test_local_results_include_semi_global_results_with_in_memory_provider() {
+    println!("Use In-Memory Provider");
+
+    let fasta_file_for_reference = NUCLEOTIDE_ONLY_FA_PATH_1;
+
+    let sequence_provider = {
+        let start_time = Instant::now();
+        let sequence_provider = InMemoryProvider::from_fasta_file(fasta_file_for_reference).unwrap();
+        let duration = start_time.elapsed().as_micros();
+        println!("Generate sequence provider: {:?}", duration);
+
+        sequence_provider
+    };
+
+    let mismatch_penalty = 4;
+    let gap_open_penalty = 6;
+    let gap_extend_penalty = 2;
+    let minimum_aligned_length = 100;
+    let penalty_per_length = 0.1;
+
+    let kmer_size_for_lookup_table = 4;
+
+    // For this crate
+    let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+
+    println!("Aligner: {:?}", aligner);
+
+    let sequence_type = SequenceType::nucleotide_only();
+
+    let mut reference = {
+        let start_time = Instant::now();
+
+        let lt_fm_index_config = LtFmIndexConfig::new()
+            .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
+
+        let reference = Reference::new_with_config(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        
+        let duration = start_time.elapsed().as_micros();
+        println!("Generate reference: {:?}", duration);
+
+        reference
+    };
+
+    let query_fasta_records = FastaReader::from_file_path(NUCLEOTIDE_ONLY_FA_PATH_2).unwrap();
+
+    for (query_record_index, (label, query)) in query_fasta_records.into_iter().enumerate() {
+        println!("{:?} - {:?}", query_record_index, label);
+
+        let start_time_1 = Instant::now();
+        let result_of_semi_global = aligner.semi_global_alignment_unchecked(
+            &mut reference,
+            &query
+        );
+        let duration_1 = start_time_1.elapsed().as_micros();
+    
+        let start_time_2 = Instant::now();
+        let result_of_local = aligner.local_alignment_unchecked(
+            &mut reference,
+            &query
+        );
+
+        let duration_2 = start_time_2.elapsed().as_micros();
+
+        println!("Time elapsed: {}, {}", duration_1, duration_2);
+
+        print_if_left_result_dont_include_right_result(
+            &result_of_local,
+            &result_of_semi_global,
+        );
+    }
+}
 
 #[test]
 fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
@@ -352,6 +426,43 @@ fn print_alignment_results_by_index_are_same(
             println!("Different in record index: {}", key);
             println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate.0.get(&key).unwrap());
             println!(" - result_of_standard:\n{:#?}", result_of_standard.0.get(&key).unwrap());
+        }
+    }
+}
+
+fn print_if_left_result_dont_include_right_result(
+    left_result: &AlignmentResultsByRecordIndex,
+    right_result: &AlignmentResultsByRecordIndex,
+) {
+    let left_keys: HashSet<usize> = left_result.0.keys().map(|x| {*x}).collect();
+    let right_keys: HashSet<usize> = right_result.0.keys().map(|x| {*x}).collect();
+
+    let intersection_keys: HashSet<usize> = {
+        let intersection = left_keys.intersection(&right_keys);
+        intersection.map(|x| {*x}).collect()
+    };
+
+    assert_eq!(intersection_keys, right_keys);
+
+    for key in intersection_keys {
+        let left_cmpable_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
+            left_result.0.get(&key).unwrap()
+        );
+        let right_cmpable_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
+            right_result.0.get(&key).unwrap()
+        );
+
+        let left_cmpable_results_set: HashSet<CmpableAlignmentResult> = left_cmpable_results.into_iter().collect();
+        let right_cmpable_results_set: HashSet<CmpableAlignmentResult> = right_cmpable_results.into_iter().collect();
+
+        let intersection_cmpable_results_set: HashSet<CmpableAlignmentResult> = {
+            let intersection = left_cmpable_results_set.intersection(&right_cmpable_results_set);
+            intersection.map(|x| { x.clone() }).collect()
+        };
+
+        if intersection_cmpable_results_set != right_cmpable_results_set {
+            println!("{:#?}", left_result);
+            println!("{:#?}", right_result);
         }
     }
 }
