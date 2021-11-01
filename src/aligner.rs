@@ -31,7 +31,6 @@ The `Aligner` is generated with **three** penalty values and **two** similarity 
     - Return the results of alignment that either the target or query sequence extended to the end from the left and right sides of the sequence respectively.
 2. Local alignment
     - This algorithm return the longest alignment among the alignment satisfying the similarity cutoff is output as a result.
-        - The several results with different alignment positions can be returned.
 
 The multiple results with different alignment positions can be returned in both algorithms.
 */
