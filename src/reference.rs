@@ -1,4 +1,4 @@
-/*! Alignment target [Reference]
+/*! Configurations for [Reference] generation
 
 `Reference` is a bundle of alignment target sequences.
 
@@ -61,25 +61,20 @@ use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
 
 mod pattern_matching;
-/// 
-pub mod sequence_provider;
+/// Basic implementations for sequence provider
+pub mod basic_sequence_provider;
 mod io;
 #[cfg(test)]
 mod test_reference;
 
 use pattern_matching::LtFmIndex;
-/// Default implementation for [SequenceProvider] storing sequences in-memory.
-pub use sequence_provider::InMemoryProvider;
-/// Default implementation for [SequenceProvider] parsing sequences from fasta file using index.
-pub use sequence_provider::IndexedFastaProvider;
-/// Default implementation for [SequenceProvider] storing sequences to SQLite database.
-pub use sequence_provider::SqliteProvider;
 #[cfg(test)]
 pub use test_reference::TestReference;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Alignment target [Reference]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Reference<S: SequenceProvider> {
     sequence_type: SequenceType,
@@ -102,6 +97,9 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
+    /// Generate new Reference with sequence provider.  
+    /// - SequenceType is inferred.  
+    /// - Default configuration for lt-fm-index is used.
     pub fn new_with_default_config(mut sequence_provider: S) -> Result<Self> {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
@@ -128,6 +126,8 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
+    /// Generate new Reference with lt-fm-index configuration and sequence provider.   
+    /// - SequenceType is inferred.
     pub fn new_with_lt_fm_index_config(
         lt_fm_index_config: LtFmIndexConfig,
         mut sequence_provider: S
@@ -156,6 +156,7 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
+    /// Generate new Reference with all custom configuration.
     pub fn new_with_config(
         sequence_type: SequenceType,
         lt_fm_index_config: LtFmIndexConfig,
@@ -187,6 +188,8 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
+    /// Generate new Reference with all custom configuration.  
+    /// - It does not check whether the `joined_sequence` is a supported `SequenceType`.
     pub fn new_unchecked(
         sequence_type: SequenceType,
         lt_fm_index_config: LtFmIndexConfig,
@@ -212,6 +215,7 @@ impl<S: SequenceProvider> Reference<S> {
             sequence_provider,
         }
     }
+    /// Set the search range, which is the set of indices of records to be found.
     pub fn set_search_range(&mut self, mut search_range: Vec<usize>) -> Result<()> {
         search_range.sort();
         match search_range.last() {
@@ -226,6 +230,9 @@ impl<S: SequenceProvider> Reference<S> {
             None => error_msg!("Search range is empty.")
         }
     }
+    /// Set the search range.  
+    /// - Do not check whether the search range does not exceed the total record count.  
+    /// - Do not check if the search range is sorted.
     pub fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
         self.search_range = search_range;
     }
@@ -240,13 +247,54 @@ impl<SL: SequenceProvider + Labeling> Reference<SL> {
 const NUCLEOTIDE_UTF8: [u8; 4] = [65, 67, 71, 84]; // A, C, G, T
 const AMINO_ACID_UTF8: [u8; 20] = [65, 67, 68, 69, 70, 71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 89]; // A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y
 
+/// Type of sequence
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SequenceType {
     allowed_type: AllowedSequenceType,
     utf8_chr_of_type: Vec<u8>,
 }
 impl SequenceType {
-    pub fn inferred_from_sequence(sequence: Sequence) -> Result<Self> {
+    /// Make new sequence type for nucleotide only
+    pub fn nucleotide_only() -> Self {
+        Self {
+            allowed_type: AllowedSequenceType::NucleotideOnly,
+            utf8_chr_of_type: NUCLEOTIDE_UTF8.to_vec(),
+        }
+    }
+    /// Make new sequence type for nucleotide with noise
+    pub fn nucleotide_with_noise(character_for_noise: u8) -> Self {
+        let mut utf8_chr_of_type = NUCLEOTIDE_UTF8.to_vec();
+        utf8_chr_of_type.push(character_for_noise);
+        Self {
+            allowed_type: AllowedSequenceType::NucleotideWithNoise,
+            utf8_chr_of_type,
+        }
+    }
+    /// Make new sequence type for amino acid only
+    pub fn aminoacid_only() -> Self {
+        Self {
+            allowed_type: AllowedSequenceType::AminoacidOnly,
+            utf8_chr_of_type: AMINO_ACID_UTF8.to_vec(),
+        }
+    }
+    /// Make new sequence type for amino acid with noise
+    pub fn aminoacid_with_noise(character_for_noise: u8) -> Self {
+        let mut utf8_chr_of_type = AMINO_ACID_UTF8.to_vec();
+        utf8_chr_of_type.push(character_for_noise);
+        Self {
+            allowed_type: AllowedSequenceType::AminoacidWithNoise,
+            utf8_chr_of_type,
+        }
+    }
+    pub fn allowed_type(&self) -> AllowedSequenceType {
+        self.allowed_type.clone()
+    }
+    fn is_searchable(&self, query: Sequence) -> bool {
+        query.iter().all(|character| {
+            self.utf8_chr_of_type.contains(character)
+        })
+    }
+    fn inferred_from_sequence(sequence: Sequence) -> Result<Self> {
         let mut presume_nucleotide = true;
         let mut noise_of_nucleotide = None;
         let mut noise_of_amino_acid = None;
@@ -316,44 +364,9 @@ impl SequenceType {
             }
         )
     }
-    pub fn nucleotide_only() -> Self {
-        Self {
-            allowed_type: AllowedSequenceType::NucleotideOnly,
-            utf8_chr_of_type: NUCLEOTIDE_UTF8.to_vec(),
-        }
-    }
-    pub fn nucleotide_with_noise(character_for_noise: u8) -> Self {
-        let mut utf8_chr_of_type = NUCLEOTIDE_UTF8.to_vec();
-        utf8_chr_of_type.push(character_for_noise);
-        Self {
-            allowed_type: AllowedSequenceType::NucleotideWithNoise,
-            utf8_chr_of_type,
-        }
-    }
-    pub fn aminoacid_only() -> Self {
-        Self {
-            allowed_type: AllowedSequenceType::AminoacidOnly,
-            utf8_chr_of_type: AMINO_ACID_UTF8.to_vec(),
-        }
-    }
-    pub fn aminoacid_with_noise(character_for_noise: u8) -> Self {
-        let mut utf8_chr_of_type = AMINO_ACID_UTF8.to_vec();
-        utf8_chr_of_type.push(character_for_noise);
-        Self {
-            allowed_type: AllowedSequenceType::AminoacidWithNoise,
-            utf8_chr_of_type,
-        }
-    }
-    pub fn allowed_type(&self) -> AllowedSequenceType {
-        self.allowed_type.clone()
-    }
-    fn is_searchable(&self, query: Sequence) -> bool {
-        query.iter().all(|character| {
-            self.utf8_chr_of_type.contains(character)
-        })
-    }
 }
 
+/// Allowed four sequence types
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AllowedSequenceType {
     NucleotideOnly, // NO
@@ -465,6 +478,8 @@ impl PatternLocater {
     }
 }
 
+
+/// Configuration for `lt-fm-index`
 pub struct LtFmIndexConfig {
     use_bwt_size_of_128: bool,
     sa_sampling_ratio: u64,
@@ -503,9 +518,16 @@ impl LtFmIndexConfig {
     }
 }
 
+/// Trait to provide sequence
 pub trait SequenceProvider {
+    /// The number of records
     fn total_record_count(&self) -> usize;
+    /// Provide sequence stored in the index of record.
     fn sequence_of_record(&mut self, record_index: usize) -> &[u8];
+    /// Make two vectors necessary to create lt-fm-index and locate pattern.
+    ///     - The "joined_sequence" means the sequence of concatenated sequences of all record.
+    ///     - The "accumulated_lengths" means the accumulated sequence lengths from 0 to the sum of the lengths of all sequences.
+    ///     - For examples, if there are three records with "ATT", "CC", "GGGG", the "joined_sequence" is "ATTCCGGGG" and the "accumulated_lengths" is [0, 3, 5, 9].
     fn joined_sequence_and_accumulated_lengths(&mut self) -> (Vec<u8>, Vec<u64>) {
         let total_record_count = self.total_record_count();
         let mut accumulated_lengths = Vec::with_capacity(total_record_count + 1);
@@ -520,11 +542,11 @@ pub trait SequenceProvider {
             record
         }).flatten().collect();
         
-
         (joined_sequence, accumulated_lengths)
     }
 }
 
+/// Trait to provide label of record
 pub trait Labeling {
     fn label_of_record(&mut self, record_index: usize) -> &str;
 }

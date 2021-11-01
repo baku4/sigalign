@@ -7,6 +7,7 @@ use std::path::Path;
 
 const DEFAULT_LABEL: &str = "Reference";
 
+/// Basic implementation for [SequenceProvider] storing sequences in-memory.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct InMemoryProvider {
     records: Vec<SequenceRecord>,

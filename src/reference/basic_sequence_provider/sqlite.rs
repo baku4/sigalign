@@ -5,6 +5,7 @@ use rusqlite::{Connection, Statement, params};
 
 use std::path::Path;
 
+/// Basic implementation for [SequenceProvider] storing sequences to SQLite database.
 #[derive(Debug)]
 pub struct SqliteProvider {
     total_record_count: usize,

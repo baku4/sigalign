@@ -41,20 +41,21 @@ mod core;
 // Algorithm
 mod algorithm;
 pub mod reference;
-pub mod aligner;
+mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
 #[cfg(test)]
 mod tests;
 
 pub use reference::Reference;
+pub use reference::basic_sequence_provider;
 pub use aligner::Aligner;
 
 mod example {
     #[test]
     fn print_library_example_quick_start() {
         use crate::{Reference, Aligner};
-        use crate::reference::InMemoryProvider;
+        use crate::reference::basic_sequence_provider::InMemoryProvider;
 
         // (1) Make `Reference`
         let mut sequence_provider = InMemoryProvider::new_empty();

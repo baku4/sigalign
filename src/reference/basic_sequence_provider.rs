@@ -1,4 +1,3 @@
-// Default implementations for sequence provider
 use super::{SequenceProvider, Labeling};
 
 mod file_reader;

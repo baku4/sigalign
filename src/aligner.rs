@@ -1,4 +1,15 @@
-/*! `Aligner` to perform alignment process.
+use crate::{Result, error_msg};
+use crate::core::{ReferenceInterface, Sequence};
+use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
+use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
+use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
+use crate::reference::{Reference, SequenceProvider, Labeling};
+
+mod interpreter;
+
+use num::integer;
+
+/** `Aligner` to perform alignment process.
 
 The `Aligner` is generated with **three** penalty values and **two** similarity cutoff values. In `sigalign`, only these five values affect the alignment result. There are two alignment algorithms, semi-global alignment and local alignment.
 
@@ -24,18 +35,6 @@ The `Aligner` is generated with **three** penalty values and **two** similarity 
 
 The multiple results with different alignment positions can be returned in both algorithms.
 */
-
-use crate::{Result, error_msg};
-use crate::core::{ReferenceInterface, Sequence};
-use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
-use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
-use crate::reference::{Reference, SequenceProvider, Labeling};
-
-mod interpreter;
-
-use num::integer;
-
 #[derive(Debug)]
 pub struct Aligner {
     pub penalties: Penalties,

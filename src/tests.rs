@@ -2,7 +2,7 @@
 use super::*;
 use crate::core::*;
 use crate::reference::*;
-use crate::reference::sequence_provider::*;
+use crate::reference::basic_sequence_provider::*;
 use crate::algorithm::*;
 use crate::aligner::*;
 

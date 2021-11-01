@@ -11,7 +11,8 @@ use bio::io::fasta::{Index, IndexedReader};
 use std::path::Path;
 use std::fs::File;
 
-// #[derive(Debug, Deserialize, Serialize)]
+/// Basic implementation for [SequenceProvider] parsing sequences from fasta file using index.
+#[derive(Debug)]
 pub struct IndexedFastaProvider {
     fasta_path: String,
     record_count: usize,
