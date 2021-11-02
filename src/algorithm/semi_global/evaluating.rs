@@ -119,7 +119,7 @@ impl Anchors {
                 let length = left_extension.length + anchor.size + right_extension.length;
                 
                 length >= cutoff.minimum_aligned_length
-                && (PRECISION_SCALE * penalty / length) <= cutoff.penalty_per_scale
+                && (PRECISION_SCALE * penalty / length) <= cutoff.maximum_penalty_per_scale
             } {
                 Some(anchor_index)
             } else {

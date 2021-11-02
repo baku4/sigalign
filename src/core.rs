@@ -25,7 +25,7 @@ pub const PRECISION_SCALE: usize = 10_000; // Ensuring accuracy to the third dec
 #[derive(Debug)]
 pub struct Cutoff {
     pub minimum_aligned_length: usize,
-    pub penalty_per_scale: usize,
+    pub maximum_penalty_per_scale: usize,
 }
 
 #[derive(Debug)]

@@ -1,6 +1,6 @@
 use crate::{Result, error_msg};
 use crate::core::{ReferenceInterface, Sequence};
-use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
+pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
@@ -36,14 +36,15 @@ The multiple results with different alignment positions can be returned in both 
 */
 #[derive(Debug)]
 pub struct Aligner {
-    pub penalties: Penalties,
-    pub cutoff: Cutoff,
-    pub min_penalty_for_pattern: MinPenaltyForPattern,
-    pub gcd: usize,
-    pub kmer: usize,
+    penalties: Penalties,
+    cutoff: Cutoff,
+    min_penalty_for_pattern: MinPenaltyForPattern,
+    gcd: usize,
+    kmer: usize,
 }
 
 impl Aligner {
+    /// Generate new aligner.
     pub fn new(
         mismatch_penalty: usize,
         gap_open_penalty: usize,
@@ -52,9 +53,9 @@ impl Aligner {
         maximum_penalty_per_length: f32,
     ) -> Result<Self> {
         if gap_extend_penalty == 0 {
-            error_msg!(""); //TODO: Err msg
+            error_msg!("Gap extend penalty only allow positive integer.");
         } else if maximum_penalty_per_length <= 0.0 {
-            error_msg!(""); //TODO: Err msg
+            error_msg!("Maximum penalty per length only allow positive value.");
         }
 
         let penalties = Penalties::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
@@ -64,7 +65,7 @@ impl Aligner {
 
         Ok(aligner)
     }
-    pub fn new_with_penalties_and_cutoff(mut penalties: Penalties, mut cutoff: Cutoff) -> Self {
+    fn new_with_penalties_and_cutoff(mut penalties: Penalties, mut cutoff: Cutoff) -> Self {
         let gcd = penalties.gcd_of_penalties();
         penalties.divide_by_gcd(gcd);
         cutoff.divide_by_gcd(gcd);
@@ -90,8 +91,8 @@ impl Aligner {
                     (
                         (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
                     )
-                    + 4 * cutoff.penalty_per_scale
-                ) as f32 / (2 * (n+1) * cutoff.penalty_per_scale) as f32
+                    + 4 * cutoff.maximum_penalty_per_scale
+                ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
             ).ceil() - 2_f32;
 
             let kmer = max_penalty.min(upper_bound);
@@ -102,6 +103,26 @@ impl Aligner {
             n += 1;
         }
     }
+    /// Get penalties
+    pub fn get_penalties(&self) -> [usize; 3] {
+        [
+            self.penalties.x * self.gcd,
+            self.penalties.o * self.gcd,
+            self.penalties.e * self.gcd,
+        ]
+    }
+    /// Get similarity cutoff
+    pub fn get_similarity_cutoff(&self) -> (usize, f32) {
+        (
+            self.cutoff.minimum_aligned_length,
+            (self.cutoff.maximum_penalty_per_scale * self.gcd) as f32 / PRECISION_SCALE as f32,
+        )
+    }
+    /// Get size of pattern
+    pub fn get_pattern_size(&self) -> usize {
+        self.kmer
+    }
+    /// Perform semi-global alignment and return json result.
     pub fn semi_global_alignment<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -113,6 +134,7 @@ impl Aligner {
 
         Ok(alignment_results)
     }
+    /// Perform semi-global alignment and return raw result.
     pub fn semi_global_alignment_raw<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -122,6 +144,7 @@ impl Aligner {
 
         Ok(self.semi_global_alignment_unchecked(reference, query))
     }
+    /// Perform semi-global alignment and return json labeled result.
     pub fn semi_global_alignment_labeled<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
@@ -133,6 +156,7 @@ impl Aligner {
 
         Ok(alignment_results_labeled)
     }
+    /// Perform semi-global alignment and return raw labeled result.
     pub fn semi_global_alignment_labeled_raw<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
@@ -144,6 +168,7 @@ impl Aligner {
 
         Ok(alignment_results_labeled_raw)
     }
+    /// Perform semi-global alignment without checking query is supported sequence type.
     pub fn semi_global_alignment_unchecked<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -153,6 +178,7 @@ impl Aligner {
         self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
         alignment_results_by_record
     }
+    /// Perform local alignment and return json result.
     pub fn local_alignment<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -164,6 +190,7 @@ impl Aligner {
 
         Ok(alignment_results)
     }
+    /// Perform local alignment and return raw result.
     pub fn local_alignment_raw<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -173,6 +200,7 @@ impl Aligner {
 
         Ok(self.local_alignment_unchecked(reference, query))
     }
+    /// Perform local alignment and return json labeled result.
     pub fn local_alignment_labeled<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
@@ -184,6 +212,7 @@ impl Aligner {
 
         Ok(alignment_results_labeled)
     }
+    /// Perform local alignment and return raw labeled result.
     pub fn local_alignment_labeled_raw<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
@@ -195,6 +224,7 @@ impl Aligner {
 
         Ok(alignment_results_labeled_raw)
     }
+    /// Perform local alignment without checking query is supported sequence type.
     pub fn local_alignment_unchecked<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -211,7 +241,7 @@ impl Aligner {
         if reference.is_searchable(query) {
             Ok(())
         } else {
-            error_msg!("Query string is not included in the sequence type of reference.")
+            error_msg!("Query string is not supported sequence type of reference.")
         }
     }
     fn multiply_gcd_to_alignment_results(
@@ -240,7 +270,7 @@ impl AlignmentResult {
 }
 
 impl Penalties {
-    pub fn new(mismatch: usize, gap_open: usize, gap_extend: usize) -> Self {
+    fn new(mismatch: usize, gap_open: usize, gap_extend: usize) -> Self {
         Self {
             x: mismatch,
             o: gap_open,
@@ -258,20 +288,20 @@ impl Penalties {
 }
 
 impl Cutoff {
-    pub fn new(minimum_aligned_length: usize, maximum_penalty_per_length: f32) -> Self {
+    fn new(minimum_aligned_length: usize, maximum_penalty_per_length: f32) -> Self {
         let penalty_per_scale = (maximum_penalty_per_length * PRECISION_SCALE as f32) as usize;
         Self {
             minimum_aligned_length,
-            penalty_per_scale,
+            maximum_penalty_per_scale: penalty_per_scale,
         }
     }
     fn divide_by_gcd(&mut self, gcd: usize) {
-        self.penalty_per_scale /= gcd;
+        self.maximum_penalty_per_scale /= gcd;
     }
 }
 
 impl MinPenaltyForPattern {
-    pub fn new(penalties: &Penalties) -> Self {
+    fn new(penalties: &Penalties) -> Self {
         let odd: usize;
         let even: usize;
         if penalties.x <= penalties.o + penalties.e {

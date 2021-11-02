@@ -352,7 +352,7 @@ impl PointOfMaximumLength {
         // penalty per scale * length - PRECISION_SCALE * penalty
         let mut maximum_determinant: i64 = i64::MIN;
 
-        let penalty_per_scale = cutoff.penalty_per_scale as i64;
+        let penalty_per_scale = cutoff.maximum_penalty_per_scale as i64;
         self.index_of_components_and_maximum_length_of_scores.iter().for_each(|(score, (_, length))| {
             let determinant = penalty_per_scale * *length as i64 - (PRECISION_SCALE * *score) as i64;
             if maximum_determinant < determinant {
@@ -402,7 +402,7 @@ impl PointOfMaximumLength {
                     let penalty = left_penalty + right_penalty;
                     let penalty_per_scale = PRECISION_SCALE * penalty / length;
 
-                    if (penalty_per_scale <= cutoff.penalty_per_scale) && (penalty_per_scale < penalty_per_scale_of_start_point) {
+                    if (penalty_per_scale <= cutoff.maximum_penalty_per_scale) && (penalty_per_scale < penalty_per_scale_of_start_point) {
                         length_of_start_point = length;
                         penalty_per_scale_of_start_point = penalty_per_scale;
 

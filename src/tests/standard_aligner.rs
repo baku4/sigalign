@@ -31,14 +31,15 @@ impl StandardAligner {
     ) -> Self {
         let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
-        let gcd = aligner.gcd;
+        
+        let penalties = aligner.get_penalties();
 
-        let mismatch_penalty = aligner.penalties.x * gcd;
-        let gap_open_penalty = aligner.penalties.o * gcd;
-        let gap_extend_penalty = aligner.penalties.e * gcd;
+        let mismatch_penalty = penalties[0];
+        let gap_open_penalty = penalties[1];
+        let gap_extend_penalty = penalties[2];
         let minimum_aligned_length = minimum_aligned_length;
         let penalty_per_scale = (PRECISION_SCALE as f32 * penalty_per_length) as usize;
-        let pattern_size = aligner.kmer;
+        let pattern_size = aligner.get_pattern_size();
 
         Self {
             mismatch_penalty,

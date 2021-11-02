@@ -238,9 +238,9 @@ impl SparePenaltyDeterminantPerPattern {
         let penalty_for_odd = min_penalty_for_pattern.odd;
         let penalty_for_even = min_penalty_for_pattern.even;
 
-        let scaled_penalty_cutoff_per_pattern = (pattern_size * cutoff.penalty_per_scale) as i64;
+        let scaled_penalty_cutoff_per_pattern = (pattern_size * cutoff.maximum_penalty_per_scale) as i64;
         let scaled_penalty_determinant_to_next_pattern = (
-            (pattern_size - 1) * cutoff.penalty_per_scale
+            (pattern_size - 1) * cutoff.maximum_penalty_per_scale
         ) as i64;
 
         let mut existence = vec![false; total_pattern_count];
@@ -327,7 +327,7 @@ mod tests {
             5,
             &Cutoff {
                 minimum_aligned_length: 100,
-                penalty_per_scale: 1_000,
+                maximum_penalty_per_scale: 1_000,
             },
             &min_penalty_for_pattern,
             matched_pattern_index_list

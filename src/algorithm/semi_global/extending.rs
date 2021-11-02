@@ -404,10 +404,10 @@ impl Anchor {
             penalties.o as i64,
             (
                 penalties.e as i64 * (
-                    (cutoff.penalty_per_scale * length_opposite_side) as i64
+                    (cutoff.maximum_penalty_per_scale * length_opposite_side) as i64
                     - (penalties.e * PRECISION_SCALE * penalty_opposite_side) as i64
                 )
-                + cutoff.penalty_per_scale as i64 * (
+                + cutoff.maximum_penalty_per_scale as i64 * (
                     (
                         penalties.e  * (
                             self.size + query_length_this_side.min(record_length_this_side)
@@ -415,7 +415,7 @@ impl Anchor {
                     ) as i64 - penalties.o as i64
                 )
             ) / (
-                PRECISION_SCALE * penalties.e - cutoff.penalty_per_scale
+                PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
             ) as i64 + 1
         ) as usize
     }

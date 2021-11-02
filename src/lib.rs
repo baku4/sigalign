@@ -18,8 +18,8 @@ This library is currently under development. Some key features are missing, and 
      2. Gap open penalty
      3. Gap extend penalty
    - Two are cutoff for similarity values, which are aligned length and alignment penalty per aligned length.
-     4. Minimum aligned length
-     5. Maximum penalty per length
+     1. Minimum aligned length
+     2. Maximum penalty per length
  - A `reference`, which is an alignment target, has two main features.
    - A search range can be specified after reference generation.
    - A method of storing sequence data can be selected in various ways depending on the purpose.
@@ -69,7 +69,7 @@ mod core;
 // Algorithm
 mod algorithm;
 pub mod reference;
-mod aligner;
+pub mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
 #[cfg(test)]
