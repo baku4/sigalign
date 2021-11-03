@@ -16,7 +16,3 @@ Cargo.lock
 
 # OS generated files
 .DS_Store
-
-################################
-# Exclude examples dir for now
-/examples
