@@ -3,6 +3,7 @@ use super::{SequenceProvider, Labeling};
 mod file_reader;
 mod in_memory;
 mod indexed_fasta;
+mod indexed_fasta_2;
 mod sqlite;
 
 pub use file_reader::FastaReader;

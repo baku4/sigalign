@@ -7,7 +7,7 @@ use crate::algorithm::*;
 use crate::aligner::*;
 
 // Supply Functions
-mod sample_data;
+pub mod sample_data;
 use sample_data::*;
 
 mod standard_aligner;

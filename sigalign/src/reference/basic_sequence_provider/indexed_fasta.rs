@@ -1,11 +1,11 @@
 use crate::{Result, error_msg};
+use crate::{Serialize, Deserialize};
 use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 mod fai;
 
 use fai::fai_bytes_and_count_of_fasta_file;
 
-use serde::{Serialize, Deserialize};
 use bio::io::fasta::{Index, IndexedReader};
 
 use std::path::Path;
