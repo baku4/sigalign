@@ -2,13 +2,14 @@ use super::{SequenceProvider, Labeling};
 
 mod file_reader;
 mod in_memory;
+mod fai_used_fasta;
 mod indexed_fasta;
-mod indexed_fasta_2;
 mod sqlite;
 
 pub use file_reader::FastaReader;
 
 pub use in_memory::InMemoryProvider;
+pub use fai_used_fasta::FaiUsedFastaProvider;
 pub use indexed_fasta::IndexedFastaProvider;
 pub use sqlite::SqliteProvider;
 
