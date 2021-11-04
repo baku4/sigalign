@@ -2,6 +2,7 @@ use crate::{Result, error_msg};
 use crate::{Serialize, Deserialize};
 use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
 
+use std::fmt;
 use std::path::Path;
 use std::fs::File;
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom};

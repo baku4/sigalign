@@ -77,19 +77,26 @@ use std::collections::HashMap;
 /// Alignment target [Reference]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Reference<S: SequenceProvider> {
+    reference_proto: ReferenceProto,
+    sequence_provider: S,
+}
+// For Serialize and Deserialize Reference separately from sequence provider
+// Just to hold the data and easily serde
+#[derive(Debug, Serialize, Deserialize)]
+struct ReferenceProto {
     sequence_type: SequenceType,
     total_record_count: usize,
     search_range: Vec<usize>,
     pattern_locater: PatternLocater,
-    sequence_provider: S,
 }
+
 
 impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
     fn is_searchable(&self, query: Sequence) -> bool {
-        self.sequence_type.is_searchable(query)
+        self.reference_proto.sequence_type.is_searchable(query)
     }
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {
-        self.pattern_locater.locate_in_search_range(pattern, &self.search_range)
+        self.reference_proto.pattern_locater.locate_in_search_range(pattern, &self.reference_proto.search_range)
     }
     fn sequence_of_record(&mut self, record_index: usize) -> Sequence {
         self.sequence_provider.sequence_of_record(record_index)
@@ -118,10 +125,12 @@ impl<S: SequenceProvider> Reference<S> {
 
         Ok(
             Self {
-                sequence_type,
-                total_record_count,
-                search_range,
-                pattern_locater,
+                reference_proto: ReferenceProto {
+                    sequence_type,
+                    total_record_count,
+                    search_range,
+                    pattern_locater,
+                },
                 sequence_provider,
             }
         )
@@ -148,10 +157,12 @@ impl<S: SequenceProvider> Reference<S> {
 
         Ok(
             Self {
-                sequence_type,
-                total_record_count,
-                search_range,
-                pattern_locater,
+                reference_proto: ReferenceProto {
+                    sequence_type,
+                    total_record_count,
+                    search_range,
+                    pattern_locater,
+                },
                 sequence_provider,
             }
         )
@@ -180,10 +191,12 @@ impl<S: SequenceProvider> Reference<S> {
 
         Ok(
             Self {
-                sequence_type,
-                total_record_count,
-                search_range,
-                pattern_locater,
+                reference_proto: ReferenceProto {
+                    sequence_type,
+                    total_record_count,
+                    search_range,
+                    pattern_locater,
+                },
                 sequence_provider,
             }
         )
@@ -208,10 +221,12 @@ impl<S: SequenceProvider> Reference<S> {
         );
 
         Self {
-            sequence_type,
-            total_record_count,
-            search_range,
-            pattern_locater,
+            reference_proto: ReferenceProto {
+                sequence_type,
+                total_record_count,
+                search_range,
+                pattern_locater,
+            },
             sequence_provider,
         }
     }
@@ -220,7 +235,7 @@ impl<S: SequenceProvider> Reference<S> {
         search_range.sort();
         match search_range.last() {
             Some(&last_record_index) => {
-                if last_record_index > self.total_record_count {
+                if last_record_index > self.reference_proto.total_record_count {
                     error_msg!("Search range is out of reference bound.")
                 } else {
                     self.set_search_range_unchecked(search_range);
@@ -234,7 +249,7 @@ impl<S: SequenceProvider> Reference<S> {
     /// - Do not check whether the search range does not exceed the total record count.  
     /// - Do not check if the search range is sorted.
     pub fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
-        self.search_range = search_range;
+        self.reference_proto.search_range = search_range;
     }
 }
 
