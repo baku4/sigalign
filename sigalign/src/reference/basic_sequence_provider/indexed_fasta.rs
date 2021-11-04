@@ -1,6 +1,6 @@
 use crate::{Result, error_msg};
 use crate::{Serialize, Deserialize};
-use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
+use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use std::fmt;
 use std::path::Path;
@@ -8,32 +8,36 @@ use std::fs::File;
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom};
 use std::ffi::OsString;
 
-use serde::ser::{Serializer, SerializeStruct};
-
 const LF_TERMINATION_SIZE: usize = 1;
 const CRLF_TERMINATION_SIZE: usize = 2;
 
 pub struct IndexedFastaProvider {
+    proto: IndexedFastaProviderProto,
+    fasta_buf_reader: BufReader<File>,
+    // Buffers
+    sequence_buffer: Vec<u8>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct IndexedFastaProviderProto {
     total_record_count: usize,
     line_terminator_size: usize,
     use_reverse_complement: bool,
     fasta_indices: Vec<FastaIndex>,
     // Fasta information
     fasta_file_path: OsString,
-    fasta_buf_reader: BufReader<File>,
-    // Buffers
-    sequence_buffer: Vec<u8>,
 }
+impl Writable for IndexedFastaProviderProto {}
+
 impl SequenceProvider for IndexedFastaProvider {
     fn total_record_count(&self) -> usize {
-        if self.use_reverse_complement {
-            self.total_record_count * 2
+        if self.proto.use_reverse_complement {
+            self.proto.total_record_count * 2
         } else {
-            self.total_record_count
+            self.proto.total_record_count
         }
     }
     fn sequence_of_record(&mut self, record_index: usize) -> &[u8] {
-        if self.use_reverse_complement {
+        if self.proto.use_reverse_complement {
             let record_index_quot = record_index / 2;
             let record_index_rem = record_index % 2;
 
@@ -52,7 +56,7 @@ impl SequenceProvider for IndexedFastaProvider {
 }
 impl Labeling for IndexedFastaProvider {
     fn label_of_record(&mut self, record_index: usize) -> &str {
-        &self.fasta_indices[record_index].label
+        &self.proto.fasta_indices[record_index].label
     }
 }
 impl IndexedFastaProvider {
@@ -136,11 +140,13 @@ impl IndexedFastaProvider {
 
         Ok(
             Self {
-                total_record_count: fasta_indices.len(),
-                line_terminator_size: line_terminator_size,
-                use_reverse_complement: false,
-                fasta_indices: fasta_indices,
-                fasta_file_path: fasta_file_path,
+                proto: IndexedFastaProviderProto {
+                    total_record_count: fasta_indices.len(),
+                    line_terminator_size: line_terminator_size,
+                    use_reverse_complement: false,
+                    fasta_indices: fasta_indices,
+                    fasta_file_path: fasta_file_path,
+                },
                 fasta_buf_reader: fasta_buf_reader.buf_reader,
                 sequence_buffer: Vec::new(),
             }
@@ -150,7 +156,7 @@ impl IndexedFastaProvider {
         &mut self,
         record_index: usize,
     ) {
-        let fasta_index = &self.fasta_indices[record_index];
+        let fasta_index = &self.proto.fasta_indices[record_index];
 
         self.sequence_buffer = Vec::with_capacity(fasta_index.sequence_length);
 
@@ -162,7 +168,7 @@ impl IndexedFastaProvider {
         for _ in 0..fasta_index.filled_line_count {
             let _ = self.fasta_buf_reader.read_exact(&mut one_line_buffer);
             self.sequence_buffer.extend_from_slice(&one_line_buffer);
-            self.fasta_buf_reader.consume(self.line_terminator_size); // TODO: Apply const for better performance
+            self.fasta_buf_reader.consume(self.proto.line_terminator_size); // TODO: Apply const for better performance
         }
 
         // last line
@@ -171,20 +177,103 @@ impl IndexedFastaProvider {
     }
 }
 
-impl Serialize for IndexedFastaProvider {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-            S: serde::Serializer,
-    {
-        let mut state = serializer.serialize_struct("IndexedFastaProvider", 5)?;
-        state.serialize_field("total_record_count", &self.total_record_count)?;
-        state.serialize_field("line_terminator_size", &self.line_terminator_size)?;
-        state.serialize_field("use_reverse_complement", &self.use_reverse_complement)?;
-        state.serialize_field("fasta_indices", &self.fasta_indices)?;
-        state.serialize_field("fasta_file_path", &self.fasta_file_path)?;
-        state.end()
+
+#[derive(Serialize, Deserialize)]
+struct ReferenceWithIndexedFastaProviderFile {
+    serialized_reference_proto: Vec<u8>,
+    serialized_indexed_fasta_provider_proto: Vec<u8>
+}
+
+impl Writable for ReferenceWithIndexedFastaProviderFile {}
+
+impl Reference<IndexedFastaProvider> {
+    pub fn write_to_file(
+        &self,
+        file_path: &str
+    ) -> Result<()> {
+        let file = ReferenceWithIndexedFastaProviderFile {
+            serialized_reference_proto: bincode::serialize(
+                &self.reference_proto
+            )?,
+            serialized_indexed_fasta_provider_proto: bincode::serialize(
+                &self.sequence_provider.proto
+            )?,
+        };
+        file.write_to_file(file_path)?;
+        Ok(())
+    }
+    pub fn read_from_file(
+        file_path: &str,
+        fasta_file_path: Option<&str>,
+    ) -> Result<Self> {
+        let (reference_proto, indexed_fasta_provider_proto): (ReferenceProto, IndexedFastaProviderProto) = {
+            let file = ReferenceWithIndexedFastaProviderFile::read_from_file(file_path)?;
+            let reference_proto = bincode::deserialize(&file.serialized_reference_proto)?;
+            let indexed_fasta_provider_proto = bincode::deserialize(&file.serialized_indexed_fasta_provider_proto)?;
+
+            (reference_proto, indexed_fasta_provider_proto)
+        };
+
+        let fasta_path = Self::get_fasta_path(
+            file_path,
+            fasta_file_path,
+            &indexed_fasta_provider_proto.fasta_file_path,
+        )?;
+
+        let fasta_file = File::open(fasta_path)?;
+        let fasta_buf_reader = BufReader::new(fasta_file);
+
+        let indexed_fasta_provider = IndexedFastaProvider {
+            proto: indexed_fasta_provider_proto,
+            fasta_buf_reader,
+            sequence_buffer: Vec::new(),
+        };
+        let reference = Reference {
+            reference_proto,
+            sequence_provider: indexed_fasta_provider,
+        };
+
+        Ok(reference)
+    }
+    fn get_fasta_path(
+        reference_file_path: &str,
+        specified_fasta_path: Option<&str>,
+        saved_fasta_path: &OsString,
+    ) -> Result<OsString> {
+        match specified_fasta_path {
+            Some(fasta_path) => {
+                let path = Path::new(fasta_path);
+                if path.exists() {
+                    return Ok(path.as_os_str().to_os_string())
+                } else {
+                    error_msg!("Input fasta file is not exist.")
+                }
+            },
+            None => {
+                // Try to read fasta from saved proto
+                let path = Path::new(saved_fasta_path);
+                if path.exists() {
+                    return Ok(path.as_os_str().to_os_string())
+                } else {
+                    // Try to read fasta from file
+                    // with extension '.fa', '.fna', or '.fasta'
+                    // in same directory with reference
+                    let path = Path::new(reference_file_path);
+
+                    for extension in ["fa", "fna", "fasta"].into_iter() {
+                        let inferred_path = path.with_extension(extension);
+                        if inferred_path.exists() {
+                            return Ok(inferred_path.into_os_string())
+                        }
+                    }
+
+                    error_msg!("Input fasta file is not exist.")
+                }
+            },
+        }
     }
 }
+
 
 fn parse_label_from_line(line: String) -> String {
     let trimmed_description = line.strip_prefix(">").unwrap();
@@ -194,7 +283,7 @@ fn parse_label_from_line(line: String) -> String {
     label
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct FastaIndex {
     label: String,
     sequence_offset: u64,

@@ -59,20 +59,21 @@
 use crate::{Result, error_msg};
 use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 mod pattern_matching;
 /// Basic implementations for sequence provider
 pub mod basic_sequence_provider;
 mod io;
-#[cfg(test)]
-mod test_reference;
 
 use pattern_matching::LtFmIndex;
+use io::Writable;
+
+#[cfg(test)]
+mod test_reference;
 #[cfg(test)]
 pub use test_reference::TestReference;
-
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Alignment target [Reference]
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,7 +90,7 @@ struct ReferenceProto {
     search_range: Vec<usize>,
     pattern_locater: PatternLocater,
 }
-
+impl Writable for ReferenceProto {}
 
 impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
     fn is_searchable(&self, query: Sequence) -> bool {

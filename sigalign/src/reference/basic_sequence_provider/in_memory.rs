@@ -1,5 +1,5 @@
 use crate::{Result, error_msg};
-use super::{SequenceProvider, Labeling, FastaReader, reverse_complement_of_nucleotide_sequence};
+use super::{Reference, SequenceProvider, Labeling, Writable, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
 
@@ -27,6 +27,8 @@ impl Labeling for InMemoryProvider {
         self.records[record_index].label()
     }
 }
+
+impl Writable for InMemoryProvider {}
 
 impl InMemoryProvider {
     pub fn new_empty() -> Self {
@@ -106,6 +108,8 @@ impl InMemoryProvider {
         (record.label().to_string(), record.is_forward())
     }
 }
+
+impl Writable for Reference<InMemoryProvider> {}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct SequenceRecord {
