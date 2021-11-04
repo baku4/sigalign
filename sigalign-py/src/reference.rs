@@ -4,19 +4,24 @@ use crate::{Serialize, Deserialize};
 use pyo3::prelude::*;
 use pyo3::types::*;
 use pyo3::exceptions::PyException;
-
 use sigalign::Reference as SigReference;
 use sigalign::basic_sequence_provider::*;
-use sigalign::reference::LtFmIndexConfig;
+use sigalign::reference::{LtFmIndexConfig, SequenceProvider, Writable};
+
+use std::io::{Write, Read};
+use std::fs::File;
+use std::path::Path;
+use std::ffi::OsString;
+use std::convert::AsMut;
 
 #[pyclass]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Reference {
-    sig_reference_holder: SigReferenceHolder,
+    pub sig_reference_holder: SigReferenceHolder,
 }
 
 #[pymethods]
-impl Reference {
+impl Reference { 
     #[new]
     #[args(
         in_memory = "true",
@@ -50,10 +55,98 @@ impl Reference {
             Err(err) => Err(PyException::new_err(format!("{}", err))),
         }
     }
+    
+    #[args(
+        overwrite = "false"
+    )]
+    fn save_to_file(
+        &self,
+        file: &str,
+        overwrite: bool,
+    ) -> PyResult<u64> {
+        if !overwrite {
+            let path = Path::new(file);
+            if path.exists() {
+                return Err(PyException::new_err(
+                    "Path to save reference already exists."
+                ));
+            }
+        }
+
+        let mut file = File::create(file)?;
+        
+        // First 4 bytes is Tag
+        let tag = self.sig_reference_holder.tag();
+        file.write(&tag)?;
+
+        match self.sig_reference_holder.save_to(&mut file) {
+            Ok(_) => (),
+            Err(err) => return Err(PyException::new_err(format!("{}", err))),
+        }
+
+        let size_of_file = file.metadata()?.len();
+
+        Ok(size_of_file)
+    }
+
+    #[staticmethod]
+    #[args(
+        specified_fasta_path = "\"\""
+    )]
+    fn load_from_file(
+        file: &str,
+        specified_fasta_path: &str,
+    ) -> PyResult<Self> {
+        let mut opened_file = File::open(file)?;
+
+        let mut tag: [u8; 4] = [0; 4];
+        let tag_bytes = opened_file.read(&mut tag)?;
+
+        if tag_bytes != 4 {
+            return Err(PyException::new_err("Not a valid reference file"))
+        }
+
+        let sig_reference_holder = if tag == TAG_FOR_IN_MEMORY_REFERENCE {
+            SigReferenceHolder::load_to_in_memory(opened_file)
+        } else if tag == TAG_FOR_INDEXED_FASTA_REFERENCE {
+            let fasta_path = match SigReferenceHolder::get_fasta_path(file, specified_fasta_path) {
+                Ok(string) => string,
+                Err(err) => return Err(PyException::new_err(format!("{}", err))),
+            };
+
+            let fasta_path_str = fasta_path.as_os_str().to_str().unwrap_or("");
+
+            SigReferenceHolder::load_to_indexed_fasta(opened_file, fasta_path_str)
+        } else {
+            return Err(PyException::new_err("Not a valid reference file"))
+        };
+
+        match sig_reference_holder {
+            Ok(sig_reference_holder) => {
+                Ok(
+                    Self {
+                        sig_reference_holder
+                    }
+                )
+            },
+            Err(err) => {
+                Err(PyException::new_err(format!("{}", err)))
+            },
+        }
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-enum SigReferenceHolder {
+impl AsMut<SigReferenceHolder> for Reference {
+    fn as_mut(&mut self) -> &mut SigReferenceHolder {
+        &mut self.sig_reference_holder
+    }
+}
+
+const TAG_FOR_IN_MEMORY_REFERENCE: [u8; 4] = [214, 144, 24, 1];
+const TAG_FOR_INDEXED_FASTA_REFERENCE: [u8; 4] = [214, 144, 24, 2];
+
+#[derive(Debug)]
+pub enum SigReferenceHolder {
     InMemory(SigReference<InMemoryProvider>),
     IndexedFasta(SigReference<IndexedFastaProvider>),
 }
@@ -77,10 +170,59 @@ impl SigReferenceHolder {
             }
         )
     }
-    fn semi_global_alignment() -> String {
-
+    // One byte tag to save the type information of sig-reference.
+    fn tag(&self) -> [u8; 4] {
+        match self {
+            Self::InMemory(_) => TAG_FOR_IN_MEMORY_REFERENCE,
+            Self::IndexedFasta(_) => TAG_FOR_INDEXED_FASTA_REFERENCE,
+        }
     }
-    fn semi_global_alignment_without_label() -> String {
+    fn save_to<W: Write>(&self, writer: W) -> Result<()> {
+        match self {
+            Self::InMemory(reference) => {
+                reference.write_to(writer)
+            },
+            Self::IndexedFasta(reference) => {
+                reference.write_to(writer)
+            },
+        }
+    }
+    fn load_to_in_memory<R: Read>(reader: R) -> Result<Self> {
+        let sig_reference_in_memory = SigReference::<InMemoryProvider>::read_from(reader)?;
 
+        Ok(Self::InMemory(sig_reference_in_memory))
+    }
+    fn load_to_indexed_fasta<R: Read>(reader: R, fasta_file_path: &str) -> Result<Self> {
+        let sig_reference_indexed_fasta = SigReference::<IndexedFastaProvider>::read_from(reader, fasta_file_path)?;
+
+        Ok(Self::IndexedFasta(sig_reference_indexed_fasta))
+    }
+    fn get_fasta_path(
+        file: &str,
+        specified_fasta_path: &str,
+    ) -> Result<OsString> {
+        if specified_fasta_path == "" {
+            // Try to infer
+            // with extension '.fa', '.fna', or '.fasta'
+            // in same directory with reference
+            let path = Path::new(file);
+
+            for extension in ["fa", "fna", "fasta"].iter() {
+                let inferred_path = path.with_extension(extension);
+                if inferred_path.exists() {
+                    return Ok(inferred_path.into_os_string())
+                }
+            }
+
+            error_msg!("Cannot find fasta file.")
+        } else {
+            let path = Path::new(specified_fasta_path);
+
+            if path.exists() {
+                Ok(path.as_os_str().to_os_string())
+            } else {
+                error_msg!("Input fasta file is not exist.")
+            }
+        }
     }
 }
