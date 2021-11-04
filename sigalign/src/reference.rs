@@ -68,7 +68,7 @@ pub mod basic_sequence_provider;
 mod io;
 
 use pattern_matching::LtFmIndex;
-use io::Writable;
+pub use io::Writable;
 
 #[cfg(test)]
 mod test_reference;

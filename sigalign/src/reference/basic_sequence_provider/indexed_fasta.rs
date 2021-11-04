@@ -5,12 +5,12 @@ use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable, Fas
 use std::fmt;
 use std::path::Path;
 use std::fs::File;
-use std::io::{Read, BufRead, BufReader, Seek, SeekFrom};
-use std::ffi::OsString;
+use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
 
 const LF_TERMINATION_SIZE: usize = 1;
 const CRLF_TERMINATION_SIZE: usize = 2;
 
+#[derive(Debug)]
 pub struct IndexedFastaProvider {
     proto: IndexedFastaProviderProto,
     fasta_buf_reader: BufReader<File>,
@@ -23,8 +23,6 @@ struct IndexedFastaProviderProto {
     line_terminator_size: usize,
     use_reverse_complement: bool,
     fasta_indices: Vec<FastaIndex>,
-    // Fasta information
-    fasta_file_path: OsString,
 }
 impl Writable for IndexedFastaProviderProto {}
 
@@ -63,11 +61,9 @@ impl IndexedFastaProvider {
     pub fn new<P: AsRef<Path> + std::fmt::Debug>(
         fasta_file_path: P,
     ) -> Result<Self> {
-        let fasta_file_path = fasta_file_path.as_ref().as_os_str().to_os_string();
-
         let mut fasta_indices = Vec::new();
 
-        let mut fasta_buf_reader = FastaBufReader::new(fasta_file_path.clone())?;
+        let mut fasta_buf_reader = FastaBufReader::new(fasta_file_path)?;
         let mut offset_to_current_line = 0;
         let mut offset_to_sequence_start_point = 0;
         let mut sequence_length = 0;
@@ -145,7 +141,6 @@ impl IndexedFastaProvider {
                     line_terminator_size: line_terminator_size,
                     use_reverse_complement: false,
                     fasta_indices: fasta_indices,
-                    fasta_file_path: fasta_file_path,
                 },
                 fasta_buf_reader: fasta_buf_reader.buf_reader,
                 sequence_buffer: Vec::new(),
@@ -187,10 +182,7 @@ struct ReferenceWithIndexedFastaProviderFile {
 impl Writable for ReferenceWithIndexedFastaProviderFile {}
 
 impl Reference<IndexedFastaProvider> {
-    pub fn write_to_file(
-        &self,
-        file_path: &str
-    ) -> Result<()> {
+    pub fn write_to<W: Write>(&self, writer: W) -> Result<()> {
         let file = ReferenceWithIndexedFastaProviderFile {
             serialized_reference_proto: bincode::serialize(
                 &self.reference_proto
@@ -199,28 +191,19 @@ impl Reference<IndexedFastaProvider> {
                 &self.sequence_provider.proto
             )?,
         };
-        file.write_to_file(file_path)?;
-        Ok(())
+
+        file.write_to(writer)
     }
-    pub fn read_from_file(
-        file_path: &str,
-        fasta_file_path: Option<&str>,
-    ) -> Result<Self> {
+    pub fn read_from<R: Read>(reader: R, fasta_file_path: &str) -> Result<Self> {
         let (reference_proto, indexed_fasta_provider_proto): (ReferenceProto, IndexedFastaProviderProto) = {
-            let file = ReferenceWithIndexedFastaProviderFile::read_from_file(file_path)?;
+            let file = ReferenceWithIndexedFastaProviderFile::read_from(reader)?;
             let reference_proto = bincode::deserialize(&file.serialized_reference_proto)?;
             let indexed_fasta_provider_proto = bincode::deserialize(&file.serialized_indexed_fasta_provider_proto)?;
 
             (reference_proto, indexed_fasta_provider_proto)
         };
 
-        let fasta_path = Self::get_fasta_path(
-            file_path,
-            fasta_file_path,
-            &indexed_fasta_provider_proto.fasta_file_path,
-        )?;
-
-        let fasta_file = File::open(fasta_path)?;
+        let fasta_file = File::open(fasta_file_path)?;
         let fasta_buf_reader = BufReader::new(fasta_file);
 
         let indexed_fasta_provider = IndexedFastaProvider {
@@ -234,43 +217,6 @@ impl Reference<IndexedFastaProvider> {
         };
 
         Ok(reference)
-    }
-    fn get_fasta_path(
-        reference_file_path: &str,
-        specified_fasta_path: Option<&str>,
-        saved_fasta_path: &OsString,
-    ) -> Result<OsString> {
-        match specified_fasta_path {
-            Some(fasta_path) => {
-                let path = Path::new(fasta_path);
-                if path.exists() {
-                    return Ok(path.as_os_str().to_os_string())
-                } else {
-                    error_msg!("Input fasta file is not exist.")
-                }
-            },
-            None => {
-                // Try to read fasta from saved proto
-                let path = Path::new(saved_fasta_path);
-                if path.exists() {
-                    return Ok(path.as_os_str().to_os_string())
-                } else {
-                    // Try to read fasta from file
-                    // with extension '.fa', '.fna', or '.fasta'
-                    // in same directory with reference
-                    let path = Path::new(reference_file_path);
-
-                    for extension in ["fa", "fna", "fasta"].into_iter() {
-                        let inferred_path = path.with_extension(extension);
-                        if inferred_path.exists() {
-                            return Ok(inferred_path.into_os_string())
-                        }
-                    }
-
-                    error_msg!("Input fasta file is not exist.")
-                }
-            },
-        }
     }
 }
 
