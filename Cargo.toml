@@ -3,4 +3,5 @@
 members = [
     "sigalign",
     "sigalign-py",
+    "sigalign-demo-bin"
 ]
