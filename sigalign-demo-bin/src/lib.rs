@@ -321,7 +321,7 @@ impl Configuration {
         where F: Fn(&Aligner, &mut Reference, &[u8]) -> Result<String> {
         let fasta_reader = FastaReader::from_file_path(query_path)?;
         print!("{{");
-        eprintln!("Unsupported sequence type: [");
+        eprint!("Unsupported sequence type: [");
         fasta_reader.for_each(|(label, query)| {
             let result = alignment_algorithm(aligner, reference, &query);
             match result {
@@ -329,11 +329,11 @@ impl Configuration {
                     println!("\"{}\":{},", label, json_result);
                 },
                 Err(_) => {
-                    eprint!("{}", label);
+                    eprint!("{},", label);
                 },
             }
         });
-        print!("}}");
+        print!("{{}}}}");
         eprintln!("]");
         Ok(())
     }
