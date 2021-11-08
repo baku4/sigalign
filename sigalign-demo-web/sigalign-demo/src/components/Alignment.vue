@@ -2,13 +2,22 @@
   <div>
     <div class="columns">
       <div class="column is-size-5">
-        (1) Reference
+        Query:
       </div>
     </div>
+    <button class="button is-navy is-normal">
+     Semi-global
+    </button>
+    <button class="button is-navy is-normal">
+      Local
+    </button>
     <div class="columns">
       <div class="column">
         <button class="button is-navy is-normal">
-          New
+          Semi-global
+        </button>
+        <button class="button is-navy is-normal">
+          Local
         </button>
       </div>
     </div>
@@ -19,6 +28,6 @@
 import { defineComponent } from 'vue';
 
 export default defineComponent({
-  name: 'Reference',
+  name: 'Alignment',
 });
 </script>

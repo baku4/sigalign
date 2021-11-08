@@ -1,0 +1,18 @@
+@import "../node_modules/bulma/sass/utilities/initial-variables.sass";
+@import "../node_modules/bulma/sass/utilities/functions.sass";
+
+$lightpink: #FBEAEB;
+$lightpink-invert: findColorInvert($lightpink);
+$navy: #2E3C7E;
+$navy-invert: findColorInvert($navy);
+
+@import "../node_modules/bulma/sass/utilities/derived-variables.sass";
+$addColors: (
+  "lightpink":($lightpink, $lightpink-invert),
+  "navy": ($navy, $navy-invert),
+);
+$colors: map-merge($colors, $addColors);
+
+$body-background-color: $lightpink;
+
+@import "../node_modules/bulma/bulma.sass";

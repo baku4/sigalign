@@ -1,6 +1,17 @@
 <template>
   <div>
-    Aligner
+    <div class="columns">
+      <div class="column is-size-5">
+        (2) Aigner
+      </div>
+    </div>
+    <div class="columns">
+      <div class="column">
+        <button class="button is-navy">
+          New
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
