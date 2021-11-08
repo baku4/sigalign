@@ -11,9 +11,3 @@ description = "Binary implementation"
 sigalign = { path = "../sigalign" }
 anyhow = "1.0.44"
 clap = "2.33.3"
-
-[profile.dev]
-opt-level = 0
-
-[profile.release]
-opt-level = 3

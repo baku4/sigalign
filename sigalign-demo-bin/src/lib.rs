@@ -269,57 +269,68 @@ impl Configuration {
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        let fasta_reader = FastaReader::from_file_path(query_path)?;
-
-        fasta_reader.for_each(|(label, query)| {
-            let result = aligner.semi_global_alignment_labeled(reference, &query)
-                .expect(&format!("Query {} is not searchable", label));
-            println!("#{}\n{}", label, result);
-        });
-
-        Ok(())
+        Self::alignment_with_fasta(
+            aligner,
+            reference,
+            query_path,
+            Aligner::semi_global_alignment_labeled,
+        )
     }
     fn semi_global_alignment(
         aligner: &Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        let fasta_reader = FastaReader::from_file_path(query_path)?;
-
-        fasta_reader.for_each(|(label, query)| {
-            let result = aligner.semi_global_alignment(reference, &query)
-                .expect(&format!("Query {} is not searchable", label));
-            println!("#{}\n{}", label, result);
-        });
-
-        Ok(())
+        Self::alignment_with_fasta(
+            aligner,
+            reference,
+            query_path,
+            Aligner::semi_global_alignment,
+        )
     }
     fn local_alignment_labeled(
         aligner: &Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        let fasta_reader = FastaReader::from_file_path(query_path)?;
-
-        fasta_reader.for_each(|(label, query)| {
-            let result = aligner.local_alignment_labeled(reference, &query)
-                .expect(&format!("Query {} is not searchable", label));
-            println!("#{}\n{}", label, result);
-        });
-
-        Ok(())
+        Self::alignment_with_fasta(
+            aligner,
+            reference,
+            query_path,
+            Aligner::local_alignment_labeled,
+        )
     }
     fn local_alignment(
         aligner: &Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
+        Self::alignment_with_fasta(
+            aligner,
+            reference,
+            query_path,
+            Aligner::local_alignment,
+        )
+    }
+    fn alignment_with_fasta<F>(
+        aligner: &Aligner,
+        reference: &mut Reference,
+        query_path: &str,
+        alignment_algorithm: F,
+    ) -> Result<()> 
+        where F: Fn(&Aligner, &mut Reference, &[u8]) -> Result<String> {
         let fasta_reader = FastaReader::from_file_path(query_path)?;
 
         fasta_reader.for_each(|(label, query)| {
-            let result = aligner.local_alignment(reference, &query)
-                .expect(&format!("Query {} is not searchable", label));
-            println!("#{}\n{}", label, result);
+            let result = alignment_algorithm(aligner, reference, &query);
+            match result {
+                Ok(json_result) => {
+                    println!("#{}\n{}", label, json_result);
+                },
+                Err(err) => {
+                    eprintln!("{}: Query {} is not searchable", err, label);
+                },
+            }
         });
 
         Ok(())
