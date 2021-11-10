@@ -11,9 +11,8 @@ pub mod sample_data;
 use sample_data::*;
 
 mod standard_aligner;
-use standard_aligner::*; 
+use standard_aligner::*;
 
 // Test Main
 mod test_alignment_algorithm;
-
 mod test_sequence_provider;

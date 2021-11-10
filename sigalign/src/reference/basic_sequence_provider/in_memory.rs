@@ -83,6 +83,19 @@ impl InMemoryProvider {
             }
         )
     }
+    pub fn from_fasta_bytes(
+        fasta_bytes: &[u8]
+    ) -> Self {
+        let fasta_reader = FastaReader::from_bytes(fasta_bytes);
+
+        let records = fasta_reader.into_iter().map(|(label, sequence)| {
+            SequenceRecord::new_forward(label, sequence)
+        }).collect();
+
+        Self {
+            records
+        }
+    }
     pub fn from_fasta_file_of_nucleotide_with_reverse_complement<P: AsRef<Path> + std::fmt::Debug>(
         file_path: P,
     ) -> Result<Self> {

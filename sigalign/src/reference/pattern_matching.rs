@@ -1,6 +1,7 @@
 use super::{Sequence};
 
 use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
+use lt_fm_index::use_case::*;
 
 use serde::{Deserialize, Serialize};
 

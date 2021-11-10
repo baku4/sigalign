@@ -252,6 +252,16 @@ impl<S: SequenceProvider> Reference<S> {
     pub fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
         self.reference_proto.search_range = search_range;
     }
+    /// ### Get reference information
+    /// Information of search range
+    pub fn info_search_range(&self) -> &[usize] {
+        &self.reference_proto.search_range
+    }
+    /// Information of sequence type:
+    /// (is nucleotide sequence, noise character)
+    pub fn info_sequence_type(&self) -> (bool, Option<u8>) {
+        self.reference_proto.sequence_type.is_nucleotide_with_noise_character()
+    }
 }
 
 impl<SL: SequenceProvider + Labeling> Reference<SL> {
@@ -304,6 +314,17 @@ impl SequenceType {
     }
     pub fn allowed_type(&self) -> AllowedSequenceType {
         self.allowed_type.clone()
+    }
+    pub fn is_nucleotide_with_noise_character(&self) -> (bool, Option<u8>) {
+        let (is_nucleotide, has_noise) = self.allowed_type.is_nucleotide_and_has_noise();
+
+        let noise_character = if has_noise {
+            Some(*self.utf8_chr_of_type.last().unwrap())
+        } else {
+            None
+        };
+
+        (is_nucleotide, noise_character)
     }
     fn is_searchable(&self, query: Sequence) -> bool {
         query.iter().all(|character| {
@@ -389,6 +410,16 @@ pub enum AllowedSequenceType {
     NucleotideWithNoise, // NN
     AminoacidOnly, // AO
     AminoacidWithNoise, // AN
+}
+impl AllowedSequenceType {
+    fn is_nucleotide_and_has_noise(&self) -> (bool, bool) {
+        match self {
+            Self::NucleotideOnly => (true, false),
+            Self::NucleotideWithNoise => (true, true),
+            Self::AminoacidOnly => (false, false),
+            Self::AminoacidWithNoise => (false, true),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -491,6 +522,10 @@ impl PatternLocater {
         let mut locations = self.lt_fm_index.locate(pattern);
         locations.sort();
         locations
+    }
+    // lt fm index information
+    fn info(&self) {
+        
     }
 }
 
