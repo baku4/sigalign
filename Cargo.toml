@@ -2,7 +2,10 @@
 members = [
     "sigalign",
     "sigalign-py",
-    "sigalign-demo-bin"
+    "sigalign-demo-bin",
+]
+exclude = [
+    "sigalign-demo-web"
 ]
 
 [profile.dev]
