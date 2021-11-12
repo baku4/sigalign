@@ -42,4 +42,40 @@ impl LtFmIndex {
     pub fn locate(&self, pattern: Sequence) -> Vec<u64> {
         self.0.locate(pattern)
     }
+    pub fn sa_sampling_ratio(&self) -> u64 {
+        match &self.0 {
+            LtFmIndexAll::NO64(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::NO128(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::NN64(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::NN128(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::AO64(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::AO128(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::AN64(inner_index) => inner_index.suffix_array_sampling_ratio(),
+            LtFmIndexAll::AN128(inner_index) => inner_index.suffix_array_sampling_ratio(),
+        }
+    }
+    pub fn kmer_size(&self) -> usize {
+        match &self.0 {
+            LtFmIndexAll::NO64(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::NO128(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::NN64(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::NN128(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::AO64(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::AO128(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::AN64(inner_index) => inner_index.lookup_table_kmer_size(),
+            LtFmIndexAll::AN128(inner_index) => inner_index.lookup_table_kmer_size(),
+        }
+    }
+    pub fn bwt_size(&self) -> usize {
+        match &self.0 {
+            LtFmIndexAll::NO64(_)
+            | LtFmIndexAll::NN64(_)
+            | LtFmIndexAll::AO64(_)
+            | LtFmIndexAll::AN64(_) => 64,
+            LtFmIndexAll::NO128(_)
+            | LtFmIndexAll::NN128(_)
+            | LtFmIndexAll::AO128(_)
+            | LtFmIndexAll::AN128(_) => 128,
+        }
+    }
 }

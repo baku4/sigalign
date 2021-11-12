@@ -252,15 +252,28 @@ impl<S: SequenceProvider> Reference<S> {
     pub fn set_search_range_unchecked(&mut self, search_range: Vec<usize>) {
         self.reference_proto.search_range = search_range;
     }
-    /// ### Get reference information
-    /// Information of search range
-    pub fn info_search_range(&self) -> &[usize] {
+
+    // Methods to get information of reference
+    /// Get information of search range
+    pub fn get_search_range(&self) -> &[usize] {
         &self.reference_proto.search_range
     }
-    /// Information of sequence type:
+    /// Get information of sequence type:
     /// (is nucleotide sequence, noise character)
-    pub fn info_sequence_type(&self) -> (bool, Option<u8>) {
+    pub fn get_sequence_type(&self) -> (bool, Option<u8>) {
         self.reference_proto.sequence_type.is_nucleotide_with_noise_character()
+    }
+    /// Get information of suffix array sampling ratio in lt-fm-index
+    pub fn get_sa_sampling_ratio(&self) -> u64 {
+        self.reference_proto.pattern_locater.sa_sampling_ratio()
+    }
+    /// Get information of kmer size for lookup table in lt-fm-index
+    pub fn get_kmer_size_for_lookup_table(&self) -> usize {
+        self.reference_proto.pattern_locater.kmer_size_for_lookup_table()
+    }
+    /// Get information of Bwt block size in lt-fm-index
+    pub fn get_size_of_bwt_block(&self) -> usize {
+        self.reference_proto.pattern_locater.size_of_bwt_block()
     }
 }
 
@@ -523,9 +536,17 @@ impl PatternLocater {
         locations.sort();
         locations
     }
-    // lt fm index information
-    fn info(&self) {
-        
+    // Kmer size of lt-fm-index
+    fn kmer_size_for_lookup_table(&self) -> usize {
+        self.lt_fm_index.kmer_size()
+    }
+    // Sampling ratio of lt-fm-index
+    fn sa_sampling_ratio(&self) -> u64 {
+        self.lt_fm_index.sa_sampling_ratio()
+    }
+    // Bwt block size
+    fn size_of_bwt_block(&self) -> usize {
+        self.lt_fm_index.bwt_size()
     }
 }
 
