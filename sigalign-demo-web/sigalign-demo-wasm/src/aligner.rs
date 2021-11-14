@@ -1,10 +1,10 @@
 use crate::{Result, error_msg};
-use super::{SigAligner};
+use super::{SigAligner, SigReference, Reference};
 use super::{Deserialize, Serialize, serialize_to_string};
 
 // Aligner
 pub struct Aligner {
-    sig_aligner: Option<SigAligner>,
+    pub sig_aligner: Option<SigAligner>,
     state: AlignerState,
 }
 #[derive(Serialize)]

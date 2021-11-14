@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+  </head>
+  <body>
+    <div>
+      <h1>test</h1>
+    </div>
+    <!-- <script src="index.js"></script> -->
+    <script type="module">
+      import init, { SigAlign } from '../sigalign-demo-wasm/pkg/sigalign_demo_wasm.js';
+
+      async function run() {
+        await init();
+
+        const result = SigAlign.new();
+        console.log(result);
+      }
+
+      run();
+    </script>
+  </body>
+</html>

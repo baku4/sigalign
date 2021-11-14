@@ -10,8 +10,8 @@ use sigalign::reference::basic_sequence_provider::InMemoryProvider;
 mod reference;
 mod aligner;
 
-use reference::Reference;
-use aligner::Aligner;
+pub use reference::Reference;
+pub use aligner::Aligner;
 
 #[wasm_bindgen]
 pub struct Sigalign {
@@ -21,51 +21,40 @@ pub struct Sigalign {
 
 #[wasm_bindgen]
 impl Sigalign {
+    #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
         Self {
             reference: Reference::default(),
             aligner: Aligner::default(),
         }
     }
+    #[wasm_bindgen(getter)]
+    pub fn reference(&self) -> String {
+        self.reference.state_to_json()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn aligner(&self) -> String {
+        self.aligner.state_to_json()
+    }
     pub fn generate_reference(
         &mut self,
         fasta: &str,
-        is_path: bool,
-        sampling_ratio: u64,
+        sampling_ratio: usize,
         bwt_block: usize,
         lookup_table_kmer_size: usize,
-    ) -> String { // If no error occur, return empty String
-        let result = if is_path {
-            self.reference.generate_with_fasta_file(
-                fasta,
-                sampling_ratio,
-                bwt_block,
-                lookup_table_kmer_size,
-            )
-        } else {
-            self.reference.generate_with_fasta_bytes(
-                fasta,
-                sampling_ratio,
-                bwt_block,
-                lookup_table_kmer_size,
-            )
-        };
+    ) -> String {
+        let result = self.reference.generate_with_fasta_bytes(
+            fasta,
+            sampling_ratio,
+            bwt_block,
+            lookup_table_kmer_size,
+        );
 
         match result {
             Ok(_) => String::new(),
             Err(error) => format!("{}", error),
-        }        
+        }
     }
-    pub fn reset_reference(&mut self) {
-        self.reference.reset();
-    }
-    pub fn print_reference_state(&self) -> String {
-        self.reference.state_to_json()
-    }
-    pub fn print_aligner_state(&self) -> String {
-        self.aligner.state_to_json()
-    }
-
     pub fn generate_aligner(
         &mut self,
         mismatch_penalty: usize,
@@ -81,9 +70,78 @@ impl Sigalign {
             Err(error) => format!("{}", error),
         }
     }
-    pub fn reset_aligner(
-        &mut self
-    ) {
-        self.aligner.reset();
+    pub fn reset_reference(&mut self) {
+        self.reference.reset()
     }
+    pub fn reset_aligner(&mut self) {
+        self.aligner.reset()
+    }
+
+    pub fn semi_global_alignment(
+        &mut self,
+        query: &str,
+    ) -> String {
+        let result = semi_global_alignment(&self.aligner, &mut self.reference, query);
+        match result {
+            Ok(json) => json,
+            Err(err) => format!("{}", err),
+        }
+    }
+    pub fn local_alignment(
+        &mut self,
+        query: &str,
+    ) -> String {
+        let result = local_alignment(&self.aligner, &mut self.reference, query);
+        match result {
+            Ok(json) => json,
+            Err(err) => format!("{}", err),
+        }
+    }
+}
+
+fn semi_global_alignment(
+    aligner: &Aligner,
+    reference: &mut Reference,
+    query: &str
+) -> Result<String> {
+    let sig_aligner = match &aligner.sig_aligner {
+        Some(sig_aligner) => sig_aligner,
+        None => {
+            if reference.sig_reference.is_none() {
+                error_msg!("Reference and Aligner are not generated")
+            } else {
+                error_msg!("Aligner is not generated")
+            }
+        },
+    };
+    let mut sig_reference = match &mut reference.sig_reference {
+        Some(sig_reference) => sig_reference,
+        None => error_msg!("Reference is not generated")
+    };
+
+    let result = sig_aligner.semi_global_alignment_labeled(&mut sig_reference, query.as_bytes())?;
+    Ok(result)
+}
+fn local_alignment(
+    aligner: &Aligner,
+    reference: &mut Reference,
+    query: &str
+) -> Result<String> {
+    let sig_aligner = match &aligner.sig_aligner {
+        Some(sig_aligner) => sig_aligner,
+        None => {
+            if reference.sig_reference.is_none() {
+                error_msg!("Reference and Aligner are not generated")
+            } else {
+                error_msg!("Aligner is not generated")
+            }
+        },
+    };
+    let mut sig_reference = match &mut reference.sig_reference {
+        Some(sig_reference) => sig_reference,
+        None => error_msg!("Reference is not generated")
+    };
+
+    let result = sig_aligner.local_alignment_labeled(&mut sig_reference, query.as_bytes())?;
+    Ok(result)
 }

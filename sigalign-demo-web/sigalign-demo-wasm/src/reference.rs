@@ -4,7 +4,7 @@ use super::{Deserialize, Serialize, serialize_to_string};
 
 // Reference
 pub struct Reference {
-    sig_reference: Option<SigReference<InMemoryProvider>>,
+    pub sig_reference: Option<SigReference<InMemoryProvider>>,
     state: ReferenceState,
 }
 
@@ -12,9 +12,9 @@ pub struct Reference {
 struct ReferenceState {
     exist: bool,
     is_nucleotide: bool,
-    noise_character: Option<u8>,
+    noise_character: String,
     sampling_ratio: usize,
-    bwt_block: usize,
+    bwt_block_size: usize,
     lookup_table_kmer_size: usize,
 }
 impl Default for Reference {
@@ -30,9 +30,9 @@ impl Default for ReferenceState {
         Self {
             exist: false,
             is_nucleotide: true,
-            noise_character: None,
+            noise_character: "".to_string(),
             sampling_ratio: 0,
-            bwt_block: 0,
+            bwt_block_size: 0,
             lookup_table_kmer_size: 0,
         }
     }
@@ -41,7 +41,7 @@ impl Reference {
     pub fn generate_with_fasta_bytes(
         &mut self,
         fasta_bytes: &str,
-        sampling_ratio: u64,
+        sampling_ratio: usize,
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
@@ -53,7 +53,7 @@ impl Reference {
     pub fn generate_with_fasta_file(
         &mut self,
         fasta_file_path: &str,
-        sampling_ratio: u64,
+        sampling_ratio: usize,
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
@@ -75,12 +75,12 @@ impl Reference {
     fn generate_with_sequence_provider(
         &mut self,
         sequence_provider: InMemoryProvider,
-        sampling_ratio: u64,
+        sampling_ratio: usize,
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
         let mut lt_fm_index_config = LtFmIndexConfig::new()
-            .change_sampling_ratio(sampling_ratio)
+            .change_sampling_ratio(sampling_ratio as u64)
             .change_kmer_size_for_lookup_table(lookup_table_kmer_size);
         if bwt_block == 64 {
             // use default
@@ -98,12 +98,22 @@ impl Reference {
             let lookup_table_kmer_size = sig_reference.get_kmer_size_for_lookup_table();
             let sequence_type = sig_reference.get_sequence_type();
 
+            let noise_character = match sequence_type.1 {
+                Some(character) => {
+                    let string = vec![character];
+                    String::from_utf8(string).unwrap()
+                },
+                None => {
+                    "".to_string()
+                },
+            };
+
             ReferenceState {
                 exist: true,
                 is_nucleotide: sequence_type.0,
-                noise_character: sequence_type.1,
+                noise_character,
                 sampling_ratio,
-                bwt_block,
+                bwt_block_size,
                 lookup_table_kmer_size,
             }
         };
