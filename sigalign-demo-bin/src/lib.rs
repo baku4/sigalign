@@ -333,7 +333,7 @@ impl Configuration {
                 },
             }
         });
-        print!("{{}}}}");
+        print!("\"\":{{}}}}"); // FIXME: Last result is empty 
         eprintln!("]");
         Ok(())
     }
