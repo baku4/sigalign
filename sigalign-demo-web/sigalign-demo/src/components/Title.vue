@@ -1,12 +1,11 @@
 <template>
-  <div class="px-3 py-4">
-    <block class="is-size-1">Sigalign Demo Web</block>
+  <div class="content is-medium mt-5 has-text-centered has-text-brown">
+    <h1><span class="is-italic has-text-primary">Sigalign</span> Demo Web</h1>
     <p>
-      Similarity guided sequence alignment algorithm
-    </p>
+      <span class="has-text-primary has-text-weight-semibold">Si</span>milarity <span class="has-text-primary has-text-weight-semibold">g</span>uided sequence <span class="has-text-primary has-text-weight-semibold">align</span>ment algorithm</p>
 
     <block class="px-1">
-      <button class="button is-rounded">
+      <button class="button is-rounded is-primary is-outlined" onclick="window.open('https://github.com/baku4/sigalign/');">
         <span class="icon">
           <i class="fab fa-github-alt"></i>
         </span>
@@ -15,7 +14,7 @@
     </block>
 
     <block class="px-1">
-      <button class="button is-rounded">
+      <button class="button is-rounded is-primary is-outlined" onclick="window.open('https://crates.io/crates/sigalign/');">
         <span class="icon">
           <i class="fab fa-rust"></i>
         </span>
@@ -24,7 +23,7 @@
     </block>
 
     <block class="px-1">
-      <button class="button is-rounded">
+      <button class="button is-rounded is-primary is-outlined">
         <span class="icon">
           <i class="fab fa-python"></i>
         </span>

@@ -1,23 +1,19 @@
 <template>
-  <div class="has-text-font-color">
+  <div>
     <div class="container is-max-desktop">
-    <!-- <div class="container is-max-desktop has-text-navy"> -->
       <!-- Title -->
-      <div class="columns">
-        <div class="column">
-          <Title/>
-        </div>
-      </div>
+      <Title/>
+      <div class="is-divider"></div>
       <!-- Preparation -->
-      <div class="py-3">
+      <div class="pb-3">
         <!-- Title -->
-        <div class="columns has-text-weight-bold">
+        <div class="columns has-text-weight-bold has-text-brown">
           <div class="column is-size-3">
             1. Preparation
           </div>
         </div>
         <!-- Reference -->
-        <div class="columns pl-3 has-text-weight-semibold">
+        <div class="columns pl-3">
           <div class="column is-size-4">
             (1) Make Reference
           </div>
@@ -27,7 +23,7 @@
         v-if="!reference_state.exist && !reference_generator.opened">
           <div class="column">
             <button
-            class="button is-navy is-normal"
+            class="button is-primary is-normal"
             @click="this.reference_generator.opened = true">
               New
             </button>
@@ -73,7 +69,7 @@
           </div>
           <div class="column">
             <div class="field">
-              <input class="switch is-rtl is-navy is-normal"
+              <input class="switch is-rtl is-primary is-normal"
               id="switchFastaIsFile"
               type="checkbox"
               name="switchFastaIsFile"
@@ -84,12 +80,12 @@
           <div class="column">
             <!-- Advanced options -->
             <div class="field">
-              <input class="switch is-rtl is-navy is-normal"
+              <input class="switch is-rtl is-primary is-normal"
               id="switchAdvancedOption"
               type="checkbox"
               name="switchAdvancedOption"
               v-model="reference_generator.advanced_opened">
-              <label for="switchAdvancedOption">Change advanced options</label>
+              <label for="switchAdvancedOption">Change indexing options</label>
             </div>
           </div>
 
@@ -147,7 +143,7 @@
           <div class="columns">
             <div class="column">
               <button
-              class="button is-navy is-normal"
+              class="button is-primary is-normal"
               :class="{ 'is-loading': reference_generator.reading_file }"
               @click="generateReference">
                 Generate
@@ -177,7 +173,7 @@
           <div class="columns">
             <div class="column">
               <button
-              class="button is-navy is-normal"
+              class="button is-primary is-normal"
               @click="resetReference">
                 Reset
               </button>
@@ -186,7 +182,7 @@
         </div>
 
         <!-- Aligner -->
-        <div class="columns pl-3 pt-3 has-text-weight-semibold">
+        <div class="columns pl-3 pt-3">
           <div class="column is-size-4">
             (2) Make Aigner
           </div>
@@ -196,7 +192,7 @@
         v-if="!aligner_state.exist && !aligner_generator.opened">
           <div class="column">
             <button
-            class="button is-navy is-normal"
+            class="button is-primary is-normal"
             @click="this.aligner_generator.opened = true">
               New
             </button>
@@ -289,7 +285,7 @@
           <div class="columns">
             <div class="column">
               <button
-              class="button is-navy is-normal"
+              class="button is-primary is-normal"
               @click="generateAligner">
                 Generate
               </button>
@@ -320,7 +316,7 @@
           <div class="columns">
             <div class="column">
               <button
-              class="button is-navy is-normal"
+              class="button is-primary is-normal"
               @click="resetAligner">
                 Reset
               </button>
@@ -330,34 +326,34 @@
       </div>
 
       <!-- Alignment -->
-      <div class="columns has-text-weight-bold">
+      <div class="columns mt-3 has-text-weight-bold has-text-brown">
         <div class="column is-size-3">
           2. Alignment 
         </div>
       </div>
       <!-- Select Query -->
       <div class="pl-3">
-        <div class="columns has-text-weight-semibold">
+        <div class="columns">
           <div class="column is-size-4">
             (1) Input Query
           </div>
         </div>
         <div class="columns pl-3">
           <div class="column">
-            <textarea class="textarea" v-model="query_string" placeholder="Input Query String"></textarea>
+            <textarea class="textarea" v-model="query_string" placeholder="Input query string"></textarea>
           </div>
         </div>
       </div>
       <!-- Select Algorithm -->
       <div class="pl-3">
-        <div class="columns has-text-weight-semibold">
+        <div class="columns">
           <div class="column is-size-4">
             (2) Select Algorithm
           </div>
         </div>
         <div class="columns pl-3">
           <div class="column is-one-fifth">
-            <button class="button is-navy is-normal" @click="semiglobalAlign">
+            <button class="button is-primary is-normal" @click="semiglobalAlign">
               Semi-global
             </button>
           </div>
@@ -367,7 +363,7 @@
         </div>
         <div class="columns pl-3">
           <div class="column is-one-fifth">
-            <button class="button is-navy is-normal" @click="localAlign">
+            <button class="button is-primary is-normal" @click="localAlign">
               Local
             </button>
           </div>
@@ -377,8 +373,8 @@
         </div>
       </div>
       <!-- Alignment Result -->
-      <hr class="has-background-navy">
-      <div class="columns has-text-weight-bold">
+      <div class="is-divider"></div>
+      <div class="columns has-text-weight-bold has-text-brown">
         <div class="column is-size-3">
           Alignment Result
         </div>
@@ -495,11 +491,11 @@ export default defineComponent({
         gap_open_penalty: 6,
         gap_extend_penalty: 2,
         minimum_aligned_length: 100,
-        maximum_penalty_per_length: 0.05,
+        maximum_penalty_per_length: 0.1,
         error_exist: false,
         error_msg: "",
       } as AlignerGenerator,
-      query_string: "",
+      query_string: "CTTTTTCCAGTAGCAAACTCTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGATTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAGAGCGTTTTATTACCTTTTGAATCCC",
       alignment_result: null,
       alignment_error_msg: "None",
     }
@@ -538,8 +534,9 @@ export default defineComponent({
     chooseFastaFile(event: InputEvent) {
       let target = event.target as HTMLInputElement;
       let files = target.files;
-      if (!files || !files[0])
+      if (!files || !files[0]) {
         return;
+      }
       // Start read file
       this.reference_generator.reading_file = true;
       let file = files[0];

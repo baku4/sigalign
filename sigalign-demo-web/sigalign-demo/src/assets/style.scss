@@ -8,19 +8,31 @@ $lightpink: #FBEAEB;
 $lightpink-invert: findColorInvert($lightpink);
 $navy: #2E3C7E;
 $navy-invert: findColorInvert($navy);
+$darkred: #990011;
+$darkred-invert: findColorInvert($darkred);
+$skyblue: #1AAFBC;
+$skyblue-invert: findColorInvert($skyblue);
+$brown: #80634C;
+$brown-invert: findColorInvert($brown);
+
+$primary: $skyblue;
 
 // Font
+@import url('https://fonts.googleapis.com/css2?family=Ubuntu&display=swap');
 
-$family-serif: "Georgia", serif;
-$family-primary: $family-serif;
-
+$family-sans-serif: "Ubuntu", "Roboto", "Arial", sans-serif;
+$family-primary: $family-sans-serif;
 
 @import "../node_modules/bulma/sass/utilities/derived-variables.sass";
 $addColors: (
   "lightpink":($lightpink, $lightpink-invert),
   "navy": ($navy, $navy-invert),
+  "darkred": ($darkred, $darkred-invert),
+  "skyblue": ($skyblue, $skyblue-invert),
+  "brown": ($brown, $brown-invert),
 );
 $colors: map-merge($colors, $addColors);
 
 @import "../node_modules/bulma/bulma.sass";
 @import '../node_modules/bulma-extensions/bulma-switch/src/sass/index.sass';
+@import '../node_modules/bulma-extensions/bulma-divider/src/sass/index.sass';
