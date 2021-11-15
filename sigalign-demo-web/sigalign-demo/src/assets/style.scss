@@ -1,3 +1,6 @@
+@charset "UTF-8";
+
+// Color
 @import "../node_modules/bulma/sass/utilities/initial-variables.sass";
 @import "../node_modules/bulma/sass/utilities/functions.sass";
 
@@ -6,8 +9,11 @@ $lightpink-invert: findColorInvert($lightpink);
 $navy: #2E3C7E;
 $navy-invert: findColorInvert($navy);
 
-$family-serif: "Ubuntu", "Georgia", serif;
+// Font
+
+$family-serif: "Georgia", serif;
 $family-primary: $family-serif;
+
 
 @import "../node_modules/bulma/sass/utilities/derived-variables.sass";
 $addColors: (
@@ -15,8 +21,6 @@ $addColors: (
   "navy": ($navy, $navy-invert),
 );
 $colors: map-merge($colors, $addColors);
-
-// $body-background-color: $lightpink;
 
 @import "../node_modules/bulma/bulma.sass";
 @import '../node_modules/bulma-extensions/bulma-switch/src/sass/index.sass';

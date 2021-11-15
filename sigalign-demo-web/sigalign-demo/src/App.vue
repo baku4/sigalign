@@ -9,301 +9,322 @@
         </div>
       </div>
       <!-- Preparation -->
-      <div class="columns has-text-weight-bold">
-        <div class="column is-size-3">
-          1. Preparation
-        </div>
-      </div>
-
-      <!-- Reference -->
-      <div class="columns pl-2 has-text-weight-semibold">
-        <div class="column is-size-4">
-          (1) Make Reference
-        </div>
-      </div>
-      <!-- New Button -->
-      <div class="columns pl-4">
-        <div class="column">
-          <button
-          class="button is-navy is-normal"
-          v-if="!reference_state.exist && !reference_generator.opened"
-          @click="this.reference_generator.opened = true">
-            New
-          </button>
-        </div>
-      </div>
-      <!-- Generator Field -->
-      <div class="pl-4" v-if="!reference_state.exist && reference_generator.opened">
-        <!-- Default Field -->
-        <div class="columns">
-          <div class="column">
-            <block>Input FASTA string</block>
+      <div class="py-3">
+        <!-- Title -->
+        <div class="columns has-text-weight-bold">
+          <div class="column is-size-3">
+            1. Preparation
           </div>
         </div>
-        <div class="columns" v-if="!reference_generator.input_is_path">
-          <div class="column">
-            <textarea class="textarea" v-model="reference_generator.fasta_file_bytes"
-            placeholder="e.g.&#10;> record_1&#10;AATGTAAACACTCTTGCTCTTGCAAATTCTTCATCTGTACTTATAGCTTTCCAGTTTCTTGACTCTGGATTATAAGAAAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACA&#10;> record_2&#10;CAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAGAAATTACCATAATCACATTGTGCTAACGGATCATTTGAACTTGCTTTTTTCCCGAACATC"></textarea>
+        <!-- Reference -->
+        <div class="columns pl-3 has-text-weight-semibold">
+          <div class="column is-size-4">
+            (1) Make Reference
           </div>
         </div>
-        <div class="columns" v-if="reference_generator.input_is_path">
+        <!-- New Button -->
+        <div class="columns pl-6"
+        v-if="!reference_state.exist && !reference_generator.opened">
           <div class="column">
-            <div class="file has-name">
-              <label class="file-label">
-                <input
-                class="file-input"
-                type="file"
-                name="resume"
-                @change="chooseFastaFile"
-                >
-                <span class="file-cta">
-                  <span class="file-label">
-                    Choose a FASTA file..
+            <button
+            class="button is-navy is-normal"
+            @click="this.reference_generator.opened = true">
+              New
+            </button>
+          </div>
+        </div>
+        <!-- Generator Field -->
+        <div class="pl-6" v-if="!reference_state.exist && reference_generator.opened">
+          <!-- Default Field -->
+          <div class="columns">
+            <div class="column">
+              <block>Input FASTA string</block>
+            </div>
+          </div>
+          <div class="columns" v-if="!reference_generator.input_is_path">
+            <div class="column">
+              <textarea class="textarea" v-model="reference_generator.fasta_bytes"
+              placeholder="e.g.&#10;> record_1&#10;AATGTAAACACTCTTGCTCTTGCAAATTCTTCATCTGTACTTATAGCTTTCCAGTTTCTTGACTCTGGATTATAAGAAAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACA&#10;> record_2&#10;CAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAGAAATTACCATAATCACATTGTGCTAACGGATCATTTGAACTTGCTTTTTTCCCGAACATC"></textarea>
+            </div>
+          </div>
+          <div class="columns" v-if="reference_generator.input_is_path">
+            <div class="column">
+              <div class="file has-name">
+                <label class="file-label">
+                  <input
+                  class="file-input"
+                  type="file"
+                  name="resume"
+                  accept=".fa, .fna, .fasta"
+                  ref="fastaFile"
+                  @change="chooseFastaFile"
+                  >
+                  <span class="file-cta">
+                    <span class="file-label">
+                      Choose a FASTA file..
+                    </span>
                   </span>
-                </span>
-                <span class="file-name">
-                  {{ reference_generator.fasta_file_name }}
-                </span>
-              </label>
+                  <span class="file-name">
+                    {{ reference_generator.fasta_file_name }}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="column">
+            <div class="field">
+              <input class="switch is-rtl is-navy is-normal"
+              id="switchFastaIsFile"
+              type="checkbox"
+              name="switchFastaIsFile"
+              v-model="reference_generator.input_is_path">
+              <label for="switchFastaIsFile">Input file instead</label>
+            </div>
+          </div>
+          <div class="column">
+            <!-- Advanced options -->
+            <div class="field">
+              <input class="switch is-rtl is-navy is-normal"
+              id="switchAdvancedOption"
+              type="checkbox"
+              name="switchAdvancedOption"
+              v-model="reference_generator.advanced_opened">
+              <label for="switchAdvancedOption">Change advanced options</label>
+            </div>
+          </div>
+
+          <div class="column pl-4" v-if="reference_generator.advanced_opened">
+            <!-- Sampling Ratio -->
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Sampling ratio
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="Suffix array sampling ratio"
+                    v-model="reference_generator.sampling_ratio">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Kmer size for lookup table -->
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Kmer size
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="Kmer size for lookup table"
+                    v-model="reference_generator.lookup_table_kmer_size">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- BWT Block -->
+            <div class="columns">
+              <div class="column is-one-quarter">
+                BWT block size
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <label class="radio">
+                      <input type="radio" value="64" v-model="reference_generator.bwt_block_size">
+                      64
+                    </label>
+                    <label class="radio">
+                      <input type="radio" value="128" v-model="reference_generator.bwt_block_size">
+                      128
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Generate -->
+          <div class="columns">
+            <div class="column">
+              <button
+              class="button is-navy is-normal"
+              :class="{ 'is-loading': reference_generator.reading_file }"
+              @click="generateReference">
+                Generate
+              </button>
+            </div>
+          </div>
+          <div class="columns" v-if="reference_generator.error_exist">
+            <div class="column">
+              <block>{{ reference_generator.error_msg }}</block>
             </div>
           </div>
         </div>
-        <div class="column">
-          <div class="field">
-            <input class="switch is-rtl is-navy is-normal"
-            id="switchFastaIsFile"
-            type="checkbox"
-            name="switchFastaIsFile"
-            v-model="reference_generator.input_is_path">
-            <label for="switchFastaIsFile">Input file instead</label>
+        <!-- Reference State -->
+        <div class="pl-6" v-if="reference_state.exist">
+          <div class="columns">
+            <div class="column">
+              <div class="content">
+                <ul>
+                  <li>Sequence Type: {{ sequence_type }}</li>
+                  <li>Suffix array sampling ratio: {{ reference_state.sampling_ratio }}</li>
+                  <li>Bwt block size: {{ reference_state.bwt_block_size }}</li>
+                  <li>Kmer size for count array lookup table: {{ reference_state.lookup_table_kmer_size }}</li>
+                </ul>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="column">
-          <!-- Advanced options -->
-          <div class="field">
-            <input class="switch is-rtl is-navy is-normal"
-            id="switchAdvancedOption"
-            type="checkbox"
-            name="switchAdvancedOption"
-            v-model="reference_generator.advanced_opened">
-            <label for="switchAdvancedOption">Change advanced options</label>
+          <div class="columns">
+            <div class="column">
+              <button
+              class="button is-navy is-normal"
+              @click="resetReference">
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="column pl-4" v-if="reference_generator.advanced_opened">
-          <!-- Sampling Ratio -->
-          <div class="columns">
-            <div class="column is-one-quarter">
-              Sampling ratio
-            </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="Suffix array sampling ratio"
-                  v-model="reference_generator.sampling_ratio">
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Kmer size for lookup table -->
-          <div class="columns">
-            <div class="column is-one-quarter">
-              Kmer size
-            </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="Kmer size for lookup table"
-                  v-model="reference_generator.lookup_table_kmer_size">
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- BWT Block -->
-          <div class="columns">
-            <div class="column is-one-quarter">
-              BWT block size
-            </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <label class="radio">
-                    <input type="radio" value="64" v-model="reference_generator.bwt_block_size">
-                    64
-                  </label>
-                  <label class="radio">
-                    <input type="radio" value="128" v-model="reference_generator.bwt_block_size">
-                    128
-                  </label>
-                </div>
-              </div>
-            </div>
+        <!-- Aligner -->
+        <div class="columns pl-3 pt-3 has-text-weight-semibold">
+          <div class="column is-size-4">
+            (2) Make Aigner
           </div>
         </div>
-        <!-- Generate -->
-        <div class="columns">
+        <!-- New Button -->
+        <div class="columns pl-6"
+        v-if="!aligner_state.exist && !aligner_generator.opened">
           <div class="column">
             <button
             class="button is-navy is-normal"
-            @click="generateReference">
-              Generate
+            @click="this.aligner_generator.opened = true">
+              New
             </button>
           </div>
         </div>
-        <div class="columns" v-if="reference_generator.error_exist">
-          <div class="column">
-            <block>{{ reference_generator.error_msg }}</block>
-          </div>
-        </div>
-      </div>
-      <!-- Reference State -->
-      <div class="pl-4" v-if="reference_state.exist">
-        <div class="columns">
-          <div class="column">
-            {{ reference_state }}
-          </div>
-        </div>
-        <div class="columns">
-          <div class="column">
-            <button
-            class="button is-navy is-normal"
-            @click="resetReference">
-              Reset
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Aligner -->
-      <div class="columns pl-2 has-text-weight-semibold">
-        <div class="column is-size-4">
-          (2) Make Aigner
-        </div>
-      </div>
-      <!-- New Button -->
-      <div class="columns pl-4">
-        <div class="column">
-          <button
-          class="button is-navy is-normal"
-          v-if="!aligner_state.exist && !aligner_generator.opened"
-          @click="this.aligner_generator.opened = true">
-            New
-          </button>
-        </div>
-      </div>
-      <!-- Generator Field -->
-      <div class="pl-4" v-if="!aligner_state.exist && aligner_generator.opened">
-        <!-- Penalties -->
-        <div class="columns">
-          <div class="column">
-            Penalties
-          </div>
-        </div>
-        <div class="pl-4">
+        <!-- Generator Field -->
+        <div class="pl-6" v-if="!aligner_state.exist && aligner_generator.opened">
+          <!-- Penalties -->
           <div class="columns">
-            <div class="column is-one-quarter">
-              Mismatch penalty
+            <div class="column">
+              Penalties
             </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="mismatch penalty"
-                  v-model="aligner_generator.mismatch_penalty">
+          </div>
+          <div class="pl-3">
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Mismatch penalty
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="mismatch penalty"
+                    v-model="aligner_generator.mismatch_penalty">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Gap-open penalty
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="gap-open penalty"
+                    v-model="aligner_generator.gap_open_penalty">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Gap-extend penalty
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="gap-extend penalty"
+                    v-model="aligner_generator.gap_extend_penalty">
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+          <!-- Cutoff -->
           <div class="columns">
-            <div class="column is-one-quarter">
-              Gap-open penalty
+            <div class="column">
+              Cutoff
             </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="gap-open penalty"
-                  v-model="aligner_generator.gap_open_penalty">
+          </div>
+          <div class="pl-4">
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Minimum aligned length
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="minimum aligned length"
+                    v-model="aligner_generator.minimum_aligned_length">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="columns">
+              <div class="column is-one-quarter">
+                Maximum penalty per length
+              </div>
+              <div class="column is-one-fifth">
+                <div class="field">
+                  <div class="control">
+                    <input class="input" type="text" placeholder="maximum penalty per length"
+                    v-model="aligner_generator.maximum_penalty_per_length">
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+          <!-- Generate -->
           <div class="columns">
-            <div class="column is-one-quarter">
-              Gap-extend penalty
+            <div class="column">
+              <button
+              class="button is-navy is-normal"
+              @click="generateAligner">
+                Generate
+              </button>
             </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="gap-extend penalty"
-                  v-model="aligner_generator.gap_extend_penalty">
-                </div>
-              </div>
+          </div>
+          <div class="columns" v-if="aligner_generator.error_exist">
+            <div class="column">
+              <block>{{ aligner_generator.error_msg }}</block>
             </div>
           </div>
         </div>
-        <!-- Cutoff -->
-        <div class="columns">
-          <div class="column">
-            Cutoff
-          </div>
-        </div>
-        <div class="pl-4">
+        <!-- Aligner State -->
+        <div class="pl-6" v-if="aligner_state.exist">
           <div class="columns">
-            <div class="column is-one-quarter">
-              Minimum aligned length
-            </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="minimum aligned length"
-                  v-model="aligner_generator.minimum_aligned_length">
-                </div>
+            <div class="column">
+              <div class="content">
+                <ul>
+                  <li>Mismatch penalty: {{ aligner_state.mismatch_penalty }}</li>
+                  <li>Gap-open penalty: {{ aligner_state.gap_open_penalty }}</li>
+                  <li>Gap-extend penalty: {{ aligner_state.gap_extend_penalty }}</li>
+                  <li>Minimum aligned length: {{ aligner_state.minimum_aligned_length }}</li>
+                  <li>Maximum penalty per length: {{ aligner_state.maximum_penalty_per_length }}</li>
+                  <li>Pattern size: {{ aligner_state.pattern_size }}</li>
+                </ul>
               </div>
             </div>
           </div>
           <div class="columns">
-            <div class="column is-one-quarter">
-              Maximum penalty per length
+            <div class="column">
+              <button
+              class="button is-navy is-normal"
+              @click="resetAligner">
+                Reset
+              </button>
             </div>
-            <div class="column is-one-fifth">
-              <div class="field">
-                <div class="control">
-                  <input class="input" type="text" placeholder="maximum penalty per length"
-                  v-model="aligner_generator.maximum_penalty_per_length">
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Generate -->
-        <div class="columns">
-          <div class="column">
-            <button
-            class="button is-navy is-normal"
-            @click="generateAligner">
-              Generate
-            </button>
-          </div>
-        </div>
-        <div class="columns" v-if="aligner_generator.error_exist">
-          <div class="column">
-            <block>{{ aligner_generator.error_msg }}</block>
-          </div>
-        </div>
-      </div>
-      <!-- Aligner State -->
-      <div class="pl-4" v-if="aligner_state.exist">
-        <div class="columns">
-          <div class="column">
-            {{ aligner_state }}
-          </div>
-        </div>
-        <div class="columns">
-          <div class="column">
-            <button
-            class="button is-navy is-normal"
-            @click="resetAligner">
-              Reset
-            </button>
           </div>
         </div>
       </div>
@@ -315,26 +336,26 @@
         </div>
       </div>
       <!-- Select Query -->
-      <div class="pl-2">
+      <div class="pl-3">
         <div class="columns has-text-weight-semibold">
           <div class="column is-size-4">
             (1) Input Query
           </div>
         </div>
-        <div class="columns pl-2">
+        <div class="columns pl-3">
           <div class="column">
             <textarea class="textarea" v-model="query_string" placeholder="Input Query String"></textarea>
           </div>
         </div>
       </div>
       <!-- Select Algorithm -->
-      <div class="pl-2">
+      <div class="pl-3">
         <div class="columns has-text-weight-semibold">
           <div class="column is-size-4">
             (2) Select Algorithm
           </div>
         </div>
-        <div class="columns pl-2">
+        <div class="columns pl-3">
           <div class="column is-one-fifth">
             <button class="button is-navy is-normal" @click="semiglobalAlign">
               Semi-global
@@ -344,7 +365,7 @@
             Returns the alignment containing the end of the sequence.
           </div>
         </div>
-        <div class="columns pl-2">
+        <div class="columns pl-3">
           <div class="column is-one-fifth">
             <button class="button is-navy is-normal" @click="localAlign">
               Local
@@ -362,11 +383,10 @@
           Alignment Result
         </div>
       </div>
-      <div class="pl-2">
-        
-        <div class="columns pl-2">
+      <div class="pl-3">
+        <div class="columns pl-3">
           <div class="column">
-            {{ result }}
+            <vue-json-pretty :data="alignment_result" @click="handleClick"> </vue-json-pretty>
           </div>
         </div>
       </div>
@@ -375,9 +395,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue';
 import Title from './components/Title.vue';
 import { Sigalign } from '../../sigalign-demo-wasm/pkg';
+import VueJsonPretty from 'vue-json-pretty';
+import 'vue-json-pretty/lib/styles.css';
 
 const wasm = import("../../sigalign-demo-wasm/pkg");
 
@@ -407,8 +429,10 @@ interface AlignerState {
 interface ReferenceGenerator {
   opened: boolean,
   input_is_path: boolean,
-  fasta_file_bytes: string,
+  fasta_bytes: string,
   fasta_file_name: string,
+  fasta_file_bytes: string,
+  reading_file: boolean,
   advanced_opened: boolean,
   sampling_ratio: number,
   bwt_block_size: number,
@@ -431,6 +455,7 @@ export default defineComponent({
   name: 'App',
   components: {
     Title,
+    VueJsonPretty,
   },
   data() {
     return {
@@ -454,8 +479,9 @@ export default defineComponent({
       reference_generator: {
         opened: false,
         input_is_path: false,
-        fasta_file_bytes: ">text\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG",
-        fasta_file_name: "",
+        fasta_bytes: ">text\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG",
+        fasta_file_bytes: "",
+        reading_file: false,
         advanced_opened: false,
         sampling_ratio: 2,
         bwt_block_size: 64,
@@ -474,18 +500,29 @@ export default defineComponent({
         error_msg: "",
       } as AlignerGenerator,
       query_string: "",
-      result: "None",
+      alignment_result: null,
+      alignment_error_msg: "None",
     }
   },
   methods: {
     generateReference() {
       sigalign_promise.then((sigalign) => {
-        let result = sigalign.generate_reference(
-          this.reference_generator.fasta_file_bytes,
-          this.reference_generator.sampling_ratio,
-          this.reference_generator.bwt_block_size,
-          this.reference_generator.lookup_table_kmer_size,
+        let result;
+        if (this.reference_generator.input_is_path) {
+          result = sigalign.generate_reference(
+            this.reference_generator.fasta_file_bytes,
+            this.reference_generator.sampling_ratio,
+            this.reference_generator.bwt_block_size,
+            this.reference_generator.lookup_table_kmer_size,
           );
+        } else {
+          result = sigalign.generate_reference(
+            this.reference_generator.fasta_bytes,
+            this.reference_generator.sampling_ratio,
+            this.reference_generator.bwt_block_size,
+            this.reference_generator.lookup_table_kmer_size,
+          );
+        }
         console.log(result);
         if (result == "") {
           this.reference_state = JSON.parse(sigalign.reference);
@@ -499,8 +536,23 @@ export default defineComponent({
       })
     },
     chooseFastaFile(event: InputEvent) {
-      console.log(event.data);
-      console.log(event.inputType);
+      let target = event.target as HTMLInputElement;
+      let files = target.files;
+      if (!files || !files[0])
+        return;
+      // Start read file
+      this.reference_generator.reading_file = true;
+      let file = files[0];
+      this.reference_generator.fasta_file_name = file.name;
+      (async function (blob) {
+        return await blob.text()
+      })(file).then((value) => {
+        this.reference_generator.fasta_file_bytes = value;
+        this.reference_generator.reading_file = false;
+      }).catch((error) => {
+        this.reference_generator.error_exist = true,
+        this.reference_generator.error_msg = error;
+      });
     },
     resetReference() {
       sigalign_promise.then((sigalign) => {
@@ -538,15 +590,27 @@ export default defineComponent({
     semiglobalAlign() {
       sigalign_promise.then((sigalign) => {
         let result = sigalign.semi_global_alignment(this.query_string);
-        this.result = result;
+        this.alignment_result = JSON.parse(result);
       })
     },
     localAlign() {
       sigalign_promise.then((sigalign) => {
         let result = sigalign.local_alignment(this.query_string);
-        this.result = result;
+        this.alignment_result = JSON.parse(result);
       })
     },
+  },
+  computed: {
+    sequence_type(): string {
+      let seq = (this.reference_state.is_nucleotide ? 'Nucleotide' : 'Amino acid');
+      if (this.reference_state.noise_character == "") {
+        seq += " without noise";
+      } else {
+        seq += " with noise character ";
+        seq += this.reference_state.noise_character;
+      }
+      return seq
+    }
   },
   mounted() {
     sigalign_promise.then((sigalign) => {

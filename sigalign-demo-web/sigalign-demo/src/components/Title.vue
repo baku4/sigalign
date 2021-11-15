@@ -1,15 +1,37 @@
 <template>
-  <!-- <div class="has-background-navy has-text-lightpink px-3 py-4"> -->
   <div class="px-3 py-4">
-    <block class="is-size-2">Sigalign Web Demo</block>
-    <br>
-    <block>https://github.com/baku4/sigalign</block>
-    <br>
-    <!-- <block>
-      <button class="button is-normal is-rounded">Github</button>
-      <button class="button is-normal is-rounded">Crate</button>
-    </block> -->
-    <br>
+    <block class="is-size-1">Sigalign Demo Web</block>
+    <p>
+      Similarity guided sequence alignment algorithm
+    </p>
+
+    <block class="px-1">
+      <button class="button is-rounded">
+        <span class="icon">
+          <i class="fab fa-github-alt"></i>
+        </span>
+        <span>GitHub</span>
+      </button>
+    </block>
+
+    <block class="px-1">
+      <button class="button is-rounded">
+        <span class="icon">
+          <i class="fab fa-rust"></i>
+        </span>
+        <span>Crate</span>
+      </button>
+    </block>
+
+    <block class="px-1">
+      <button class="button is-rounded">
+        <span class="icon">
+          <i class="fab fa-python"></i>
+        </span>
+        <span>Pip</span>
+      </button>
+    </block>
+
   </div>
 </template>
 

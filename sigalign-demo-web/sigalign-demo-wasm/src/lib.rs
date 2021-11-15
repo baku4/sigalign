@@ -84,7 +84,7 @@ impl Sigalign {
         let result = semi_global_alignment(&self.aligner, &mut self.reference, query);
         match result {
             Ok(json) => json,
-            Err(err) => format!("{}", err),
+            Err(err) => format!("{{\"error\": \"{}\"}}", err),
         }
     }
     pub fn local_alignment(
@@ -94,7 +94,7 @@ impl Sigalign {
         let result = local_alignment(&self.aligner, &mut self.reference, query);
         match result {
             Ok(json) => json,
-            Err(err) => format!("{}", err),
+            Err(err) => format!("{{\"error\": \"{}\"}}", err),
         }
     }
 }
