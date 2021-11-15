@@ -309,7 +309,6 @@
       </div>
 
       <!-- Alignment -->
-      <!-- <hr class="has-background-navy"> -->
       <div class="columns has-text-weight-bold">
         <div class="column is-size-3">
           2. Alignment 
@@ -357,12 +356,14 @@
         </div>
       </div>
       <!-- Alignment Result -->
-      <div class="pl-2">
-        <div class="columns has-text-weight-semibold">
-          <div class="column is-size-4">
-            Alignment Result
-          </div>
+      <hr class="has-background-navy">
+      <div class="columns has-text-weight-bold">
+        <div class="column is-size-3">
+          Alignment Result
         </div>
+      </div>
+      <div class="pl-2">
+        
         <div class="columns pl-2">
           <div class="column">
             {{ result }}
@@ -453,7 +454,7 @@ export default defineComponent({
       reference_generator: {
         opened: false,
         input_is_path: false,
-        fasta_file_bytes: "> text\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG",
+        fasta_file_bytes: ">text\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG",
         fasta_file_name: "",
         advanced_opened: false,
         sampling_ratio: 2,
