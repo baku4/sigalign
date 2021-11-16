@@ -4,18 +4,23 @@
 @import "../node_modules/bulma/sass/utilities/initial-variables.sass";
 @import "../node_modules/bulma/sass/utilities/functions.sass";
 
-$lightpink: #FBEAEB;
-$lightpink-invert: findColorInvert($lightpink);
-$navy: #2E3C7E;
-$navy-invert: findColorInvert($navy);
-$darkred: #990011;
-$darkred-invert: findColorInvert($darkred);
-$skyblue: #1AAFBC;
-$skyblue-invert: findColorInvert($skyblue);
-$brown: #80634C;
-$brown-invert: findColorInvert($brown);
+// $lightpink: #FBEAEB;
+// $lightpink-invert: findColorInvert($lightpink);
+// $navy: #2E3C7E;
+// $navy-invert: findColorInvert($navy);
+// $darkred: #990011;
+// $darkred-invert: findColorInvert($darkred);
+// $skyblue: #1AAFBC;
+// $skyblue-invert: findColorInvert($skyblue);
+// $brown: #80634C;
+// $brown-invert: findColorInvert($brown);
+$red: #D64161;
+$red-invert: findColorInvert($red);
+$darkgray: #364b44;
+$darkgray-invert: findColorInvert($darkgray);
 
-$primary: $skyblue;
+$primary: $red;
+$secondary: $darkgray;
 
 // Font
 @import url('https://fonts.googleapis.com/css2?family=Ubuntu&display=swap');
@@ -25,11 +30,13 @@ $family-primary: $family-sans-serif;
 
 @import "../node_modules/bulma/sass/utilities/derived-variables.sass";
 $addColors: (
-  "lightpink":($lightpink, $lightpink-invert),
-  "navy": ($navy, $navy-invert),
-  "darkred": ($darkred, $darkred-invert),
-  "skyblue": ($skyblue, $skyblue-invert),
-  "brown": ($brown, $brown-invert),
+  // "lightpink":($lightpink, $lightpink-invert),
+  // "navy": ($navy, $navy-invert),
+  // "darkred": ($darkred, $darkred-invert),
+  // "skyblue": ($skyblue, $skyblue-invert),
+  // "brown": ($brown, $brown-invert),
+  "red": ($red, $red-invert),
+  "darkgray": ($darkgray, $darkgray-invert),
 );
 $colors: map-merge($colors, $addColors);
 

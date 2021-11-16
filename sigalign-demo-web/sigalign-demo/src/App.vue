@@ -1,13 +1,13 @@
 <template>
   <div>
-    <div class="container is-max-desktop">
+    <div class="container is-max-desktop has-text-darkgray">
       <!-- Title -->
       <Title/>
       <div class="is-divider"></div>
       <!-- Preparation -->
       <div class="pb-3">
         <!-- Title -->
-        <div class="columns has-text-weight-bold has-text-brown">
+        <div class="columns has-text-weight-bold has-text-secondary">
           <div class="column is-size-3">
             1. Preparation
           </div>
@@ -326,7 +326,7 @@
       </div>
 
       <!-- Alignment -->
-      <div class="columns mt-3 has-text-weight-bold has-text-brown">
+      <div class="columns mt-3 has-text-weight-bold has-text-secondary">
         <div class="column is-size-3">
           2. Alignment 
         </div>
@@ -374,7 +374,7 @@
       </div>
       <!-- Alignment Result -->
       <div class="is-divider"></div>
-      <div class="columns has-text-weight-bold has-text-brown">
+      <div class="columns has-text-weight-bold has-text-secondary">
         <div class="column is-size-3">
           Alignment Result
         </div>
