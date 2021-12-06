@@ -73,9 +73,13 @@ impl InMemoryProvider {
     ) -> Result<Self> {
         let fasta_reader = FastaReader::from_file_path(file_path)?;
 
-        let records = fasta_reader.into_iter().map(|(label, sequence)| {
+        let records: Vec<SequenceRecord> = fasta_reader.into_iter().map(|(label, sequence)| {
             SequenceRecord::new_forward(label, sequence)
         }).collect();
+
+        if records.len() == 0 {
+            error_msg!("Invalid fasta file")
+        }
 
         Ok(
             Self {
@@ -85,16 +89,22 @@ impl InMemoryProvider {
     }
     pub fn from_fasta_bytes(
         fasta_bytes: &[u8]
-    ) -> Self {
+    ) -> Result<Self> {
         let fasta_reader = FastaReader::from_bytes(fasta_bytes);
 
-        let records = fasta_reader.into_iter().map(|(label, sequence)| {
+        let records: Vec<SequenceRecord> = fasta_reader.into_iter().map(|(label, sequence)| {
             SequenceRecord::new_forward(label, sequence)
         }).collect();
 
-        Self {
-            records
+        if records.len() == 0 {
+            error_msg!("Invalid fasta bytes")
         }
+
+        Ok(
+            Self {
+                records
+            }
+        )
     }
     pub fn from_fasta_file_of_nucleotide_with_reverse_complement<P: AsRef<Path> + std::fmt::Debug>(
         file_path: P,
@@ -173,8 +183,8 @@ mod tests {
     #[test]
     fn test_read_from_errored_fasta_bytes() {
         let errored_fasta_file_bytes = b"12textAGCGTTTTATTACCTTTT";
-        let in_memory_provider = InMemoryProvider::from_fasta_bytes(errored_fasta_file_bytes);
+        let optional_in_memory_provider = InMemoryProvider::from_fasta_bytes(errored_fasta_file_bytes);
 
-        assert_eq!(0, in_memory_provider.total_record_count());
+        assert!(optional_in_memory_provider.is_err());
     }
 }
