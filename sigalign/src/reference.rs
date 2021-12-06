@@ -345,7 +345,8 @@ impl SequenceType {
         })
     }
     fn inferred_from_sequence(sequence: Sequence) -> Result<Self> {
-        let mut presume_nucleotide = true;
+        let mut can_be_nucleotide = true;
+        let mut can_be_amino_acid = true;
         let mut noise_of_nucleotide = None;
         let mut noise_of_amino_acid = None;
 
@@ -356,11 +357,11 @@ impl SequenceType {
                 },
                 68 | 69 | 70 | 72 | 73 | 75 | 76 | 77 | 78
                 | 80 | 81 | 82 | 83 | 86 | 87 | 89 => { // Non ACGT Aminoacid
-                    if presume_nucleotide {
+                    if can_be_nucleotide {
                         match noise_of_nucleotide {
                             Some(noise) => {
                                 if noise != character {
-                                    presume_nucleotide = false;
+                                    can_be_nucleotide = false;
                                 }
                             },
                             None => {
@@ -370,30 +371,39 @@ impl SequenceType {
                     }
                 },
                 _ => {
-                    if presume_nucleotide {
+                    if can_be_nucleotide {
                         match noise_of_nucleotide {
-                            Some(_) => {},
+                            Some(noise) => {
+                                if noise != character {
+                                    can_be_nucleotide = false;
+                                }
+                            },
                             None => {
                                 noise_of_nucleotide = Some(character);
                             },
                         }
                     }
-                    match noise_of_amino_acid {
-                        Some(noise) => {
-                            if noise != character {
-                                error_msg!("Sequence is not supported type")
-                            }
-                        },
-                        None => {
-                            noise_of_amino_acid = Some(character);
-                        },
+                    if can_be_amino_acid {
+                        match noise_of_amino_acid {
+                            Some(noise) => {
+                                if noise != character {
+                                    can_be_amino_acid = false;
+                                }
+                            },
+                            None => {
+                                noise_of_amino_acid = Some(character);
+                            },
+                        }
+                    }
+                    if !can_be_amino_acid && !can_be_nucleotide {
+                        error_msg!("Sequence type is not supported")
                     }
                 },
             }
         }
 
         Ok(
-            if presume_nucleotide {
+            if can_be_nucleotide {
                 match noise_of_nucleotide {
                     Some(noise) => {
                         Self::nucleotide_with_noise(noise)
@@ -633,6 +643,7 @@ mod tests {
         let nucleotide_with_noise_sequence = b"ACGTNACGTN";
         let amino_acid_only_sequence = b"ACDEFGHIKLMNPQRSTVWYACDEFGHIKLMNPQRSTVWY";
         let amino_acid_with_noise_sequence = b"ACDEFGHIKLMNPQRSTVWYXACDEFGHIKLMNPQRSTVWYX";
+        let amino_acid_with_noise_sequence_2 = b"AGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAGXXXMMN";
 
         let errored_sequence = b"ACGTXZ";
 
@@ -653,6 +664,11 @@ mod tests {
 
         assert_eq!(
             SequenceType::inferred_from_sequence(amino_acid_with_noise_sequence).unwrap(),
+            SequenceType::aminoacid_with_noise(b'X'),
+        );
+
+        assert_eq!(
+            SequenceType::inferred_from_sequence(amino_acid_with_noise_sequence_2).unwrap(),
             SequenceType::aminoacid_with_noise(b'X'),
         );
 
