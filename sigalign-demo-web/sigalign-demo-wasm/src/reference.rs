@@ -45,7 +45,7 @@ impl Reference {
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
-        let sequence_provider = InMemoryProvider::from_fasta_bytes(fasta_bytes.as_bytes());
+        let sequence_provider = InMemoryProvider::from_fasta_bytes(fasta_bytes.as_bytes())?;
         self.generate_with_sequence_provider(sequence_provider, sampling_ratio, bwt_block, lookup_table_kmer_size)?;
 
         Ok(())
