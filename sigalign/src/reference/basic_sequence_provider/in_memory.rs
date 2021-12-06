@@ -165,3 +165,16 @@ enum Direction {
     Forward,
     Reverse,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_from_errored_fasta_bytes() {
+        let errored_fasta_file_bytes = b"12textAGCGTTTTATTACCTTTT";
+        let in_memory_provider = InMemoryProvider::from_fasta_bytes(errored_fasta_file_bytes);
+
+        assert_eq!(0, in_memory_provider.total_record_count());
+    }
+}
