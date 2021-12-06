@@ -1,3 +1,5 @@
+use crate::print_elapsed;
+
 use super::{Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
@@ -5,6 +7,7 @@ use super::{Anchors, Anchor, Extension};
 use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 
 impl Anchors {
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn get_alignment_results_for_local(self) -> Vec<AlignmentResult> {
         let mut alignment_hash_set = AlignmentHashSet::new();
 

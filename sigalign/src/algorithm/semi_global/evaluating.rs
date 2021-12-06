@@ -1,3 +1,5 @@
+use crate::print_elapsed;
+
 use super::{PRECISION_SCALE, Cutoff, OwnedOperations};
 use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{Anchors, Anchor, OperationsOfExtension, StartPointOfOperations};
@@ -22,6 +24,7 @@ impl Anchors {
             )
         }).collect()
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn get_optional_alignment_result_of_anchor_for_semi_global(
         &self,
         anchor_index: usize,
@@ -88,6 +91,7 @@ impl Anchors {
             None
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn get_unique_anchors(
         &self,
         cutoff: &Cutoff,

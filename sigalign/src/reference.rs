@@ -57,6 +57,7 @@
 */
 
 use crate::{Result, error_msg};
+use crate::print_elapsed;
 use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
 use serde::{Deserialize, Serialize};
@@ -105,9 +106,10 @@ impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
 }
 
 impl<S: SequenceProvider> Reference<S> {
-    /// Generate new Reference with sequence provider.  
-    /// - SequenceType is inferred.  
-    /// - Default configuration for lt-fm-index is used.
+    // Generate new Reference with sequence provider.  
+    // - SequenceType is inferred.  
+    // - Default configuration for lt-fm-index is used.
+    #[print_elapsed("stderr", "ms", [generate_reference])]
     pub fn new_with_default_config(mut sequence_provider: S) -> Result<Self> {
         let total_record_count = sequence_provider.total_record_count();
         let search_range = (0..total_record_count).collect();
@@ -136,8 +138,9 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
-    /// Generate new Reference with lt-fm-index configuration and sequence provider.   
-    /// - SequenceType is inferred.
+    // Generate new Reference with lt-fm-index configuration and sequence provider.   
+    // - SequenceType is inferred.
+    #[print_elapsed("stderr", "ms", [generate_reference])]
     pub fn new_with_lt_fm_index_config(
         lt_fm_index_config: LtFmIndexConfig,
         mut sequence_provider: S
@@ -168,7 +171,8 @@ impl<S: SequenceProvider> Reference<S> {
             }
         )
     }
-    /// Generate new Reference with all custom configuration.
+    // Generate new Reference with all custom configuration.
+    #[print_elapsed("stderr", "ms", [generate_reference])]
     pub fn new_with_config(
         sequence_type: SequenceType,
         lt_fm_index_config: LtFmIndexConfig,
@@ -344,6 +348,7 @@ impl SequenceType {
             self.utf8_chr_of_type.contains(character)
         })
     }
+    #[print_elapsed("stderr", "us", [generate_reference])]
     fn inferred_from_sequence(sequence: Sequence) -> Result<Self> {
         let mut can_be_nucleotide = true;
         let mut can_be_amino_acid = true;

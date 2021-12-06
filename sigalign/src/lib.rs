@@ -62,6 +62,8 @@ let result_local: String = aligner.local_alignment_labeled(&mut reference, query
 use anyhow::{Result, bail as error_msg};
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
 
+use elapsed_printer::print_elapsed;
+
 #[doc(hidden)]
 // Core
 mod core;

@@ -1,4 +1,5 @@
 use crate::{Result, error_msg};
+use crate::print_elapsed;
 use crate::core::{ReferenceInterface, Sequence};
 pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
@@ -44,7 +45,8 @@ pub struct Aligner {
 }
 
 impl Aligner {
-    /// Generate new aligner.
+    // Generate new aligner.
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn new(
         mismatch_penalty: usize,
         gap_open_penalty: usize,
@@ -169,6 +171,7 @@ impl Aligner {
         Ok(alignment_results_labeled_raw)
     }
     /// Perform semi-global alignment without checking query is supported sequence type.
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn semi_global_alignment_unchecked<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -225,6 +228,7 @@ impl Aligner {
         Ok(alignment_results_labeled_raw)
     }
     /// Perform local alignment without checking query is supported sequence type.
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn local_alignment_unchecked<S: SequenceProvider>(
         &self,
         reference: &mut Reference<S>,
@@ -234,6 +238,7 @@ impl Aligner {
         self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
         alignment_results_by_record
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn query_is_in_reference_bound(
         reference: &mut dyn ReferenceInterface,
         query: Sequence,

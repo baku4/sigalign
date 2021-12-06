@@ -1,3 +1,4 @@
+use crate::print_elapsed;
 use super::{Penalties, PRECISION_SCALE ,Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
@@ -89,6 +90,7 @@ struct CheckPoint {
 pub struct SemiGlobalAlgorithm;
 
 impl Algorithm for SemiGlobalAlgorithm {
+    #[print_elapsed("stderr", "us", [alignment])]
     fn alignment(
         reference: &mut dyn ReferenceInterface,
         query: Sequence,

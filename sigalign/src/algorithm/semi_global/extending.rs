@@ -1,3 +1,4 @@
+use crate::print_elapsed;
 use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
@@ -18,6 +19,7 @@ impl Anchors {
         self.extend_right_for_semi_global(record_sequence, query, penalties, cutoff);
         self.extend_left_for_semi_global(record_sequence, query, penalties, cutoff);
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn extend_right_for_semi_global(
         &mut self,
         record_sequence: Sequence,
@@ -52,6 +54,7 @@ impl Anchors {
             }
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn extend_left_for_semi_global(
         &mut self,
         record_sequence: Sequence,
@@ -86,6 +89,7 @@ impl Anchors {
             }
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn right_traverse_check_from_owned_extension( //FIXME: deduplicate code
         &mut self,
         original_anchor_index: usize,
@@ -209,6 +213,7 @@ impl Anchors {
             }
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn left_traverse_check_from_owned_extension( //FIXME: deduplicate code
         &mut self,
         original_anchor_index: usize,
@@ -335,6 +340,7 @@ impl Anchors {
 }
 
 impl Anchor {
+    #[print_elapsed("stderr", "us", [alignment])]
     fn get_right_extension_for_semi_global(
         &self,
         record_sequence: Sequence,
@@ -357,6 +363,7 @@ impl Anchor {
             spare_penalty,
         )
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn get_left_extension_for_semi_global(
         &self,
         record_sequence: Sequence,

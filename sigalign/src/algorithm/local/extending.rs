@@ -1,3 +1,5 @@
+use crate::print_elapsed;
+
 use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
@@ -34,6 +36,7 @@ impl Anchors {
 }
 
 impl Anchor {
+    #[print_elapsed("stderr", "us", [alignment])]
     fn get_extensions_for_local(
         &self,
         record_sequence: Sequence,

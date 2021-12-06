@@ -1,3 +1,4 @@
+use crate::print_elapsed;
 use super::{PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use super::{ReferenceInterface, Sequence};
 use super::{Anchors, Anchor};
@@ -11,6 +12,7 @@ pub struct AnchorsPreset {
 }
 
 impl AnchorsPreset {
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn new_by_record(
         reference: &dyn ReferenceInterface,
         query: Sequence,
@@ -68,6 +70,7 @@ impl AnchorsPreset {
 
         Self::anchors_by_patterns_to_anchors(anchors_by_patterns)
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn create_anchors_by_patterns(
         self,
         pattern_size: usize,

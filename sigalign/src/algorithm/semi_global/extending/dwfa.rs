@@ -1,3 +1,4 @@
+use crate::print_elapsed;
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
@@ -54,6 +55,7 @@ impl DropoffWaveFront<ComponentSemiGlobal> {
             penalties,
         )
     }
+    #[print_elapsed("stderr", "ns", [dwfa])]
     fn backtrace_from_point(
         &self,
         mut score: usize,
@@ -378,6 +380,7 @@ impl Component for ComponentSemiGlobal {
     fn add_match_count_to_fr(&mut self, match_count: i32) {
         self.fr += match_count;
     }
+    #[print_elapsed("stderr", "ns", [dwfa])]
     fn new_components_and_k_range_of_score(
         dropoff_wave_front: &DropoffWaveFront<Self>, score: usize, penalties: &Penalties,
     ) -> (Components<Self>, Vec<i32>) {

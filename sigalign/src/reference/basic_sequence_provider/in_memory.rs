@@ -1,4 +1,5 @@
 use crate::{Result, error_msg};
+use crate::print_elapsed;
 use super::{Reference, SequenceProvider, Labeling, Writable, FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
@@ -68,6 +69,7 @@ impl InMemoryProvider {
 
         in_memory_provider
     }
+    #[print_elapsed("stderr", "ms", [generate_reference])]
     pub fn from_fasta_file<P: AsRef<Path> + std::fmt::Debug>(
         file_path: P,
     ) -> Result<Self> {
@@ -87,6 +89,7 @@ impl InMemoryProvider {
             }
         )
     }
+    #[print_elapsed("stderr", "ms", [generate_reference])]
     pub fn from_fasta_bytes(
         fasta_bytes: &[u8]
     ) -> Result<Self> {
@@ -106,6 +109,7 @@ impl InMemoryProvider {
             }
         )
     }
+    #[print_elapsed(stdout, ms, [print_reference])]
     pub fn from_fasta_file_of_nucleotide_with_reverse_complement<P: AsRef<Path> + std::fmt::Debug>(
         file_path: P,
     ) -> Result<Self> {
