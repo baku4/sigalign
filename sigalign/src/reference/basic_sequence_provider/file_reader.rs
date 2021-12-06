@@ -58,3 +58,20 @@ impl<R: Read> Iterator for FastaReader<R> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reading_fasta_from_bytes() {
+        let fasta_bytes = b">text\nAGCGTTTTATTACCTTTT";
+
+        let mut fasta_reader = FastaReader::from_bytes(fasta_bytes);
+
+        let (label, seq) = fasta_reader.next().unwrap();
+
+        assert_eq!(label, "text");
+        assert_eq!(&seq, b"AGCGTTTTATTACCTTTT");
+    }
+}
