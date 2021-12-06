@@ -13,7 +13,7 @@ use std::fs::File;
 
 /// Basic implementation for [SequenceProvider] parsing sequences from fasta file using index.
 #[derive(Debug)]
-pub struct FaiUsedFastaProvider {
+pub struct FastaWithFaiProvider {
     fasta_path: String,
     record_count: usize,
     indexed_reader: IndexedReader<File>,
@@ -21,7 +21,7 @@ pub struct FaiUsedFastaProvider {
     label_buffer: String,
 }
 
-impl FaiUsedFastaProvider {
+impl FastaWithFaiProvider {
     pub fn new(fasta_file_path: &str) -> Result<Self> {
         let (fai_bytes, record_count) = fai_bytes_and_count_of_fasta_file(fasta_file_path)?;
         let fasta_file = File::open(fasta_file_path)?;
@@ -43,7 +43,7 @@ impl FaiUsedFastaProvider {
     }
 }
 
-impl SequenceProvider for FaiUsedFastaProvider {
+impl SequenceProvider for FastaWithFaiProvider {
     fn total_record_count(&self) -> usize {
         self.record_count
     }

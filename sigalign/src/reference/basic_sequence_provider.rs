@@ -2,7 +2,7 @@ use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable};
 
 mod file_reader;
 mod in_memory;
-mod fai_used_fasta;
+mod fasta_with_fai;
 mod indexed_fasta;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -10,7 +10,7 @@ mod sqlite;
 
 pub use file_reader::FastaReader;
 pub use in_memory::InMemoryProvider;
-pub use fai_used_fasta::FaiUsedFastaProvider;
+pub use fasta_with_fai::FastaWithFaiProvider;
 pub use indexed_fasta::IndexedFastaProvider;
 #[cfg(not(target_arch = "wasm32"))]
 pub use sqlite::SqliteProvider;
