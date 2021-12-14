@@ -59,6 +59,7 @@
 use crate::{Result, error_msg};
 use crate::core::Sequence;
 use crate::core::{ReferenceInterface, PatternLocation};
+use crate::utils::{FastaReader, reverse_complement_of_nucleotide_sequence};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

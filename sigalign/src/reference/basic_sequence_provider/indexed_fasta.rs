@@ -1,8 +1,7 @@
 use crate::{Result, error_msg};
 use crate::{Serialize, Deserialize};
-use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable, FastaReader, reverse_complement_of_nucleotide_sequence};
+use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable, reverse_complement_of_nucleotide_sequence};
 
-use std::fmt;
 use std::path::Path;
 use std::fs::File;
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
@@ -10,6 +9,8 @@ use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
 const LF_TERMINATION_SIZE: usize = 1;
 const CRLF_TERMINATION_SIZE: usize = 2;
 
+/// Basic implementation for [SequenceProvider] parsing sequences from fasta file using index.
+/// This index allows random access to record label.
 #[derive(Debug)]
 pub struct IndexedFastaProvider {
     proto: IndexedFastaProviderProto,

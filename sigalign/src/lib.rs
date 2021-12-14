@@ -72,6 +72,8 @@ pub mod reference;
 pub mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
+#[doc(hidden)]
+pub mod utils;
 #[cfg(test)]
 mod tests;
 

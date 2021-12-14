@@ -5,6 +5,7 @@ use crate::reference::*;
 use crate::reference::basic_sequence_provider::*;
 use crate::algorithm::*;
 use crate::aligner::*;
+use crate::utils::*;
 
 // Supply Functions
 pub mod sample_data;
