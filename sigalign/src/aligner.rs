@@ -255,7 +255,7 @@ impl Aligner {
 
     /// Perform semi-global alignment from fasta file and return labeled json result
     /// * Sequences of unsupported type will not included in result.
-    fn semi_global_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
+    pub fn semi_global_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
         fasta_file: &str,
@@ -267,7 +267,7 @@ impl Aligner {
     }
     /// Perform local alignment from fasta file and return labeled json result
     /// * Sequences of unsupported type will not included in result.
-    fn local_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
+    pub fn local_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
         fasta_file: &str,
@@ -279,7 +279,7 @@ impl Aligner {
     }
     /// Perform semi-global alignment from fasta file and return labeled raw result
     /// * Sequences of unsupported type will not included in result.
-    fn semi_global_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
+    pub fn semi_global_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
         fasta_file: &str,
@@ -302,7 +302,7 @@ impl Aligner {
     }
     /// Perform local alignment from fasta file and return labeled raw result
     /// * Sequences of unsupported type will not included in result.
-    fn local_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
+    pub fn local_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
         &self,
         reference: &mut Reference<SL>,
         fasta_file: &str,
