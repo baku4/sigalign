@@ -5,8 +5,10 @@ pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelBy
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
+use crate::utils::FastaReader;
 
 mod interpreter;
+use interpreter::raw_result_to_json;
 
 use num::integer;
 
@@ -132,7 +134,7 @@ impl Aligner {
     ) -> Result<String> {
         Self::query_is_in_reference_bound(reference, query)?;
         let alignment_results_raw = self.semi_global_alignment_unchecked(reference, query);
-        let alignment_results = alignment_results_raw.to_json()?;
+        let alignment_results = raw_result_to_json(alignment_results_raw)?;
 
         Ok(alignment_results)
     }
@@ -154,7 +156,7 @@ impl Aligner {
     ) -> Result<String> {
         Self::query_is_in_reference_bound(reference, query)?;
         let alignment_results_labeled_raw = self.semi_global_alignment_labeled_raw(reference, query)?;
-        let alignment_results_labeled = alignment_results_labeled_raw.to_json()?;
+        let alignment_results_labeled = raw_result_to_json(alignment_results_labeled_raw)?;
 
         Ok(alignment_results_labeled)
     }
@@ -189,7 +191,7 @@ impl Aligner {
     ) -> Result<String> {
         Self::query_is_in_reference_bound(reference, query)?;
         let alignment_results_raw = self.local_alignment_unchecked(reference, query);
-        let alignment_results = alignment_results_raw.to_json()?;
+        let alignment_results = raw_result_to_json(alignment_results_raw)?;
 
         Ok(alignment_results)
     }
@@ -211,7 +213,7 @@ impl Aligner {
     ) -> Result<String> {
         Self::query_is_in_reference_bound(reference, query)?;
         let alignment_results_labeled_raw = self.local_alignment_labeled_raw(reference, query)?;
-        let alignment_results_labeled = alignment_results_labeled_raw.to_json()?;
+        let alignment_results_labeled = raw_result_to_json(alignment_results_labeled_raw)?;
 
         Ok(alignment_results_labeled)
     }
@@ -254,6 +256,77 @@ impl Aligner {
         alignment_results_by_record_index: &mut AlignmentResultsByRecordIndex
     ) {
         alignment_results_by_record_index.multiply_gcd(self.gcd)
+    }
+
+    /// Perform semi-global alignment from fasta file and return labeled json result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn semi_global_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
+        &self,
+        reference: &mut Reference<SL>,
+        fasta_file: &str,
+    ) -> Result<String> {
+        let raw_result = self.semi_global_alignment_labeled_raw_from_fasta_file(reference, fasta_file)?;
+        let json_result = raw_result_to_json(raw_result)?;
+
+        Ok(json_result)
+    }
+    /// Perform local alignment from fasta file and return labeled json result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn local_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
+        &self,
+        reference: &mut Reference<SL>,
+        fasta_file: &str,
+    ) -> Result<String> {
+        let raw_result = self.local_alignment_labeled_raw_from_fasta_file(reference, fasta_file)?;
+        let json_result = raw_result_to_json(raw_result)?;
+
+        Ok(json_result)
+    }
+    /// Perform semi-global alignment from fasta file and return labeled raw result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn semi_global_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
+        &self,
+        reference: &mut Reference<SL>,
+        fasta_file: &str,
+    ) -> Result<Vec<(String, AlignmentResultsWithLabelByRecordIndex)>> {
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
+        
+        let result: Vec<(String, AlignmentResultsWithLabelByRecordIndex)> = fasta_reader.into_iter().filter_map(|(label, query)| {
+            let record_result = self.semi_global_alignment_labeled_raw(reference, &query);
+            match record_result {
+                Ok(result) => {
+                    Some((label, result))
+                },
+                Err(_) => {
+                    None
+                },
+            }
+        }).collect();
+
+        Ok(result)
+    }
+    /// Perform local alignment from fasta file and return labeled raw result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn local_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
+        &self,
+        reference: &mut Reference<SL>,
+        fasta_file: &str,
+    ) -> Result<Vec<(String, AlignmentResultsWithLabelByRecordIndex)>> {
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
+        
+        let result: Vec<(String, AlignmentResultsWithLabelByRecordIndex)> = fasta_reader.into_iter().filter_map(|(label, query)| {
+            let record_result = self.local_alignment_labeled_raw(reference, &query);
+            match record_result {
+                Ok(result) => {
+                    Some((label, result))
+                },
+                Err(_) => {
+                    None
+                },
+            }
+        }).collect();
+
+        Ok(result)
     }
 }
 

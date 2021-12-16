@@ -28,6 +28,7 @@ impl Reference {
         bwt_128 = "false",
         sampling_ratio = "2",
         lt_size = "0",
+        reversed_nc = "false",
     )]
     fn new(
         fasta: &str,
@@ -35,6 +36,7 @@ impl Reference {
         bwt_128: bool,
         sampling_ratio: u64,
         lt_size: usize,
+        reversed_nc: bool,
     ) -> PyResult<Self> {
         let lt_fm_index_config = LtFmIndexConfig::new().change_sampling_ratio(sampling_ratio);
         let lt_fm_index_config = if bwt_128 {
@@ -48,7 +50,11 @@ impl Reference {
             lt_fm_index_config
         };
 
-        let sig_reference_holder = SigReferenceHolder::new(in_memory, lt_fm_index_config, fasta);
+        let sig_reference_holder = if reversed_nc {
+            SigReferenceHolder::new_with_reversed(in_memory, lt_fm_index_config, fasta)
+        } else {
+            SigReferenceHolder::new(in_memory, lt_fm_index_config, fasta)
+        };
 
         match sig_reference_holder {
             Ok(sig_reference_holder) => Ok(Self { sig_reference_holder }),
@@ -75,7 +81,7 @@ impl Reference {
 
         let mut file = File::create(file)?;
         
-        // First 4 bytes is Tag
+        // First 8 bytes is Tag
         let tag = self.sig_reference_holder.tag();
         file.write(&tag)?;
 
@@ -99,10 +105,10 @@ impl Reference {
     ) -> PyResult<Self> {
         let mut opened_file = File::open(file)?;
 
-        let mut tag: [u8; 4] = [0; 4];
+        let mut tag: [u8; 8] = [0; 8];
         let tag_bytes = opened_file.read(&mut tag)?;
 
-        if tag_bytes != 4 {
+        if tag_bytes != 8 {
             return Err(PyException::new_err("Not a valid reference file"))
         }
 
@@ -142,8 +148,9 @@ impl AsMut<SigReferenceHolder> for Reference {
     }
 }
 
-const TAG_FOR_IN_MEMORY_REFERENCE: [u8; 4] = [214, 144, 24, 1];
-const TAG_FOR_INDEXED_FASTA_REFERENCE: [u8; 4] = [214, 144, 24, 2];
+// Magic number for file format recognition
+const TAG_FOR_IN_MEMORY_REFERENCE: [u8; 8] = [115, 97, 45, 105, 110, 109, 101, 109]; // sa-inmem
+const TAG_FOR_INDEXED_FASTA_REFERENCE: [u8; 8] = [115, 97, 45, 105, 100, 120, 102, 97]; // sa-idxfa
 
 #[derive(Debug)]
 pub enum SigReferenceHolder {
@@ -170,8 +177,22 @@ impl SigReferenceHolder {
             }
         )
     }
+    fn new_with_reversed(
+        in_memory: bool,
+        lt_fm_index_config: LtFmIndexConfig,
+        fasta_file_path: &str,
+    ) -> Result<Self> {
+        if in_memory {
+            let sequence_provider = InMemoryProvider::from_fasta_file_of_nucleotide_with_reverse_complement(fasta_file_path)?;
+            let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_provider)?;
+
+            Ok(Self::InMemory(sig_reference))
+        } else {
+            error_msg!("Reverse complementary sequence can be used with only in-memory provider")
+        }
+    }
     // One byte tag to save the type information of sig-reference.
-    fn tag(&self) -> [u8; 4] {
+    fn tag(&self) -> [u8; 8] {
         match self {
             Self::InMemory(_) => TAG_FOR_IN_MEMORY_REFERENCE,
             Self::IndexedFasta(_) => TAG_FOR_INDEXED_FASTA_REFERENCE,

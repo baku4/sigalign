@@ -2,7 +2,7 @@
 members = [
     "sigalign",
     "sigalign-py",
-    "sigalign-demo-bin",
+    "sigalign-demo-bin/sigalign-demo-aligner",
 ]
 exclude = [
     "sigalign-demo-web"

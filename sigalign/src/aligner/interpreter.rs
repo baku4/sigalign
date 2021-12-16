@@ -7,12 +7,10 @@ use serde_json::to_string as serialize_to_string;
 
 use std::collections::HashMap;
 
-impl AlignmentResultsWithLabelByRecordIndex {
-    pub fn to_json(&self) -> Result<String> {
-        match serialize_to_string(&self) {
-            Ok(json) => Ok(json),
-            Err(error) => error_msg!("{}", error),
-        }
+pub fn raw_result_to_json<S: Serialize>(raw: S) -> Result<String> {
+    match serialize_to_string(&raw) {
+        Ok(json) => Ok(json),
+        Err(error) => error_msg!("{}", error),
     }
 }
 
@@ -27,11 +25,5 @@ impl AlignmentResultsByRecordIndex {
                 (record_index, (label, alignment_results))
             }).collect()
         )
-    }
-    pub fn to_json(&self) -> Result<String> {
-        match serialize_to_string(&self) {
-            Ok(json) => Ok(json),
-            Err(error) => error_msg!("{}", error),
-        }
     }
 }

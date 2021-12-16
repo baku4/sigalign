@@ -11,7 +11,7 @@ use bio::io::fasta::{Index, IndexedReader};
 use std::path::Path;
 use std::fs::File;
 
-/// Basic implementation for [SequenceProvider] parsing sequences from fasta file using index.
+/// Basic implementation for [SequenceProvider] parsing sequences from fasta file using `samtools` index.
 #[derive(Debug)]
 pub struct FastaWithFaiProvider {
     fasta_path: String,

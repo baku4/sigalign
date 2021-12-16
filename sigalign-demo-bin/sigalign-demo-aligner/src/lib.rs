@@ -1,6 +1,7 @@
 use sigalign::{Reference as SigReference, Aligner};
 use sigalign::reference::{LtFmIndexConfig, Writable};
-use sigalign::reference::basic_sequence_provider::{InMemoryProvider, FastaReader};
+use sigalign::reference::basic_sequence_provider::InMemoryProvider;
+use sigalign::utils::FastaReader;
 
 use clap::{App, SubCommand, Arg, ArgMatches};
 use anyhow::{Result, bail as error_msg};

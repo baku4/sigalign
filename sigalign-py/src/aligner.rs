@@ -29,7 +29,21 @@ impl Aligner {
             Err(err) => Err(PyException::new_err(format!("{}", err))),
         }
     }
+
+    // Get options of aligner
+    fn penalties(&self) -> [usize; 3] {
+        self.sig_aligner.get_penalties()
+    }
+    fn similarity_cutoff(&self) -> (usize, f32) {
+        self.sig_aligner.get_similarity_cutoff()
+    }
+    fn pattern_size(&self) -> usize {
+        self.sig_aligner.get_pattern_size()
+    }
+
+    // TODO: Less verbose algorithms
     
+    // Semi-global alignment algorithms
     fn semi_global_alignment(
         &self,
         reference: &mut Reference,
@@ -64,7 +78,23 @@ impl Aligner {
             Err(err) => Err(PyException::new_err(format!("{}", err))),
         }
     }
+    fn semi_global_alignment_labeled_from_fasta_file(
+        &self,
+        reference: &mut Reference,
+        query_fasta_file: &str,
+    ) -> PyResult<String> {
+        let result = reference.sig_reference_holder.semi_global_alignment_labeled_from_fasta_file(
+            &self.sig_aligner,
+            query_fasta_file
+        );
 
+        match result {
+            Ok(json) => Ok(json),
+            Err(err) => Err(PyException::new_err(format!("{}", err))),
+        }
+    }
+
+    // Local alignment algorithms
     fn local_alignment(
         &self,
         reference: &mut Reference,
@@ -92,6 +122,21 @@ impl Aligner {
         let result = reference.sig_reference_holder.local_alignment_labeled(
             &self.sig_aligner,
             query_bytes
+        );
+
+        match result {
+            Ok(json) => Ok(json),
+            Err(err) => Err(PyException::new_err(format!("{}", err))),
+        }
+    }
+    fn local_alignment_labeled_from_fasta_file(
+        &self,
+        reference: &mut Reference,
+        query_fasta_file: &str,
+    ) -> PyResult<String> {
+        let result = reference.sig_reference_holder.local_alignment_labeled_from_fasta_file(
+            &self.sig_aligner,
+            query_fasta_file
         );
 
         match result {
@@ -130,6 +175,20 @@ impl SigReferenceHolder {
             },
         }
     }
+    fn semi_global_alignment_labeled_from_fasta_file(
+        &mut self,
+        sig_aligner: &SigAligner,
+        query_fasta_file: &str,
+    ) -> Result<String> {
+        match self {
+            Self::InMemory(sig_reference) => {
+                sig_aligner.semi_global_alignment_labeled_from_fasta_file(sig_reference, query_fasta_file)
+            },
+            Self::IndexedFasta(sig_reference) => {
+                sig_aligner.semi_global_alignment_labeled_from_fasta_file(sig_reference, query_fasta_file)
+            },
+        }
+    }
     fn local_alignment(
         &mut self,
         sig_aligner: &SigAligner,
@@ -155,6 +214,20 @@ impl SigReferenceHolder {
             },
             Self::IndexedFasta(sig_reference) => {
                 sig_aligner.local_alignment_labeled(sig_reference, query)
+            },
+        }
+    }
+    fn local_alignment_labeled_from_fasta_file(
+        &mut self,
+        sig_aligner: &SigAligner,
+        query_fasta_file: &str,
+    ) -> Result<String> {
+        match self {
+            Self::InMemory(sig_reference) => {
+                sig_aligner.local_alignment_labeled_from_fasta_file(sig_reference, query_fasta_file)
+            },
+            Self::IndexedFasta(sig_reference) => {
+                sig_aligner.local_alignment_labeled_from_fasta_file(sig_reference, query_fasta_file)
             },
         }
     }
