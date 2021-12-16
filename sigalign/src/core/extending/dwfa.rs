@@ -28,7 +28,6 @@ impl<C: Component> DropoffWaveFront<C> {
     ) -> Self {
         Self::new_aligned(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
     }
-    #[print_elapsed("stderr", "ns", [dwfa])]
     fn new_aligned(
         ref_seq: Sequence,
         qry_seq: Sequence,
@@ -59,7 +58,6 @@ impl<C: Component> DropoffWaveFront<C> {
             dropoff_wave_front
         }
     }
-    #[print_elapsed("stderr", "ns", [dwfa])]
     fn new_allocated(penalties: &Penalties, spare_penalty: usize) -> Self {
         let wave_front_score_count = spare_penalty + 1;
         let gap_open_penalty = penalties.o;
@@ -101,7 +99,6 @@ impl<C: Component> DropoffWaveFront<C> {
             wave_front_scores,
         }
     }
-    #[print_elapsed("stderr", "ns", [dwfa])]
     fn fill_and_exist_with_last_score_and_k(
         &mut self,
         ref_seq: Sequence,

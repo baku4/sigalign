@@ -7,7 +7,6 @@ use super::{Anchors, Anchor, Extension};
 use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 
 impl Anchors {
-    #[print_elapsed("stderr", "us", [alignment])]
     pub fn get_alignment_results_for_local(self) -> Vec<AlignmentResult> {
         let mut alignment_hash_set = AlignmentHashSet::new();
 

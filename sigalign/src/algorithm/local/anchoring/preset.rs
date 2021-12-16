@@ -70,7 +70,6 @@ impl AnchorsPreset {
 
         Self::anchors_by_patterns_to_anchors(anchors_by_patterns)
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn create_anchors_by_patterns(
         self,
         pattern_size: usize,
@@ -80,7 +79,7 @@ impl AnchorsPreset {
         min_penalty_for_pattern: &MinPenaltyForPattern,
     ) -> Vec<AnchorsByPattern> {
         let matched_pattern_index_list = self.matched_pattern_index_list();
-        let estimation_per_pattern = SparePenaltyDeterminantPerPattern::new(self.total_pattern_count, pattern_size, cutoff, min_penalty_for_pattern, matched_pattern_index_list);
+        let estimation_per_pattern = SparePenaltyDeterminantPerPattern::new_spdpp(self.total_pattern_count, pattern_size, cutoff, min_penalty_for_pattern, matched_pattern_index_list);
 
         let mut anchors_by_patterns: Vec<AnchorsByPattern> = self.matched_pattern_locations.into_iter().map(|pattern_location| {
             AnchorsByPattern::new(
@@ -102,6 +101,7 @@ impl AnchorsPreset {
             pattern_location.index
         }).collect()
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn concatenate_ungapped_anchors_by_patterns(anchors_by_patterns: &mut Vec<AnchorsByPattern>) {
         for i in (1..anchors_by_patterns.len()).rev() {
             let (left, right) = anchors_by_patterns[i-1..=i].split_at_mut(1);
@@ -112,6 +112,7 @@ impl AnchorsPreset {
             right_anchors_by_pattern.consume_if_ungapped_to_left(left_anchors_by_pattern);
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn anchors_by_patterns_to_anchors(anchors_by_patterns: Vec<AnchorsByPattern>) -> Anchors {
         let total_anchors_count: usize = anchors_by_patterns.iter().map(|anchors_by_pattern| {
             anchors_by_pattern.anchors.len()
@@ -231,7 +232,8 @@ impl EachPatternMatches {
 struct SparePenaltyDeterminantPerPattern(Vec<i64>);
 
 impl SparePenaltyDeterminantPerPattern {
-    fn new(
+    #[print_elapsed("stderr", "us", [alignment])]
+    fn new_spdpp(
         total_pattern_count: usize,
         pattern_size: usize,
         cutoff: &Cutoff,
@@ -325,7 +327,7 @@ mod tests {
         };
         let matched_pattern_index_list = vec![2, 3, 5, 9];
 
-        let spare_penalty_determinant = SparePenaltyDeterminantPerPattern::new(
+        let spare_penalty_determinant = SparePenaltyDeterminantPerPattern::new_spdpp(
             total_pattern_count,
             5,
             &Cutoff {

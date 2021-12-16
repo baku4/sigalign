@@ -12,7 +12,6 @@ pub struct AnchorsPreset {
 }
 
 impl AnchorsPreset {
-    #[print_elapsed("stderr", "us", [alignment])]
     pub fn new_by_record(
         reference: &dyn ReferenceInterface,
         query: Sequence,
@@ -69,7 +68,6 @@ impl AnchorsPreset {
 
         Self::anchors_by_patterns_to_anchors(anchors_by_patterns)
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn anchors_by_patterns_to_anchors(anchors_by_patterns: Vec<AnchorsByPattern>) -> Anchors {
         let total_anchors_count: usize = anchors_by_patterns.iter().map(|anchors_by_pattern| {
             anchors_by_pattern.anchors.len()
@@ -85,7 +83,6 @@ impl AnchorsPreset {
             anchors
         }
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn create_anchors_by_patterns(
         self,
         pattern_size: usize,

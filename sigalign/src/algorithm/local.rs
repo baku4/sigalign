@@ -55,6 +55,8 @@ impl Algorithm for LocalAlgorithm {
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
     ) -> AlignmentResultsByRecordIndex {
+        eprintln!("query_length, {}", query.len());
+
         let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
         AlignmentResultsByRecordIndex(

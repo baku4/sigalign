@@ -12,7 +12,6 @@ use std::collections::HashMap;
 const PATTERN_INDEX_GAP_FOR_CHECK_POINTS: usize = 3;
 
 impl Anchors {
-    #[print_elapsed("stderr", "us", [alignment])]
     pub fn create_preset_by_record(
         reference: &dyn ReferenceInterface,
         query: Sequence,
@@ -39,7 +38,6 @@ impl Anchors {
         
         anchors
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn create_checkpoints_between_anchors(
         &mut self,
         pattern_size: usize,

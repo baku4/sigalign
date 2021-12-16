@@ -36,7 +36,6 @@ impl Anchors {
 }
 
 impl Anchor {
-    #[print_elapsed("stderr", "us", [alignment])]
     fn get_extensions_for_local(
         &self,
         record_sequence: Sequence,

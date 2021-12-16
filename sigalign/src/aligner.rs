@@ -47,8 +47,7 @@ pub struct Aligner {
 }
 
 impl Aligner {
-    // Generate new aligner.
-    #[print_elapsed("stderr", "us", [alignment])]
+    /// Generate new aligner.
     pub fn new(
         mismatch_penalty: usize,
         gap_open_penalty: usize,

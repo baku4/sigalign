@@ -90,7 +90,6 @@ struct CheckPoint {
 pub struct SemiGlobalAlgorithm;
 
 impl Algorithm for SemiGlobalAlgorithm {
-    #[print_elapsed("stderr", "us", [alignment])]
     fn alignment(
         reference: &mut dyn ReferenceInterface,
         query: Sequence,

@@ -24,7 +24,6 @@ impl Anchors {
             )
         }).collect()
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn get_optional_alignment_result_of_anchor_for_semi_global(
         &self,
         anchor_index: usize,
@@ -91,7 +90,6 @@ impl Anchors {
             None
         }
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn get_unique_anchors(
         &self,
         cutoff: &Cutoff,

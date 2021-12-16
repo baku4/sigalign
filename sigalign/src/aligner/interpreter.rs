@@ -1,4 +1,5 @@
 use crate::{Result, error_msg};
+use crate::print_elapsed;
 use super::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use super::{Reference, SequenceProvider, Labeling};
 
@@ -7,6 +8,7 @@ use serde_json::to_string as serialize_to_string;
 
 use std::collections::HashMap;
 
+#[print_elapsed("stderr", "us", [alignment])]
 pub fn raw_result_to_json<S: Serialize>(raw: S) -> Result<String> {
     match serialize_to_string(&raw) {
         Ok(json) => Ok(json),

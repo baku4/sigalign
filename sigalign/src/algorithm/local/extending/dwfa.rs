@@ -8,23 +8,28 @@ use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
 
 impl DropoffWaveFront<ComponentLocal> {
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn aligned_right_for_local(
         ref_seq: Sequence,
         qry_seq: Sequence,
         penalties: &Penalties,
         spare_penalty: usize,
     ) -> Self {
+        eprintln!("spare_penalty, {}", spare_penalty);
+
         Self::aligned_forward(ref_seq, qry_seq, penalties, spare_penalty)
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn aligned_left_for_local(
         ref_seq: Sequence,
         qry_seq: Sequence,
         penalties: &Penalties,
         spare_penalty: usize,
     ) -> Self {
+        eprintln!("spare_penalty, {}", spare_penalty);
+
         Self::aligned_reverse(ref_seq, qry_seq, penalties, spare_penalty)
     }
-    #[print_elapsed("stderr", "ns", [dwfa])]
     pub fn point_of_maximum_length(&self) -> PointOfMaximumLength {
         let index_of_components_and_maximum_length_of_scores = self.wave_front_scores.iter().map(|wave_front_score| {
             wave_front_score.index_and_maximum_length()
@@ -33,6 +38,7 @@ impl DropoffWaveFront<ComponentLocal> {
             index_of_components_and_maximum_length_of_scores,
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn backtrace_from_start_point_of_wave_front(
         &self,
         score: usize,
@@ -41,7 +47,6 @@ impl DropoffWaveFront<ComponentLocal> {
     ) -> Extension {
         self.backtrace_from_point(score, start_index_of_components, penalties)
     }
-    #[print_elapsed("stderr", "ns", [dwfa])]
     fn backtrace_from_point( // TODO: length can be calculated directly from deletion count and fr.
         &self,
         mut score: usize,
@@ -348,6 +353,7 @@ pub struct PointOfMaximumLength {
 }
 
 impl PointOfMaximumLength {
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn spare_penalty_determinant(
         &self,
         cutoff: &Cutoff,
@@ -366,7 +372,7 @@ impl PointOfMaximumLength {
 
         maximum_determinant
     }
-    #[print_elapsed("stderr", "ns", [dwfa])]
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn get_optional_start_point_of_wave_front(left: Self, right: Self, anchor_size: usize, cutoff: &Cutoff) -> Option<StartPointOfWaveFront> {
         let mut left_sorted_point = left.index_of_components_and_maximum_length_of_scores;
         left_sorted_point.sort_unstable_by_key(|(_, (_, length))| *length);
