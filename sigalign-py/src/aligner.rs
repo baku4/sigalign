@@ -30,6 +30,17 @@ impl Aligner {
         }
     }
 
+    // Get options of aligner
+    fn penalties(&self) -> [usize; 3] {
+        self.sig_aligner.get_penalties()
+    }
+    fn similarity_cutoff(&self) -> (usize, f32) {
+        self.sig_aligner.get_similarity_cutoff()
+    }
+    fn pattern_size(&self) -> usize {
+        self.sig_aligner.get_pattern_size()
+    }
+
     // TODO: Less verbose algorithms
     
     // Semi-global alignment algorithms
