@@ -1,5 +1,8 @@
 // Dropoff Wave Front Algorithm
 use crate::print_elapsed;
+use std::time::Duration;
+use std::thread;
+
 use super::Penalties;
 use super::Sequence;
 
@@ -58,7 +61,9 @@ impl<C: Component> DropoffWaveFront<C> {
             dropoff_wave_front
         }
     }
+    #[print_elapsed("stderr", "ns", [extending])]
     fn new_allocated(penalties: &Penalties, spare_penalty: usize) -> Self {
+        eprintln!("allocate_score, {}", spare_penalty);
         let wave_front_score_count = spare_penalty + 1;
         let gap_open_penalty = penalties.o;
         let gap_extend_penalty = penalties.e;
@@ -113,7 +118,10 @@ impl<C: Component> DropoffWaveFront<C> {
             let (mut components_of_score, range_of_k) = C::new_components_and_k_range_of_score(&self, score, penalties);
 
             let wave_front_score = &mut self.wave_front_scores[score];
-    
+            
+            #[cfg(feature = "extending")]
+            let start = std::time::Instant::now();
+
             for ([m_component, _, _], k) in components_of_score.iter_mut().zip(range_of_k.into_iter()) {
                 if m_component.bt() != EMPTY {
                     // Extend & update
@@ -131,6 +139,11 @@ impl<C: Component> DropoffWaveFront<C> {
                 };
             };
             wave_front_score.update(components_of_score);
+
+            #[cfg(feature = "extending")]
+            let duration = start.elapsed().as_nanos();
+            #[cfg(feature = "extending")]
+            eprintln!("{}, {}ns", "update_component", duration);
         }
         None
     }
