@@ -1,6 +1,7 @@
 use super::{PRECISION_SCALE, Cutoff, OwnedOperations};
 use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{Anchors, Anchor, OperationsOfExtension, StartPointOfOperations};
+use super::{Anchors, Anchor, ReferableExtension, ExtensionReference, OperationReference, StartPointOfOperations, CheckPoints, CheckPoint};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 
 use std::collections::HashSet;
 
@@ -29,11 +30,14 @@ impl Anchors {
     ) -> Option<AlignmentResult> {
         let anchor = &self.anchors[anchor_index];
 
-        let left_extension = anchor.left_extension.as_ref().unwrap();
-        let right_extension = anchor.right_extension.as_ref().unwrap();
+        let left_extension = anchor.left_referable_extension.as_ref().unwrap();
+        let right_extension = anchor.right_referable_extension.as_ref().unwrap();
+
+        let (left_penalty, left_length) = left_extension.penalty_and_length();
+        let (right_penalty, right_length) = right_extension.penalty_and_length();
         
-        let penalty = left_extension.penalty + right_extension.penalty;
-        let length = left_extension.length + anchor.size + right_extension.length;
+        let penalty = left_penalty + right_penalty;
+        let length = left_length + anchor.size + right_length;
 
         let alignment_position_of_record = (
             anchor.record_position + left_extension.deletion_count as usize - left_extension.length ,

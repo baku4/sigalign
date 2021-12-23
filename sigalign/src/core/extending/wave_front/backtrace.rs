@@ -1,23 +1,28 @@
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
-use super::{WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
 
 impl WaveFront {
-    fn is_aligned_to_end(&self) -> bool {
-        self.end_point.have_k()
+    pub fn backtrace_from_the_end(&self, penalties: &Penalties) -> Option<Extension> {
+        match self.end_point.k {
+            Some(k) => {
+                let last_score = self.end_point.score;
+                let index_of_component = self.wave_front_scores[last_score].max_k as usize + last_score;
+                Some(self.backtrace_from_point(last_score, index_of_component, penalties))
+            },
+            None => {
+                None
+            },
+        }
     }
-    fn backtrace_from_point(
+    pub fn backtrace_from_point(
         &self,
-
-    ) {
-        
-    }
-}
-
-impl EndPoint {
-    fn have_k(&self) -> bool {
-        self.k.is_some()
+        score: usize,
+        index_of_component: usize,
+        penalties: &Penalties,
+    ) -> Extension {
+        // TODO:
     }
 }
 

@@ -1,11 +1,11 @@
 use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
-use super::{Anchors, Anchor, Extension, OperationsOfExtension, OwnedOperations, RefToOperations, StartPointOfOperations, CheckPoints, CheckPoint};
-use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
-use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+use super::{Anchors, Anchor, ReferableExtension, ExtensionReference, OperationReference, StartPointOfOperations, CheckPoints, CheckPoint};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 
-mod dwfa;
+
+// mod dwfa;
 
 impl Anchors {
     pub fn extend(
@@ -14,9 +14,10 @@ impl Anchors {
         query: Sequence,
         penalties: &Penalties,
         cutoff: &Cutoff,
+        wave_front: &mut WaveFront,
     ) {
-        self.extend_right_for_semi_global(record_sequence, query, penalties, cutoff);
-        self.extend_left_for_semi_global(record_sequence, query, penalties, cutoff);
+        self.extend_right_for_semi_global(record_sequence, query, penalties, cutoff, wave_front);
+        self.extend_left_for_semi_global(record_sequence, query, penalties, cutoff, wave_front);
     }
     fn extend_right_for_semi_global(
         &mut self,
@@ -24,20 +25,22 @@ impl Anchors {
         query: Sequence,
         penalties: &Penalties,
         cutoff: &Cutoff,
+        wave_front: &mut WaveFront,
     ) {
         for current_anchor_index in 0..self.anchors.len() { // Extend from left to right
             if self.anchors[current_anchor_index].need_right_extension() {
-                let extension = {
-                    let current_anchor = &self.anchors[current_anchor_index];
-                    current_anchor.get_right_extension_for_semi_global(
-                        record_sequence,
-                        query,
-                        penalties,
-                        cutoff,
-                    )
-                };
+                let current_anchor = &self.anchors[current_anchor_index];
+                current_anchor.extend_wave_front_to_right(
+                    record_sequence,
+                    query,
+                    penalties,
+                    cutoff,
+                    wave_front,
+                );
 
-                match extension {
+                let optional_extension = wave_front.backtrace_from_the_end(penalties);
+
+                match optional_extension {
                     Some(owned_extension) => {
                         self.right_traverse_check_from_owned_extension(
                             current_anchor_index,
@@ -58,20 +61,22 @@ impl Anchors {
         query: Sequence,
         penalties: &Penalties,
         cutoff: &Cutoff,
+        wave_front: &mut WaveFront,
     ) {
         for current_anchor_index in (0..self.anchors.len()).rev() { // Extend from right to left
             if self.anchors[current_anchor_index].need_left_extension() {
-                let extension = {
-                    let current_anchor = &self.anchors[current_anchor_index];
-                    current_anchor.get_left_extension_for_semi_global(
-                        record_sequence,
-                        query,
-                        penalties,
-                        cutoff,
-                    )
-                };
+                let current_anchor = &self.anchors[current_anchor_index];
+                current_anchor.extend_wave_front_to_left(
+                    record_sequence,
+                    query,
+                    penalties,
+                    cutoff,
+                    wave_front,
+                );
 
-                match extension {
+                let optional_extension = wave_front.backtrace_from_the_end(penalties);
+
+                match optional_extension {
                     Some(owned_extension) => {
                         self.left_traverse_check_from_owned_extension(
                             current_anchor_index,
@@ -95,7 +100,9 @@ impl Anchors {
         let mut traverse_candidates = {
             let original_anchor = &mut self.anchors[original_anchor_index];
 
-            original_anchor.right_extension = Some(original_owned_extension.clone());
+            original_anchor.right_referable_extension = Some(
+                ReferableExtension::Own(original_owned_extension.clone())
+            );
             
             let checkpoints = &original_anchor.right_checkpoints;
             checkpoints.to_first_traverse_candidates(original_anchor_index)
@@ -105,12 +112,7 @@ impl Anchors {
         let original_length = original_owned_extension.length;
         let original_insertion_count = original_owned_extension.insertion_count;
         let original_deletion_count = original_owned_extension.deletion_count;
-        let original_operations = match original_owned_extension.operations {
-            OperationsOfExtension::Own(owned_operations) => {
-                owned_operations.operations
-            },
-            _ => panic!("") // TODO: Write err msg
-        };
+        let original_operations = original_owned_extension.operations;
 
         let mut accumulated_penalty = 0;
         let mut accumulated_length = 0;
@@ -135,24 +137,26 @@ impl Anchors {
                                 let checkpoints_of_checkpoint_anchor = &checkpoint_anchor.right_checkpoints;
 
                                 // Add extension to checkpoint
-                                match checkpoint_anchor.right_extension {
+                                match checkpoint_anchor.right_referable_extension {
                                     None => {
-                                        let ref_to_operations = RefToOperations {
+                                        let operation_reference = OperationReference {
                                             anchor_index: original_anchor_index,
                                             start_point_of_operations: StartPointOfOperations {
                                                 operation_index: operation_index, 
                                                 operation_count: count_of_checkpoint,
                                             }
                                         };
-                                        let ref_extension = Extension {
+                                        let extension_reference = ExtensionReference {
                                             penalty: original_penalty - accumulated_penalty,
                                             length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
                                             insertion_count: original_insertion_count - insertion_count,
                                             deletion_count: original_deletion_count - deletion_count,
-                                            operations: OperationsOfExtension::Ref(ref_to_operations),
+                                            operation_reference: operation_reference,
                                         };
 
-                                        checkpoint_anchor.right_extension = Some(ref_extension)
+                                        checkpoint_anchor.right_referable_extension = Some(
+                                            ReferableExtension::Ref(extension_reference)
+                                        );
                                     },
                                     _ => {},
                                 }
@@ -218,7 +222,9 @@ impl Anchors {
         let mut traverse_candidates = {
             let original_anchor = &mut self.anchors[original_anchor_index];
 
-            original_anchor.left_extension = Some(original_owned_extension.clone());
+            original_anchor.left_referable_extension = Some(
+                ReferableExtension::Own(original_owned_extension.clone())
+            );
             
             let checkpoints = &original_anchor.left_checkpoints;
             checkpoints.to_first_traverse_candidates(original_anchor_index)
@@ -228,18 +234,13 @@ impl Anchors {
         let original_length = original_owned_extension.length;
         let original_insertion_count = original_owned_extension.insertion_count;
         let original_deletion_count = original_owned_extension.deletion_count;
-        let original_operations = match original_owned_extension.operations {
-            OperationsOfExtension::Own(owned_operations) => {
-                owned_operations.operations
-            },
-            _ => panic!("") // TODO: Write err msg
-        };
+        let original_operations = original_owned_extension.operations;
 
         let mut accumulated_penalty = 0;
         let mut accumulated_length = 0;
         let mut insertion_count = 0;
         let mut deletion_count = 0;
-        
+
         for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
             match alignment_type {
                 AlignmentType::Match => {
@@ -258,24 +259,26 @@ impl Anchors {
                                 let checkpoints_of_checkpoint_anchor = &checkpoint_anchor.left_checkpoints;
 
                                 // Add extension to checkpoint
-                                match checkpoint_anchor.left_extension {
+                                match checkpoint_anchor.left_referable_extension {
                                     None => {
-                                        let ref_to_operations = RefToOperations {
+                                        let operation_reference = OperationReference {
                                             anchor_index: original_anchor_index,
                                             start_point_of_operations: StartPointOfOperations {
                                                 operation_index: operation_index, 
                                                 operation_count: count_of_checkpoint,
                                             }
                                         };
-                                        let ref_extension = Extension {
+                                        let extension_reference = ExtensionReference {
                                             penalty: original_penalty - accumulated_penalty,
                                             length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
                                             insertion_count: original_insertion_count - insertion_count,
                                             deletion_count: original_deletion_count - deletion_count,
-                                            operations: OperationsOfExtension::Ref(ref_to_operations),
+                                            operation_reference: operation_reference,
                                         };
 
-                                        checkpoint_anchor.left_extension = Some(ref_extension)
+                                        checkpoint_anchor.left_referable_extension = Some(
+                                            ReferableExtension::Ref(extension_reference)
+                                        );
                                     },
                                     _ => {},
                                 }
@@ -332,16 +335,140 @@ impl Anchors {
             }
         }
     }
+    // fn left_traverse_check_from_owned_extension( //FIXME: deduplicate code
+    //     &mut self,
+    //     original_anchor_index: usize,
+    //     original_owned_extension: Extension,
+    //     penalties: &Penalties,
+    // ) {
+    //     let mut traverse_candidates = {
+    //         let original_anchor = &mut self.anchors[original_anchor_index];
+
+    //         original_anchor.left_extension = Some(original_owned_extension.clone());
+            
+    //         let checkpoints = &original_anchor.left_checkpoints;
+    //         checkpoints.to_first_traverse_candidates(original_anchor_index)
+    //     };
+        
+    //     let original_penalty = original_owned_extension.penalty;
+    //     let original_length = original_owned_extension.length;
+    //     let original_insertion_count = original_owned_extension.insertion_count;
+    //     let original_deletion_count = original_owned_extension.deletion_count;
+    //     let original_operations = match original_owned_extension.operations {
+    //         OperationsOfExtension::Own(owned_operations) => {
+    //             owned_operations.operations
+    //         },
+    //         _ => panic!("") // TODO: Write err msg
+    //     };
+
+    //     let mut accumulated_penalty = 0;
+    //     let mut accumulated_length = 0;
+    //     let mut insertion_count = 0;
+    //     let mut deletion_count = 0;
+        
+    //     for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
+    //         match alignment_type {
+    //             AlignmentType::Match => {
+    //                 let mut to_delete_traverse_candidates = Vec::new();
+
+    //                 for traverse_candidate_index in 0..traverse_candidates.len() {
+    //                     match traverse_candidates[traverse_candidate_index].checkpoint.is_traversed(
+    //                         accumulated_length - deletion_count,
+    //                         accumulated_length - insertion_count,
+    //                         count
+    //                     ) {
+    //                         TraverseMarker::Traversed(count_of_checkpoint) => {
+    //                             let traversed_anchor_index = traverse_candidates[traverse_candidate_index].checkpoint.anchor_index;
+    //                             let checkpoint_anchor = &mut self.anchors[traversed_anchor_index];
+
+    //                             let checkpoints_of_checkpoint_anchor = &checkpoint_anchor.left_checkpoints;
+
+    //                             // Add extension to checkpoint
+    //                             match checkpoint_anchor.left_extension {
+    //                                 None => {
+    //                                     let ref_to_operations = OperationReference {
+    //                                         anchor_index: original_anchor_index,
+    //                                         start_point_of_operations: StartPointOfOperations {
+    //                                             operation_index: operation_index, 
+    //                                             operation_count: count_of_checkpoint,
+    //                                         }
+    //                                     };
+    //                                     let ref_extension = Extension {
+    //                                         penalty: original_penalty - accumulated_penalty,
+    //                                         length: (original_length as u32 - accumulated_length - count + count_of_checkpoint) as usize,
+    //                                         insertion_count: original_insertion_count - insertion_count,
+    //                                         deletion_count: original_deletion_count - deletion_count,
+    //                                         operations: OperationsOfExtension::Ref(ref_to_operations),
+    //                                     };
+
+    //                                     checkpoint_anchor.left_extension = Some(ref_extension)
+    //                                 },
+    //                                 _ => {},
+    //                             }
+
+    //                             // Add new traverse candidate to candidates
+    //                             for checkpoint_of_checkpoint_anchor in &checkpoints_of_checkpoint_anchor.0 {
+    //                                 let new_traverse_candidate = traverse_candidates[traverse_candidate_index].to_new_candidate(checkpoint_of_checkpoint_anchor);
+    //                                 traverse_candidates.push(new_traverse_candidate);
+    //                             }
+
+    //                             // Add this checkpoint to connected list of all previous anchor
+    //                             for &previous_anchor_index in &traverse_candidates[traverse_candidate_index].previous_anchors {
+    //                                 self.anchors[previous_anchor_index].connected_anchors.push(traversed_anchor_index);
+    //                             }
+
+    //                             // Add this traverse candidate to delete list
+    //                             to_delete_traverse_candidates.push(traverse_candidate_index);
+    //                         },
+    //                         TraverseMarker::NotYetTraversed => {
+    //                             // nothing to do
+    //                         },
+    //                         TraverseMarker::Passed => {
+    //                             to_delete_traverse_candidates.push(traverse_candidate_index);
+    //                         },
+    //                     }
+    //                 }
+                    
+    //                 for to_delete_traverse_candidate_index in to_delete_traverse_candidates.into_iter().rev() {
+    //                     traverse_candidates.remove(to_delete_traverse_candidate_index);
+    //                 }
+
+    //                 if traverse_candidates.is_empty() {
+    //                     return;
+    //                 }
+
+    //                 accumulated_length += count;
+    //             },
+    //             AlignmentType::Subst => {
+    //                 accumulated_penalty += penalties.x * count as usize;
+    //                 accumulated_length += count;
+    //             },
+    //             AlignmentType::Insertion => {
+    //                 accumulated_penalty += penalties.o;
+    //                 accumulated_penalty += penalties.e * count as usize;
+    //                 accumulated_length += count;
+    //                 insertion_count += count;
+    //             },
+    //             AlignmentType::Deletion => {
+    //                 accumulated_penalty += penalties.o;
+    //                 accumulated_penalty += penalties.e * count as usize;
+    //                 accumulated_length += count;
+    //                 deletion_count += count;
+    //             },
+    //         }
+    //     }
+    // }
 }
 
 impl Anchor {
-    fn get_right_extension_for_semi_global(
+    fn extend_wave_front_to_right(
         &self,
         record_sequence: Sequence,
         query: Sequence,
         penalties: &Penalties,
         cutoff: &Cutoff,
-    ) -> Option<Extension> {
+        wave_front: &mut WaveFront,
+    ) {
         let record_slice = &record_sequence[self.record_position + self.size..];
         let query_slice = &query[self.query_position + self.size..];
 
@@ -350,20 +477,16 @@ impl Anchor {
 
         let spare_penalty = self.spare_penalty_of_right(penalties, cutoff, query_slice_length, record_slice_length);
 
-        DropoffWaveFront::align_right_for_semi_global(
-            record_slice,
-            query_slice,
-            penalties,
-            spare_penalty,
-        )
+        wave_front.align_right_to_end_point(record_slice, query_slice, penalties, spare_penalty);
     }
-    fn get_left_extension_for_semi_global(
+    fn extend_wave_front_to_left(
         &self,
         record_sequence: Sequence,
         query: Sequence,
         penalties: &Penalties,
         cutoff: &Cutoff,
-    ) -> Option<Extension> {
+        wave_front: &mut WaveFront,
+    ) {
         let record_slice = &record_sequence[..self.record_position];
         let query_slice = &query[..self.query_position];
 
@@ -372,12 +495,7 @@ impl Anchor {
 
         let spare_penalty = self.spare_penalty_of_left(penalties, cutoff, query_slice_length, record_slice_length);
 
-        DropoffWaveFront::align_left_for_semi_global(
-            record_slice,
-            query_slice,
-            penalties,
-            spare_penalty,
-        )
+        wave_front.align_right_to_end_point(record_slice, query_slice, penalties, spare_penalty);
     }
     fn spare_penalty_of_right(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
         let penalty_opposite_side = self.left_estimation.penalty;
@@ -386,8 +504,7 @@ impl Anchor {
         self.spare_penalty(penalty_opposite_side, length_opposite_side, penalties, cutoff, query_slice_length, record_slice_length)
     }
     fn spare_penalty_of_left(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        let penalty_opposite_side = self.right_extension.as_ref().unwrap().penalty;
-        let length_opposite_side = self.right_extension.as_ref().unwrap().length;
+        let (penalty_opposite_side, length_opposite_side) = self.right_referable_extension.as_ref().unwrap().penalty_and_length();
 
         self.spare_penalty(penalty_opposite_side, length_opposite_side, penalties, cutoff, query_slice_length, record_slice_length)
     }
@@ -420,21 +537,22 @@ impl Anchor {
         ) as usize
     }
     fn need_right_extension(&self) -> bool {
-        !self.dropped && match self.right_extension {
+        !self.dropped && match self.right_referable_extension {
             None => true,
             _ => false,
         }
     }
     fn need_left_extension(&self) -> bool {
-        !self.dropped && match self.left_extension {
+        !self.dropped && match self.left_referable_extension {
             None => true,
             _ => false,
         }
     }
-    fn add_owned_extension_and_get_right_traverse_candidates(&mut self, original_anchor_index: usize, original_owned_extension: &Extension) -> Vec<TraverseCandidate> {
-        self.right_extension = Some(original_owned_extension.clone());
-        self.right_checkpoints.to_first_traverse_candidates(original_anchor_index)
-    }
+    // TODO: Can be deleted?
+    // fn add_owned_extension_and_get_right_traverse_candidates(&mut self, original_anchor_index: usize, original_owned_extension: &Extension) -> Vec<TraverseCandidate> {
+    //     self.right_extension = Some(original_owned_extension.clone());
+    //     self.right_checkpoints.to_first_traverse_candidates(original_anchor_index)
+    // }
 }
 
 impl CheckPoints {

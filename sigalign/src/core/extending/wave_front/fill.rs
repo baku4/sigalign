@@ -1,8 +1,26 @@
 use super::Penalties;
 use super::Sequence;
-use super::{WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
+use super::{WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt, MatchCounter};
 
 impl WaveFront {
+    pub fn align_right_to_end_point(
+        &mut self,
+        ref_seq: Sequence,
+        qry_seq: Sequence,
+        penalties: &Penalties,
+        spare_penalty: usize,
+    ) {
+        self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward)
+    }
+    pub fn align_left_to_end_point(
+        &mut self,
+        ref_seq: Sequence,
+        qry_seq: Sequence,
+        penalties: &Penalties,
+        spare_penalty: usize,
+    ) {
+        self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
+    }
     fn align_to_end_point(
         &mut self,
         ref_seq: Sequence,
@@ -79,24 +97,24 @@ impl WaveFront {
                 // 1. Update I from M & M from I
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
                     let pre_m_component = &pre_components.m;
-                    if pre_m_component.bt != BackTraceMarker::Empty {
+                    if pre_m_component.bt != MatchBt::Empty {
                         // Update I
                         new_components_of_k.i = Component {
                             fr: pre_m_component.fr + 1,
                             deletion_count: pre_m_component.deletion_count,
-                            bt: BackTraceMarker::FromM,
+                            bt: InsBt::FromM,
                         };
                     }
                 }
                 // 2. Update D from M & M from D
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k+1) {
                     let pre_m_component = &pre_components.m;
-                    if pre_m_component.bt != BackTraceMarker::Empty {
+                    if pre_m_component.bt != MatchBt::Empty {
                         // Update D
                         new_components_of_k.d = Component {
                             fr: pre_m_component.fr,
                             deletion_count: pre_m_component.deletion_count + 1,
-                            bt: BackTraceMarker::FromM,
+                            bt: DelBt::FromM,
                         };
                     }
                 }
@@ -111,13 +129,13 @@ impl WaveFront {
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
                     let pre_i_component = &pre_components.i;
 
-                    if pre_i_component.bt != BackTraceMarker::Empty {
+                    if pre_i_component.bt != InsBt::Empty {
                         // Update I
-                        if new_components_of_k.i.bt == BackTraceMarker::Empty || new_components_of_k.i.fr < pre_i_component.fr + 1 {
+                        if new_components_of_k.i.bt == InsBt::Empty || new_components_of_k.i.fr < pre_i_component.fr + 1 {
                             new_components_of_k.i = Component {
                                 fr: pre_i_component.fr + 1,
                                 deletion_count: pre_i_component.deletion_count,
-                                bt: BackTraceMarker::FromI,
+                                bt: InsBt::FromI,
                             };
                         };
                     }
@@ -125,13 +143,13 @@ impl WaveFront {
                 // 2. Update D from D
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k+1) {
                     let pre_d_component = &pre_components.d;
-                    if pre_d_component.bt != BackTraceMarker::Empty {
+                    if pre_d_component.bt != DelBt::Empty {
                         // Update D
-                        if new_components_of_k.d.bt == BackTraceMarker::Empty || new_components_of_k.d.fr < pre_d_component.fr {
+                        if new_components_of_k.d.bt == DelBt::Empty || new_components_of_k.d.fr < pre_d_component.fr {
                             new_components_of_k.d = Component {
                                 fr: pre_d_component.fr,
                                 deletion_count: pre_d_component.deletion_count + 1,
-                                bt: BackTraceMarker::FromD,
+                                bt: DelBt::FromD,
                             };
                         };
                     }
@@ -152,26 +170,26 @@ impl WaveFront {
                     new_components_of_k.m = Component {
                         fr: pre_m_component.fr + 1,
                         deletion_count: pre_m_component.deletion_count,
-                        bt: BackTraceMarker::FromM,
+                        bt: MatchBt::FromM,
                     };
                 }
                 // 2. Update M from I
-                if new_components_of_k.i.bt != BackTraceMarker::Empty {
-                    if new_components_of_k.m.bt == BackTraceMarker::Empty || new_components_of_k.i.fr >= new_components_of_k.m.fr {
+                if new_components_of_k.i.bt != InsBt::Empty {
+                    if new_components_of_k.m.bt == MatchBt::Empty || new_components_of_k.i.fr >= new_components_of_k.m.fr {
                         new_components_of_k.m = Component {
                             fr: new_components_of_k.i.fr,
                             deletion_count: new_components_of_k.i.deletion_count,
-                            bt: BackTraceMarker::FromI,
+                            bt: MatchBt::FromI,
                         };
                     };
                 }
                 // 3. Update M from D
-                if new_components_of_k.d.bt != BackTraceMarker::Empty {
-                    if new_components_of_k.m.bt == BackTraceMarker::Empty || new_components_of_k.d.fr >= new_components_of_k.m.fr {
+                if new_components_of_k.d.bt != DelBt::Empty {
+                    if new_components_of_k.m.bt == MatchBt::Empty || new_components_of_k.d.fr >= new_components_of_k.m.fr {
                         new_components_of_k.m = Component {
                             fr: new_components_of_k.d.fr,
                             deletion_count: new_components_of_k.d.deletion_count,
-                            bt: BackTraceMarker::FromD,
+                            bt: MatchBt::FromD,
                         };
                     };
                 }
@@ -212,4 +230,28 @@ impl WaveFrontScore {
         }
         None
     }
+}
+
+//TODO: Apply SIMD
+fn consecutive_match_forward(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
+    let mut fr_to_add: i32 = 0;
+    for (v1, v2) in qry_seq[v..].iter().zip(ref_seq[h..].iter()) {
+        if *v1 == *v2 {
+            fr_to_add += 1;
+        } else {
+            return fr_to_add
+        }
+    }
+    fr_to_add
+}
+fn consecutive_match_reverse(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
+    let mut fr_to_add: i32 = 0;
+    for (v1, v2) in qry_seq[..qry_seq.len()-v].iter().rev().zip(ref_seq[..ref_seq.len()-h].iter().rev()) {
+        if *v1 == *v2 {
+            fr_to_add += 1;
+        } else {
+            return fr_to_add
+        }
+    }
+    fr_to_add
 }

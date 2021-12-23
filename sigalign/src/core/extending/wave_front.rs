@@ -1,6 +1,7 @@
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
+use super::Extension;
 
 type MatchCounter<'a> = &'a dyn Fn(Sequence, Sequence, usize, usize) -> i32;
 
@@ -18,8 +19,8 @@ pub struct WaveFront {
 
 #[derive(Debug)]
 pub struct EndPoint {
-    score: usize,
-    k: Option<i32>,
+    pub score: usize,
+    pub k: Option<i32>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,9 +74,6 @@ impl WaveFront {
             wave_front_scores,
         }
     }
-    fn clear_components(&mut self) {
-        // TODO:
-    }
 }
 
 impl WaveFrontScore {
@@ -93,19 +91,18 @@ impl WaveFrontScore {
     fn components_of_k(&self, k: i32) -> &Components {
         &self.components_by_k[(self.max_k + k) as usize]
     }
-    fn m_component_of_k(&self, k: i32) -> &Component {
+    fn m_component_of_k(&self, k: i32) -> &Component<MatchBt> {
         &self.components_of_k(k).m
     }
-    fn i_component_of_k(&self, k: i32) -> &Component {
+    fn i_component_of_k(&self, k: i32) -> &Component<InsBt> {
         &self.components_of_k(k).i
     }
-    fn d_component_of_k(&self, k: i32) -> &Component {
+    fn d_component_of_k(&self, k: i32) -> &Component<DelBt> {
         &self.components_of_k(k).d
     }
     fn components_of_k_checked(&self, k: i32) -> Option<&Components> {
         self.components_by_k.get((self.max_k + k) as usize)
     }
-    // Reset
 }
 
 
@@ -116,26 +113,59 @@ impl WaveFrontScore {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Components {
-    m: Component,
-    i: Component,
-    d: Component,
+    pub m: Component<MatchBt>,
+    pub i: Component<InsBt>,
+    pub d: Component<DelBt>,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone)]
-pub struct Component {
+pub struct Component<B: BackTraceMarker> {
     pub fr: i32,
     pub deletion_count: u16,
-    pub bt: BackTraceMarker,
+    pub bt: B,
+}
+
+pub trait BackTraceMarker {
+    fn empty() -> Self;
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum BackTraceMarker {
-    Empty,
+pub enum MatchBt {
+    Empty = 0,
     Start,
     FromM,
     FromI,
     FromD,
+}
+impl BackTraceMarker for MatchBt {
+    fn empty() -> Self {
+        Self::Empty
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub enum InsBt {
+    Empty = 0,
+    FromM,
+    FromI,
+}
+impl BackTraceMarker for InsBt {
+    fn empty() -> Self {
+        Self::Empty
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub enum DelBt {
+    Empty = 0,
+    FromM,
+    FromD,
+}
+impl BackTraceMarker for DelBt {
+    fn empty() -> Self {
+        Self::Empty
+    }
 }
 
 impl Components {
@@ -155,43 +185,21 @@ impl Components {
     }
 }
 
-impl Component {
+impl<B: BackTraceMarker> Component<B> {
     fn empty() -> Self {
         Self {
             fr: 0,
             deletion_count: 0,
-            bt: BackTraceMarker::Empty,
+            bt: B::empty(),
         }
     }
+}
+impl Component<MatchBt> {
     fn start_point(first_fr: i32) -> Self {
         Self {
             fr: first_fr,
             deletion_count: 0,
-            bt: BackTraceMarker::Start,
+            bt: MatchBt::Start,
         }
     }
-}
-
-//TODO: Apply SIMD
-fn consecutive_match_forward(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
-    let mut fr_to_add: i32 = 0;
-    for (v1, v2) in qry_seq[v..].iter().zip(ref_seq[h..].iter()) {
-        if *v1 == *v2 {
-            fr_to_add += 1;
-        } else {
-            return fr_to_add
-        }
-    }
-    fr_to_add
-}
-fn consecutive_match_reverse(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
-    let mut fr_to_add: i32 = 0;
-    for (v1, v2) in qry_seq[..qry_seq.len()-v].iter().rev().zip(ref_seq[..ref_seq.len()-h].iter().rev()) {
-        if *v1 == *v2 {
-            fr_to_add += 1;
-        } else {
-            return fr_to_add
-        }
-    }
-    fr_to_add
 }

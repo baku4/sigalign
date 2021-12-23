@@ -2,6 +2,7 @@ use crate::{Result, error_msg};
 use crate::core::{ReferenceInterface, Sequence};
 pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
+use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
 use crate::utils::FastaReader;
@@ -43,6 +44,41 @@ pub struct Aligner {
     min_penalty_for_pattern: MinPenaltyForPattern,
     gcd: usize,
     kmer: usize,
+    wave_front_holder: WaveFrontHolder,
+}
+
+struct WaveFrontHolder {
+    allocated_query_length: usize,
+    primary_wave_front: WaveFront,
+    secondary_wave_front: WaveFront,
+}
+use std::fmt;
+impl fmt::Debug for WaveFrontHolder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WaveFrontHolder")
+         .field("allocated_query_length", &self.allocated_query_length)
+         .finish()
+    }
+}
+
+//TODO: Relocate
+impl WaveFrontHolder {
+    const QUERY_LENGTH_UNIT: usize = 100;
+
+    fn new(
+        penalties: &Penalties,
+        penalty_per_scale: usize,
+    ) -> Self {
+        let max_score = penalty_per_scale * Self::QUERY_LENGTH_UNIT / PRECISION_SCALE;
+
+        let allocated_wave_front = WaveFront::new_allocated(penalties, max_score);
+
+        Self {
+            allocated_query_length: Self::QUERY_LENGTH_UNIT,
+            primary_wave_front: allocated_wave_front,
+            secondary_wave_front: allocated_wave_front,
+        }
+    }
 }
 
 impl Aligner {
@@ -74,6 +110,8 @@ impl Aligner {
 
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let max_kmer = Self::max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+
+        let wave_front_holder = WaveFrontHolder::new(&penalties, cutoff.maximum_penalty_per_scale);
         
         Self {
             penalties,
@@ -81,6 +119,7 @@ impl Aligner {
             min_penalty_for_pattern,
             gcd,
             kmer: max_kmer,
+            wave_front_holder,
         }
     }
     fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {

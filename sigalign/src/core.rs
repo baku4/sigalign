@@ -1,8 +1,7 @@
 mod extending;
 mod evaluating;
 
-pub use extending::{DropoffWaveFront, WaveFrontScore, Components, Component};
-pub use extending::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+pub use extending::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 pub use evaluating::AlignmentHashSet;
 
 use serde::{Deserialize, Serialize};
@@ -105,5 +104,8 @@ pub trait Algorithm {
         penalties: &Penalties,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
+        // TODO: Resolve dependency
+        primary_wave_front: &mut WaveFront,
+        secondary_wave_front: &mut WaveFront,
     ) -> AlignmentResultsByRecordIndex;
 }

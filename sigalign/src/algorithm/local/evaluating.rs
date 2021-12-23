@@ -2,7 +2,6 @@ use super::{Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{Anchors, Anchor, Extension};
-use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 
 impl Anchors {
     pub fn get_alignment_results_for_local(self) -> Vec<AlignmentResult> {

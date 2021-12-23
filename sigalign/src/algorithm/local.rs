@@ -1,8 +1,7 @@
 use super::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
-use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 use super::Algorithm;
 
 mod anchoring;
@@ -31,15 +30,6 @@ struct Anchor {
     dropped: bool,
 }
 
-#[derive(Debug, Clone)]
-pub struct Extension {
-    penalty: usize,
-    length: usize,
-    insertion_count: u32,
-    deletion_count: u32,
-    operations: Vec<AlignmentOperation>,
-}
-
 
 // ALGORITHM
 
@@ -54,6 +44,8 @@ impl Algorithm for LocalAlgorithm {
         penalties: &Penalties,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
+        left_wave_front: &mut WaveFront,
+        right_wave_front: &mut WaveFront,
     ) -> AlignmentResultsByRecordIndex {
         let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
@@ -64,7 +56,7 @@ impl Algorithm for LocalAlgorithm {
 
                 let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
 
-                anchors.extend(record_sequence, query, penalties, cutoff);
+                anchors.extend(record_sequence, query, penalties, cutoff, left_wave_front, right_wave_front);
             
                 let alignment_results = anchors.get_alignment_results_for_local();
 
@@ -125,13 +117,18 @@ mod tests {
 
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
+        let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
+        let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
+
         let alignment_results = LocalAlgorithm::alignment(
             &mut test_reference,
             query,
             kmer,
             &penalties,
             &cutoff,
-            &min_penalty_for_pattern
+            &min_penalty_for_pattern,
+            &mut left_wave_front,
+            &mut right_wave_front
         );
 
         println!("alignment_results:\n{:#?}", alignment_results);

@@ -1,8 +1,7 @@
 use super::{Penalties, PRECISION_SCALE ,Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
-use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 use super::Algorithm;
 
 mod anchoring;
@@ -27,8 +26,8 @@ struct Anchor {
     right_estimation: Estimation,
     left_checkpoints: CheckPoints,
     right_checkpoints: CheckPoints,
-    left_extension: Option<Extension>,
-    right_extension: Option<Extension>,
+    left_referable_extension: Option<ReferableExtension>,
+    right_referable_extension: Option<ReferableExtension>,
     dropped: bool,
     connected_anchors: Vec<usize>,
 }
@@ -40,19 +39,59 @@ struct Estimation {
 }
 
 #[derive(Debug, Clone)]
-pub struct Extension {
+enum ReferableExtension {
+    Own(Extension),
+    Ref(ExtensionReference),
+}
+
+impl ReferableExtension {
+    fn penalty_and_length(&self) -> (usize, usize) {
+        match self {
+            Self::Own(extension) => {
+                (extension.penalty, extension.length)
+            },
+            Self::Ref(extension_reference) => {
+                (extension_reference.penalty, extension_reference.length)
+            },
+        }
+    }
+    fn penalty(&self) -> usize {
+        match self {
+            Self::Own(extension) => extension.penalty,
+            Self::Ref(extension_reference) => extension_reference.penalty,
+        }
+    }
+    fn length(&self) -> usize {
+        match self {
+            Self::Own(extension) => extension.length,
+            Self::Ref(extension_reference) => extension_reference.length,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ExtensionReference {
     penalty: usize,
     length: usize,
     insertion_count: u32,
     deletion_count: u32,
-    operations: OperationsOfExtension,
+    operation_reference: OperationReference,
 }
 
-#[derive(Debug, Clone)]
-enum OperationsOfExtension {
-    Own(OwnedOperations),
-    Ref(RefToOperations),
-}
+// #[derive(Debug, Clone)]
+// pub struct Extension {
+//     penalty: usize,
+//     length: usize,
+//     insertion_count: u32,
+//     deletion_count: u32,
+//     operations: OperationsOfExtension,
+// }
+
+// #[derive(Debug, Clone)]
+// enum OperationsOfExtension {
+//     Own(OwnedOperations),
+//     Ref(OperationReference),
+// }
 
 #[derive(Debug, Clone)]
 struct OwnedOperations {
@@ -60,7 +99,7 @@ struct OwnedOperations {
 }
 
 #[derive(Debug, Clone)]
-struct RefToOperations {
+struct OperationReference {
     anchor_index: usize,
     start_point_of_operations: StartPointOfOperations,
 }
@@ -96,6 +135,8 @@ impl Algorithm for SemiGlobalAlgorithm {
         penalties: &Penalties,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
+        primary_wave_front: &mut WaveFront,
+        secondary_wave_front: &mut WaveFront,
     ) -> AlignmentResultsByRecordIndex {
         let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
@@ -106,7 +147,7 @@ impl Algorithm for SemiGlobalAlgorithm {
     
                 let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
     
-                anchors.extend(record_sequence, query, penalties, cutoff);
+                anchors.extend(record_sequence, query, penalties, cutoff, primary_wave_front);
     
                 let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
     
@@ -167,13 +208,18 @@ mod tests {
 
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
+        let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
+        let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
+
         let alignment_results = SemiGlobalAlgorithm::alignment(
             &mut test_reference,
             query,
             kmer,
             &penalties,
             &cutoff,
-            &min_penalty_for_pattern
+            &min_penalty_for_pattern,
+            &mut left_wave_front,
+            &mut right_wave_front,
         );
 
         println!("alignment_results:\n{:#?}", alignment_results);
@@ -194,13 +240,18 @@ mod tests {
 
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
+        let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
+        let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
+
         let alignment_results = SemiGlobalAlgorithm::alignment(
             &mut test_reference,
             query,
             kmer,
             &penalties,
             &cutoff,
-            &min_penalty_for_pattern
+            &min_penalty_for_pattern,
+            &mut left_wave_front,
+            &mut right_wave_front,
         );
 
         let json = serde_json::to_string(&alignment_results).unwrap();

@@ -1,7 +1,6 @@
 use crate::core::{PatternLocation};
 use crate::core::{AlignmentHashSet};
-use crate::core::{DropoffWaveFront, WaveFrontScore, Components, Component};
-use crate::core::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
+use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
 
 pub use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 pub use crate::core::{ReferenceInterface, Sequence};
