@@ -55,16 +55,14 @@ impl ReferableExtension {
             },
         }
     }
-    fn penalty(&self) -> usize {
+    fn insertion_and_deletion_count(&self) -> (u32, u32) {
         match self {
-            Self::Own(extension) => extension.penalty,
-            Self::Ref(extension_reference) => extension_reference.penalty,
-        }
-    }
-    fn length(&self) -> usize {
-        match self {
-            Self::Own(extension) => extension.length,
-            Self::Ref(extension_reference) => extension_reference.length,
+            Self::Own(extension) => {
+                (extension.insertion_count, extension.deletion_count)
+            },
+            Self::Ref(extension_reference) => {
+                (extension_reference.insertion_count, extension_reference.deletion_count)
+            },
         }
     }
 }
@@ -77,21 +75,6 @@ struct ExtensionReference {
     deletion_count: u32,
     operation_reference: OperationReference,
 }
-
-// #[derive(Debug, Clone)]
-// pub struct Extension {
-//     penalty: usize,
-//     length: usize,
-//     insertion_count: u32,
-//     deletion_count: u32,
-//     operations: OperationsOfExtension,
-// }
-
-// #[derive(Debug, Clone)]
-// enum OperationsOfExtension {
-//     Own(OwnedOperations),
-//     Ref(OperationReference),
-// }
 
 #[derive(Debug, Clone)]
 struct OwnedOperations {

@@ -12,11 +12,11 @@ impl Anchors {
         self,
         cutoff: &Cutoff,
     ) -> Vec<AlignmentResult> {
-        let unique_anchors = self.get_unique_anchors(cutoff);
+        let valid_unique_anchors = self.get_valid_unique_anchors(cutoff);
 
         let mut alignment_hash_set = AlignmentHashSet::new();
 
-        unique_anchors.into_iter().filter_map(|unique_anchor_index| {
+        valid_unique_anchors.into_iter().filter_map(|unique_anchor_index| {
             self.get_optional_alignment_result_of_anchor_for_semi_global(
                 unique_anchor_index,
                 &mut alignment_hash_set,
@@ -30,22 +30,25 @@ impl Anchors {
     ) -> Option<AlignmentResult> {
         let anchor = &self.anchors[anchor_index];
 
-        let left_extension = anchor.left_referable_extension.as_ref().unwrap();
-        let right_extension = anchor.right_referable_extension.as_ref().unwrap();
+        let left_referable_extension = anchor.left_referable_extension.as_ref().unwrap();
+        let right_referable_extension = anchor.right_referable_extension.as_ref().unwrap();
 
-        let (left_penalty, left_length) = left_extension.penalty_and_length();
-        let (right_penalty, right_length) = right_extension.penalty_and_length();
+        let (left_penalty, left_length) = left_referable_extension.penalty_and_length();
+        let (right_penalty, right_length) = right_referable_extension.penalty_and_length();
         
         let penalty = left_penalty + right_penalty;
         let length = left_length + anchor.size + right_length;
 
+        let (left_insertion_count, left_deletion_count) = left_referable_extension.insertion_and_deletion_count();
+        let (right_insertion_count, right_deletion_count) = right_referable_extension.insertion_and_deletion_count();
+
         let alignment_position_of_record = (
-            anchor.record_position + left_extension.deletion_count as usize - left_extension.length ,
-            anchor.record_position + anchor.size + right_extension.length - right_extension.deletion_count  as usize,
+            anchor.record_position + left_deletion_count as usize - left_length,
+            anchor.record_position + anchor.size + right_length - right_deletion_count  as usize,
         );
         let alignment_position_of_query = (
-            anchor.query_position + left_extension.insertion_count as usize - left_extension.length ,
-            anchor.query_position + anchor.size + right_extension.length - right_extension.insertion_count  as usize,
+            anchor.query_position + left_insertion_count as usize - left_length,
+            anchor.query_position + anchor.size + right_length - right_insertion_count  as usize,
         );
         let alignment_position = AlignmentPosition {
             record: alignment_position_of_record,
@@ -55,25 +58,33 @@ impl Anchors {
         let alignment_is_new = alignment_hash_set.insert_and_check_new(penalty, alignment_position.clone());
 
         if alignment_is_new {
-            let left_operations = match &left_extension.operations {
-                OperationsOfExtension::Own(owned_operations) => owned_operations.operations.clone(),
-                OperationsOfExtension::Ref(ref_to_operations) => {
-                    let original_operation = match &self.anchors[ref_to_operations.anchor_index].left_extension.as_ref().unwrap().operations {
-                        OperationsOfExtension::Own(owned_operations) => owned_operations,
+            let left_operations = match left_referable_extension {
+                ReferableExtension::Own(extension) => {
+                    extension.operations
+                },
+                ReferableExtension::Ref(extension_reference) => {
+                    let operation_reference = &extension_reference.operation_reference;
+                    match &self.anchors[operation_reference.anchor_index].left_referable_extension.as_ref().unwrap() {
+                        ReferableExtension::Own(extension) => {
+                            extension.get_alignment_operations_from_start_point(&operation_reference.start_point_of_operations)
+                        },
                         _ => panic!("") // TODO: Write err msg.
-                    };
-                    original_operation.get_alignment_operations_from_start_point(&ref_to_operations.start_point_of_operations)
+                    }
                 },
             };
-    
-            let right_operations = match &right_extension.operations {
-                OperationsOfExtension::Own(owned_operations) => owned_operations.operations.clone(),
-                OperationsOfExtension::Ref(ref_to_operations) => {
-                    let original_operation = match &self.anchors[ref_to_operations.anchor_index].right_extension.as_ref().unwrap().operations {
-                        OperationsOfExtension::Own(owned_operations) => owned_operations,
+
+            let right_operations = match right_referable_extension {
+                ReferableExtension::Own(extension) => {
+                    extension.operations
+                },
+                ReferableExtension::Ref(extension_reference) => {
+                    let operation_reference = &extension_reference.operation_reference;
+                    match &self.anchors[operation_reference.anchor_index].right_referable_extension.as_ref().unwrap() {
+                        ReferableExtension::Own(extension) => {
+                            extension.get_alignment_operations_from_start_point(&operation_reference.start_point_of_operations)
+                        },
                         _ => panic!("") // TODO: Write err msg.
-                    };
-                    original_operation.get_alignment_operations_from_start_point(&ref_to_operations.start_point_of_operations)
+                    }
                 },
             };
     
@@ -92,7 +103,7 @@ impl Anchors {
             None
         }
     }
-    fn get_unique_anchors(
+    fn get_valid_unique_anchors(
         &self,
         cutoff: &Cutoff,
     ) -> Vec<usize> {
@@ -117,10 +128,14 @@ impl Anchors {
     ) -> HashSet<usize> {
         self.anchors.iter().enumerate().filter_map(|(anchor_index, anchor)| {
             if !anchor.dropped && {
-                let left_extension = anchor.left_extension.as_ref().unwrap();
-                let right_extension = anchor.right_extension.as_ref().unwrap();
-                let penalty = left_extension.penalty + right_extension.penalty;
-                let length = left_extension.length + anchor.size + right_extension.length;
+                let left_referable_extension = anchor.left_referable_extension.as_ref().unwrap();
+                let right_referable_extension = anchor.right_referable_extension.as_ref().unwrap();
+
+                let (left_penalty, left_length) = left_referable_extension.penalty_and_length();
+                let (right_penalty, right_length) = right_referable_extension.penalty_and_length();
+                
+                let penalty = left_penalty + right_penalty;
+                let length = left_length + anchor.size + right_length;
                 
                 length >= cutoff.minimum_aligned_length
                 && (PRECISION_SCALE * penalty / length) <= cutoff.maximum_penalty_per_scale
@@ -142,7 +157,7 @@ impl Anchor {
     }
 }
 
-impl OwnedOperations {
+impl Extension {
     fn get_alignment_operations_from_start_point(&self, start_point: &StartPointOfOperations) -> Vec<AlignmentOperation> {
         let mut alignment_operations = self.operations[..=start_point.operation_index].to_vec();
         alignment_operations.last_mut().unwrap().count = start_point.operation_count;

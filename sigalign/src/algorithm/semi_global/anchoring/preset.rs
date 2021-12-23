@@ -181,8 +181,8 @@ impl AnchorsByPattern {
                 right_estimation,
                 left_checkpoints: CheckPoints::empty(),
                 right_checkpoints: CheckPoints::empty(),
-                left_extension: None,
-                right_extension: None,
+                left_referable_extension: None,
+                right_referable_extension: None,
                 dropped: false,
                 connected_anchors: Vec::new(),
             }
