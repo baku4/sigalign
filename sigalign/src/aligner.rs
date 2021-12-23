@@ -2,7 +2,7 @@ use crate::{Result, error_msg};
 use crate::core::{ReferenceInterface, Sequence};
 pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
+use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
 use crate::utils::FastaReader;

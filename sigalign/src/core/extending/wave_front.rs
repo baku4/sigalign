@@ -91,13 +91,13 @@ impl WaveFrontScore {
     fn components_of_k(&self, k: i32) -> &Components {
         &self.components_by_k[(self.max_k + k) as usize]
     }
-    fn m_component_of_k(&self, k: i32) -> &Component<MatchBt> {
+    fn m_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).m
     }
-    fn i_component_of_k(&self, k: i32) -> &Component<InsBt> {
+    fn i_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).i
     }
-    fn d_component_of_k(&self, k: i32) -> &Component<DelBt> {
+    fn d_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).d
     }
     fn components_of_k_checked(&self, k: i32) -> Option<&Components> {
@@ -113,59 +113,26 @@ impl WaveFrontScore {
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub struct Components {
-    pub m: Component<MatchBt>,
-    pub i: Component<InsBt>,
-    pub d: Component<DelBt>,
+    pub m: Component,
+    pub i: Component,
+    pub d: Component,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone)]
-pub struct Component<B: BackTraceMarker> {
+pub struct Component {
     pub fr: i32,
     pub deletion_count: u16,
-    pub bt: B,
+    pub bt: BackTraceMarker,
 }
 
-pub trait BackTraceMarker {
-    fn empty() -> Self;
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum MatchBt {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BackTraceMarker {
     Empty = 0,
     Start,
     FromM,
     FromI,
     FromD,
-}
-impl BackTraceMarker for MatchBt {
-    fn empty() -> Self {
-        Self::Empty
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum InsBt {
-    Empty = 0,
-    FromM,
-    FromI,
-}
-impl BackTraceMarker for InsBt {
-    fn empty() -> Self {
-        Self::Empty
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
-pub enum DelBt {
-    Empty = 0,
-    FromM,
-    FromD,
-}
-impl BackTraceMarker for DelBt {
-    fn empty() -> Self {
-        Self::Empty
-    }
 }
 
 impl Components {
@@ -185,21 +152,19 @@ impl Components {
     }
 }
 
-impl<B: BackTraceMarker> Component<B> {
+impl Component {
     fn empty() -> Self {
         Self {
             fr: 0,
             deletion_count: 0,
-            bt: B::empty(),
+            bt: BackTraceMarker::Empty,
         }
     }
-}
-impl Component<MatchBt> {
     fn start_point(first_fr: i32) -> Self {
         Self {
             fr: first_fr,
             deletion_count: 0,
-            bt: MatchBt::Start,
+            bt: BackTraceMarker::Start,
         }
     }
 }

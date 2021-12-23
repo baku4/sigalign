@@ -1,7 +1,7 @@
 use super::{PRECISION_SCALE, Cutoff, OwnedOperations};
 use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
 use super::{Anchors, Anchor, ReferableExtension, ExtensionReference, OperationReference, StartPointOfOperations, CheckPoints, CheckPoint};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
 use std::collections::HashSet;
 

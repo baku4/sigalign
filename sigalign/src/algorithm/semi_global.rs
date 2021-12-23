@@ -1,7 +1,7 @@
 use super::{Penalties, PRECISION_SCALE ,Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 use super::Algorithm;
 
 mod anchoring;

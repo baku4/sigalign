@@ -2,7 +2,7 @@ use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
 use super::{Anchors, Anchor, ReferableExtension, ExtensionReference, OperationReference, StartPointOfOperations, CheckPoints, CheckPoint};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
 
 // mod dwfa;

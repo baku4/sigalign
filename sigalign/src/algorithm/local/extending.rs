@@ -5,7 +5,7 @@ use super::{Anchors, Anchor};
 // TODO: Delete
 // use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
 // use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
 // TODO: Delete
 // mod dwfa;
@@ -153,10 +153,10 @@ impl WaveFrontScore {
     }
 }
 
-impl Component<MatchBt> {
+impl Component {
     fn optional_length(&self) -> Option<i32> {
         match self.bt {
-            MatchBt::Empty => None,
+            BackTraceMarker::Empty => None,
             _ => Some(self.fr + self.deletion_count as i32)
         }
     }

@@ -4,12 +4,9 @@ use super::{AlignmentOperation, AlignmentType};
 
 mod dwfa;
 
-// pub use dwfa::{DropoffWaveFront, WaveFrontScore, Components, Component};
-// pub use dwfa::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
-
 mod wave_front;
 
-pub use wave_front::{WaveFront, EndPoint, WaveFrontScore, Components, Component, MatchBt, InsBt, DelBt};
+pub use wave_front::{WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
 #[derive(Debug, Clone)]
 pub struct Extension {
