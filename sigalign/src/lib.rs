@@ -48,7 +48,7 @@ sequence_provider.add_labeled_sequence(
 let mut reference = Reference::new_with_default_config(sequence_provider).unwrap();
 
 // (2) Make `Aligner`
-let aligner = Aligner::new(4, 6, 2, 100, 0.1).unwrap();
+let mut aligner = Aligner::new(4, 6, 2, 100, 0.1).unwrap();
 
 // (3) Alignment with query
 let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";

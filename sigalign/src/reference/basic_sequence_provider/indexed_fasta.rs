@@ -135,6 +135,28 @@ impl IndexedFastaProvider {
             }
         }
 
+        // Push last FastaIndex TODO: Deduplicate code
+        let new_fasta_index = if sequence_length_of_lines.len() == 1 {
+            FastaIndex {
+                label,
+                sequence_offset: offset_to_sequence_start_point as u64,
+                sequence_length: sequence_length,
+                length_of_one_line: sequence_length_of_lines[0],
+                filled_line_count: 0,
+                length_of_last_line: sequence_length_of_lines[0],
+            }
+        } else {
+            FastaIndex {
+                label,
+                sequence_offset: offset_to_sequence_start_point as u64,
+                sequence_length: sequence_length,
+                length_of_one_line: sequence_length_of_lines[0],
+                filled_line_count: sequence_length_of_lines.len() - 1,
+                length_of_last_line: sequence_length_of_lines[sequence_length_of_lines.len() - 1],
+            }
+        };
+        fasta_indices.push(new_fasta_index);
+
         Ok(
             Self {
                 proto: IndexedFastaProviderProto {
@@ -294,15 +316,15 @@ mod tests {
 
     #[test]
     fn print_indexed_fasta_provider() {
-        let mut sequence_provider = IndexedFastaProvider::new(SIMPLE_FA_PATH).unwrap();
+        let mut sequence_provider = IndexedFastaProvider::new(NUCLEOTIDE_ONLY_FA_PATH_1).unwrap();
 
         {
-            let label = sequence_provider.label_of_record(0);
+            let label = sequence_provider.label_of_record(10);
             println!("{:?}", label);
         }
 
         {
-            let seq = sequence_provider.sequence_of_record(0);
+            let seq = sequence_provider.sequence_of_record(10);
             println!("{:?}", String::from_utf8(seq.to_vec()));
         }
     }
