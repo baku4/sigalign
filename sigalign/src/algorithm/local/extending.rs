@@ -52,7 +52,7 @@ impl Anchor {
         let right_query_slice_length = right_query_slice.len();
         let right_spare_penalty = self.spare_penalty_of_right(penalties, cutoff, right_query_slice_length, right_record_slice_length);
 
-        right_wave_front.align_right_to_end_point(record_sequence, query, penalties, right_spare_penalty);
+        right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_point_of_maximum_length = right_wave_front.point_of_maximum_length();
 
         let left_record_slice = &record_sequence[..self.record_position];
@@ -62,7 +62,7 @@ impl Anchor {
         let spare_penalty_determinant_of_right = right_point_of_maximum_length.spare_penalty_determinant(cutoff);
         let left_spare_penalty = self.spare_penalty_of_left(spare_penalty_determinant_of_right, penalties, cutoff, left_query_slice_length, left_record_slice_length);
 
-        left_wave_front.align_left_to_end_point(record_sequence, query, penalties, left_spare_penalty);
+        left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_point_of_maximum_length = left_wave_front.point_of_maximum_length();
 
         let point_of_maximum_length = PointOfMaximumLength::get_optional_start_points_of_wave_front(left_point_of_maximum_length, right_point_of_maximum_length, self.size, cutoff);

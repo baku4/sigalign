@@ -29,12 +29,12 @@ impl Anchor {
         let length = left_extension.length + self.size + right_extension.length;
 
         let alignment_position_of_record = (
-            self.record_position + left_extension.deletion_count as usize - left_extension.length ,
+            self.record_position + left_extension.deletion_count as usize - left_extension.length,
             self.record_position + self.size + right_extension.length - right_extension.deletion_count  as usize,
-        );
+        );       
         let alignment_position_of_query = (
-            self.query_position + left_extension.insertion_count as usize - left_extension.length ,
-            self.query_position + self.size + right_extension.length - right_extension.insertion_count  as usize,
+            self.query_position + left_extension.insertion_count as usize - left_extension.length,
+            self.query_position + self.size + right_extension.length - right_extension.insertion_count as usize,
         );
         let alignment_position = AlignmentPosition {
             record: alignment_position_of_record,

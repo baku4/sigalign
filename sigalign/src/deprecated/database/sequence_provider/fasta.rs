@@ -166,15 +166,3 @@ impl LineTerminator {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::*;
-    use super::*;
-    
-    #[test]
-    fn test_generate_fai() {
-        let fai_bytes = generate_fai_and_count("./src/deprecated/tests/fasta/ERR209055.fa").unwrap();
-        println!("{:?}", String::from_utf8(fai_bytes.0).unwrap());
-    }
-}

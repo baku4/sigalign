@@ -360,7 +360,7 @@ mod tests {
         let forward = penalty_per_pattern.forward;
         let reverse = penalty_per_pattern.reverse;
 
-        assert_eq!(forward, vec![4, 10, 10, 14, 20, 24, 24, 30, 34, 34]);
-        assert_eq!(reverse, vec![34, 28, 24, 24, 20, 14, 10, 10, 6, 0]);
+        assert_eq!(forward, vec![4, 10, 10, 14, 20, 24, 24, 28, 34, 34]);
+        assert_eq!(reverse, vec![34, 28, 24, 24, 20, 14, 10, 10, 4, 0]);
     }
 }

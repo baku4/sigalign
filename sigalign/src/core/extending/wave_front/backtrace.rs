@@ -8,7 +8,7 @@ impl WaveFront {
         match self.end_point.k {
             Some(k) => {
                 let last_score = self.end_point.score;
-                let index_of_component = self.wave_front_scores[last_score].max_k as usize + last_score;
+                let index_of_component = (self.wave_front_scores[last_score].max_k + k) as usize;
                 Some(self.backtrace_from_point(last_score, index_of_component, penalties))
             },
             None => {
@@ -18,7 +18,7 @@ impl WaveFront {
     }
     pub fn backtrace_from_point(
         &self,
-        score: usize,
+        mut score: usize,
         index_of_component: usize,
         penalties: &Penalties,
     ) -> Extension {
@@ -38,8 +38,7 @@ impl WaveFront {
 
         let operation_length = fr as usize + component.deletion_count as usize;
         let deletion_count: u32 = component.deletion_count as u32;
-        let insertion_count: u32 = deletion_count + k as u32;
-        // FIXME: length can be calculated directly from deletion count and fr.
+        let insertion_count: u32 = (deletion_count as i32 + k) as u32;
         
         loop {
             match component_type {
@@ -90,7 +89,6 @@ impl WaveFront {
                                     }
                                 );
                             }
-                            operation_length += (match_count + 1) as usize;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -117,8 +115,6 @@ impl WaveFront {
                                     }
                                 );
                             }
-
-                            operation_length += match_count as usize;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -145,7 +141,6 @@ impl WaveFront {
                                     }
                                 );
                             }
-                            operation_length += match_count as usize;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -158,7 +153,6 @@ impl WaveFront {
                                     }
                                 );
                             };
-                            operation_length += fr as usize;
                             // shrink
                             operations.shrink_to_fit();
                             // extension of current anchor
@@ -176,7 +170,7 @@ impl WaveFront {
                 /* I */
                 ComponentType::I => {
                     match component.bt {
-                        FROM_M => {
+                        BackTraceMarker::FromM => {
                             // (1) Next score
                             score -= penalties.o + penalties.e;
                             // (2) Next k
@@ -204,8 +198,6 @@ impl WaveFront {
                                     }
                                 )
                             }
-                            operation_length += 1;
-                            insertion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -237,8 +229,6 @@ impl WaveFront {
                                     }
                                 )
                             }
-                            operation_length += 1;
-                            insertion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -247,7 +237,7 @@ impl WaveFront {
                 /* D */
                 ComponentType::D => {
                     match component.bt {
-                        FROM_M => {
+                        BackTraceMarker::FromM => {
                             // (1) Next score
                             score -= penalties.o + penalties.e;
                             // (2) Next k
@@ -275,8 +265,6 @@ impl WaveFront {
                                     }
                                 )
                             }
-                            operation_length += 1;
-                            deletion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
@@ -308,8 +296,6 @@ impl WaveFront {
                                     }
                                 )
                             }
-                            operation_length += 1;
-                            deletion_count += 1;
                             // (9) Next fr to fr
                             fr = next_fr;
                         },

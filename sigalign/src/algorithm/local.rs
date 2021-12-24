@@ -111,7 +111,7 @@ mod tests {
         let penalties = Penalties {x: 4, o: 5, e: 2};
         let cutoff = Cutoff {
             minimum_aligned_length: 30,
-            maximum_penalty_per_scale: 300_000,
+            maximum_penalty_per_scale: 3_000,
         };
         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 

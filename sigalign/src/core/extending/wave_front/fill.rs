@@ -216,17 +216,19 @@ impl WaveFrontScore {
         for (components, k) in self.components_by_k.iter_mut().zip(-self.max_k..=self.max_k) {
             let m_component = &mut components.m;
 
-            // Extend & update
-            let mut v = (m_component.fr - k) as usize;
-            let mut h = m_component.fr as usize;
-            let match_count = match_counter(ref_seq, qry_seq, v, h);
-            m_component.fr += match_count;
-            // Check exit condition
-            v += match_count as usize;
-            h += match_count as usize;
-            if h >= ref_seq.len() || v >= qry_seq.len() {
-                return Some(k);
-            }
+            if m_component.bt != BackTraceMarker::Empty {
+                // Extend & update
+                let mut v = (m_component.fr - k) as usize;
+                let mut h = m_component.fr as usize;
+                let match_count = match_counter(ref_seq, qry_seq, v, h);
+                m_component.fr += match_count;
+                // Check exit condition
+                v += match_count as usize;
+                h += match_count as usize;
+                if h >= ref_seq.len() || v >= qry_seq.len() {
+                    return Some(k);
+                }
+            };
         }
         None
     }

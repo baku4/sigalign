@@ -10,14 +10,14 @@ mod backtrace;
 
 // Wave Front
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WaveFront {
     pub max_score: usize,
     pub end_point: EndPoint,
     pub wave_front_scores: Vec<WaveFrontScore>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EndPoint {
     pub score: usize,
     pub k: Option<i32>,

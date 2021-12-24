@@ -60,7 +60,7 @@ impl Anchors {
         if alignment_is_new {
             let left_operations = match left_referable_extension {
                 ReferableExtension::Own(extension) => {
-                    extension.operations
+                    extension.operations.clone()
                 },
                 ReferableExtension::Ref(extension_reference) => {
                     let operation_reference = &extension_reference.operation_reference;
@@ -75,7 +75,7 @@ impl Anchors {
 
             let right_operations = match right_referable_extension {
                 ReferableExtension::Own(extension) => {
-                    extension.operations
+                    extension.operations.clone()
                 },
                 ReferableExtension::Ref(extension_reference) => {
                     let operation_reference = &extension_reference.operation_reference;
