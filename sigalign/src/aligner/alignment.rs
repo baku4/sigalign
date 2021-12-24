@@ -1,3 +1,5 @@
+use crate::print_elapsed;
+
 use crate::{Result, error_msg};
 use super::{ReferenceInterface, Sequence};
 use super::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
@@ -11,6 +13,7 @@ use super::raw_result_to_json;
 
 impl Aligner {
     // Condition Checkers
+    #[print_elapsed("stderr", "us", [alignment])]
     fn query_is_in_reference_bound(
         reference: &mut dyn ReferenceInterface,
         query: Sequence,
@@ -244,6 +247,7 @@ impl Aligner {
 }
 
 impl WaveFrontHolder {
+    #[print_elapsed("stderr", "us", [alignment])]
     fn allocate_more_space_if_needed(
         &mut self,
         query_length: usize,

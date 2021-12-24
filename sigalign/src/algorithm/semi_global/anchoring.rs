@@ -38,6 +38,7 @@ impl Anchors {
         
         anchors
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn create_checkpoints_between_anchors(
         &mut self,
         pattern_size: usize,

@@ -70,6 +70,7 @@ impl AnchorsPreset {
 
         Self::anchors_by_patterns_to_anchors(anchors_by_patterns)
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn create_anchors_by_patterns(
         self,
         pattern_size: usize,
@@ -101,7 +102,6 @@ impl AnchorsPreset {
             pattern_location.index
         }).collect()
     }
-    #[print_elapsed("stderr", "us", [alignment])]
     fn concatenate_ungapped_anchors_by_patterns(anchors_by_patterns: &mut Vec<AnchorsByPattern>) {
         for i in (1..anchors_by_patterns.len()).rev() {
             let (left, right) = anchors_by_patterns[i-1..=i].split_at_mut(1);
@@ -232,7 +232,6 @@ impl EachPatternMatches {
 struct SparePenaltyDeterminantPerPattern(Vec<i64>);
 
 impl SparePenaltyDeterminantPerPattern {
-    #[print_elapsed("stderr", "us", [alignment])]
     fn new_spdpp(
         total_pattern_count: usize,
         pattern_size: usize,

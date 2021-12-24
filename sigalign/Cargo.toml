@@ -36,7 +36,7 @@ harness = false
 
 # To print elapsed
 [features]
-all = ["generate_reference", "alignment", "extending" ]
+all = ["generate_reference", "alignment", "extending"]
 generate_reference = []
 alignment = []
 extending = []

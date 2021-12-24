@@ -1,3 +1,5 @@
+use crate::print_elapsed;
+
 use super::Penalties;
 use super::Sequence;
 use super::{AlignmentOperation, AlignmentType};
@@ -16,6 +18,7 @@ impl WaveFront {
             },
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn backtrace_from_point(
         &self,
         mut score: usize,

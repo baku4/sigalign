@@ -1,3 +1,4 @@
+use crate::print_elapsed;
 use super::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};

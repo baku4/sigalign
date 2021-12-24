@@ -122,6 +122,7 @@ impl Anchor {
 }
 
 impl WaveFront {
+    #[print_elapsed("stderr", "us", [alignment])]
     fn point_of_maximum_length(&self) -> PointOfMaximumLength {
         let wave_front_scores = &self.wave_front_scores[..=self.end_point.score];
         

@@ -92,6 +92,7 @@ impl Anchors {
             }
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn right_traverse_check_from_owned_extension( //FIXME: deduplicate code
         &mut self,
         original_anchor_index: usize,
@@ -214,6 +215,7 @@ impl Anchors {
             }
         }
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn left_traverse_check_from_owned_extension( //FIXME: deduplicate code
         &mut self,
         original_anchor_index: usize,

@@ -1,3 +1,5 @@
+use crate::print_elapsed;
+
 use super::Penalties;
 use super::Sequence;
 use super::{WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
@@ -21,6 +23,7 @@ impl WaveFront {
     ) {
         self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     fn align_to_end_point(
         &mut self,
         ref_seq: Sequence,
@@ -29,6 +32,7 @@ impl WaveFront {
         spare_penalty: usize,
         match_counter: MatchCounter,
     ) {
+        eprintln!("spare_penalty, {}", spare_penalty);
         let ref_len = ref_seq.len();
         let qry_len = qry_seq.len();
 

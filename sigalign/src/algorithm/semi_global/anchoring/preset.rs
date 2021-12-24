@@ -12,6 +12,7 @@ pub struct AnchorsPreset {
 }
 
 impl AnchorsPreset {
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn new_by_record(
         reference: &dyn ReferenceInterface,
         query: Sequence,
@@ -57,6 +58,7 @@ impl AnchorsPreset {
         };
         self.matched_pattern_locations.push(new_pattern_location);
     }
+    #[print_elapsed("stderr", "us", [alignment])]
     pub fn to_anchors(
         self,
         pattern_size: usize,
