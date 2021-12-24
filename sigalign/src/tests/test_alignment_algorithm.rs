@@ -5,7 +5,6 @@ use std::collections::hash_map::RandomState;
 use std::collections::hash_set::Intersection;
 use std::time::{Duration, Instant};
 
-#[test]
 fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     println!("Use In-Memory Provider");
 
@@ -29,7 +28,7 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     let kmer_size_for_lookup_table = 4;
 
     // For this crate
-    let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
     println!("Aligner: {:?}", aligner);
 
@@ -78,7 +77,6 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     }
 }
 
-#[test]
 fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
     println!("Use In-Memory Provider");
 
@@ -112,7 +110,7 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
     let kmer_size_for_lookup_table = 4;
 
     // For this crate
-    let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
     println!("Aligner: {:?}", aligner);
 
@@ -179,7 +177,6 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
     }
 }
 
-#[test]
 fn test_results_of_nucleotide_only_for_local_with_in_memory_provider() {
     println!("Use In-Memory Provider");
 
@@ -213,7 +210,7 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
     let kmer_size_for_lookup_table = 4;
 
     // For this crate
-    let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
     println!("Aligner: {:?}", aligner);
 

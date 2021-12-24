@@ -3,11 +3,14 @@ use crate::print_elapsed;
 use crate::core::{ReferenceInterface, Sequence};
 pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
+use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
 use crate::utils::FastaReader;
 
 mod interpreter;
+mod alignment;
+
 use interpreter::raw_result_to_json;
 
 use num::integer;
@@ -44,6 +47,13 @@ pub struct Aligner {
     min_penalty_for_pattern: MinPenaltyForPattern,
     gcd: usize,
     kmer: usize,
+    wave_front_holder: WaveFrontHolder,
+}
+
+struct WaveFrontHolder {
+    allocated_query_length: usize,
+    primary_wave_front: WaveFront,
+    secondary_wave_front: WaveFront,
 }
 
 impl Aligner {
@@ -75,6 +85,8 @@ impl Aligner {
 
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let max_kmer = Self::max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+
+        let wave_front_holder = WaveFrontHolder::new(&penalties, cutoff.maximum_penalty_per_scale);
         
         Self {
             penalties,
@@ -82,6 +94,7 @@ impl Aligner {
             min_penalty_for_pattern,
             gcd,
             kmer: max_kmer,
+            wave_front_holder,
         }
     }
     fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
@@ -125,207 +138,33 @@ impl Aligner {
     pub fn get_pattern_size(&self) -> usize {
         self.kmer
     }
-    /// Perform semi-global alignment and return json result.
-    pub fn semi_global_alignment<S: SequenceProvider>(
-        &self,
-        reference: &mut Reference<S>,
-        query: Sequence,
-    ) -> Result<String> {
-        Self::query_is_in_reference_bound(reference, query)?;
-        let alignment_results_raw = self.semi_global_alignment_unchecked(reference, query);
-        let alignment_results = raw_result_to_json(alignment_results_raw)?;
+}
 
-        Ok(alignment_results)
-    }
-    /// Perform semi-global alignment and return raw result.
-    pub fn semi_global_alignment_raw<S: SequenceProvider>(
-        &self,
-        reference: &mut Reference<S>,
-        query: Sequence,
-    ) -> Result<AlignmentResultsByRecordIndex> {
-        Self::query_is_in_reference_bound(reference, query)?;
+impl WaveFrontHolder {
+    const QUERY_LENGTH_UNIT: usize = 100;
 
-        Ok(self.semi_global_alignment_unchecked(reference, query))
-    }
-    /// Perform semi-global alignment and return json labeled result.
-    pub fn semi_global_alignment_labeled<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        query: Sequence
-    ) -> Result<String> {
-        Self::query_is_in_reference_bound(reference, query)?;
-        let alignment_results_labeled_raw = self.semi_global_alignment_labeled_raw(reference, query)?;
-        let alignment_results_labeled = raw_result_to_json(alignment_results_labeled_raw)?;
+    fn new(
+        penalties: &Penalties,
+        penalty_per_scale: usize,
+    ) -> Self {
+        let max_score = (penalty_per_scale * Self::QUERY_LENGTH_UNIT / PRECISION_SCALE) + 1;
 
-        Ok(alignment_results_labeled)
-    }
-    /// Perform semi-global alignment and return raw labeled result.
-    pub fn semi_global_alignment_labeled_raw<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        query: Sequence
-    ) -> Result<AlignmentResultsWithLabelByRecordIndex> {
-        Self::query_is_in_reference_bound(reference, query)?;
-        let alignment_results_raw = self.semi_global_alignment_raw(reference, query)?;
-        let alignment_results_labeled_raw = alignment_results_raw.to_labeled_results(reference);
+        let allocated_wave_front = WaveFront::new_allocated(penalties, max_score);
 
-        Ok(alignment_results_labeled_raw)
-    }
-    /// Perform semi-global alignment without checking query is supported sequence type.
-    #[print_elapsed("stderr", "us", [alignment])]
-    pub fn semi_global_alignment_unchecked<S: SequenceProvider>(
-        &self,
-        reference: &mut Reference<S>,
-        query: Sequence,
-    ) -> AlignmentResultsByRecordIndex {
-        let mut alignment_results_by_record = SemiGlobalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
-        self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
-        alignment_results_by_record
-    }
-    /// Perform local alignment and return json result.
-    pub fn local_alignment<S: SequenceProvider>(
-        &self,
-        reference: &mut Reference<S>,
-        query: Sequence
-    ) -> Result<String> {
-        Self::query_is_in_reference_bound(reference, query)?;
-        let alignment_results_raw = self.local_alignment_unchecked(reference, query);
-        let alignment_results = raw_result_to_json(alignment_results_raw)?;
-
-        Ok(alignment_results)
-    }
-    /// Perform local alignment and return raw result.
-    pub fn local_alignment_raw<S: SequenceProvider>(
-        &self,
-        reference: &mut Reference<S>,
-        query: Sequence
-    ) -> Result<AlignmentResultsByRecordIndex> {
-        Self::query_is_in_reference_bound(reference, query)?;
-
-        Ok(self.local_alignment_unchecked(reference, query))
-    }
-    /// Perform local alignment and return json labeled result.
-    pub fn local_alignment_labeled<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        query: Sequence
-    ) -> Result<String> {
-        Self::query_is_in_reference_bound(reference, query)?;
-        let alignment_results_labeled_raw = self.local_alignment_labeled_raw(reference, query)?;
-        let alignment_results_labeled = raw_result_to_json(alignment_results_labeled_raw)?;
-
-        Ok(alignment_results_labeled)
-    }
-    /// Perform local alignment and return raw labeled result.
-    pub fn local_alignment_labeled_raw<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        query: Sequence
-    ) -> Result<AlignmentResultsWithLabelByRecordIndex> {
-        Self::query_is_in_reference_bound(reference, query)?;
-        let alignment_results_raw = self.local_alignment_raw(reference, query)?;
-        let alignment_results_labeled_raw = alignment_results_raw.to_labeled_results(reference);
-
-        Ok(alignment_results_labeled_raw)
-    }
-    /// Perform local alignment without checking query is supported sequence type.
-    #[print_elapsed("stderr", "us", [alignment])]
-    pub fn local_alignment_unchecked<S: SequenceProvider>(
-        &self,
-        reference: &mut Reference<S>,
-        query: Sequence
-    ) -> AlignmentResultsByRecordIndex {
-        let mut alignment_results_by_record = LocalAlgorithm::alignment(reference, query, self.kmer, &self.penalties, &self.cutoff, &self.min_penalty_for_pattern);
-        self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
-        alignment_results_by_record
-    }
-    #[print_elapsed("stderr", "us", [alignment])]
-    fn query_is_in_reference_bound(
-        reference: &mut dyn ReferenceInterface,
-        query: Sequence,
-    ) -> Result<()> {
-        if reference.is_searchable(query) {
-            Ok(())
-        } else {
-            error_msg!("Query string is not supported sequence type of reference.")
+        Self {
+            allocated_query_length: Self::QUERY_LENGTH_UNIT,
+            primary_wave_front: allocated_wave_front.clone(),
+            secondary_wave_front: allocated_wave_front,
         }
     }
-    fn multiply_gcd_to_alignment_results(
-        &self,
-        alignment_results_by_record_index: &mut AlignmentResultsByRecordIndex
-    ) {
-        alignment_results_by_record_index.multiply_gcd(self.gcd)
-    }
+}
 
-    /// Perform semi-global alignment from fasta file and return labeled json result
-    /// * Sequences of unsupported type will not included in result.
-    pub fn semi_global_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        fasta_file: &str,
-    ) -> Result<String> {
-        let raw_result = self.semi_global_alignment_labeled_raw_from_fasta_file(reference, fasta_file)?;
-        let json_result = raw_result_to_json(raw_result)?;
-
-        Ok(json_result)
-    }
-    /// Perform local alignment from fasta file and return labeled json result
-    /// * Sequences of unsupported type will not included in result.
-    pub fn local_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        fasta_file: &str,
-    ) -> Result<String> {
-        let raw_result = self.local_alignment_labeled_raw_from_fasta_file(reference, fasta_file)?;
-        let json_result = raw_result_to_json(raw_result)?;
-
-        Ok(json_result)
-    }
-    /// Perform semi-global alignment from fasta file and return labeled raw result
-    /// * Sequences of unsupported type will not included in result.
-    pub fn semi_global_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        fasta_file: &str,
-    ) -> Result<Vec<(String, AlignmentResultsWithLabelByRecordIndex)>> {
-        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
-        
-        let result: Vec<(String, AlignmentResultsWithLabelByRecordIndex)> = fasta_reader.into_iter().filter_map(|(label, query)| {
-            let record_result = self.semi_global_alignment_labeled_raw(reference, &query);
-            match record_result {
-                Ok(result) => {
-                    Some((label, result))
-                },
-                Err(_) => {
-                    None
-                },
-            }
-        }).collect();
-
-        Ok(result)
-    }
-    /// Perform local alignment from fasta file and return labeled raw result
-    /// * Sequences of unsupported type will not included in result.
-    pub fn local_alignment_labeled_raw_from_fasta_file<SL: SequenceProvider + Labeling>(
-        &self,
-        reference: &mut Reference<SL>,
-        fasta_file: &str,
-    ) -> Result<Vec<(String, AlignmentResultsWithLabelByRecordIndex)>> {
-        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
-        
-        let result: Vec<(String, AlignmentResultsWithLabelByRecordIndex)> = fasta_reader.into_iter().filter_map(|(label, query)| {
-            let record_result = self.local_alignment_labeled_raw(reference, &query);
-            match record_result {
-                Ok(result) => {
-                    Some((label, result))
-                },
-                Err(_) => {
-                    None
-                },
-            }
-        }).collect();
-
-        Ok(result)
+use std::fmt;
+impl fmt::Debug for WaveFrontHolder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WaveFrontHolder")
+         .field("allocated_query_length", &self.allocated_query_length)
+         .finish()
     }
 }
 

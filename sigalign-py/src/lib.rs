@@ -9,6 +9,7 @@ use reference::Reference;
 use aligner::Aligner;
 
 #[pymodule]
+#[pyo3(name = "sigalign")]
 fn sigalign(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Reference>()?;
     m.add_class::<Aligner>()?;

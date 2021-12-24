@@ -45,14 +45,14 @@ impl Aligner {
     
     // Semi-global alignment algorithms
     fn semi_global_alignment(
-        &self,
+        &mut self,
         reference: &mut Reference,
         query: &str
     ) -> PyResult<String> {
         let query_bytes = query.as_bytes();
         
         let result = reference.sig_reference_holder.semi_global_alignment(
-            &self.sig_aligner,
+            &mut self.sig_aligner,
             query_bytes
         );
 
@@ -62,14 +62,14 @@ impl Aligner {
         }
     }
     fn semi_global_alignment_labeled(
-        &self,
+        &mut self,
         reference: &mut Reference,
         query: &str
     ) -> PyResult<String> {
         let query_bytes = query.as_bytes();
         
         let result = reference.sig_reference_holder.semi_global_alignment_labeled(
-            &self.sig_aligner,
+            &mut self.sig_aligner,
             query_bytes
         );
 
@@ -79,12 +79,12 @@ impl Aligner {
         }
     }
     fn semi_global_alignment_labeled_from_fasta_file(
-        &self,
+        &mut self,
         reference: &mut Reference,
         query_fasta_file: &str,
     ) -> PyResult<String> {
         let result = reference.sig_reference_holder.semi_global_alignment_labeled_from_fasta_file(
-            &self.sig_aligner,
+            &mut self.sig_aligner,
             query_fasta_file
         );
 
@@ -96,14 +96,14 @@ impl Aligner {
 
     // Local alignment algorithms
     fn local_alignment(
-        &self,
+        &mut self,
         reference: &mut Reference,
         query: &str
     ) -> PyResult<String> {
         let query_bytes = query.as_bytes();
         
         let result = reference.sig_reference_holder.local_alignment(
-            &self.sig_aligner,
+            &mut self.sig_aligner,
             query_bytes
         );
 
@@ -113,14 +113,14 @@ impl Aligner {
         }
     }
     fn local_alignment_labeled(
-        &self,
+        &mut self,
         reference: &mut Reference,
         query: &str
     ) -> PyResult<String> {
         let query_bytes = query.as_bytes();
         
         let result = reference.sig_reference_holder.local_alignment_labeled(
-            &self.sig_aligner,
+            &mut self.sig_aligner,
             query_bytes
         );
 
@@ -130,12 +130,12 @@ impl Aligner {
         }
     }
     fn local_alignment_labeled_from_fasta_file(
-        &self,
+        &mut self,
         reference: &mut Reference,
         query_fasta_file: &str,
     ) -> PyResult<String> {
         let result = reference.sig_reference_holder.local_alignment_labeled_from_fasta_file(
-            &self.sig_aligner,
+            &mut self.sig_aligner,
             query_fasta_file
         );
 
@@ -149,7 +149,7 @@ impl Aligner {
 impl SigReferenceHolder {
     fn semi_global_alignment(
         &mut self,
-        sig_aligner: &SigAligner,
+        sig_aligner: &mut SigAligner,
         query: &[u8],
     ) -> Result<String> {
         match self {
@@ -163,7 +163,7 @@ impl SigReferenceHolder {
     }
     fn semi_global_alignment_labeled(
         &mut self,
-        sig_aligner: &SigAligner,
+        sig_aligner: &mut SigAligner,
         query: &[u8],
     ) -> Result<String> {
         match self {
@@ -177,7 +177,7 @@ impl SigReferenceHolder {
     }
     fn semi_global_alignment_labeled_from_fasta_file(
         &mut self,
-        sig_aligner: &SigAligner,
+        sig_aligner: &mut SigAligner,
         query_fasta_file: &str,
     ) -> Result<String> {
         match self {
@@ -191,7 +191,7 @@ impl SigReferenceHolder {
     }
     fn local_alignment(
         &mut self,
-        sig_aligner: &SigAligner,
+        sig_aligner: &mut SigAligner,
         query: &[u8],
     ) -> Result<String> {
         match self {
@@ -205,7 +205,7 @@ impl SigReferenceHolder {
     }
     fn local_alignment_labeled(
         &mut self,
-        sig_aligner: &SigAligner,
+        sig_aligner: &mut SigAligner,
         query: &[u8],
     ) -> Result<String> {
         match self {
@@ -219,7 +219,7 @@ impl SigReferenceHolder {
     }
     fn local_alignment_labeled_from_fasta_file(
         &mut self,
-        sig_aligner: &SigAligner,
+        sig_aligner: &mut SigAligner,
         query_fasta_file: &str,
     ) -> Result<String> {
         match self {
