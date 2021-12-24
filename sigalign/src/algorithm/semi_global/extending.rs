@@ -372,7 +372,7 @@ impl Anchor {
 
         let spare_penalty = self.spare_penalty_of_left(penalties, cutoff, query_slice_length, record_slice_length);
 
-        wave_front.align_right_to_end_point(record_slice, query_slice, penalties, spare_penalty);
+        wave_front.align_left_to_end_point(record_slice, query_slice, penalties, spare_penalty);
     }
     fn spare_penalty_of_right(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
         let penalty_opposite_side = self.left_estimation.penalty;
