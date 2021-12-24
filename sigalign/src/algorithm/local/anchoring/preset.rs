@@ -76,8 +76,14 @@ impl AnchorsPreset {
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
     ) -> Vec<AnchorsByPattern> {
-        let matched_pattern_index_list = self.matched_pattern_index_list();
-        let estimation_per_pattern = SparePenaltyDeterminantPerPattern::new(self.total_pattern_count, pattern_size, cutoff, min_penalty_for_pattern, matched_pattern_index_list);
+        let sorted_matched_pattern_index_list = self.sorted_matched_pattern_index_list();
+        let estimation_per_pattern = SparePenaltyDeterminantPerPattern::new(
+            self.total_pattern_count,
+            pattern_size,
+            cutoff,
+            min_penalty_for_pattern,
+            sorted_matched_pattern_index_list,
+        );
 
         let mut anchors_by_patterns: Vec<AnchorsByPattern> = self.matched_pattern_locations.into_iter().map(|pattern_location| {
             AnchorsByPattern::new(
@@ -94,7 +100,8 @@ impl AnchorsPreset {
 
         anchors_by_patterns
     }
-    fn matched_pattern_index_list(&self) -> Vec<usize> {
+    fn sorted_matched_pattern_index_list(&self) -> Vec<usize> {
+        // Matched patterns are already sorted
         self.matched_pattern_locations.iter().map(|pattern_location| {
             pattern_location.index
         }).collect()
@@ -204,28 +211,12 @@ struct PatternLocation {
     record_positions: Vec<usize>,
 }
 
-struct EachPatternMatches(Vec<bool>);
-
-impl EachPatternMatches {
-    fn new(
-        total_pattern_count: usize,
-        matched_pattern_index_list: &Vec<usize>,
-    ) -> Self {
-        let mut each_pattern_matches = vec![false; total_pattern_count];
-        for &matched_pattern_index in matched_pattern_index_list {
-            each_pattern_matches[matched_pattern_index] = true;
-        };
-        Self(each_pattern_matches)
-    }
-    fn count_unmatched_pattern(&self, start_index: usize, end_index: usize) -> usize {
-        self.0[start_index..end_index].iter().filter(|&&v| !v).count()
-    }
-}
-
 // Spare penalty determinant:
 // penalty per scale * length - PRECISION_SCALE * penalty
 #[derive(Debug)]
 struct SparePenaltyDeterminantPerPattern(Vec<i64>);
+// TODO: Unsigned integer can be used?
+// TODO: Precalculate duplicated parameters within Aligner?
 
 impl SparePenaltyDeterminantPerPattern {
     fn new(
@@ -233,79 +224,59 @@ impl SparePenaltyDeterminantPerPattern {
         pattern_size: usize,
         cutoff: &Cutoff,
         min_penalty_for_pattern: &MinPenaltyForPattern,
-        matched_pattern_index_list: Vec<usize>,
+        sorted_matched_pattern_index_list: Vec<usize>,
     ) -> Self {
-        let penalty_for_odd = min_penalty_for_pattern.odd;
-        let penalty_for_even = min_penalty_for_pattern.even;
+        let scaled_penalty_for_odd = (min_penalty_for_pattern.odd * PRECISION_SCALE) as i64;
+        let scaled_penalty_for_even = (min_penalty_for_pattern.even * PRECISION_SCALE) as i64;
 
-        let scaled_penalty_cutoff_per_pattern = (pattern_size * cutoff.maximum_penalty_per_scale) as i64;
-        let scaled_penalty_determinant_to_next_pattern = (
-            (pattern_size - 1) * cutoff.maximum_penalty_per_scale
-        ) as i64;
-
-        let mut existence = vec![false; total_pattern_count];
-        for &matched_pattern_index in &matched_pattern_index_list {
-            existence[matched_pattern_index] = true;
+        let mut pattern_existence = vec![false; total_pattern_count];
+        for &matched_pattern_index in &sorted_matched_pattern_index_list {
+            pattern_existence[matched_pattern_index] = true;
         };
+        pattern_existence.pop(); // A last element is unnecessary.
 
-        let mut accumulated_penalty_determinant: Vec<i64> = vec![0; total_pattern_count];
+        // (spare penalty determinant, if use even number of consecutive penalties)
+        let mut previous_cell = (0, true);
 
-        let mut start_index_to_fill = 0;
-        let mut filled_pre_is_odd = false;
+        let penalty_per_scale_for_one_length = cutoff.maximum_penalty_per_scale as i64;
 
-        for &matched_pattern_index in matched_pattern_index_list.iter().chain([total_pattern_count].iter()) {
-            for i in (start_index_to_fill..matched_pattern_index).rev() {
-                if filled_pre_is_odd {
-                    accumulated_penalty_determinant[i] = (PRECISION_SCALE * penalty_for_even) as i64;
-                    filled_pre_is_odd = false;
-                } else {
-                    accumulated_penalty_determinant[i] = (PRECISION_SCALE * penalty_for_odd) as i64;
-                    filled_pre_is_odd = true;
+        // pattern size * penalty per length
+        let spare_penalty_determinant_for_matched_pattern = pattern_size as i64 * penalty_per_scale_for_one_length;
+        let spare_penalty_determinant_to_right_before_previous_pattern = spare_penalty_determinant_for_matched_pattern - penalty_per_scale_for_one_length;
+        let spare_penalty_determinant_continued_to_previous_pattern = spare_penalty_determinant_for_matched_pattern + penalty_per_scale_for_one_length;
+
+        let mut spare_penalty_determinant_per_pattern: Vec<i64> = pattern_existence.into_iter().map(|exist| {
+            if exist {
+                let new_spare_penalty_determinant = previous_cell.0 + spare_penalty_determinant_for_matched_pattern;
+                previous_cell = (new_spare_penalty_determinant, true);
+                new_spare_penalty_determinant
+            } else {
+                if previous_cell.1 { // Previous pattern use EVEN number of consecutive penalties
+                    let continued_spare_penalty_determinant = previous_cell.0 + spare_penalty_determinant_continued_to_previous_pattern - scaled_penalty_for_odd;
+                    if continued_spare_penalty_determinant < spare_penalty_determinant_to_right_before_previous_pattern {
+                        // Equal sign is not used because it gives more opportunity to the next pattern of using even penalty
+                        previous_cell = (spare_penalty_determinant_to_right_before_previous_pattern, true);
+                        spare_penalty_determinant_to_right_before_previous_pattern
+                    } else {
+                        previous_cell = (continued_spare_penalty_determinant, false);
+                        continued_spare_penalty_determinant
+                    }
+                } else { // Previous pattern use ODD number of consecutive penalties
+                    let continued_spare_penalty_determinant = previous_cell.0 + spare_penalty_determinant_continued_to_previous_pattern - scaled_penalty_for_even;
+                    if continued_spare_penalty_determinant < spare_penalty_determinant_to_right_before_previous_pattern {
+                        previous_cell = (spare_penalty_determinant_to_right_before_previous_pattern, true);
+                        spare_penalty_determinant_to_right_before_previous_pattern
+                    } else {
+                        previous_cell = (continued_spare_penalty_determinant, true);
+                        continued_spare_penalty_determinant
+                    }
                 }
             }
-
-            start_index_to_fill = matched_pattern_index + 1;
-            filled_pre_is_odd = false;
-        }
-        
-        let mut accumulated_penalty_determinant_per_pattern_from_right = Self::accumulate_with_normalized_determinant(
-            accumulated_penalty_determinant,
-            scaled_penalty_cutoff_per_pattern,
-        );
-        accumulated_penalty_determinant_per_pattern_from_right.reverse();
-
-        let mut last_max = i64::MIN;
-        let mut index_of_last_max = 0;
-        let end_index_of_pattern: Vec<usize> = accumulated_penalty_determinant_per_pattern_from_right.iter().enumerate().map(|(index, &score)| {
-            if score >= last_max {
-                last_max = score;
-                index_of_last_max = index;
-            }
-            index_of_last_max
         }).collect();
 
-        let mut spare_penalty_determinants: Vec<i64> = end_index_of_pattern.into_iter().enumerate().map(|(start_index, end_index)| {
-            let mut spare_penalty_determinant = &accumulated_penalty_determinant_per_pattern_from_right[end_index] - &accumulated_penalty_determinant_per_pattern_from_right[start_index];
+        spare_penalty_determinant_per_pattern.insert(0, 0);
 
-            spare_penalty_determinant += scaled_penalty_determinant_to_next_pattern;
-
-            spare_penalty_determinant
-        }).collect();
-
-        spare_penalty_determinants[0] = 0; // First determinant is always zero
-
-        Self(spare_penalty_determinants)
-    }
-
-    fn accumulate_with_normalized_determinant(
-        accumulated_penalty_determinant: Vec<i64>,
-        scaled_penalty_cutoff_per_pattern: i64,
-    ) -> Vec<i64> {
-        let mut accumulated_penalty: i64 = 0;
-        accumulated_penalty_determinant.into_iter().rev().map(|value| {
-            accumulated_penalty += scaled_penalty_cutoff_per_pattern - value;
-            accumulated_penalty
-        }).collect()
+        Self(spare_penalty_determinant_per_pattern)
     }
 }
 
@@ -314,17 +285,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn print_spare_penalty_determinant() {
+    fn test_spare_penalty_determinant() {
         let total_pattern_count = 10;
         let min_penalty_for_pattern = MinPenaltyForPattern {
-            odd: 4,
-            even: 6,
+            odd: 6,
+            even: 4,
         };
         let matched_pattern_index_list = vec![2, 3, 5, 9];
 
-        let spare_penalty_determinant = SparePenaltyDeterminantPerPattern::new(
+        let spare_penalty_determinant_per_pattern = SparePenaltyDeterminantPerPattern::new(
             total_pattern_count,
-            5,
+            25,
             &Cutoff {
                 minimum_aligned_length: 100,
                 maximum_penalty_per_scale: 1_000,
@@ -332,5 +303,7 @@ mod tests {
             &min_penalty_for_pattern,
             matched_pattern_index_list
         );
+
+        assert_eq!(vec![0, 24000, 24000, 49000, 74000, 40000, 65000, 31000, 24000, 24000], spare_penalty_determinant_per_pattern.0);
     }
 }
