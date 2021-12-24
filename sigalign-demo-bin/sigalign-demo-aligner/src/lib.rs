@@ -230,7 +230,7 @@ impl Configuration {
         let with_label = matches.is_present("with_label");
 
         // Alignment
-        let aligner = Aligner::new(
+        let mut aligner = Aligner::new(
             penalties.0,
             penalties.1,
             penalties.2,
@@ -248,15 +248,15 @@ impl Configuration {
 
         if is_semi_global {
             if with_label {
-                Self::semi_global_alignment_labeled(&aligner, &mut reference, query_path)?;
+                Self::semi_global_alignment_labeled(&mut aligner, &mut reference, query_path)?;
             } else {
-                Self::semi_global_alignment(&aligner, &mut reference, query_path)?;
+                Self::semi_global_alignment(&mut aligner, &mut reference, query_path)?;
             }
         } else {
             if with_label {
-                Self::local_alignment_labeled(&aligner, &mut reference, query_path)?;
+                Self::local_alignment_labeled(&mut aligner, &mut reference, query_path)?;
             } else {
-                Self::local_alignment(&aligner, &mut reference, query_path)?;
+                Self::local_alignment(&mut aligner, &mut reference, query_path)?;
             }
         };
 
@@ -266,7 +266,7 @@ impl Configuration {
         Ok(())
     }
     fn semi_global_alignment_labeled(
-        aligner: &Aligner,
+        aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
@@ -278,7 +278,7 @@ impl Configuration {
         )
     }
     fn semi_global_alignment(
-        aligner: &Aligner,
+        aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
@@ -290,7 +290,7 @@ impl Configuration {
         )
     }
     fn local_alignment_labeled(
-        aligner: &Aligner,
+        aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
@@ -302,7 +302,7 @@ impl Configuration {
         )
     }
     fn local_alignment(
-        aligner: &Aligner,
+        aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
@@ -314,12 +314,12 @@ impl Configuration {
         )
     }
     fn alignment_with_fasta<F>(
-        aligner: &Aligner,
+        aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
         alignment_algorithm: F,
     ) -> Result<()> 
-        where F: Fn(&Aligner, &mut Reference, &[u8]) -> Result<String> {
+        where F: Fn(&mut Aligner, &mut Reference, &[u8]) -> Result<String> {
         let fasta_reader = FastaReader::from_file_path(query_path)?;
         print!("{{");
         eprint!("Unsupported sequence type: [");
