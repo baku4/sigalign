@@ -1,7 +1,7 @@
 mod extending;
 mod evaluating;
 
-pub use extending::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+pub use extending::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 pub use evaluating::AlignmentHashSet;
 
 use serde::{Deserialize, Serialize};

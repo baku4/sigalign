@@ -2,7 +2,7 @@ use crate::print_elapsed;
 use super::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
 use super::{Sequence, ReferenceInterface, PatternLocation};
 use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 use super::Algorithm;
 
 mod anchoring;
