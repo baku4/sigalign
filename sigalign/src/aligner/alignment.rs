@@ -83,7 +83,7 @@ impl Aligner {
         self.wave_front_holder.allocate_more_space_if_needed(
             query.len(),
             &self.penalties,
-            self.cutoff.maximum_penalty_per_scale,
+            &self.cutoff,
         );
 
         let mut alignment_results_by_record = SemiGlobalAlgorithm::alignment(
@@ -154,7 +154,7 @@ impl Aligner {
         self.wave_front_holder.allocate_more_space_if_needed(
             query.len(),
             &self.penalties,
-            self.cutoff.maximum_penalty_per_scale,
+            &self.cutoff,
         );
 
         let mut alignment_results_by_record = LocalAlgorithm::alignment(
@@ -248,20 +248,19 @@ impl WaveFrontHolder {
         &mut self,
         query_length: usize,
         penalties: &Penalties,
-        penalty_per_scale: usize,
+        cutoff: &Cutoff,
     ) {
         if self.allocated_query_length < query_length {
             // If length: (100..=199) -> allocate 200
-            let query_upper_unit = (query_length / Self::QUERY_LENGTH_UNIT) + 1;
-            let max_score = (
-                penalty_per_scale * Self::QUERY_LENGTH_UNIT * query_upper_unit / PRECISION_SCALE
-            ) + 1;
+            let to_allocate_query_length = ((query_length / Self::QUERY_LENGTH_UNIT) + 1) * Self::QUERY_LENGTH_UNIT;
+
+            let max_score = Self::calculate_max_score_from_length(penalties, &cutoff, to_allocate_query_length);
 
             // TODO: Assign additional space from existing wave front
             let allocated_wave_front = WaveFront::new_allocated(penalties, max_score);
 
             *self = Self {
-                allocated_query_length: Self::QUERY_LENGTH_UNIT* query_upper_unit,
+                allocated_query_length: to_allocate_query_length,
                 primary_wave_front: allocated_wave_front.clone(),
                 secondary_wave_front: allocated_wave_front,
             };

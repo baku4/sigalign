@@ -187,7 +187,6 @@ impl AnchorsByPattern {
                         if record_position_gap == 0 { // Right record position == Left record position
                             to_remove_right_anchors_index.push(right_anchor_index);
                             left_anchor.size += right_anchor.size;
-                            left_anchor.spare_penalty_determinant_of_left = right_anchor.spare_penalty_determinant_of_left;
                         } else { // Right record position > Left record position
                             left_anchor_index += 1;
                         }

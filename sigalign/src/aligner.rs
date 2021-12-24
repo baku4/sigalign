@@ -2,7 +2,7 @@ use crate::{Result, error_msg};
 use crate::core::{ReferenceInterface, Sequence};
 pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResultsWithLabelByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 use crate::algorithm::{Algorithm, SemiGlobalAlgorithm, LocalAlgorithm};
 use crate::reference::{Reference, SequenceProvider, Labeling};
 use crate::utils::FastaReader;
@@ -85,7 +85,7 @@ impl Aligner {
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let max_kmer = Self::max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
-        let wave_front_holder = WaveFrontHolder::new(&penalties, cutoff.maximum_penalty_per_scale);
+        let wave_front_holder = WaveFrontHolder::new(&penalties, &cutoff);
         
         Self {
             penalties,
@@ -144,17 +144,31 @@ impl WaveFrontHolder {
 
     fn new(
         penalties: &Penalties,
-        penalty_per_scale: usize,
+        cutoff: &Cutoff,
     ) -> Self {
-        let max_score = (penalty_per_scale * Self::QUERY_LENGTH_UNIT / PRECISION_SCALE) + 1;
+        let to_allocate_query_length = Self::QUERY_LENGTH_UNIT;
+        let max_score = Self::calculate_max_score_from_length(penalties, cutoff, to_allocate_query_length);
 
         let allocated_wave_front = WaveFront::new_allocated(penalties, max_score);
 
         Self {
-            allocated_query_length: Self::QUERY_LENGTH_UNIT,
+            allocated_query_length: to_allocate_query_length,
             primary_wave_front: allocated_wave_front.clone(),
             secondary_wave_front: allocated_wave_front,
         }
+    }
+    fn calculate_max_score_from_length(
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        query_length: usize,
+    ) -> usize {
+        (
+            cutoff.maximum_penalty_per_scale * (
+                penalties.e * query_length - penalties.o
+            )
+        ) / (
+            PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
+        ) + 1
     }
 }
 

@@ -2,13 +2,7 @@ use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
 use super::{AlignmentOperation, AlignmentType};
 use super::{Anchors, Anchor};
-// TODO: Delete
-// use super::{DropoffWaveFront, WaveFrontScore, Components, Component};
-// use super::{M_COMPONENT, I_COMPONENT, D_COMPONENT, EMPTY, FROM_M, FROM_I, FROM_D, START};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
-
-// TODO: Delete
-// mod dwfa;
+use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
 impl Anchors {
     pub fn extend(
@@ -88,34 +82,24 @@ impl Anchor {
         }
     }
     fn spare_penalty_of_right(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        self.spare_penalty(self.spare_penalty_determinant_of_left, penalties, cutoff, query_slice_length, record_slice_length)
+        calculate_spare_penalty_from_determinant(
+            self.spare_penalty_determinant_of_left,
+            self.size,
+            query_slice_length,
+            record_slice_length,
+            penalties,
+            cutoff,
+        )
     }
     fn spare_penalty_of_left(&self, spare_penalty_determinant_of_right: i64, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        self.spare_penalty(spare_penalty_determinant_of_right, penalties, cutoff, query_slice_length, record_slice_length)
-    }
-    fn spare_penalty(
-        &self,
-        spare_penalty_determinant: i64,
-        penalties: &Penalties,
-        cutoff: &Cutoff,
-        query_length_this_side: usize,
-        record_length_this_side: usize,
-    ) -> usize {
-        i64::max(
-            penalties.o as i64,
-            (
-                penalties.e as i64 * spare_penalty_determinant
-                + cutoff.maximum_penalty_per_scale as i64 * (
-                    (
-                        penalties.e * (
-                            self.size + query_length_this_side.min(record_length_this_side)
-                        )
-                    ) as i64 - penalties.o as i64
-                )
-            ) / (
-                PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
-            ) as i64 + 1
-        ) as usize
+        calculate_spare_penalty_from_determinant(
+            spare_penalty_determinant_of_right,
+            self.size,
+            query_slice_length,
+            record_slice_length,
+            penalties,
+            cutoff,
+        )
     }
 }
 
