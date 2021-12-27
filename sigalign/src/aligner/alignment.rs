@@ -171,6 +171,30 @@ impl Aligner {
         alignment_results_by_record
     }
 
+    /// Perform semi-global alignment from fasta file and return json result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn semi_global_alignment_from_fasta_file<S: SequenceProvider>(
+        &mut self,
+        reference: &mut Reference<S>,
+        fasta_file: &str,
+    ) -> Result<String> {
+        let raw_result = self.semi_global_alignment_raw_from_fasta_file(reference, fasta_file)?;
+        let json_result = raw_result_to_json(raw_result)?;
+
+        Ok(json_result)
+    }
+    /// Perform local alignment from fasta file and return json result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn local_alignment_from_fasta_file<S: SequenceProvider>(
+        &mut self,
+        reference: &mut Reference<S>,
+        fasta_file: &str,
+    ) -> Result<String> {
+        let raw_result = self.local_alignment_raw_from_fasta_file(reference, fasta_file)?;
+        let json_result = raw_result_to_json(raw_result)?;
+
+        Ok(json_result)
+    }
     /// Perform semi-global alignment from fasta file and return labeled json result
     /// * Sequences of unsupported type will not included in result.
     pub fn semi_global_alignment_labeled_from_fasta_file<SL: SequenceProvider + Labeling>(
@@ -194,6 +218,52 @@ impl Aligner {
         let json_result = raw_result_to_json(raw_result)?;
 
         Ok(json_result)
+    }
+    /// Perform semi-global alignment from fasta file and return raw result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn semi_global_alignment_raw_from_fasta_file<S: SequenceProvider>(
+        &mut self,
+        reference: &mut Reference<S>,
+        fasta_file: &str,
+    ) -> Result<Vec<(String, AlignmentResultsByRecordIndex)>> {
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
+        
+        let result: Vec<(String, AlignmentResultsByRecordIndex)> = fasta_reader.into_iter().filter_map(|(label, query)| {
+            let record_result = self.semi_global_alignment_raw(reference, &query);
+            match record_result {
+                Ok(result) => {
+                    Some((label, result))
+                },
+                Err(_) => {
+                    None
+                },
+            }
+        }).collect();
+
+        Ok(result)
+    }
+    /// Perform local alignment from fasta file and return raw result
+    /// * Sequences of unsupported type will not included in result.
+    pub fn local_alignment_raw_from_fasta_file<S: SequenceProvider>(
+        &mut self,
+        reference: &mut Reference<S>,
+        fasta_file: &str,
+    ) -> Result<Vec<(String, AlignmentResultsByRecordIndex)>> {
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
+        
+        let result: Vec<(String, AlignmentResultsByRecordIndex)> = fasta_reader.into_iter().filter_map(|(label, query)| {
+            let record_result = self.local_alignment_raw(reference, &query);
+            match record_result {
+                Ok(result) => {
+                    Some((label, result))
+                },
+                Err(_) => {
+                    None
+                },
+            }
+        }).collect();
+
+        Ok(result)
     }
     /// Perform semi-global alignment from fasta file and return labeled raw result
     /// * Sequences of unsupported type will not included in result.

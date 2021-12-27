@@ -273,72 +273,35 @@ impl Configuration {
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        Self::alignment_with_fasta(
-            aligner,
-            reference,
-            query_path,
-            Aligner::semi_global_alignment_labeled,
-        )
+        let result = aligner.semi_global_alignment_labeled_from_fasta_file(reference, query_path)?;
+        print!("{}", result);
+        Ok(())
     }
     fn semi_global_alignment(
         aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        Self::alignment_with_fasta(
-            aligner,
-            reference,
-            query_path,
-            Aligner::semi_global_alignment,
-        )
+        let result = aligner.semi_global_alignment_from_fasta_file(reference, query_path)?;
+        print!("{}", result);
+        Ok(())
     }
     fn local_alignment_labeled(
         aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        Self::alignment_with_fasta(
-            aligner,
-            reference,
-            query_path,
-            Aligner::local_alignment_labeled,
-        )
+        let result = aligner.local_alignment_labeled_from_fasta_file(reference, query_path)?;
+        print!("{}", result);
+        Ok(())
     }
     fn local_alignment(
         aligner: &mut Aligner,
         reference: &mut Reference,
         query_path: &str,
     ) -> Result<()> {
-        Self::alignment_with_fasta(
-            aligner,
-            reference,
-            query_path,
-            Aligner::local_alignment,
-        )
-    }
-    fn alignment_with_fasta<F>(
-        aligner: &mut Aligner,
-        reference: &mut Reference,
-        query_path: &str,
-        alignment_algorithm: F,
-    ) -> Result<()> 
-        where F: Fn(&mut Aligner, &mut Reference, &[u8]) -> Result<String> {
-        let fasta_reader = FastaReader::from_file_path(query_path)?;
-        print!("{{");
-        eprint!("Unsupported sequence type: [");
-        fasta_reader.for_each(|(label, query)| {
-            let result = alignment_algorithm(aligner, reference, &query);
-            match result {
-                Ok(json_result) => {
-                    println!("\"{}\":{},", label, json_result);
-                },
-                Err(_) => {
-                    eprint!("{},", label);
-                },
-            }
-        });
-        print!("\"\":{{}}}}"); // FIXME: Last result is empty 
-        eprintln!("]");
+        let result = aligner.local_alignment_from_fasta_file(reference, query_path)?;
+        print!("{}", result);
         Ok(())
     }
 }
