@@ -192,12 +192,15 @@ impl Configuration {
             sequence_provider
         )?;
 
+        println!("Time elapsed to generate reference: {} s", start_time.elapsed().as_secs_f32());
+        let start_time = Instant::now();
+
         reference.write_to_file(output_path)?;
 
         let meta_data = metadata(output_path)?;
         let file_size = meta_data.len();
 
-        println!("Time elapsed to generate reference: {} s", start_time.elapsed().as_secs_f32());
+        println!("Time elapsed to save reference: {} s", start_time.elapsed().as_secs_f32());
 
         Ok((output_path.to_string(), file_size))
     }
