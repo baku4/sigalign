@@ -2,10 +2,11 @@
 members = [
     "sigalign",
     "sigalign-py",
-    "sigalign-demo-bin/sigalign-demo-aligner",
+    "examples/sigalign-demo-aligner",
+    "examples/sigalign-demo-wasm",
 ]
 exclude = [
-    "sigalign-demo-web"
+    "examples/sigalign-demo-web",
 ]
 
 [profile.dev]
