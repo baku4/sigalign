@@ -15,7 +15,7 @@ pub struct Configuration;
 
 impl Configuration {
     pub fn get_matches() -> ArgMatches<'static> {
-        let app = App::new("Sigalign demo binary")
+        let app = App::new("Sigalign demo aligner")
             .version("0.1.0")
             .author("baku4 <bahkhun@gamil.com>")
             .about("Alignment query to target reference");
@@ -64,10 +64,11 @@ impl Configuration {
                     .display_order(6));
         
         let alignment_args = [
+            // Input file path
             Arg::with_name("reference")
                 .long("reference")
                 .short("r")
-                .help("Reference file path")
+                .help("Reference fasta file path")
                 .value_name("PATH")
                 .required(true)
                 .takes_value(true)
@@ -80,6 +81,7 @@ impl Configuration {
                 .required(true)
                 .takes_value(true)
                 .display_order(2),
+            // Aligner option
             Arg::with_name("penalties")
                 .long("penalties")
                 .short("p")
@@ -91,26 +93,51 @@ impl Configuration {
                 .takes_value(true)
                 .display_order(3),
             Arg::with_name("min_aligned_length")
-                .long("length")
-                .short("l")
+                .long("min_len")
+                .short("ml")
                 .help("Minimum aligned length")
                 .value_name("INT")
                 .required(true)
                 .takes_value(true)
                 .display_order(4),
             Arg::with_name("max_penalty_per_length")
-                .long("distance")
-                .short("d")
+                .long("max_ppl")
+                .short("mp")
                 .help("Maximum penalty per length (0~1)")
                 .value_name("FLOAT")
                 .required(true)
                 .takes_value(true)
                 .display_order(5),
             Arg::with_name("with_label")
-                .long("withlabel")
+                .long("with_label")
                 .short("w")
                 .help("Return labeled result")
                 .display_order(6),
+            // Reference option
+            Arg::with_name("reverse_complement")
+                .long("reverse")
+                .short("rc")
+                .help("Whether to add reverse complementary sequence")
+                .display_order(7),
+            Arg::with_name("higher_compressed_bwt")
+                .long("compressed")
+                .short("c")
+                .help("Whether to use higher compressed (64 to 128) Bwt block")
+                .display_order(8),
+            Arg::with_name("suffix_array_sampling_ratio")
+                .long("sampling")
+                .short("s")
+                .help("Sampling ratio for suffix array")
+                .value_name("INT")
+                .takes_value(true)
+                .display_order(9),
+            Arg::with_name("kmer_size_for_lookup_table")
+                .long("kmer")
+                .short("k")
+                .help("Kmer size for count array lookup table")
+                .value_name("INT")
+                .takes_value(true)
+                .display_order(10),
         ];
 
         let semiglobal_subcommand = SubCommand::with_name("semiglobal")
@@ -129,91 +156,31 @@ impl Configuration {
     }
     pub fn interpret(matches: &ArgMatches) {
         match matches.subcommand() {
-            ("generate",  Some(sub_matches)) => {
-                let (saved_file_path, file_size) = Self::do_generate_reference(sub_matches).unwrap();
-
-                println!(
-                    "Reference is saved to {} ({} bytes)",
-                    saved_file_path, file_size
-                );
-            },
             ("semiglobal",  Some(sub_matches)) => {
+                eprintln!("# Semi-global alignment with Sigalign");
                 Self::do_alignment(sub_matches, true).unwrap();
             },
             ("local",  Some(sub_matches)) => {
+                eprintln!("# Local alignment with Sigalign");
                 Self::do_alignment(sub_matches, false).unwrap();
             },
             _ => panic!("Not support subcommand")
         }
     }
-    fn do_generate_reference(matches: &ArgMatches) -> Result<(String, u64)> {
-        let start_time = Instant::now();
-        // Parse values from Match
-        let input_fasta_path = matches.value_of("input")
-            .expect("Input Fasta path is not valid");
-        let output_path = matches.value_of("output")
-            .expect("Output path is not valid");
-        let use_reverse_complement = matches.is_present("reverse_complement");
-        let use_128_bwt = matches.is_present("higher_compressed_bwt");
-        let sa_sampling_ratio = match matches.value_of("suffix_array_sampling_ratio") {
-            Some(value) => Some(
-                value.parse::<u64>().expect("Specified sampling ratio must be integer")
-            ),
-            None => None,
-        };
-        let kmer_size = match matches.value_of("kmer_size_for_lookup_table") {
-            Some(value) => Some(
-                value.parse::<usize>().expect("Kmer size for lookup table must be integer")
-            ),
-            None => None,
-        };
-        
-        // Make Reference
-        let lt_fm_index_config = {
-            let mut config = LtFmIndexConfig::new();
-            if use_128_bwt {
-                config = config.use_bwt_size_of_128();
-            }
-            if let Some(value) = sa_sampling_ratio {
-                config = config.change_sampling_ratio(value);
-            }
-            if let Some(value) = kmer_size {
-                config = config.change_kmer_size_for_lookup_table(value);
-            }
-            config
-        };
-        let sequence_provider = if use_reverse_complement {
-            InMemoryProvider::from_fasta_file_of_nucleotide_with_reverse_complement(input_fasta_path)
-        } else {
-            InMemoryProvider::from_fasta_file(input_fasta_path)
-        }?;
-        let reference = Reference::new_with_lt_fm_index_config(
-            lt_fm_index_config,
-            sequence_provider
-        )?;
-
-        println!("Time elapsed to generate reference: {} s", start_time.elapsed().as_secs_f32());
-        let start_time = Instant::now();
-
-        reference.write_to_file(output_path)?;
-
-        let meta_data = metadata(output_path)?;
-        let file_size = meta_data.len();
-
-        println!("Time elapsed to save reference: {} s", start_time.elapsed().as_secs_f32());
-
-        Ok((output_path.to_string(), file_size))
-    }
     fn do_alignment(
         matches: &ArgMatches,
         is_semi_global: bool,
     ) -> Result<()>{
-        // Parse values from Match
-        let start_time = Instant::now();
+        // ####################################
+        // 1. Parse parameters
+        let total_start_time = Instant::now();
+        eprintln!("#1. Parsing parameters");
+        // (1) File path
         let query_path = matches.value_of("query")
             .expect("Input Fasta path is not valid");
         let reference_path = matches.value_of("reference")
-            .expect("Reference path is not valid");
+            .expect("Reference Fasta path is not valid");
+        // (2) For Aligner
         let penalties = {
             let mut values = matches.values_of("penalties")
                 .expect("Penalty values are not valid");
@@ -231,8 +198,58 @@ impl Configuration {
         let max_penalty_per_length = matches.value_of("max_penalty_per_length")
             .expect("Maximum penalty per length is not valid").parse::<f32>()?;
         let with_label = matches.is_present("with_label");
+        // (2) For Aligner
+        let use_reverse_complement = matches.is_present("reverse_complement");
+        let use_128_bwt = matches.is_present("higher_compressed_bwt");
+        let sa_sampling_ratio = match matches.value_of("suffix_array_sampling_ratio") {
+            Some(value) => Some(
+                value.parse::<u64>().expect("Specified sampling ratio must be integer")
+            ),
+            None => None,
+        };
+        let kmer_size = match matches.value_of("kmer_size_for_lookup_table") {
+            Some(value) => Some(
+                value.parse::<usize>().expect("Kmer size for lookup table must be integer")
+            ),
+            None => None,
+        };
+        let preparing_data_time_elapsed = total_start_time.elapsed().as_secs_f32();
+        eprintln!("Time elapsed to prepare parameters: {:?} s", preparing_data_time_elapsed);
 
-        // Alignment
+        // ####################################
+        // 2. Make reference
+        let start_time = Instant::now();
+        eprintln!("#2. Make reference");
+
+        let lt_fm_index_config = {
+            let mut config = LtFmIndexConfig::new();
+            if use_128_bwt {
+                config = config.use_bwt_size_of_128();
+            }
+            if let Some(value) = sa_sampling_ratio {
+                config = config.change_sampling_ratio(value);
+            }
+            if let Some(value) = kmer_size {
+                config = config.change_kmer_size_for_lookup_table(value);
+            }
+            config
+        };
+        let sequence_provider = if use_reverse_complement {
+            InMemoryProvider::from_fasta_file_of_nucleotide_with_reverse_complement(reference_path)
+        } else {
+            InMemoryProvider::from_fasta_file(reference_path)
+        }?;
+        let mut reference = Reference::new_with_lt_fm_index_config(
+            lt_fm_index_config,
+            sequence_provider
+        )?;
+        println!("Time elapsed to make reference: {} s", start_time.elapsed().as_secs_f32());
+
+        // ####################################
+        // 3. Make Aligner
+        let start_time = Instant::now();
+        eprintln!("#3. Make Aligner");
+
         let mut aligner = Aligner::new(
             penalties.0,
             penalties.1,
@@ -240,15 +257,13 @@ impl Configuration {
             min_aligned_length,
             max_penalty_per_length
         )?;
-        let mut reference = Reference::read_from_file(reference_path)?;
+        eprintln!("Aligner: {:#?}", aligner);
+        eprintln!("Time elapsed to make aligner: {:?} s", start_time.elapsed().as_secs_f32());
 
-        let preparing_data_time_elapsed = start_time.elapsed().as_secs_f32();
-        eprintln!("Start alignment");
-        eprintln!("penalties: {:?}", aligner.get_penalties());
-        eprintln!("cutoff: {:?}", aligner.get_similarity_cutoff());
-        eprintln!("pattern size: {:?}", aligner.get_pattern_size());
-        eprintln!("Time elapsed to prepare data: {:?} s", preparing_data_time_elapsed);
-
+        // ####################################
+        // 4. Alignment
+        let start_time = Instant::now();
+        eprintln!("#4. Alignment");
         if is_semi_global {
             if with_label {
                 Self::semi_global_alignment_labeled(&mut aligner, &mut reference, query_path)?;
@@ -263,9 +278,8 @@ impl Configuration {
             }
         };
 
-        let total_time_elapsed = start_time.elapsed().as_secs_f32();
-        eprintln!("Time elapsed to alignment: {:?} s", total_time_elapsed - preparing_data_time_elapsed);
-
+        eprintln!("Time elapsed to alignment: {:?} s", start_time.elapsed().as_secs_f32());
+        eprintln!("Total time elapsed: {:?} s", total_start_time.elapsed().as_secs_f32());
         Ok(())
     }
     fn semi_global_alignment_labeled(
