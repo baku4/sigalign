@@ -81,7 +81,7 @@ impl Sigalign {
         &mut self,
         query: &str,
     ) -> String {
-        let result = semi_global_alignment(&self.aligner, &mut self.reference, query);
+        let result = semi_global_alignment(&mut self.aligner, &mut self.reference, query);
         match result {
             Ok(json) => json,
             Err(err) => format!("{{\"error\": \"{}\"}}", err),
@@ -91,7 +91,7 @@ impl Sigalign {
         &mut self,
         query: &str,
     ) -> String {
-        let result = local_alignment(&self.aligner, &mut self.reference, query);
+        let result = local_alignment(&mut self.aligner, &mut self.reference, query);
         match result {
             Ok(json) => json,
             Err(err) => format!("{{\"error\": \"{}\"}}", err),
@@ -100,11 +100,11 @@ impl Sigalign {
 }
 
 fn semi_global_alignment(
-    aligner: &Aligner,
+    aligner: &mut Aligner,
     reference: &mut Reference,
     query: &str
 ) -> Result<String> {
-    let sig_aligner = match &aligner.sig_aligner {
+    let sig_aligner = match &mut aligner.sig_aligner {
         Some(sig_aligner) => sig_aligner,
         None => {
             if reference.sig_reference.is_none() {
@@ -123,11 +123,11 @@ fn semi_global_alignment(
     Ok(result)
 }
 fn local_alignment(
-    aligner: &Aligner,
+    aligner: &mut Aligner,
     reference: &mut Reference,
     query: &str
 ) -> Result<String> {
-    let sig_aligner = match &aligner.sig_aligner {
+    let sig_aligner = match &mut aligner.sig_aligner {
         Some(sig_aligner) => sig_aligner,
         None => {
             if reference.sig_reference.is_none() {
