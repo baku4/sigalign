@@ -40,7 +40,7 @@ impl Configuration {
                     .display_order(2))
             .arg(Arg::with_name("reverse_complement")
                     .long("reverse")
-                    .short("r")
+                    .short("rc")
                     .help("Whether to add reverse complementary sequence")
                     .display_order(3))
             .arg(Arg::with_name("higher_compressed_bwt")
