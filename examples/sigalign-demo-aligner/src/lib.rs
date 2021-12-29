@@ -243,7 +243,7 @@ impl Configuration {
             lt_fm_index_config,
             sequence_provider
         )?;
-        println!("Time elapsed to make reference: {} s", start_time.elapsed().as_secs_f32());
+        eprintln!("Time elapsed to make reference: {} s", start_time.elapsed().as_secs_f32());
 
         // ####################################
         // 3. Make Aligner
