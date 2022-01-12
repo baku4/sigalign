@@ -65,7 +65,6 @@ pub struct AlignmentResultsWithLabelByRecordIndex(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AlignmentResult {
-    pub dissimilarity: f32,
     pub penalty: usize,
     pub length: usize,
     pub position: AlignmentPosition,

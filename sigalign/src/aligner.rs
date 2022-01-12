@@ -193,7 +193,6 @@ impl AlignmentResultsByRecordIndex {
 
 impl AlignmentResult {
     fn multiply_gcd(&mut self, gcd: usize) {
-        self.dissimilarity *= gcd as f32;
         self.penalty *= gcd;
     }
 }

@@ -51,7 +51,6 @@ impl Anchor {
 
             Some(
                 AlignmentResult {
-                    dissimilarity: penalty as f32 / length as f32,
                     penalty,
                     length,
                     position: alignment_position,

@@ -90,7 +90,6 @@ pub fn semi_global_alignment_with_position(
 
     if (length >= minimum_aligned_length) && (penalty_per_scale_of_this_alignment <= penalty_per_scale) {
         Some(AlignmentResult {
-            dissimilarity: penalty_per_scale_of_this_alignment as f32 / PRECISION_SCALE as f32,
             penalty,
             length,
             position,
@@ -436,7 +435,6 @@ pub fn local_alignment_with_position(
 
     Some(
         AlignmentResult {
-            dissimilarity: penalty as f32 / length as f32,
             penalty,
             length,
             position,

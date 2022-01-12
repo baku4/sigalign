@@ -290,7 +290,6 @@ struct CmpableAlignmentResult {
 impl CmpableAlignmentResult {
     fn alignment_results_to_hash_set_selves(alignment_results: &Vec<AlignmentResult>) -> HashSet<Self> {
         alignment_results.iter().map(|AlignmentResult {
-            dissimilarity: _,
             penalty,
             length,
             position,
@@ -305,7 +304,6 @@ impl CmpableAlignmentResult {
     }
     fn alignment_results_to_sorted_selves(alignment_results: &Vec<AlignmentResult>) -> Vec<Self> {
         let mut vector_of_selves: Vec<Self> = alignment_results.iter().map(|AlignmentResult {
-            dissimilarity: _,
             penalty,
             length,
             position,
