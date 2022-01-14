@@ -1,7 +1,12 @@
-use super::{Cutoff, Penalties};
-use super::{Sequence};
-use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{Anchors, Anchor, Extension};
+use super::{
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+    Sequence,
+    ReferenceInterface, PatternLocation,
+    AlignerInterface,
+};
+use super::{Extension, AlignmentHashSet};
+use super::{Anchors, Anchor};
 
 impl Anchors {
     pub fn get_alignment_results_for_local(self) -> Vec<AlignmentResult> {

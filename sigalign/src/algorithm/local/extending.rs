@@ -1,8 +1,12 @@
-use super::{PRECISION_SCALE, Cutoff, Penalties};
-use super::{Sequence};
-use super::{AlignmentOperation, AlignmentType};
+use super::{
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+    Sequence,
+    ReferenceInterface, PatternLocation,
+    AlignerInterface,
+};
+use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 use super::{Anchors, Anchor};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
 impl Anchors {
     pub fn extend(

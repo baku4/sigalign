@@ -1,14 +1,16 @@
-use crate::core::{PatternLocation};
-use crate::core::{AlignmentHashSet};
-use crate::core::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
+// Alignment algorithms
+use crate::core::{
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+    Sequence,
+    ReferenceInterface, PatternLocation,
+    AlignerInterface,
+};
 
-pub use crate::core::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-pub use crate::core::{ReferenceInterface, Sequence};
-pub use crate::core::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
-pub use crate::core::Algorithm;
+mod common_steps;
+pub use common_steps::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
 mod semi_global;
 mod local;
-
-pub use semi_global::SemiGlobalAlgorithm;
-pub use local::LocalAlgorithm;
+pub use local::local_alignment_algorithm;
+pub use semi_global::semi_global_alignment_algorithm;

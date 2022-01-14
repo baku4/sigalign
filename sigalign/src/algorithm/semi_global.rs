@@ -1,8 +1,11 @@
-use super::{Penalties, PRECISION_SCALE ,Cutoff, MinPenaltyForPattern};
-use super::{Sequence, ReferenceInterface, PatternLocation};
-use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
-use super::Algorithm;
+use super::{
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+    Sequence,
+    ReferenceInterface, PatternLocation,
+    AlignerInterface,
+};
+use super::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
 mod anchoring;
 mod extending;
@@ -108,42 +111,36 @@ struct CheckPoint {
 // ALGORITHM
 
 
-pub struct SemiGlobalAlgorithm;
+pub fn semi_global_alignment_algorithm(
+    reference: &mut dyn ReferenceInterface,
+    query: Sequence,
+    pattern_size: usize,
+    penalties: &Penalties,
+    cutoff: &Cutoff,
+    min_penalty_for_pattern: &MinPenaltyForPattern,
+    primary_wave_front: &mut WaveFront,
+) -> ReferenceAlignmentResult {
+    let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-impl Algorithm for SemiGlobalAlgorithm {
-    fn alignment(
-        reference: &mut dyn ReferenceInterface,
-        query: Sequence,
-        pattern_size: usize,
-        penalties: &Penalties,
-        cutoff: &Cutoff,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-        primary_wave_front: &mut WaveFront,
-        secondary_wave_front: &mut WaveFront,
-    ) -> AlignmentResultsByRecordIndex {
-        let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
+    ReferenceAlignmentResult(
+        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
+            let record_sequence = reference.sequence_of_record(record_index);
+            let record_length = record_sequence.len();
 
-        AlignmentResultsByRecordIndex(
-            anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-                let record_sequence = reference.sequence_of_record(record_index);
-                let record_length = record_sequence.len();
-    
-                let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
-    
-                anchors.extend(record_sequence, query, penalties, cutoff, primary_wave_front);
-    
-                let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
-    
-                if alignment_results.len() == 0 {
-                    None
-                } else {
-                    Some((record_index, alignment_results))
-                }
-            }).collect()
-        )
-    }
+            let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
+
+            anchors.extend(record_sequence, query, penalties, cutoff, primary_wave_front);
+
+            let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
+
+            if alignment_results.len() == 0 {
+                None
+            } else {
+                Some((record_index, alignment_results))
+            }
+        }).collect()
+    )
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -192,9 +189,8 @@ mod tests {
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
         let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
-        let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
 
-        let alignment_results = SemiGlobalAlgorithm::alignment(
+        let alignment_results = semi_global_alignment_algorithm(
             &mut test_reference,
             query,
             kmer,
@@ -202,7 +198,6 @@ mod tests {
             &cutoff,
             &min_penalty_for_pattern,
             &mut left_wave_front,
-            &mut right_wave_front,
         );
 
         println!("alignment_results:\n{:#?}", alignment_results);
@@ -224,9 +219,8 @@ mod tests {
         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
         let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
-        let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
 
-        let alignment_results = SemiGlobalAlgorithm::alignment(
+        let alignment_results = semi_global_alignment_algorithm(
             &mut test_reference,
             query,
             kmer,
@@ -234,7 +228,6 @@ mod tests {
             &cutoff,
             &min_penalty_for_pattern,
             &mut left_wave_front,
-            &mut right_wave_front,
         );
 
         let json = serde_json::to_string(&alignment_results).unwrap();

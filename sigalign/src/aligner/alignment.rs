@@ -80,7 +80,7 @@ impl Aligner {
         reference: &mut Reference<S>,
         query: Sequence,
     ) -> AlignmentResultsByRecordIndex {
-        self.wave_front_holder.allocate_more_space_if_needed(
+        self.wave_front_cache.allocate_more_space_if_needed(
             query.len(),
             &self.penalties,
             &self.cutoff,
@@ -93,8 +93,8 @@ impl Aligner {
             &self.penalties,
             &self.cutoff,
             &self.min_penalty_for_pattern,
-            &mut self.wave_front_holder.primary_wave_front,
-            &mut self.wave_front_holder.secondary_wave_front,
+            &mut self.wave_front_cache.primary_wave_front,
+            &mut self.wave_front_cache.secondary_wave_front,
         );
         self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
         alignment_results_by_record
@@ -151,7 +151,7 @@ impl Aligner {
         reference: &mut Reference<S>,
         query: Sequence
     ) -> AlignmentResultsByRecordIndex {
-        self.wave_front_holder.allocate_more_space_if_needed(
+        self.wave_front_cache.allocate_more_space_if_needed(
             query.len(),
             &self.penalties,
             &self.cutoff,
@@ -164,8 +164,8 @@ impl Aligner {
             &self.penalties,
             &self.cutoff,
             &self.min_penalty_for_pattern,
-            &mut self.wave_front_holder.primary_wave_front,
-            &mut self.wave_front_holder.secondary_wave_front,
+            &mut self.wave_front_cache.primary_wave_front,
+            &mut self.wave_front_cache.secondary_wave_front,
         );
         self.multiply_gcd_to_alignment_results(&mut alignment_results_by_record);
         alignment_results_by_record

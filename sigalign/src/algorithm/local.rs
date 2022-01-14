@@ -1,8 +1,11 @@
-use super::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-use super::{Sequence, ReferenceInterface, PatternLocation};
-use super::{AlignmentResultsByRecordIndex, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
-use super::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
-use super::Algorithm;
+use super::{
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+    Sequence,
+    ReferenceInterface, PatternLocation,
+    AlignerInterface,
+};
+use super::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
 mod anchoring;
 mod extending;
@@ -34,42 +37,37 @@ struct Anchor {
 // ALGORITHM
 
 
-pub struct LocalAlgorithm;
+pub fn local_alignment_algorithm(
+    reference: &mut dyn ReferenceInterface,
+    query: Sequence,
+    pattern_size: usize,
+    penalties: &Penalties,
+    cutoff: &Cutoff,
+    min_penalty_for_pattern: &MinPenaltyForPattern,
+    left_wave_front: &mut WaveFront,
+    right_wave_front: &mut WaveFront,
+) -> ReferenceAlignmentResult {
+    let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-impl Algorithm for LocalAlgorithm {
-    fn alignment(
-        reference: &mut dyn ReferenceInterface,
-        query: Sequence,
-        pattern_size: usize,
-        penalties: &Penalties,
-        cutoff: &Cutoff,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-        left_wave_front: &mut WaveFront,
-        right_wave_front: &mut WaveFront,
-    ) -> AlignmentResultsByRecordIndex {
-        let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
+    ReferenceAlignmentResult(
+            anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
+            let record_sequence = reference.sequence_of_record(record_index);
+            let record_length = record_sequence.len();
 
-        AlignmentResultsByRecordIndex(
-                anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-                let record_sequence = reference.sequence_of_record(record_index);
-                let record_length = record_sequence.len();
+            let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
 
-                let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
+            anchors.extend(record_sequence, query, penalties, cutoff, left_wave_front, right_wave_front);
+        
+            let alignment_results = anchors.get_alignment_results_for_local();
 
-                anchors.extend(record_sequence, query, penalties, cutoff, left_wave_front, right_wave_front);
-            
-                let alignment_results = anchors.get_alignment_results_for_local();
-
-                if alignment_results.len() == 0 {
-                    None
-                } else {
-                    Some((record_index, alignment_results))
-                }
-            }).collect()
-        )
-    }
+            if alignment_results.len() == 0 {
+                None
+            } else {
+                Some((record_index, alignment_results))
+            }
+        }).collect()
+    )
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -120,7 +118,7 @@ mod tests {
         let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
         let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
 
-        let alignment_results = LocalAlgorithm::alignment(
+        let alignment_results = local_alignment_algorithm(
             &mut test_reference,
             query,
             kmer,

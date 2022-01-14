@@ -1,110 +1,34 @@
-mod extending;
-mod evaluating;
+// Core data structures
 
-pub use extending::{Extension, WaveFront, EndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
-pub use evaluating::AlignmentHashSet;
+mod conditions;
+mod result;
 
-use serde::{Deserialize, Serialize};
+pub use conditions::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
+pub use result::{ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
 
-use std::collections::HashMap;
-
-
-// CONDITIONS
-
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Penalties {
-    pub x: usize,
-    pub o: usize,
-    pub e: usize,
-}
-
-pub const PRECISION_SCALE: usize = 10_000; // Ensuring accuracy to the third decimal place.
-
-#[derive(Debug)]
-pub struct Cutoff {
-    pub minimum_aligned_length: usize,
-    pub maximum_penalty_per_scale: usize,
-}
-
-#[derive(Debug)]
-pub struct MinPenaltyForPattern {
-    pub odd: usize,
-    pub even: usize,
-}
-
-
-// TEXT
-
-
+// Sequence
 pub type Sequence<'a> = &'a [u8];
 
+// Reference
 pub trait ReferenceInterface {
     fn is_searchable(&self, query: Sequence) -> bool;
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
     fn sequence_of_record(&mut self, record_index: usize) -> Sequence;
 }
-
+pub trait LabeledReferenceInterface: ReferenceInterface {
+    fn label_of_record(&mut self, record_index: usize) -> &str;
+}
 #[derive(Debug)]
 pub struct PatternLocation {
     pub record_index: usize,
     pub positions: Vec<usize>,
 }
 
-
-// RESULTS
-
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AlignmentResultsByRecordIndex(pub HashMap<usize, Vec<AlignmentResult>>);
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AlignmentResultsWithLabelByRecordIndex(
-    pub HashMap<usize, (String, Vec<AlignmentResult>)>
-);
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct AlignmentResult {
-    pub penalty: usize,
-    pub length: usize,
-    pub position: AlignmentPosition,
-    pub operations: Vec<AlignmentOperation>,
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
-pub struct AlignmentPosition {
-    pub record: (usize, usize),
-    pub query: (usize, usize),
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
-pub struct AlignmentOperation {
-    pub alignment_type: AlignmentType,
-    pub count: u32,
-}
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
-pub enum AlignmentType {
-    Match,
-    Subst,
-    Insertion,
-    Deletion,
-}
-
-
-// ALGORITHM
-
-
-pub trait Algorithm {
+// Aligner
+pub trait AlignerInterface {
     fn alignment(
+        &mut self,
         reference: &mut dyn ReferenceInterface,
         query: Sequence,
-        pattern_size: usize,
-        penalties: &Penalties,
-        cutoff: &Cutoff,
-        min_penalty_for_pattern: &MinPenaltyForPattern,
-        // TODO: Resolve dependency
-        primary_wave_front: &mut WaveFront,
-        secondary_wave_front: &mut WaveFront,
-    ) -> AlignmentResultsByRecordIndex;
+    ) -> ReferenceAlignmentResult;
 }

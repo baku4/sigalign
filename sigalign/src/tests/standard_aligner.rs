@@ -30,7 +30,6 @@ impl StandardAligner {
         penalty_per_length: f32,
     ) -> Self {
         let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
-
         
         let penalties = aligner.get_penalties();
 
