@@ -8,7 +8,7 @@ pub struct ReferenceAlignmentResult(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RecordAlignmentResult {
-    pub record_index: usize,
+    pub index: usize,
     pub result: Vec<AlignmentResult>,
 }
 

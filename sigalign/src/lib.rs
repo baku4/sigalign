@@ -32,30 +32,6 @@ This library is currently under development. Some key features are missing, and 
 
 # Quick Start
 ```rust
-use sigalign::{Reference, Aligner};
-use sigalign::basic_sequence_provider::InMemoryProvider;
-
-// (1) Make `Reference`
-let mut sequence_provider = InMemoryProvider::new_empty();
-sequence_provider.add_labeled_sequence(
-    "record_1".to_string(),
-    b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA".to_vec(),
-);
-sequence_provider.add_labeled_sequence(
-    "record_2".to_string(),
-    b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT".to_vec(),
-);
-let mut reference = Reference::new_with_default_config(sequence_provider).unwrap();
-
-// (2) Make `Aligner`
-let mut aligner = Aligner::new(4, 6, 2, 100, 0.1).unwrap();
-
-// (3) Alignment with query
-let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
-// - Semi-global alignment
-let result_semi_global: String = aligner.semi_global_alignment_labeled(&mut reference, query).unwrap();
-// - Local alignment
-let result_local: String = aligner.local_alignment_labeled(&mut reference, query).unwrap();
 ```
 */
 
@@ -79,34 +55,34 @@ mod tests;
 
 pub use reference::Reference;
 pub use reference::basic_sequence_provider;
-pub use aligner::Aligner;
+pub use aligner::{SemiGlobalAligner, LocalAligner};
 
 mod example {
-    #[test]
-    fn print_library_example_quick_start() {
-        use crate::{Reference, Aligner};
-        use crate::basic_sequence_provider::InMemoryProvider;
+    // #[test]
+    // fn print_library_example_quick_start() {
+    //     use crate::{Reference, Aligner};
+    //     use crate::basic_sequence_provider::InMemoryProvider;
 
-        // (1) Make `Reference`
-        let mut sequence_provider = InMemoryProvider::new_empty();
-        sequence_provider.add_labeled_sequence(
-            "record_1".to_string(),
-            b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA".to_vec(),
-        );
-        sequence_provider.add_labeled_sequence(
-            "record_2".to_string(),
-            b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT".to_vec(),
-        );
-        let mut reference = Reference::new_with_default_config(sequence_provider).unwrap();
+    //     // (1) Make `Reference`
+    //     let mut sequence_provider = InMemoryProvider::new_empty();
+    //     sequence_provider.add_labeled_sequence(
+    //         "record_1".to_string(),
+    //         b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA".to_vec(),
+    //     );
+    //     sequence_provider.add_labeled_sequence(
+    //         "record_2".to_string(),
+    //         b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT".to_vec(),
+    //     );
+    //     let mut reference = Reference::new_with_default_config(sequence_provider).unwrap();
 
-        // (2) Make `Aligner`
-        let mut aligner = Aligner::new(4, 6, 2, 100, 0.1).unwrap();
+    //     // (2) Make `Aligner`
+    //     let mut aligner = Aligner::new(4, 6, 2, 100, 0.1).unwrap();
 
-        // (3) Alignment with query
-        let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
-        // - Semi-global alignment
-        let result_semi_global: String = aligner.semi_global_alignment_labeled(&mut reference, query).unwrap();
-        // - Local alignment
-        let result_local: String = aligner.local_alignment_labeled(&mut reference, query).unwrap();
-    }
+    //     // (3) Alignment with query
+    //     let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+    //     // - Semi-global alignment
+    //     let result_semi_global: String = aligner.semi_global_alignment_labeled(&mut reference, query).unwrap();
+    //     // - Local alignment
+    //     let result_local: String = aligner.local_alignment_labeled(&mut reference, query).unwrap();
+    // }
 }

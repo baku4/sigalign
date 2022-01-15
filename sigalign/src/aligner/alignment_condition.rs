@@ -13,7 +13,7 @@ pub struct AlignmentCondition {
     pub penalties: Penalties,
     pub cutoff: Cutoff,
     pub min_penalty_for_pattern: MinPenaltyForPattern,
-    pub gcd: usize,
+    pub gcd_for_compression: usize,
     pub pattern_size: usize,
 }
 
@@ -51,7 +51,7 @@ impl AlignmentCondition {
             penalties,
             cutoff,
             min_penalty_for_pattern,
-            gcd,
+            gcd_for_compression: gcd,
             pattern_size: max_pattern_size,
         }
     }
@@ -77,19 +77,26 @@ impl AlignmentCondition {
             n += 1;
         }
     }
+    pub fn decompress_result(&self, mut reference_alignment_result: ReferenceAlignmentResult) -> ReferenceAlignmentResult {
+        if self.gcd_for_compression != 1 {
+            reference_alignment_result.multiply_gcd(self.gcd_for_compression);
+        }
+        
+        reference_alignment_result
+    }
     /// Get penalties
     pub fn get_penalties(&self) -> [usize; 3] {
         [
-            self.penalties.x * self.gcd,
-            self.penalties.o * self.gcd,
-            self.penalties.e * self.gcd,
+            self.penalties.x * self.gcd_for_compression,
+            self.penalties.o * self.gcd_for_compression,
+            self.penalties.e * self.gcd_for_compression,
         ]
     }
     /// Get similarity cutoff
     pub fn get_similarity_cutoff(&self) -> (usize, f32) {
         (
             self.cutoff.minimum_aligned_length,
-            (self.cutoff.maximum_penalty_per_scale * self.gcd) as f32 / PRECISION_SCALE as f32,
+            (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PRECISION_SCALE as f32,
         )
     }
     /// Get size of pattern
@@ -100,8 +107,8 @@ impl AlignmentCondition {
 
 impl ReferenceAlignmentResult {
     fn multiply_gcd(&mut self, gcd: usize) {
-        self.0.iter_mut().for_each(|(_, alignment_results)| {
-            alignment_results.iter_mut().for_each(|alignment_result| {
+        self.0.iter_mut().for_each(|record_alignment_result| {
+            record_alignment_result.result.iter_mut().for_each(|alignment_result| {
                 alignment_result.multiply_gcd(gcd);
             })
         })

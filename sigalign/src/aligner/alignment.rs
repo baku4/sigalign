@@ -15,7 +15,7 @@ impl Aligner {
         reference: &mut dyn ReferenceInterface,
         query: Sequence,
     ) -> Result<()> {
-        if reference.is_searchable(query) {
+        if reference.searchable(query) {
             Ok(())
         } else {
             error_msg!("Query string is not supported sequence type of reference.")

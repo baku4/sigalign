@@ -6,17 +6,15 @@ use super::{
     ReferenceInterface, PatternLocation,
     AlignerInterface,
 };
-use super::{WaveFront};
-use super::{AlignmentCondition};
-use std::fmt;
+use super::{AlignmentCondition, WaveFrontCache, SingleWaveFrontCache};
+use super::semi_global_alignment_algorithm;
 
 pub struct SemiGlobalAligner {
     condition: AlignmentCondition,
-    allocated_query_length: usize,
-    wave_front: WaveFront,
+    wave_front_cache: SingleWaveFrontCache,
 }
 
-impl SemiGlobalAligner {
+impl AlignerInterface for SemiGlobalAligner {
     fn new(
         mismatch_penalty: usize,
         gap_open_penalty: usize,
@@ -25,12 +23,26 @@ impl SemiGlobalAligner {
         maximum_penalty_per_length: f32,
     ) -> Result<Self> {
         let condition = AlignmentCondition::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
-        let spacious_new
-    }
-}
+        let wave_front_cache = SingleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
 
-impl AlignerInterface for SemiGlobalAligner {
+        Ok(
+            Self {
+                condition,
+                wave_front_cache,
+            }
+        )
+    }
     fn alignment(&mut self, reference: &mut dyn ReferenceInterface, query: Sequence) -> ReferenceAlignmentResult {
-        
+        let reference_alignment_result = semi_global_alignment_algorithm(
+            reference,
+            query,
+            self.condition.pattern_size,
+            &self.condition.penalties,
+            &self.condition.cutoff,
+            &self.condition.min_penalty_for_pattern,
+            &mut self.wave_front_cache.wave_front,
+        );
+
+        self.condition.decompress_result(reference_alignment_result)
     }
 }

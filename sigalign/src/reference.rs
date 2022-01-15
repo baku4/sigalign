@@ -94,7 +94,7 @@ struct ReferenceProto {
 impl Writable for ReferenceProto {}
 
 impl<S: SequenceProvider> ReferenceInterface for Reference<S> {
-    fn is_searchable(&self, query: Sequence) -> bool {
+    fn searchable(&self, query: Sequence) -> bool {
         self.reference_proto.sequence_type.is_searchable(query)
     }
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {

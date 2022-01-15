@@ -63,7 +63,12 @@ pub fn local_alignment_algorithm(
             if alignment_results.len() == 0 {
                 None
             } else {
-                Some((record_index, alignment_results))
+                Some(
+                    RecordAlignmentResult {
+                        index: record_index,
+                        result: alignment_results,
+                    }
+                )
             }
         }).collect()
     )

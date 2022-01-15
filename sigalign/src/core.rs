@@ -1,4 +1,5 @@
 // Core data structures
+use crate::{Result, error_msg};
 
 mod conditions;
 mod result;
@@ -11,7 +12,7 @@ pub type Sequence<'a> = &'a [u8];
 
 // Reference
 pub trait ReferenceInterface {
-    fn is_searchable(&self, query: Sequence) -> bool;
+    fn searchable(&self, query: Sequence) -> bool;
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
     fn sequence_of_record(&mut self, record_index: usize) -> Sequence;
 }
@@ -26,6 +27,13 @@ pub struct PatternLocation {
 
 // Aligner
 pub trait AlignerInterface {
+    fn new(
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        maximum_penalty_per_length: f32,
+    ) -> Result<Self> where Self: Sized;
     fn alignment(
         &mut self,
         reference: &mut dyn ReferenceInterface,

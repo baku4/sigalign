@@ -118,7 +118,7 @@ pub fn semi_global_alignment_algorithm(
     penalties: &Penalties,
     cutoff: &Cutoff,
     min_penalty_for_pattern: &MinPenaltyForPattern,
-    primary_wave_front: &mut WaveFront,
+    wave_front: &mut WaveFront,
 ) -> ReferenceAlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
@@ -129,14 +129,19 @@ pub fn semi_global_alignment_algorithm(
 
             let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);
 
-            anchors.extend(record_sequence, query, penalties, cutoff, primary_wave_front);
+            anchors.extend(record_sequence, query, penalties, cutoff, wave_front);
 
             let alignment_results = anchors.get_alignment_results_for_semi_global(cutoff);
 
             if alignment_results.len() == 0 {
                 None
             } else {
-                Some((record_index, alignment_results))
+                Some(
+                    RecordAlignmentResult {
+                        index: record_index,
+                        result: alignment_results,
+                    }
+                )
             }
         }).collect()
     )
