@@ -32,7 +32,7 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
 
     println!("Aligner: {:?}", aligner);
 
-    let sequence_type = SequenceType::nucleotide_only();
+    let sequence_type = SequenceTypeDep::nucleotide_only();
 
     let mut reference = {
         let start_time = Instant::now();
@@ -114,7 +114,7 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
 
     println!("Aligner: {:?}", aligner);
 
-    let sequence_type = SequenceType::nucleotide_only();
+    let sequence_type = SequenceTypeDep::nucleotide_only();
 
     let mut reference = {
         let start_time = Instant::now();
@@ -214,7 +214,7 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
 
     println!("Aligner: {:?}", aligner);
 
-    let sequence_type = SequenceType::nucleotide_only();
+    let sequence_type = SequenceTypeDep::nucleotide_only();
 
     let mut reference = {
         let start_time = Instant::now();

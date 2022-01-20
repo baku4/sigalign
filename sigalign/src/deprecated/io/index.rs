@@ -53,24 +53,24 @@ use std::fs::File;
 
 
 /*  Lt Fm Index  */
-use lt_fm_index::{FmIndex, LtFmIndexAll, IO};
+use lt_fm_index::{LtFmIndex, LtFmIndexBuilder};
 
 const LT_FMI_EXT: &str = "lfi";
 
-pub fn read_lt_fm_index_from_file_path(file_path: &str) -> Result<LtFmIndexAll, String> {
-    match LtFmIndexAll::read_from_file(&file_path) {
+pub fn read_lt_fm_index_from_file_path(file_path: &str) -> Result<LtFmIndex, String> {
+    match LtFmIndex::load_from_file(file_path) {
         Ok(v) => Ok(v),
         Err(err) => Err("err".to_string())
     }
 }
-pub fn read_lt_fm_index_from_inferred_path(org_file_path: &str) -> Result<LtFmIndexAll, String> {
+pub fn read_lt_fm_index_from_inferred_path(org_file_path: &str) -> Result<LtFmIndex, String> {
     let path = Path::new(org_file_path);
     let dir = path.parent().unwrap();
     let file_name = path.file_name().unwrap();
     // TODO: Split once
     let first_stem: String = file_name.to_str().unwrap().to_string().split('.').into_iter().next().unwrap().to_string();
     let fm_index_path = dir.join(format!("{}.{}", first_stem, LT_FMI_EXT)).into_os_string().into_string().unwrap();
-    match LtFmIndexAll::read_from_file(&fm_index_path) {
+    match LtFmIndex::load_from_file(&fm_index_path) {
         Ok(v) => Ok(v),
         Err(err) => Err("err".to_string())
     }

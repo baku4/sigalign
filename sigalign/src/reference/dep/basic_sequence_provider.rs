@@ -1,4 +1,4 @@
-use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable};
+use super::{Reference, ReferenceProtoDep, SequenceProvider, Labeling, Writable};
 use super::{FastaReader, reverse_complement_of_nucleotide_sequence};
 
 mod in_memory;

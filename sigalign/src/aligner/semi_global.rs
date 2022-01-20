@@ -43,6 +43,6 @@ impl AlignerInterface for SemiGlobalAligner {
             &mut self.wave_front_cache.wave_front,
         );
 
-        self.condition.decompress_result(reference_alignment_result)
+        self.condition.result_of_uncompressed_penalty(reference_alignment_result)
     }
 }

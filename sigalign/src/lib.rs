@@ -49,12 +49,11 @@ pub mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
 #[doc(hidden)]
-pub mod utils;
-#[cfg(test)]
-mod tests;
+pub mod util;
+// #[cfg(test)]
+// mod tests;
 
 pub use reference::Reference;
-pub use reference::basic_sequence_provider;
 pub use aligner::{SemiGlobalAligner, LocalAligner};
 
 mod example {

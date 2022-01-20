@@ -6,9 +6,8 @@ use crate::core::{
     ReferenceInterface, PatternLocation,
     AlignerInterface,
 };
-use crate::utils::FastaReader;
+use crate::util::FastaReader;
 use crate::algorithm::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
-use crate::reference::{Reference, SequenceProvider, Labeling};
 
 // Common data structures for aligner
 mod alignment_condition;

@@ -1,6 +1,3 @@
-mod file_reader;
-pub use file_reader::FastaReader;
-
 const A_UTF8: u8 = 65;
 const C_UTF8: u8 = 67;
 const G_UTF8: u8 = 71;

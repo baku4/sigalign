@@ -1,6 +1,6 @@
 use crate::{Result, error_msg};
 use crate::{Serialize, Deserialize};
-use super::{Reference, ReferenceProto, SequenceProvider, Labeling, Writable, reverse_complement_of_nucleotide_sequence};
+use super::{Reference, ReferenceProtoDep, SequenceProvider, Labeling, Writable, reverse_complement_of_nucleotide_sequence};
 
 use std::path::Path;
 use std::fs::File;
@@ -218,7 +218,7 @@ impl Reference<IndexedFastaProvider> {
         file.write_to(writer)
     }
     pub fn read_from<R: Read>(reader: R, fasta_file_path: &str) -> Result<Self> {
-        let (reference_proto, indexed_fasta_provider_proto): (ReferenceProto, IndexedFastaProviderProto) = {
+        let (reference_proto, indexed_fasta_provider_proto): (ReferenceProtoDep, IndexedFastaProviderProto) = {
             let file = ReferenceWithIndexedFastaProviderFile::read_from(reader)?;
             let reference_proto = bincode::deserialize(&file.serialized_reference_proto)?;
             let indexed_fasta_provider_proto = bincode::deserialize(&file.serialized_indexed_fasta_provider_proto)?;

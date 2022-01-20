@@ -88,7 +88,7 @@ pub struct StandardReference {
 
 impl StandardReference {
     pub fn new_from_fasta<P: AsRef<Path> + std::fmt::Debug>(
-        sequence_type: SequenceType,
+        sequence_type: SequenceTypeDep,
         fasta_path: P,
     ) -> Self {
         let allowed_sequence_type = sequence_type.allowed_type();

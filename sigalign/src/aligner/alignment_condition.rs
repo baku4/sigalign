@@ -77,7 +77,7 @@ impl AlignmentCondition {
             n += 1;
         }
     }
-    pub fn decompress_result(&self, mut reference_alignment_result: ReferenceAlignmentResult) -> ReferenceAlignmentResult {
+    pub fn result_of_uncompressed_penalty(&self, mut reference_alignment_result: ReferenceAlignmentResult) -> ReferenceAlignmentResult {
         if self.gcd_for_compression != 1 {
             reference_alignment_result.multiply_gcd(self.gcd_for_compression);
         }

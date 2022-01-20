@@ -4,7 +4,7 @@ use crate::deprecated::alignment::Aligner;
 
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
+use lt_fm_index::{LtFmIndex, LtFmIndexBuilder};
 
 /// Records of Sequences
 pub trait SequenceProvider<'a> {
@@ -64,7 +64,7 @@ impl DatabaseConfig {
 pub struct Database<'a> {
     sequence_provider: &'a dyn SequenceProvider<'a>,
     // Index
-    fm_index: LtFmIndexAll,
+    fm_index: LtFmIndex,
     accumulated_length: AccumulatedLength,
     // DB options
     in_memory_index: bool,
@@ -78,13 +78,15 @@ impl<'a> Database<'a> {
     pub fn new<P: SequenceProvider<'a>>(database_config: &DatabaseConfig, sequence_provider: &'a P) -> Self {
         let concated_seq = sequence_provider.concated_sequence();
         let accumualated_length = sequence_provider.accumulated_length();
-        let mut fm_index_config = LtFmIndexConfig::for_nucleotide()
-            .change_sampling_ratio(database_config.sa_sampling_ratio).unwrap()
-            .change_kmer_size(database_config.klt_kmer).unwrap();
+        let mut fm_index_config = LtFmIndexBuilder::new()
+            .set_suffix_array_sampling_ratio(database_config.sa_sampling_ratio).unwrap()
+            .set_lookup_table_kmer_size(database_config.klt_kmer).unwrap();
         if !database_config.only_nucleotide {
-            fm_index_config = fm_index_config.with_noise(); //TODO: change configs setting method
+            fm_index_config = fm_index_config.use_nucleotide_only(); //TODO: change configs setting method
+        } else {
+            fm_index_config = fm_index_config.use_nucleotide_with_noise();
         }
-        let fm_index = fm_index_config.generate(concated_seq).unwrap();
+        let fm_index = fm_index_config.build(concated_seq);
         Self {
             sequence_provider: sequence_provider,
             fm_index: fm_index,
@@ -184,18 +186,19 @@ impl<'a> Database<'a> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct SerializedDatabase {
-    // Index
-    fm_index: LtFmIndexAll,
-    accumulated_length: AccumulatedLength,
-    // DB options
-    in_memory_index: bool,
-    reverse_complement: bool,
-    only_nucleotide: bool,
-    klt_kmer: usize,
-    sa_sampling_ratio: u64,
-}
+// TODO: to del
+// #[derive(Debug, Serialize, Deserialize, PartialEq)]
+// pub struct SerializedDatabase {
+//     // Index
+//     fm_index: LtFmIndex,
+//     accumulated_length: AccumulatedLength,
+//     // DB options
+//     in_memory_index: bool,
+//     reverse_complement: bool,
+//     only_nucleotide: bool,
+//     klt_kmer: usize,
+//     sa_sampling_ratio: u64,
+// }
 
 
 #[cfg(test)]

@@ -1,5 +1,5 @@
 // Result of alignment
-use serde::{Deserialize, Serialize};
+use crate::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReferenceAlignmentResult(
