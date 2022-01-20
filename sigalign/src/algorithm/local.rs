@@ -74,66 +74,68 @@ pub fn local_alignment_algorithm(
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
 
-    use crate::reference::TestReference;
+// TODO: to del
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
-        let mut n = 1;
-        loop {
-            let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
-            let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
-            let max_penalty = (
-                (
-                    (
-                        (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
-                    )
-                    + 4 * cutoff.maximum_penalty_per_scale
-                ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
-            ).ceil() - 2_f32;
+//     use crate::reference::TestReference;
 
-            let kmer = max_penalty.min(upper_bound);
-            #[cfg(test)]
-            println!("#n {}\nu {}\nl {}\nmp {}\nk {}", n, upper_bound, lower_bound, max_penalty, kmer);
+//     fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
+//         let mut n = 1;
+//         loop {
+//             let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
+//             let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
+//             let max_penalty = (
+//                 (
+//                     (
+//                         (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+//                     )
+//                     + 4 * cutoff.maximum_penalty_per_scale
+//                 ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
+//             ).ceil() - 2_f32;
 
-            if kmer >= lower_bound {
-                return kmer as usize
-            }
-            n += 1;
-        }
-    }
+//             let kmer = max_penalty.min(upper_bound);
+//             #[cfg(test)]
+//             println!("#n {}\nu {}\nl {}\nmp {}\nk {}", n, upper_bound, lower_bound, max_penalty, kmer);
 
-    #[test]
-    fn print_results_of_local_alignment() {
-        let mut test_reference = TestReference::new();
+//             if kmer >= lower_bound {
+//                 return kmer as usize
+//             }
+//             n += 1;
+//         }
+//     }
 
-        let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
+//     #[test]
+//     fn print_results_of_local_alignment() {
+//         let mut test_reference = TestReference::new();
 
-        let penalties = Penalties {x: 4, o: 5, e: 2};
-        let cutoff = Cutoff {
-            minimum_aligned_length: 30,
-            maximum_penalty_per_scale: 3_000,
-        };
-        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
+//         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
 
-        let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+//         let penalties = Penalties {x: 4, o: 5, e: 2};
+//         let cutoff = Cutoff {
+//             minimum_aligned_length: 30,
+//             maximum_penalty_per_scale: 3_000,
+//         };
+//         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 
-        let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
-        let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
+//         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
-        let alignment_results = local_alignment_algorithm(
-            &mut test_reference,
-            query,
-            kmer,
-            &penalties,
-            &cutoff,
-            &min_penalty_for_pattern,
-            &mut left_wave_front,
-            &mut right_wave_front
-        );
+//         let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
+//         let mut right_wave_front = WaveFront::new_allocated(&penalties, 100);
 
-        println!("alignment_results:\n{:#?}", alignment_results);
-    }
-}
+//         let alignment_results = local_alignment_algorithm(
+//             &mut test_reference,
+//             query,
+//             kmer,
+//             &penalties,
+//             &cutoff,
+//             &min_penalty_for_pattern,
+//             &mut left_wave_front,
+//             &mut right_wave_front
+//         );
+
+//         println!("alignment_results:\n{:#?}", alignment_results);
+//     }
+// }

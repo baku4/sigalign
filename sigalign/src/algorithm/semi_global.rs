@@ -147,96 +147,97 @@ pub fn semi_global_alignment_algorithm(
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+//TODO: to del
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    use crate::reference::TestReference;
+//     use crate::reference::TestReference;
 
-    fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
-        let mut n = 1;
-        loop {
-            let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
-            let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
-            let max_penalty = (
-                (
-                    (
-                        (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
-                    )
-                    + 4 * cutoff.maximum_penalty_per_scale
-                ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
-            ).ceil() - 2_f32;
+//     fn max_kmer_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
+//         let mut n = 1;
+//         loop {
+//             let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
+//             let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
+//             let max_penalty = (
+//                 (
+//                     (
+//                         (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+//                     )
+//                     + 4 * cutoff.maximum_penalty_per_scale
+//                 ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
+//             ).ceil() - 2_f32;
 
-            let kmer = max_penalty.min(upper_bound);
-            #[cfg(test)]
-            println!("#n {}\nu {}\nl {}\nmp {}\nk {}", n, upper_bound, lower_bound, max_penalty, kmer);
+//             let kmer = max_penalty.min(upper_bound);
+//             #[cfg(test)]
+//             println!("#n {}\nu {}\nl {}\nmp {}\nk {}", n, upper_bound, lower_bound, max_penalty, kmer);
 
-            if kmer >= lower_bound {
-                return kmer as usize
-            }
-            n += 1;
-        }
-    }
+//             if kmer >= lower_bound {
+//                 return kmer as usize
+//             }
+//             n += 1;
+//         }
+//     }
 
-    #[test]
-    fn print_results_of_semi_global_alignment() {
-        let mut test_reference = TestReference::new();
+//     #[test]
+//     fn print_results_of_semi_global_alignment() {
+//         let mut test_reference = TestReference::new();
 
-        let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
+//         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
 
-        let penalties = Penalties {x: 4, o: 5, e: 2};
-        let cutoff = Cutoff {
-            minimum_aligned_length: 30,
-            maximum_penalty_per_scale: 3_000
-        };
-        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
+//         let penalties = Penalties {x: 4, o: 5, e: 2};
+//         let cutoff = Cutoff {
+//             minimum_aligned_length: 30,
+//             maximum_penalty_per_scale: 3_000
+//         };
+//         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 
-        let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+//         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
-        let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
+//         let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
 
-        let alignment_results = semi_global_alignment_algorithm(
-            &mut test_reference,
-            query,
-            kmer,
-            &penalties,
-            &cutoff,
-            &min_penalty_for_pattern,
-            &mut left_wave_front,
-        );
+//         let alignment_results = semi_global_alignment_algorithm(
+//             &mut test_reference,
+//             query,
+//             kmer,
+//             &penalties,
+//             &cutoff,
+//             &min_penalty_for_pattern,
+//             &mut left_wave_front,
+//         );
 
-        println!("alignment_results:\n{:#?}", alignment_results);
-    }
+//         println!("alignment_results:\n{:#?}", alignment_results);
+//     }
 
-    #[test]
-    fn print_json_results_of_semi_global_alignment() {
-        let mut test_reference = TestReference::new();
+//     #[test]
+//     fn print_json_results_of_semi_global_alignment() {
+//         let mut test_reference = TestReference::new();
 
-        let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
+//         let query = b"CGGATGCTCCGGCAGCCGACAGAACGAAGGATCTTGCCGGAAAATGAACTTCTGTTATTATTTTTGTGATTCA";
 
-        let penalties = Penalties {x: 4, o: 5, e: 2};
-        let cutoff = Cutoff {
-            minimum_aligned_length: 30,
-            maximum_penalty_per_scale: 3_000
-        };
-        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
+//         let penalties = Penalties {x: 4, o: 5, e: 2};
+//         let cutoff = Cutoff {
+//             minimum_aligned_length: 30,
+//             maximum_penalty_per_scale: 3_000
+//         };
+//         let min_penalty_for_pattern = MinPenaltyForPattern { odd: 4, even: 3 };
 
-        let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+//         let kmer = max_kmer_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
 
-        let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
+//         let mut left_wave_front = WaveFront::new_allocated(&penalties, 100);
 
-        let alignment_results = semi_global_alignment_algorithm(
-            &mut test_reference,
-            query,
-            kmer,
-            &penalties,
-            &cutoff,
-            &min_penalty_for_pattern,
-            &mut left_wave_front,
-        );
+//         let alignment_results = semi_global_alignment_algorithm(
+//             &mut test_reference,
+//             query,
+//             kmer,
+//             &penalties,
+//             &cutoff,
+//             &min_penalty_for_pattern,
+//             &mut left_wave_front,
+//         );
 
-        let json = serde_json::to_string(&alignment_results).unwrap();
+//         let json = serde_json::to_string(&alignment_results).unwrap();
 
-        println!("{}", json);
-    }
-}
+//         println!("{}", json);
+//     }
+// }
