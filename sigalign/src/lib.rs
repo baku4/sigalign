@@ -50,9 +50,9 @@ type SizedUint = u32;
 #[doc(hidden)]
 // Core
 mod core;
-#[doc(hidden)]
-mod reference;
-mod aligner;
+// Reference
+pub mod reference;
+pub mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
 #[doc(hidden)]

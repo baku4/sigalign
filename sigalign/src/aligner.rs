@@ -33,6 +33,16 @@ pub enum Aligner {
     Local(LocalAligner),
 }
 
+impl Aligner {
+    pub(crate) fn new_semi_global(alignment_condition: AlignmentCondition) -> Self {
+        Self::SemiGlobal(SemiGlobalAligner::new(alignment_condition))
+    }
+    pub(crate) fn new_local(alignment_condition: AlignmentCondition) -> Self {
+        Self::Local(LocalAligner::new(alignment_condition))
+    }
+    
+}
+
 // TODO: to move
 // Features for aligner
 // mod query_check;

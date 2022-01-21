@@ -21,4 +21,7 @@ impl<S> ReferenceInterface for Reference<S> where
     fn sequence_of_record(&self, record_index: usize) -> Sequence {
         self.sequence_provider.sequence_of_record(record_index)
     }
+    fn searchable(&self, pattern: Sequence) -> bool {
+        self.sequence_type.searchable(pattern)
+    }
 }

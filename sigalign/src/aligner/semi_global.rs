@@ -15,24 +15,7 @@ pub struct SemiGlobalAligner {
 }
 
 impl AlignerInterface for SemiGlobalAligner {
-    fn new(
-        mismatch_penalty: usize,
-        gap_open_penalty: usize,
-        gap_extend_penalty: usize,
-        minimum_aligned_length: usize,
-        maximum_penalty_per_length: f32,
-    ) -> Result<Self> {
-        let condition = AlignmentCondition::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
-        let wave_front_cache = SingleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
-
-        Ok(
-            Self {
-                condition,
-                wave_front_cache,
-            }
-        )
-    }
-    fn alignment(&mut self, reference: &mut dyn ReferenceInterface, query: Sequence) -> ReferenceAlignmentResult {
+    fn alignment(&mut self, reference: &dyn ReferenceInterface, query: Sequence) -> ReferenceAlignmentResult {
         let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
             query,
@@ -44,5 +27,15 @@ impl AlignerInterface for SemiGlobalAligner {
         );
 
         self.condition.result_of_uncompressed_penalty(reference_alignment_result)
+    }
+}
+
+impl SemiGlobalAligner {
+    pub(crate) fn new(condition: AlignmentCondition) -> Self {
+        let wave_front_cache = SingleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
+        Self {
+            condition,
+            wave_front_cache,
+        }
     }
 }

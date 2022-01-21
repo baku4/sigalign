@@ -76,7 +76,7 @@ use structure::{
 
 // Features for Reference
 mod feature;
-use feature::Serializable;
+pub use feature::Serializable;
 
 // Basic sequence providers implementations
 mod sequence_provider;
@@ -88,6 +88,22 @@ pub struct Reference<S: SequenceProvider> {
     pattern_finder: PatternFinder,
     target_record_index: Vec<u32>,
     sequence_provider: S,
+}
+
+impl<S: SequenceProvider> Reference<S> {
+    pub(crate) fn new(
+        sequence_type: SequenceType,
+        pattern_finder: PatternFinder,
+        target_record_index: Vec<u32>,
+        sequence_provider: S
+    ) -> Self {
+        Self {
+            sequence_type,
+            pattern_finder,
+            target_record_index,
+            sequence_provider,
+        }
+    }
 }
 
 /// Provide sequence information

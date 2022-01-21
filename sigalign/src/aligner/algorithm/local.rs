@@ -38,7 +38,7 @@ struct Anchor {
 
 
 pub fn local_alignment_algorithm(
-    reference: &mut dyn ReferenceInterface,
+    reference: &dyn ReferenceInterface,
     query: Sequence,
     pattern_size: usize,
     penalties: &Penalties,

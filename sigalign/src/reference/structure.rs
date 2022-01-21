@@ -27,10 +27,10 @@ mod tests {
 
     #[test]
     fn save_and_load_sequence_type_and_pattern_finder() {
-        let sequence_type_1 = SequenceType::NucleotideOnly;
-        let sequence_type_2 = SequenceType::NucleotideWithNoise(100);
-        let sequence_type_3 = SequenceType::AminoAcidOnly;
-        let sequence_type_4 = SequenceType::AminoAcidWithNoise(100);
+        let sequence_type_1 = SequenceType::new_nucleotide_only();
+        let sequence_type_2 = SequenceType::new_nucleotide_with_noise(100);
+        let sequence_type_3 = SequenceType::new_amino_acid_only();
+        let sequence_type_4 = SequenceType::new_amino_acid_with_noise(100);
 
         let pattern_finder_1 = pattern_finder_for_test(200);
         let pattern_finder_2 = pattern_finder_for_test(500);
