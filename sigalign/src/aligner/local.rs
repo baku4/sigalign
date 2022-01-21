@@ -10,8 +10,8 @@ use super::{AlignmentCondition, WaveFrontCache, DoubleWaveFrontCache};
 use super::local_alignment_algorithm;
 
 pub struct LocalAligner {
-    condition: AlignmentCondition,
-    wave_front_cache: DoubleWaveFrontCache,
+    pub condition: AlignmentCondition,
+    pub wave_front_cache: DoubleWaveFrontCache,
 }
 
 impl AlignerInterface for LocalAligner {

@@ -23,6 +23,7 @@ pub trait WaveFrontCache {
     fn upper_spacious_query_length(query_length: usize) -> usize {
         ((query_length / Self::QUERY_LEN_INC_UNIT) + 1) * Self::QUERY_LEN_INC_UNIT
     }
+    fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff);
 }
 
 const FIRST_ALLOCATED_QUERY_LENGTH: usize = 100;
@@ -41,12 +42,16 @@ impl WaveFrontCache for SingleWaveFrontCache {
     fn have_enough_space(&self, query_length: usize) -> bool {
         self.allocated_query_length < query_length
     }
+    // TODO: Not to make new wavefront
     fn allocate_more_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
         let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
         let allocated_wave_front = WaveFront::new_with_query_length(query_length, penalties, cutoff);
         
         self.allocated_query_length = to_allocate_query_length;
         self.wave_front = allocated_wave_front;
+    }
+    fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff) {
+        *self = Self::new(penalties, cutoff);
     }
 }
 impl fmt::Debug for SingleWaveFrontCache {
@@ -75,6 +80,7 @@ impl WaveFrontCache for DoubleWaveFrontCache {
     fn have_enough_space(&self, query_length: usize) -> bool {
         self.allocated_query_length < query_length
     }
+    // TODO: Not to make new wavefront
     fn allocate_more_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
         let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
         let allocated_wave_front = WaveFront::new_with_query_length(query_length, penalties, cutoff);
@@ -82,6 +88,9 @@ impl WaveFrontCache for DoubleWaveFrontCache {
         self.allocated_query_length = to_allocate_query_length;
         self.primary_wave_front = allocated_wave_front.clone();
         self.secondary_wave_front = allocated_wave_front;
+    }
+    fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff) {
+        *self = Self::new(penalties, cutoff);
     }
 }
 impl fmt::Debug for DoubleWaveFrontCache {

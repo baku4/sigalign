@@ -6,6 +6,8 @@ use super::{
     ReferenceInterface, PatternLocation,
     AlignerInterface,
 };
+use super::{Serializable};
+
 use std::io::{Write, Read};
 
 mod pattern_finder;
@@ -14,10 +16,6 @@ mod sequence_type;
 pub use pattern_finder::{PatternFinder, JoinedSequence};
 pub use sequence_type::SequenceType;
 
-pub trait SizeAwareEncoding {
-    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write;
-    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
-}
 
 #[cfg(test)]
 mod tests {

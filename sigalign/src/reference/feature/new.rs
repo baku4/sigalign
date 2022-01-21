@@ -8,5 +8,5 @@ use super::{
 };
 use super::{
     Reference, SequenceProvider,
-    SequenceType, PatternFinder, SizeAwareEncoding,
+    SequenceType, PatternFinder, Serializable,
 };

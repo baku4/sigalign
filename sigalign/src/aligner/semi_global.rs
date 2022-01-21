@@ -10,8 +10,8 @@ use super::{AlignmentCondition, WaveFrontCache, SingleWaveFrontCache};
 use super::semi_global_alignment_algorithm;
 
 pub struct SemiGlobalAligner {
-    condition: AlignmentCondition,
-    wave_front_cache: SingleWaveFrontCache,
+    pub condition: AlignmentCondition,
+    pub wave_front_cache: SingleWaveFrontCache,
 }
 
 impl AlignerInterface for SemiGlobalAligner {

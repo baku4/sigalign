@@ -7,7 +7,7 @@ use super::{
     AlignerInterface,
 };
 
-use super::SizeAwareEncoding;
+use super::Serializable;
 use std::io::{Write, Read};
 use std::ops::ControlFlow;
 
@@ -85,7 +85,7 @@ impl SequenceType {
 
 const SEQUENCE_TYPE_SIZE: usize = 2;
 
-impl SizeAwareEncoding for SequenceType {
+impl Serializable for SequenceType {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
     {

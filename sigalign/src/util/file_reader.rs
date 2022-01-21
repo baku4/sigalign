@@ -37,6 +37,7 @@ impl<'a> FastaReader<&'a [u8]> {
     }
 }
 
+// TODO: Change fasta reader to new one
 impl<R: Read> Iterator for FastaReader<R> {
     type Item = (String, Vec<u8>);
 

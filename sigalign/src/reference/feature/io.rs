@@ -8,12 +8,17 @@ use super::{
 };
 use super::{
     Reference, SequenceProvider,
-    SequenceType, PatternFinder, SizeAwareEncoding,
+    SequenceType, PatternFinder,
 };
 
 use std::io::{Write, Read};
 use crate::{EndianType, SizedUint};
 use byteorder::{ReadBytesExt, WriteBytesExt};
+
+pub trait Serializable {
+    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write;
+    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
+}
 
 impl<S> Reference<S> where
     S: SequenceProvider + Serializable,
@@ -50,9 +55,4 @@ impl<S> Reference<S> where
             sequence_provider,   
         })
     }
-}
-
-pub trait Serializable {
-    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write;
-    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
 }

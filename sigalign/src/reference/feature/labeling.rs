@@ -7,14 +7,10 @@ use super::{
     AlignerInterface,
 };
 use super::{
-    Reference, SequenceProvider, JoinedSequence,
-    SequenceType, PatternFinder,
-};
-use super::{
-    Serializable,
-    LabelProvider,
+    Reference, SequenceProvider,
+    SequenceType, PatternFinder, Serializable,
 };
 
-// Basic Sequence Provider
-mod in_memory;
-mod indexed_fasta;
+pub trait LabelProvider {
+    fn label_of_record(&self, record_index: usize) -> &str;
+}

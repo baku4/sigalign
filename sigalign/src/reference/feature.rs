@@ -8,12 +8,14 @@ use super::{
 };
 use super::{
     Reference, SequenceProvider,
-    SequenceType, PatternFinder, SizeAwareEncoding,
+    SequenceType, PatternFinder,
 };
 
 mod new;
 mod reference_interface;
 mod set_search_range;
 mod io;
+mod labeling;
 
 pub use io::Serializable;
+pub use labeling::LabelProvider;

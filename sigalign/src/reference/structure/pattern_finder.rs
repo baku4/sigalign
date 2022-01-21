@@ -9,7 +9,7 @@ use super::{
 
 use super::{
     SequenceType,
-    SizeAwareEncoding,
+    Serializable,
 };
 
 mod fm_index;
@@ -144,7 +144,7 @@ impl Debug for PatternFinder {
 use crate::{EndianType};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-impl SizeAwareEncoding for PatternFinder {
+impl Serializable for PatternFinder {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
     {

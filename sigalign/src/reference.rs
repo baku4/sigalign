@@ -71,12 +71,15 @@ use std::collections::HashMap;
 // Common data structures for Reference
 mod structure;
 use structure::{
-    SequenceType, JoinedSequence, PatternFinder, SizeAwareEncoding
+    SequenceType, JoinedSequence, PatternFinder,
 };
 
 // Features for Reference
 mod feature;
-pub use feature::Serializable;
+pub use feature::{
+    Serializable,
+    LabelProvider,
+};
 
 // Basic sequence providers implementations
 mod sequence_provider;

@@ -8,6 +8,8 @@ use super::{
     Aligner,
 };
 
+mod clean_cache;
+
 impl Aligner {
     pub fn alignment_unchecked(
         &mut self,
