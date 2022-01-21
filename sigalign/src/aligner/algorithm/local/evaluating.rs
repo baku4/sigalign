@@ -1,6 +1,6 @@
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -9,7 +9,7 @@ use super::{Extension, AlignmentHashSet};
 use super::{Anchors, Anchor};
 
 impl Anchors {
-    pub fn get_alignment_results_for_local(self) -> Vec<AlignmentResult> {
+    pub fn get_alignment_results_for_local(self) -> Vec<AnchorAlignmentResult> {
         let mut alignment_hash_set = AlignmentHashSet::new();
 
         self.anchors.into_iter().filter_map(|anchor| {
@@ -22,7 +22,7 @@ impl Anchor {
     fn get_optional_alignment_result_of_anchor_for_local(
         self,
         alignment_hash_set: &mut AlignmentHashSet,
-    ) -> Option<AlignmentResult> {
+    ) -> Option<AnchorAlignmentResult> {
         if self.dropped {
             return None;
         }
@@ -55,7 +55,7 @@ impl Anchor {
             let alignment_operations = AlignmentOperation::concatenate_operations(left_operations, right_operations, self.size as u32);
 
             Some(
-                AlignmentResult {
+                AnchorAlignmentResult {
                     penalty,
                     length,
                     position: alignment_position,

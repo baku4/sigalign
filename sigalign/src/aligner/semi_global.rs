@@ -1,7 +1,7 @@
 use super::{Result, error_msg};
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -15,7 +15,7 @@ pub struct SemiGlobalAligner {
 }
 
 impl AlignerInterface for SemiGlobalAligner {
-    fn alignment(&mut self, reference: &dyn ReferenceInterface, query: Sequence) -> ReferenceAlignmentResult {
+    fn alignment(&mut self, reference: &dyn ReferenceInterface, query: Sequence) -> AlignmentResult {
         let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
             query,

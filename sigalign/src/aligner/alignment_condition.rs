@@ -1,7 +1,7 @@
 use super::{Result, error_msg};
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -77,7 +77,7 @@ impl AlignmentCondition {
             n += 1;
         }
     }
-    pub fn result_of_uncompressed_penalty(&self, mut reference_alignment_result: ReferenceAlignmentResult) -> ReferenceAlignmentResult {
+    pub fn result_of_uncompressed_penalty(&self, mut reference_alignment_result: AlignmentResult) -> AlignmentResult {
         if self.gcd_for_compression != 1 {
             reference_alignment_result.multiply_gcd(self.gcd_for_compression);
         }
@@ -105,7 +105,7 @@ impl AlignmentCondition {
     }
 }
 
-impl ReferenceAlignmentResult {
+impl AlignmentResult {
     fn multiply_gcd(&mut self, gcd: usize) {
         self.0.iter_mut().for_each(|record_alignment_result| {
             record_alignment_result.result.iter_mut().for_each(|alignment_result| {
@@ -115,7 +115,7 @@ impl ReferenceAlignmentResult {
     }
 }
 
-impl AlignmentResult {
+impl AnchorAlignmentResult {
     fn multiply_gcd(&mut self, gcd: usize) {
         self.penalty *= gcd;
     }

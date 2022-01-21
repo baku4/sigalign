@@ -1,6 +1,6 @@
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -119,10 +119,10 @@ pub fn semi_global_alignment_algorithm(
     cutoff: &Cutoff,
     min_penalty_for_pattern: &MinPenaltyForPattern,
     wave_front: &mut WaveFront,
-) -> ReferenceAlignmentResult {
+) -> AlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-    ReferenceAlignmentResult(
+    AlignmentResult(
         anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
             let record_sequence = reference.sequence_of_record(record_index);
             let record_length = record_sequence.len();

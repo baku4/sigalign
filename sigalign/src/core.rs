@@ -5,7 +5,7 @@ mod conditions;
 mod result;
 
 pub use conditions::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-pub use result::{ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType};
+pub use result::{AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase};
 
 // Sequence
 pub type Sequence<'a> = &'a [u8];
@@ -30,5 +30,5 @@ pub trait AlignerInterface {
         &mut self,
         reference: &dyn ReferenceInterface,
         query: Sequence,
-    ) -> ReferenceAlignmentResult;
+    ) -> AlignmentResult;
 }

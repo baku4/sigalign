@@ -1,5 +1,5 @@
 use super::{PRECISION_SCALE, Cutoff, OwnedOperations};
-use super::{AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType, AlignmentHashSet};
+use super::{AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase, AlignmentHashSet};
 use super::{Anchors, Anchor, ReferableExtension, ExtensionReference, OperationReference, StartPointOfOperations, CheckPoints, CheckPoint};
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
@@ -11,7 +11,7 @@ impl Anchors {
     pub fn get_alignment_results_for_semi_global(
         self,
         cutoff: &Cutoff,
-    ) -> Vec<AlignmentResult> {
+    ) -> Vec<AnchorAlignmentResult> {
         let valid_unique_anchors = self.get_valid_unique_anchors(cutoff);
 
         let mut alignment_hash_set = AlignmentHashSet::new();
@@ -27,7 +27,7 @@ impl Anchors {
         &self,
         anchor_index: usize,
         alignment_hash_set: &mut AlignmentHashSet,
-    ) -> Option<AlignmentResult> {
+    ) -> Option<AnchorAlignmentResult> {
         let anchor = &self.anchors[anchor_index];
 
         let left_referable_extension = anchor.left_referable_extension.as_ref().unwrap();
@@ -91,7 +91,7 @@ impl Anchors {
             let alignment_operations = AlignmentOperation::concatenate_operations(left_operations, right_operations, anchor.size as u32);
     
             Some(
-                AlignmentResult {
+                AnchorAlignmentResult {
                     penalty,
                     length,
                     position: alignment_position,

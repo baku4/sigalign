@@ -1,7 +1,7 @@
 use super::{
     Result, error_msg,
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,

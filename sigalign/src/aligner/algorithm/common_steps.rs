@@ -1,6 +1,6 @@
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -62,7 +62,7 @@ impl AlignmentOperation {
         // Add anchor sized Match operation to left operations
         if let Some(
             AlignmentOperation {
-                alignment_type: AlignmentType::Match,
+                case: AlignmentCase::Match,
                 count,
             }
         ) = left_operations.last_mut() {
@@ -70,7 +70,7 @@ impl AlignmentOperation {
         } else {
             left_operations.push(
                 AlignmentOperation {
-                    alignment_type: AlignmentType::Match,
+                    case: AlignmentCase::Match,
                     count: anchor_size,
                 }
             );
@@ -79,12 +79,12 @@ impl AlignmentOperation {
         // Add right operations to left operations
         if let Some(
             AlignmentOperation {
-                alignment_type: AlignmentType::Match,
+                case: AlignmentCase::Match,
                 count: right_count,
             }
         ) = right_operations.first_mut() {
             if let AlignmentOperation {
-                alignment_type: AlignmentType::Match,
+                case: AlignmentCase::Match,
                 count: left_count,
             } = left_operations.last_mut().unwrap() {
                 *left_count += *right_count;

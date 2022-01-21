@@ -2,18 +2,18 @@
 use crate::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ReferenceAlignmentResult(
+pub struct AlignmentResult(
     pub Vec<RecordAlignmentResult>
 );
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RecordAlignmentResult {
     pub index: usize,
-    pub result: Vec<AlignmentResult>,
+    pub result: Vec<AnchorAlignmentResult>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AlignmentResult {
+pub struct AnchorAlignmentResult {
     pub penalty: usize,
     pub length: usize,
     pub position: AlignmentPosition,
@@ -28,12 +28,12 @@ pub struct AlignmentPosition {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct AlignmentOperation {
-    pub alignment_type: AlignmentType,
+    pub case: AlignmentCase,
     pub count: u32,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
-pub enum AlignmentType {
+pub enum AlignmentCase {
     Match,
     Subst,
     Insertion,

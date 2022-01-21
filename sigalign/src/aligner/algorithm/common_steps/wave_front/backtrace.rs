@@ -1,6 +1,6 @@
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -67,14 +67,14 @@ impl WaveFront {
                             if match_count == 0 {
                                 if let Some(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Subst,
+                                        case: AlignmentCase::Subst,
                                         count: last_fr
                                     }) = operations.last_mut() {
                                     *last_fr += 1;
                                 } else {
                                     operations.push(
                                         AlignmentOperation {
-                                            alignment_type: AlignmentType::Subst,
+                                            case: AlignmentCase::Subst,
                                             count: 1
                                         }
                                     );
@@ -82,13 +82,13 @@ impl WaveFront {
                             } else {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Match,
+                                        case: AlignmentCase::Match,
                                         count: match_count
                                     }
                                 );
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Subst,
+                                        case: AlignmentCase::Subst,
                                         count: 1
                                     }
                                 );
@@ -114,7 +114,7 @@ impl WaveFront {
                             if match_count != 0 {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Match,
+                                        case: AlignmentCase::Match,
                                         count: match_count
                                     }
                                 );
@@ -140,7 +140,7 @@ impl WaveFront {
                             if match_count != 0 {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Match,
+                                        case: AlignmentCase::Match,
                                         count: match_count
                                     }
                                 );
@@ -152,7 +152,7 @@ impl WaveFront {
                             if fr != 0 {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Match,
+                                        case: AlignmentCase::Match,
                                         count: fr as u32,
                                     }
                                 );
@@ -190,14 +190,14 @@ impl WaveFront {
                             // (7) Add operation
                             if let Some(
                                 AlignmentOperation {
-                                    alignment_type: AlignmentType::Insertion,
+                                    case: AlignmentCase::Insertion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Insertion,
+                                        case: AlignmentCase::Insertion,
                                         count: 1,
                                     }
                                 )
@@ -221,14 +221,14 @@ impl WaveFront {
                             // (7) Add operation
                             if let Some(
                                 AlignmentOperation {
-                                    alignment_type: AlignmentType::Insertion,
+                                    case: AlignmentCase::Insertion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Insertion,
+                                        case: AlignmentCase::Insertion,
                                         count: 1,
                                     }
                                 )
@@ -257,14 +257,14 @@ impl WaveFront {
                             // (7) Add operation
                             if let Some(
                                 AlignmentOperation {
-                                    alignment_type: AlignmentType::Deletion,
+                                    case: AlignmentCase::Deletion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Deletion,
+                                        case: AlignmentCase::Deletion,
                                         count: 1,
                                     }
                                 )
@@ -288,14 +288,14 @@ impl WaveFront {
                             // (7) Add operation
                             if let Some(
                                 AlignmentOperation {
-                                    alignment_type: AlignmentType::Deletion,
+                                    case: AlignmentCase::Deletion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
                                     AlignmentOperation {
-                                        alignment_type: AlignmentType::Deletion,
+                                        case: AlignmentCase::Deletion,
                                         count: 1,
                                     }
                                 )

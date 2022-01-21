@@ -1,6 +1,6 @@
 use super::{PRECISION_SCALE, Cutoff, Penalties};
 use super::{Sequence};
-use super::{AlignmentOperation, AlignmentType};
+use super::{AlignmentOperation, AlignmentCase};
 use super::{Anchors, Anchor, ReferableExtension, ExtensionReference, OperationReference, StartPointOfOperations, CheckPoints, CheckPoint};
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
@@ -119,9 +119,9 @@ impl Anchors {
         let mut insertion_count = 0;
         let mut deletion_count = 0;
 
-        for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
+        for (operation_index, AlignmentOperation { case: alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
             match alignment_type {
-                AlignmentType::Match => {
+                AlignmentCase::Match => {
                     let mut to_delete_traverse_candidates = Vec::new();
 
                     for traverse_candidate_index in 0..traverse_candidates.len() {
@@ -194,17 +194,17 @@ impl Anchors {
 
                     accumulated_length += count;
                 },
-                AlignmentType::Subst => {
+                AlignmentCase::Subst => {
                     accumulated_penalty += penalties.x * count as usize;
                     accumulated_length += count;
                 },
-                AlignmentType::Insertion => {
+                AlignmentCase::Insertion => {
                     accumulated_penalty += penalties.o;
                     accumulated_penalty += penalties.e * count as usize;
                     accumulated_length += count;
                     insertion_count += count;
                 },
-                AlignmentType::Deletion => {
+                AlignmentCase::Deletion => {
                     accumulated_penalty += penalties.o;
                     accumulated_penalty += penalties.e * count as usize;
                     accumulated_length += count;
@@ -241,9 +241,9 @@ impl Anchors {
         let mut insertion_count = 0;
         let mut deletion_count = 0;
 
-        for (operation_index, AlignmentOperation { alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
+        for (operation_index, AlignmentOperation { case: alignment_type, count }) in original_operations.into_iter().enumerate().rev() {
             match alignment_type {
-                AlignmentType::Match => {
+                AlignmentCase::Match => {
                     let mut to_delete_traverse_candidates = Vec::new();
 
                     for traverse_candidate_index in 0..traverse_candidates.len() {
@@ -316,17 +316,17 @@ impl Anchors {
 
                     accumulated_length += count;
                 },
-                AlignmentType::Subst => {
+                AlignmentCase::Subst => {
                     accumulated_penalty += penalties.x * count as usize;
                     accumulated_length += count;
                 },
-                AlignmentType::Insertion => {
+                AlignmentCase::Insertion => {
                     accumulated_penalty += penalties.o;
                     accumulated_penalty += penalties.e * count as usize;
                     accumulated_length += count;
                     insertion_count += count;
                 },
-                AlignmentType::Deletion => {
+                AlignmentCase::Deletion => {
                     accumulated_penalty += penalties.o;
                     accumulated_penalty += penalties.e * count as usize;
                     accumulated_length += count;

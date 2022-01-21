@@ -1,7 +1,7 @@
 use super::{
     Result, error_msg,
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	ReferenceAlignmentResult, RecordAlignmentResult, AlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentType,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
     AlignerInterface,
@@ -13,7 +13,7 @@ impl Aligner {
         &mut self,
         reference: &dyn ReferenceInterface,
         query: Sequence,
-    ) -> ReferenceAlignmentResult {
+    ) -> AlignmentResult {
         match self {
             Self::SemiGlobal(aligner) => aligner.alignment(reference, query),
             Self::Local(aligner) => aligner.alignment(reference, query),
@@ -23,7 +23,7 @@ impl Aligner {
         &mut self,
         reference: &dyn ReferenceInterface,
         query: Sequence,
-    ) -> Result<ReferenceAlignmentResult> {
+    ) -> Result<AlignmentResult> {
         if !reference.searchable(query) {
             error_msg!("Query contains unsearchable character")
         }
