@@ -6,20 +6,32 @@ use crate::core::{
     ReferenceInterface, PatternLocation,
     AlignerInterface,
 };
-use crate::util::FastaReader;
-use crate::algorithm::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
+
+// Core algorithms
+mod algorithm;
+use algorithm::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
 
 // Common data structures for aligner
-mod alignment_condition;
+//  - Cache for alignment extension
 mod wave_front_cache;
-use alignment_condition::AlignmentCondition;
 use wave_front_cache::{WaveFrontCache, SingleWaveFrontCache, DoubleWaveFrontCache};
+//  - Alignment condition
+mod alignment_condition;
+use alignment_condition::AlignmentCondition;
 
 // Aligner implementations
 mod semi_global;
 mod local;
 pub use semi_global::SemiGlobalAligner;
 pub use local::LocalAligner;
+
+// Features
+mod feature;
+
+pub enum Aligner {
+    SemiGlobal(SemiGlobalAligner),
+    Local(LocalAligner),
+}
 
 // TODO: to move
 // Features for aligner

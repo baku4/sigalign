@@ -76,6 +76,7 @@ use structure::{
 
 // Features for Reference
 mod feature;
+use feature::Serializable;
 
 // Basic sequence providers implementations
 mod sequence_provider;

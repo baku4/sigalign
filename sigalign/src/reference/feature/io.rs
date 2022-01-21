@@ -18,7 +18,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 impl<S> Reference<S> where
     S: SequenceProvider + Serializable,
 {
-    fn save_to<W>(&self, mut writer: W) -> Result<()> where
+    pub fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
     {
         let target_record_index_size = self.target_record_index.len() as u32;
@@ -32,7 +32,7 @@ impl<S> Reference<S> where
         self.sequence_provider.save_to(&mut writer)?;
         Ok(())
     }
-    fn load_from<R>(mut reader: R) -> Result<Self> where
+    pub fn load_from<R>(mut reader: R) -> Result<Self> where
         R: Read,
         Self: Sized,
     {

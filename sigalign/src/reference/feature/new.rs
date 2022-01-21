@@ -11,9 +11,20 @@ use super::{
     SequenceType, PatternFinder, SizeAwareEncoding,
 };
 
-mod new;
-mod reference_interface;
-mod set_search_range;
-mod io;
-
-pub use io::Serializable;
+impl<S> Reference<S> where
+    S: SequenceProvider,
+{
+    pub(crate) fn new(
+        sequence_type: SequenceType,
+        pattern_finder: PatternFinder,
+        target_record_index: Vec<u32>,
+        sequence_provider: S
+    ) -> Self {
+        Self {
+            sequence_type,
+            pattern_finder,
+            target_record_index,
+            sequence_provider,
+        }
+    }
+}

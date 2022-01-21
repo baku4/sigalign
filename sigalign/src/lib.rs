@@ -51,10 +51,8 @@ type SizedUint = u32;
 // Core
 mod core;
 #[doc(hidden)]
-// Algorithm
-mod algorithm;
-pub mod reference;
-pub mod aligner;
+mod reference;
+mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
 #[doc(hidden)]

@@ -21,7 +21,7 @@ impl<S> Reference<S> where
             None => error_msg!("Record index cannot be empty")
         };
         if (self.sequence_provider.total_record_count() as u32) < *last_record_index {
-            error_msg!("")
+            error_msg!("Record index is out of bound")
         } else {
             self.set_search_range_unchecked(target_record_index);
             Ok(())
