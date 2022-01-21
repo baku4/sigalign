@@ -9,6 +9,7 @@ use super::{
 
 use super::{
     SequenceType,
+    SizeAwareEncoding,
 };
 
 mod fm_index;
@@ -18,6 +19,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::{Write, Read};
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct PatternFinder {
     lt_fm_index: LtFmIndex,
     record_boundary_positions: Vec<u64>,
@@ -63,7 +65,7 @@ impl PatternFinder {
             record_boundary_positions: joined_sequence.record_boundary_positions,
         })
     }
-    pub fn locate_in_record_search_range(&self, pattern: Sequence, target_record_index: &[usize]) -> Vec<PatternLocation> {
+    pub fn locate_in_record_search_range(&self, pattern: Sequence, target_record_index: &[u32]) -> Vec<PatternLocation> {
         let sorted_locations = self.sorted_locations_of_pattern(pattern);
 
         let mut positions_by_record: HashMap<usize, Vec<usize>> = HashMap::new();
@@ -86,7 +88,7 @@ impl PatternFinder {
     
             while left < right {
                 mid = left + size / 2;
-                index = target_record_index[mid];
+                index = target_record_index[mid] as usize;
                 
                 let start = self.record_boundary_positions[index];
                 let end = self.record_boundary_positions[index + 1];
@@ -128,16 +130,6 @@ impl PatternFinder {
         locations.sort();
         locations
     }
-
-    // IO
-    // fn save_to<W>(&self, writer: W) -> Result<()> where
-    //     W: Write,
-    // {
-        
-    // }
-    // fn read_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized {
-
-    // }
 }
 
 impl Debug for PatternFinder {
@@ -146,6 +138,52 @@ impl Debug for PatternFinder {
             .field("lt_fm_index", &self.lt_fm_index)
             .field("record_boundary_positions_length", &self.record_boundary_positions.len())
             .finish()
+    }
+}
+
+use crate::{EndianType};
+use byteorder::{ReadBytesExt, WriteBytesExt};
+
+impl SizeAwareEncoding for PatternFinder {
+    fn save_to<W>(&self, mut writer: W) -> Result<()> where
+        W: Write,
+    {
+        // Write size information
+        let lt_fm_index_inner_bytes_size = self.lt_fm_index.inner_bytes_size() as u64;
+        let record_boundary_positions_size = self.record_boundary_positions.len() as u64;
+
+        writer.write_u64::<EndianType>(lt_fm_index_inner_bytes_size)?;
+        writer.write_u64::<EndianType>(record_boundary_positions_size)?;
+        
+        // Write lt-fm-index
+        self.lt_fm_index.save_to(&mut writer)?;
+        // Write record_boundary_positions
+        self.record_boundary_positions.iter().for_each(|position| {
+            writer.write_u64::<EndianType>(*position);
+        });
+        Ok(())
+    }
+    fn load_from<R>(mut reader: R) -> Result<Self> where
+        R: Read,
+        Self: Sized,
+    {
+        // Read size information
+        let lt_fm_index_size = reader.read_u64::<EndianType>()? as usize;
+        let record_boundary_positions_size = reader.read_u64::<EndianType>()? as usize;
+        
+        // Read lt-fm-index
+        let mut lt_fm_index_vector: Vec<u8> = vec![0; lt_fm_index_size];
+        reader.read_exact(&mut lt_fm_index_vector)?;
+        let lt_fm_index = LtFmIndex::new_from_bytes_checked(lt_fm_index_vector)?;
+
+        // Read record boundary position
+        let mut record_boundary_positions: Vec<u64> = vec![0; record_boundary_positions_size];
+        reader.read_u64_into::<EndianType>(&mut record_boundary_positions)?;
+
+        Ok(Self {
+            lt_fm_index,
+            record_boundary_positions,
+        })
     }
 }
 

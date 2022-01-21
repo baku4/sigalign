@@ -7,10 +7,10 @@ use super::{
     AlignerInterface,
 };
 
-use super::FixedSizeEncoding;
+use super::SizeAwareEncoding;
 use std::io::{Write, Read};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SequenceType {
     NucleotideOnly,
     NucleotideWithNoise(u8),
@@ -33,10 +33,10 @@ impl SequenceType {
     }
 }
 
-impl FixedSizeEncoding for SequenceType {
-    const BYTE_SIZE_OF_STRUCTURE: usize = 2;
+const SEQUENCE_TYPE_SIZE: usize = 2;
 
-    fn write_to<W>(&self, mut writer: W) -> Result<()> where
+impl SizeAwareEncoding for SequenceType {
+    fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
     {
         let result = match self {
@@ -53,17 +53,17 @@ impl FixedSizeEncoding for SequenceType {
                 writer.write(&[3, *noise])
             },
         }?;
-        if result == Self::BYTE_SIZE_OF_STRUCTURE {
+        if result == SEQUENCE_TYPE_SIZE {
             Ok(())
         } else {
             error_msg!("Failed to write reference sequence type")
         }
     }
-    fn read_from<R>(mut reader: R) -> Result<Self> where
+    fn load_from<R>(mut reader: R) -> Result<Self> where
         R: Read,
         Self: Sized,
     {
-        let mut buffer = [0; Self::BYTE_SIZE_OF_STRUCTURE];
+        let mut buffer = [0; SEQUENCE_TYPE_SIZE];
 
         reader.read_exact(&mut buffer)?;
 

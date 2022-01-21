@@ -70,7 +70,9 @@ use std::collections::HashMap;
 
 // Common data structures for Reference
 mod structure;
-use structure::{SequenceType, JoinedSequence, PatternFinder};
+use structure::{
+    SequenceType, JoinedSequence, PatternFinder, SizeAwareEncoding
+};
 
 // Features for Reference
 mod feature;
@@ -83,7 +85,7 @@ mod sequence_provider;
 pub struct Reference<S: SequenceProvider> {
     sequence_type: SequenceType,
     pattern_finder: PatternFinder,
-    target_record_index: Vec<usize>,
+    target_record_index: Vec<u32>,
     sequence_provider: S,
 }
 

@@ -38,6 +38,15 @@ This library is currently under development. Some key features are missing, and 
 use anyhow::{Result, bail as error_msg};
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
 
+#[cfg(target_endian = "little")]
+type EndianType = byteorder::LittleEndian;
+#[cfg(target_endian = "big")]
+type EndianType = byteorder::BigEndian;
+#[cfg(target_pointer_width = "64")]
+type SizedUint = u64;
+#[cfg(target_pointer_width = "32")]
+type SizedUint = u32;
+
 #[doc(hidden)]
 // Core
 mod core;

@@ -8,7 +8,7 @@ use super::{
 };
 use super::{
     Reference, SequenceProvider,
-    SequenceType, PatternFinder,
+    SequenceType, PatternFinder, SizeAwareEncoding,
 };
 
 mod reference_interface;
