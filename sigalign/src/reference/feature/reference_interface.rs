@@ -3,8 +3,7 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    SliceReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
     Reference, SequenceProvider,
@@ -12,14 +11,19 @@ use super::{
 };
 
 // Reference interface implementation
-impl<S> SliceReferenceInterface for Reference<S> where
+impl<S> ReferenceInterface for Reference<S> where
     S: SequenceProvider,
 {
+    type Buffer = S::Buffer;
+
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {
         self.pattern_finder.locate_in_record_search_range(pattern, &self.target_record_index)
     }
-    fn sequence_of_record(&self, record_index: usize) -> Sequence {
-        self.sequence_provider.sequence_of_record(record_index)
+    fn get_buffer(&self) -> Self::Buffer {
+        self.sequence_provider.get_buffer()
+    }
+    fn sequence_of_record(&self, record_index: usize, buffer: &mut Self::Buffer) {
+        self.sequence_provider.sequence_of_record(record_index, buffer)
     }
     fn searchable(&self, pattern: Sequence) -> bool {
         self.sequence_type.searchable(pattern)

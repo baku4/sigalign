@@ -69,7 +69,7 @@ impl InMemoryProvider {
 }
 
 // Sequence Provider
-impl<'a> SequenceProvider<'a> for InMemoryProvider {
+impl SequenceProvider for InMemoryProvider {
     fn total_record_count(&self) -> usize {
         self.record_count
     }

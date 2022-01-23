@@ -71,7 +71,7 @@ impl IndexedFastaProvider {
     }
 }
 
-impl<'a> SequenceProvider<'a> for IndexedFastaProvider {
+impl SequenceProvider for IndexedFastaProvider {
     fn total_record_count(&self) -> usize {
         if self.use_reverse_complement {
             self.total_record_count * 2
@@ -79,7 +79,7 @@ impl<'a> SequenceProvider<'a> for IndexedFastaProvider {
             self.total_record_count
         }
     }
-    fn sequence_of_record(&'a self, record_index: usize, buffer: &'a mut Vec<u8>) -> &'a [u8] {
+    fn sequence_of_record(&self, record_index: usize, buffer: &mut Vec<u8>) -> Option<&[u8]> {
         if self.use_reverse_complement {
             let record_index_quot = record_index / 2;
             let record_index_rem = record_index % 2;
@@ -89,14 +89,11 @@ impl<'a> SequenceProvider<'a> for IndexedFastaProvider {
             if record_index_rem == 1 {
                 let reverse_complement_sequence = reverse_complement_of_nucleotide_sequence(buffer);
                 *buffer = reverse_complement_sequence;
-                buffer
-            } else {
-                buffer
             }
         } else {
             self.fill_buffer_sequence_from_fasta(record_index, buffer);
-            buffer
         }
+        None
     }
 }
 

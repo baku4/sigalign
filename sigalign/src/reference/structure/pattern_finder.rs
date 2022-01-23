@@ -4,7 +4,6 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    AlignerInterface,
 };
 
 use super::{

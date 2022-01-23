@@ -2,8 +2,8 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Reference, SequenceProvider,
 };
 use super::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
@@ -111,8 +111,8 @@ struct CheckPoint {
 // ALGORITHM
 
 
-pub fn semi_global_alignment_algorithm(
-    reference: &dyn ReferenceInterface,
+pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
+    reference: &Reference<S>,
     query: Sequence,
     pattern_size: usize,
     penalties: &Penalties,
@@ -121,14 +121,12 @@ pub fn semi_global_alignment_algorithm(
     wave_front: &mut WaveFront,
 ) -> AlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
-    let mut sequence_buffer = Vec::new();
+    let mut sequence_buffer = reference.get_buffer();
 
     AlignmentResult(
         anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            let record_sequence = match reference.sequence_of_record(record_index, &mut sequence_buffer) {
-                Some(v) => v,
-                None => &sequence_buffer,
-            };
+            reference.sequence_of_record(record_index, &mut sequence_buffer);
+            let record_sequence = sequence_buffer.request_sequence();
             let record_length = record_sequence.len();
 
             let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);

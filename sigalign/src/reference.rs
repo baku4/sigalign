@@ -61,8 +61,7 @@ use crate::core::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 use crate::{Deserialize, Serialize};
@@ -84,19 +83,19 @@ pub use feature::{
 
 // Sequence providers
 mod sequence_provider;
+pub use sequence_provider::SequenceProvider;
 
 // Alignment target Reference
 #[derive(Debug)]
-pub struct Reference<'a, S: SequenceProvider<'a>> {
+pub struct Reference<S: SequenceProvider> {
     sequence_type: SequenceType,
     pattern_finder: PatternFinder,
     target_record_index: Vec<u32>,
     sequence_provider: S,
-    _lifetime: PhantomData<&'a ()>,
 }
 
-impl<'a, S> Reference<'a, S> where
-    S: SequenceProvider<'a>
+impl<S> Reference<S> where
+    S: SequenceProvider
 {
     pub(crate) fn new(
         sequence_type: SequenceType,
@@ -109,33 +108,6 @@ impl<'a, S> Reference<'a, S> where
             pattern_finder,
             target_record_index,
             sequence_provider,
-            _lifetime: PhantomData,
         }
-    }
-}
-
-/// Provide sequence information
-pub trait SequenceProvider<'a> {
-    fn total_record_count(&self) -> usize;
-    fn sequence_of_record(&self, record_index: usize, buffer: &mut Vec<u8>) -> Option<&[u8]>;
-    fn get_joined_sequence(&'a self) -> JoinedSequence {
-        let total_record_count = self.total_record_count();
-        let mut record_boundary_positions = Vec::with_capacity(total_record_count + 1);
-        record_boundary_positions.push(0);
-        let mut accumulated_length = 0;
-
-        let bytes: Vec<u8> = (0..total_record_count).map(|record_index| {
-            let mut sequence_buffer = Vec::new();
-            let record_sequence = match self.sequence_of_record(record_index, &mut sequence_buffer) {
-                Some(v) => v.to_vec(),
-                None => sequence_buffer,
-            };
-            accumulated_length += record_sequence.len() as u64;
-            record_boundary_positions.push(accumulated_length);
-
-            record_sequence
-        }).flatten().collect();
-        
-        JoinedSequence::new(bytes, record_boundary_positions)
     }
 }

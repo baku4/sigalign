@@ -1,5 +1,5 @@
 use super::{PRECISION_SCALE, Cutoff, Penalties, MinPenaltyForPattern};
-use super::{ReferenceInterface, Sequence};
+use super::{ReferenceInterface, Sequence, Reference, SequenceProvider};
 use super::{Anchors, Anchor};
 
 mod preset;
@@ -9,8 +9,8 @@ use preset::AnchorsPreset;
 use std::collections::HashMap;
 
 impl Anchors {
-    pub fn create_preset_by_record(
-        reference: &dyn ReferenceInterface,
+    pub fn create_preset_by_record<S: SequenceProvider>(
+        reference: &Reference<S>,
         query: Sequence,
         pattern_size: usize,
     ) -> HashMap<usize, AnchorsPreset> {

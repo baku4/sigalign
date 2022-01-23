@@ -4,6 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
+    Reference, SequenceProvider,
     AlignerInterface,
 };
 use super::{AlignmentCondition, WaveFrontCache, DoubleWaveFrontCache};
@@ -12,11 +13,19 @@ use super::local_alignment_algorithm;
 pub struct LocalAligner {
     pub condition: AlignmentCondition,
     pub wave_front_cache: DoubleWaveFrontCache,
-    sequence_buffer: Vec<u8>,
 }
 
 impl AlignerInterface for LocalAligner {
-    fn alignment(&mut self, reference: &dyn ReferenceInterface, query: Sequence) -> AlignmentResult {
+    fn new(condition: AlignmentCondition) -> Self {
+        let wave_front_cache = DoubleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
+        Self {
+            condition,
+            wave_front_cache,
+        }
+    }
+    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where
+        S: SequenceProvider,
+    {
         let reference_alignment_result = local_alignment_algorithm(
             reference,
             query,
@@ -29,16 +38,5 @@ impl AlignerInterface for LocalAligner {
         );
 
         self.condition.result_of_uncompressed_penalty(reference_alignment_result)
-    }
-}
-
-impl LocalAligner {
-    pub(crate) fn new(condition: AlignmentCondition) -> Self {
-        let wave_front_cache = DoubleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
-        Self {
-            condition,
-            wave_front_cache,
-            sequence_buffer: Vec::new(),
-        }
     }
 }

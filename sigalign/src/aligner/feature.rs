@@ -4,16 +4,16 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    AlignerInterface,
-    Aligner,
+    Reference, SequenceProvider,
+    Aligner, AlignerInterface,
 };
 
 mod clean_cache;
 
 impl Aligner {
-    pub fn alignment_unchecked(
+    pub fn alignment_unchecked<S: SequenceProvider>(
         &mut self,
-        reference: &dyn ReferenceInterface,
+        reference: &Reference<S>,
         query: Sequence,
     ) -> AlignmentResult {
         match self {
@@ -21,9 +21,9 @@ impl Aligner {
             Self::Local(aligner) => aligner.alignment(reference, query),
         }
     }
-    pub fn alignment_checked(
+    pub fn alignment_checked<S: SequenceProvider>(
         &mut self,
-        reference: &dyn ReferenceInterface,
+        reference: &Reference<S>,
         query: Sequence,
     ) -> Result<AlignmentResult> {
         if !reference.searchable(query) {

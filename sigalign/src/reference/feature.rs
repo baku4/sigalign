@@ -3,8 +3,7 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
     Reference, SequenceProvider,
@@ -12,7 +11,7 @@ use super::{
 };
 
 mod new;
-// mod reference_interface;
+mod reference_interface;
 mod set_search_range;
 mod io;
 mod labeling;

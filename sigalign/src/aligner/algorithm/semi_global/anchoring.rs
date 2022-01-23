@@ -1,5 +1,5 @@
 use super::{PRECISION_SCALE, Cutoff, Penalties, MinPenaltyForPattern};
-use super::{ReferenceInterface, Sequence};
+use super::{ReferenceInterface, Sequence, Reference, SequenceProvider};
 use super::{Anchors, Anchor, Estimation, CheckPoints, CheckPoint};
 
 mod preset;
@@ -11,8 +11,8 @@ use std::collections::HashMap;
 const PATTERN_INDEX_GAP_FOR_CHECK_POINTS: usize = 3;
 
 impl Anchors {
-    pub fn create_preset_by_record(
-        reference: &dyn ReferenceInterface,
+    pub fn create_preset_by_record<S: SequenceProvider>(
+        reference: &Reference<S>,
         query: Sequence,
         pattern_size: usize,
     ) -> HashMap<usize, AnchorsPreset> {

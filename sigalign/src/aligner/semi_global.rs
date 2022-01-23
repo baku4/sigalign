@@ -4,6 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
+    Reference, SequenceProvider,
     AlignerInterface,
 };
 use super::{AlignmentCondition, WaveFrontCache, SingleWaveFrontCache};
@@ -15,7 +16,16 @@ pub struct SemiGlobalAligner {
 }
 
 impl AlignerInterface for SemiGlobalAligner {
-    fn alignment(&mut self, reference: &dyn ReferenceInterface, query: Sequence) -> AlignmentResult {
+    fn new(condition: AlignmentCondition) -> Self {
+        let wave_front_cache = SingleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
+        Self {
+            condition,
+            wave_front_cache,
+        }
+    }
+    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where
+        S: SequenceProvider,
+    {
         let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
             query,
@@ -27,15 +37,5 @@ impl AlignerInterface for SemiGlobalAligner {
         );
 
         self.condition.result_of_uncompressed_penalty(reference_alignment_result)
-    }
-}
-
-impl SemiGlobalAligner {
-    pub(crate) fn new(condition: AlignmentCondition) -> Self {
-        let wave_front_cache = SingleWaveFrontCache::new(&condition.penalties, &condition.cutoff);
-        Self {
-            condition,
-            wave_front_cache,
-        }
     }
 }

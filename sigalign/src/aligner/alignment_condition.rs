@@ -4,7 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    Reference, SequenceProvider,
 };
 use num::integer;
 

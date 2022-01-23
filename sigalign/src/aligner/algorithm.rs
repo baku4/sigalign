@@ -1,10 +1,10 @@
 // Alignment algorithms
-use crate::core::{
+use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Reference, SequenceProvider,
 };
 
 mod common_steps;

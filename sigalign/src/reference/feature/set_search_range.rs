@@ -4,15 +4,14 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    AlignerInterface,
 };
 use super::{
     Reference, SequenceProvider,
     SequenceType, PatternFinder,
 };
 
-impl<'a, S> Reference<'a, S> where
-    S: SequenceProvider<'a>,
+impl<S> Reference<S> where
+    S: SequenceProvider,
 {
     pub fn set_search_range(&mut self, mut target_record_index: Vec<u32>) -> Result<()> {
         target_record_index.sort();

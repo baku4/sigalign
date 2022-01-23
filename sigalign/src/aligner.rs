@@ -3,8 +3,10 @@ use crate::core::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+};
+use crate::reference::{
+    Reference, SequenceProvider,
 };
 
 // Core algorithms
@@ -18,6 +20,12 @@ use wave_front_cache::{WaveFrontCache, SingleWaveFrontCache, DoubleWaveFrontCach
 //  - Alignment condition
 mod alignment_condition;
 use alignment_condition::AlignmentCondition;
+
+// Aligner interface
+trait AlignerInterface {
+    fn new(condition: AlignmentCondition) -> Self where Self: Sized;
+    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where S: SequenceProvider;
+}
 
 // Aligner implementations
 mod semi_global;

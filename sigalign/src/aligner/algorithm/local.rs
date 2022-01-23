@@ -2,8 +2,8 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Reference, SequenceProvider,
 };
 use super::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
@@ -37,8 +37,8 @@ struct Anchor {
 // ALGORITHM
 
 
-pub fn local_alignment_algorithm(
-    reference: &dyn ReferenceInterface,
+pub fn local_alignment_algorithm<S: SequenceProvider>(
+    reference: &Reference<S>,
     query: Sequence,
     pattern_size: usize,
     penalties: &Penalties,
@@ -48,37 +48,31 @@ pub fn local_alignment_algorithm(
     right_wave_front: &mut WaveFront,
 ) -> AlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
+    let mut sequence_buffer = reference.get_buffer();
 
-    let mut record_alignment_results = Vec::with_capacity(anchors_preset_by_record.len());
-    let mut sequence_buffer = Vec::new();
-
-    for (record_index, anchors_preset) in anchors_preset_by_record {
-        let alignment_results = {
-            let record_sequence = match reference.sequence_of_record(record_index, &mut sequence_buffer) {
-                Some(v) => v,
-                None => &sequence_buffer,
-            };
+    AlignmentResult(
+        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
+            reference.sequence_of_record(record_index, &mut sequence_buffer);
+            let record_sequence = sequence_buffer.request_sequence();
             let record_length = record_sequence.len();
 
             let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
             anchors.extend(record_sequence, query, penalties, cutoff, left_wave_front, right_wave_front);
         
             let alignment_results = anchors.get_alignment_results_for_local();
-            alignment_results
-        };
-        
 
-        if alignment_results.len() != 0 {
-            record_alignment_results.push(
-                RecordAlignmentResult {
-                    index: record_index,
-                    result: alignment_results,
-                }
-            );
-        }
-    }
-
-    AlignmentResult(record_alignment_results)
+            if alignment_results.len() == 0 {
+                None
+            } else {
+                Some(
+                    RecordAlignmentResult {
+                        index: record_index,
+                        result: alignment_results,
+                    }
+                )
+            }
+        }).collect()
+    )
 }
 
 // TODO: to del
