@@ -40,7 +40,6 @@ impl Aligner {
     pub(crate) fn new_local(alignment_condition: AlignmentCondition) -> Self {
         Self::Local(LocalAligner::new(alignment_condition))
     }
-    
 }
 
 // TODO: to move

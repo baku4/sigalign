@@ -69,14 +69,14 @@ impl InMemoryProvider {
 }
 
 // Sequence Provider
-impl SequenceProvider for InMemoryProvider {
+impl<'a> SequenceProvider<'a> for InMemoryProvider {
     fn total_record_count(&self) -> usize {
         self.record_count
     }
-    fn sequence_of_record(&self, record_index: usize) -> &[u8] {
-        &self.combined_sequence[
+    fn sequence_of_record(&self, record_index: usize, buffer: &mut Vec<u8>) -> Option<&[u8]> {
+        Some(&self.combined_sequence[
             self.sequence_index[record_index]..self.sequence_index[record_index+1]
-        ]
+        ])
     }
     fn get_joined_sequence(&self) -> JoinedSequence {
         JoinedSequence::new(

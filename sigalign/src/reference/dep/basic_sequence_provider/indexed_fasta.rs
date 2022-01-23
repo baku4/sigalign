@@ -273,33 +273,7 @@ struct FastaIndex {
     // length_of_last_line: 8,
 }
 
-struct FastaBufReader {
-    buf_reader: BufReader<File>,
-    buffer: String,
-}
-impl FastaBufReader {
-    fn new<P: AsRef<Path> + std::fmt::Debug>(file_path: P) -> Result<Self> {
-        let file = File::open(file_path)?;
-        Ok(Self {
-            buf_reader: BufReader::new(file),
-            buffer: String::new(),
-        })
-    }
-}
 
-impl Iterator for FastaBufReader {
-    type Item = String;
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        self.buffer.clear();
-        self.buf_reader.read_line(&mut self.buffer).unwrap();
-        if self.buffer.len() == 0 {
-            None
-        } else {
-            Some(self.buffer.clone())
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

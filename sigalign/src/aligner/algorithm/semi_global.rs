@@ -121,10 +121,14 @@ pub fn semi_global_alignment_algorithm(
     wave_front: &mut WaveFront,
 ) -> AlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
+    let mut sequence_buffer = Vec::new();
 
     AlignmentResult(
         anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            let record_sequence = reference.sequence_of_record(record_index);
+            let record_sequence = match reference.sequence_of_record(record_index, &mut sequence_buffer) {
+                Some(v) => v,
+                None => &sequence_buffer,
+            };
             let record_length = record_sequence.len();
 
             let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, penalties, min_penalty_for_pattern);

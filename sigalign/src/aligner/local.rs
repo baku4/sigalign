@@ -12,6 +12,7 @@ use super::local_alignment_algorithm;
 pub struct LocalAligner {
     pub condition: AlignmentCondition,
     pub wave_front_cache: DoubleWaveFrontCache,
+    sequence_buffer: Vec<u8>,
 }
 
 impl AlignerInterface for LocalAligner {
@@ -37,6 +38,7 @@ impl LocalAligner {
         Self {
             condition,
             wave_front_cache,
+            sequence_buffer: Vec::new(),
         }
     }
 }

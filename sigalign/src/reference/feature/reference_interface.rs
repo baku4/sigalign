@@ -3,7 +3,7 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
+    SliceReferenceInterface, PatternLocation,
     AlignerInterface,
 };
 use super::{
@@ -12,7 +12,7 @@ use super::{
 };
 
 // Reference interface implementation
-impl<S> ReferenceInterface for Reference<S> where
+impl<S> SliceReferenceInterface for Reference<S> where
     S: SequenceProvider,
 {
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {

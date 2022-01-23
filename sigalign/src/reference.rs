@@ -67,6 +67,7 @@ use crate::core::{
 use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 use crate::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 // Common data structures for Reference
 mod structure;
@@ -81,19 +82,22 @@ pub use feature::{
     LabelProvider,
 };
 
-// Basic sequence providers implementations
+// Sequence providers
 mod sequence_provider;
 
 // Alignment target Reference
 #[derive(Debug)]
-pub struct Reference<S: SequenceProvider> {
+pub struct Reference<'a, S: SequenceProvider<'a>> {
     sequence_type: SequenceType,
     pattern_finder: PatternFinder,
     target_record_index: Vec<u32>,
     sequence_provider: S,
+    _lifetime: PhantomData<&'a ()>,
 }
 
-impl<S: SequenceProvider> Reference<S> {
+impl<'a, S> Reference<'a, S> where
+    S: SequenceProvider<'a>
+{
     pub(crate) fn new(
         sequence_type: SequenceType,
         pattern_finder: PatternFinder,
@@ -105,28 +109,31 @@ impl<S: SequenceProvider> Reference<S> {
             pattern_finder,
             target_record_index,
             sequence_provider,
+            _lifetime: PhantomData,
         }
     }
 }
 
 /// Provide sequence information
-pub trait SequenceProvider {
-    /// The number of records
+pub trait SequenceProvider<'a> {
     fn total_record_count(&self) -> usize;
-    /// Provide sequence stored in the index of record.
-    fn sequence_of_record(&self, record_index: usize) -> &[u8];
-    fn get_joined_sequence(&self) -> JoinedSequence {
+    fn sequence_of_record(&self, record_index: usize, buffer: &mut Vec<u8>) -> Option<&[u8]>;
+    fn get_joined_sequence(&'a self) -> JoinedSequence {
         let total_record_count = self.total_record_count();
         let mut record_boundary_positions = Vec::with_capacity(total_record_count + 1);
         record_boundary_positions.push(0);
         let mut accumulated_length = 0;
 
         let bytes: Vec<u8> = (0..total_record_count).map(|record_index| {
-            let record = self.sequence_of_record(record_index).to_vec();
-            accumulated_length += record.len() as u64;
+            let mut sequence_buffer = Vec::new();
+            let record_sequence = match self.sequence_of_record(record_index, &mut sequence_buffer) {
+                Some(v) => v.to_vec(),
+                None => sequence_buffer,
+            };
+            accumulated_length += record_sequence.len() as u64;
             record_boundary_positions.push(accumulated_length);
 
-            record
+            record_sequence
         }).flatten().collect();
         
         JoinedSequence::new(bytes, record_boundary_positions)

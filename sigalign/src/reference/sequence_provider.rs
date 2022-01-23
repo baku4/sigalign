@@ -15,6 +15,6 @@ use super::{
     LabelProvider,
 };
 
-// Basic Sequence Provider
+// Basic sequence providers implementations
 mod in_memory;
-mod indexed_fasta;
+// mod indexed_fasta;

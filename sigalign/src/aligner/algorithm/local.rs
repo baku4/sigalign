@@ -49,31 +49,37 @@ pub fn local_alignment_algorithm(
 ) -> AlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
 
-    AlignmentResult(
-        anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            let record_sequence = reference.sequence_of_record(record_index);
+    let mut record_alignment_results = Vec::with_capacity(anchors_preset_by_record.len());
+    let mut sequence_buffer = Vec::new();
+
+    for (record_index, anchors_preset) in anchors_preset_by_record {
+        let alignment_results = {
+            let record_sequence = match reference.sequence_of_record(record_index, &mut sequence_buffer) {
+                Some(v) => v,
+                None => &sequence_buffer,
+            };
             let record_length = record_sequence.len();
 
             let mut anchors = Anchors::from_preset(anchors_preset, record_length, query, pattern_size, cutoff, min_penalty_for_pattern);
-
             anchors.extend(record_sequence, query, penalties, cutoff, left_wave_front, right_wave_front);
         
             let alignment_results = anchors.get_alignment_results_for_local();
+            alignment_results
+        };
+        
 
-            if alignment_results.len() == 0 {
-                None
-            } else {
-                Some(
-                    RecordAlignmentResult {
-                        index: record_index,
-                        result: alignment_results,
-                    }
-                )
-            }
-        }).collect()
-    )
+        if alignment_results.len() != 0 {
+            record_alignment_results.push(
+                RecordAlignmentResult {
+                    index: record_index,
+                    result: alignment_results,
+                }
+            );
+        }
+    }
+
+    AlignmentResult(record_alignment_results)
 }
-
 
 // TODO: to del
 // #[cfg(test)]
