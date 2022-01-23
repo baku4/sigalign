@@ -87,15 +87,16 @@ pub use sequence_provider::SequenceProvider;
 
 // Alignment target Reference
 #[derive(Debug)]
-pub struct Reference<S: SequenceProvider> {
+pub struct Reference<'a, S: SequenceProvider<'a>> {
     sequence_type: SequenceType,
     pattern_finder: PatternFinder,
     target_record_index: Vec<u32>,
     sequence_provider: S,
+    _lifetime: PhantomData<&'a ()>,
 }
 
-impl<S> Reference<S> where
-    S: SequenceProvider
+impl<'a, S> Reference<'a, S> where
+    S: SequenceProvider<'a>,
 {
     pub(crate) fn new(
         sequence_type: SequenceType,
@@ -108,6 +109,7 @@ impl<S> Reference<S> where
             pattern_finder,
             target_record_index,
             sequence_provider,
+            _lifetime: PhantomData,
         }
     }
 }

@@ -11,16 +11,16 @@ pub use result::{AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, 
 pub type Sequence<'a> = &'a [u8];
 
 // Reference
-pub trait ReferenceInterface {
+pub trait ReferenceInterface<'a> {
     type Buffer: SequenceBuffer;
 
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
-    fn get_buffer(&self) -> Self::Buffer;
-    fn sequence_of_record(&self, record_index: usize, buffer: &mut Self::Buffer);
+    fn get_buffer(&'a self) -> Self::Buffer;
+    fn fill_sequence_buffer(&'a self, record_index: usize, buffer: &'a mut Self::Buffer);
     fn searchable(&self, query: Sequence) -> bool;
 }
 pub trait SequenceBuffer {
-    fn request_sequence(&mut self) -> &[u8];
+    fn request_sequence(&self) -> &[u8];
 }
 
 #[derive(Debug)]

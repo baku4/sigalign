@@ -3,8 +3,7 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
-    AlignerInterface,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
     Reference, SequenceProvider, JoinedSequence,
@@ -18,16 +17,19 @@ use crate::util::FastaReader;
 use serde::{Serialize, Deserialize};
 use bincode::{serialize_into, deserialize_from};
 
+use std::marker::PhantomData;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct InMemoryProvider {
+struct InMemoryProvider<'a> {
     record_count: usize,
     combined_sequence: Vec<u8>,
     sequence_index: Vec<usize>,
     combined_label: String,
     label_index: Vec<usize>,
+    _lifetime: PhantomData<&'a ()>,
 }
 
-impl InMemoryProvider {
+impl<'a> InMemoryProvider<'a> {
     pub fn new() -> Self {
         Self {
             record_count: 0,
@@ -35,6 +37,7 @@ impl InMemoryProvider {
             sequence_index: vec![0],
             combined_label: String::new(),
             label_index: vec![0],
+            _lifetime: PhantomData,
         }
     }
     pub fn add_record(
@@ -68,15 +71,34 @@ impl InMemoryProvider {
     }
 }
 
+struct InMemoryBuffer<'a> {
+    sequence_slice: &'a [u8],
+}
+
+impl<'a> SequenceBuffer for InMemoryBuffer<'a> {
+    fn request_sequence(&self) -> &[u8] {
+        self.sequence_slice
+    }
+}
+
 // Sequence Provider
-impl SequenceProvider for InMemoryProvider {
+impl<'a> SequenceProvider<'a> for InMemoryProvider<'a> {
+    type Buffer = InMemoryBuffer<'a>;
+
     fn total_record_count(&self) -> usize {
         self.record_count
     }
-    fn sequence_of_record(&self, record_index: usize, buffer: &mut Vec<u8>) -> Option<&[u8]> {
-        Some(&self.combined_sequence[
-            self.sequence_index[record_index]..self.sequence_index[record_index+1]
-        ])
+    fn get_buffer(&'a self) -> Self::Buffer {
+        InMemoryBuffer {
+            sequence_slice: &self.combined_sequence
+        }
+    }
+    fn fill_sequence_buffer(&'a self, record_index: usize, buffer: &'a mut Self::Buffer) {
+        buffer.sequence_slice = {
+            &self.combined_sequence[
+                self.sequence_index[record_index]..self.sequence_index[record_index+1]
+            ]
+        };
     }
     fn get_joined_sequence(&self) -> JoinedSequence {
         JoinedSequence::new(
@@ -86,28 +108,28 @@ impl SequenceProvider for InMemoryProvider {
     }
 }
 
-// Label Provider
-impl LabelProvider for InMemoryProvider {
-    fn label_of_record(&self, record_index: usize) -> &str {
-        &self.combined_label[
-            self.label_index[record_index]..self.label_index[record_index+1]
-        ]
-    }
-}
+// // Label Provider
+// impl LabelProvider for InMemoryProvider {
+//     fn label_of_record(&self, record_index: usize) -> &str {
+//         &self.combined_label[
+//             self.label_index[record_index]..self.label_index[record_index+1]
+//         ]
+//     }
+// }
 
-// Serializable
-impl Serializable for InMemoryProvider {
-    fn save_to<W>(&self, writer: W) -> Result<()> where
-        W: std::io::Write
-    {
-        serialize_into(writer, self)?;
-        Ok(())
-    }
-    fn load_from<R>(reader: R) -> Result<Self> where
-        R: std::io::Read,
-        Self: Sized,
-    {
-        let value: Self = deserialize_from(reader)?;
-        Ok(value)
-    }
-}
+// // Serializable
+// impl Serializable for InMemoryProvider {
+//     fn save_to<W>(&self, writer: W) -> Result<()> where
+//         W: std::io::Write
+//     {
+//         serialize_into(writer, self)?;
+//         Ok(())
+//     }
+//     fn load_from<R>(reader: R) -> Result<Self> where
+//         R: std::io::Read,
+//         Self: Sized,
+//     {
+//         let value: Self = deserialize_from(reader)?;
+//         Ok(value)
+//     }
+// }

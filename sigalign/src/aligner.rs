@@ -24,7 +24,7 @@ use alignment_condition::AlignmentCondition;
 // Aligner interface
 trait AlignerInterface {
     fn new(condition: AlignmentCondition) -> Self where Self: Sized;
-    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where S: SequenceProvider;
+    fn alignment<'a, S>(&mut self, reference: &Reference<'a, S>, query: Sequence) -> AlignmentResult where S: SequenceProvider<'a>;
 }
 
 // Aligner implementations

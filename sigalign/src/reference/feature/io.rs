@@ -19,8 +19,8 @@ pub trait Serializable {
     fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
 }
 
-impl<S> Reference<S> where
-    S: SequenceProvider + Serializable,
+impl<'a, S> Reference<'a, S> where
+    S: SequenceProvider<'a> + Serializable,
 {
     pub fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
@@ -52,6 +52,7 @@ impl<S> Reference<S> where
             pattern_finder,
             target_record_index,
             sequence_provider,
+            _lifetime: std::marker::PhantomData,
         })
     }
 }

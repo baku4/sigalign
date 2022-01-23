@@ -111,8 +111,8 @@ struct CheckPoint {
 // ALGORITHM
 
 
-pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
-    reference: &Reference<S>,
+pub fn semi_global_alignment_algorithm<'a, S: SequenceProvider<'a>>(
+    reference: &Reference<'a, S>,
     query: Sequence,
     pattern_size: usize,
     penalties: &Penalties,
@@ -125,7 +125,7 @@ pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
 
     AlignmentResult(
         anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            reference.sequence_of_record(record_index, &mut sequence_buffer);
+            reference.fill_sequence_buffer(record_index, &mut sequence_buffer);
             let record_sequence = sequence_buffer.request_sequence();
             let record_length = record_sequence.len();
 

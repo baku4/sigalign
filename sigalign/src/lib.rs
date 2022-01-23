@@ -52,7 +52,7 @@ type SizedUint = u32;
 mod core;
 // Reference
 pub mod reference;
-pub mod aligner;
+// pub mod aligner;
 #[doc(hidden)]
 pub mod deprecated;
 #[doc(hidden)]
@@ -61,7 +61,7 @@ pub mod util;
 // mod tests;
 
 pub use reference::Reference;
-pub use aligner::{SemiGlobalAligner, LocalAligner};
+// pub use aligner::{SemiGlobalAligner, LocalAligner};
 
 mod example {
     // #[test]

@@ -10,8 +10,8 @@ use super::{
     SequenceType, PatternFinder,
 };
 
-impl<S> Reference<S> where
-    S: SequenceProvider,
+impl<'a, S> Reference<'a, S> where
+    S: SequenceProvider<'a>,
 {
     pub fn set_search_range(&mut self, mut target_record_index: Vec<u32>) -> Result<()> {
         target_record_index.sort();
