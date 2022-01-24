@@ -1,0 +1,96 @@
+use crate::deprecated::database::sequence_provider;
+
+use super::{
+    Result, error_msg,
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+    Sequence,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Reference, SequenceProvider, SequenceType, JoinedSequence, PatternFinder,
+};
+
+// About options
+mod sequence_type_option;
+mod pattern_finder_option;
+
+pub struct ReferenceBuilder {
+    sequence_type_option: SequenceTypeOption, // `None` to infer
+    pattern_finder_option: PatternFinderOption,
+}
+
+struct SequenceTypeOption {
+    sequence_type: Option<SequenceType>, // `None` to infer
+}
+
+impl Default for SequenceTypeOption {
+    fn default() -> Self {
+        Self {
+            sequence_type: None,
+        }
+    }
+}
+
+struct PatternFinderOption {
+    sa_sampling_ratio: u64,
+    kmer_size: Option<usize>, // `None` to recommend
+    use_bwt_128: bool,
+}
+
+impl Default for PatternFinderOption {
+    fn default() -> Self {
+        Self {
+            sa_sampling_ratio: 2,
+            kmer_size: None,
+            use_bwt_128: false,
+        }
+    }
+}
+
+impl ReferenceBuilder {
+    pub fn new() -> Self {
+        Self {
+            sequence_type_option: SequenceTypeOption::default(),
+            pattern_finder_option: PatternFinderOption::default(),
+        }
+    }
+    pub fn build<S: SequenceProvider>(self, sequence_provider: S) -> Result<Reference<S>> {
+        let joined_sequence = sequence_provider.get_joined_sequence();
+        
+        let sequence_type = match self.sequence_type_option.sequence_type {
+            Some(sequence_type) => sequence_type,
+            None => {
+                SequenceType::infer_sequence_type_from_sequence(&joined_sequence.bytes)?
+            },
+        };
+
+        let (is_nucleotide, with_noise) = match sequence_type {
+            SequenceType::NucleotideOnly(_) => (true, false),
+            SequenceType::NucleotideWithNoise(_) => (true, true),
+            SequenceType::AminoAcidOnly(_) => (false, false),
+            SequenceType::AminoAcidWithNoise(_) => (false, true),
+        };
+
+        let kmer_size_for_lookup_table = match self.pattern_finder_option.kmer_size {
+            Some(v) => v,
+            None => PatternFinderOption::default_kmer_size_for_count_array(&sequence_type),
+        };
+
+        let pattern_finder = PatternFinder::new(
+            joined_sequence,
+            is_nucleotide,
+            with_noise,
+            self.pattern_finder_option.use_bwt_128,
+            self.pattern_finder_option.sa_sampling_ratio,
+            kmer_size_for_lookup_table,
+        )?;
+
+        let target_record_index: Vec<u32> = (0..sequence_provider.total_record_count()).map(|v| v as u32).collect();
+
+        Ok(Reference::new(
+            sequence_type,
+            pattern_finder,
+            target_record_index,
+            sequence_provider,
+        ))
+    }
+}

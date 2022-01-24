@@ -70,7 +70,7 @@ use std::marker::PhantomData;
 
 // Common data structures for Reference
 mod structure;
-use structure::{
+pub use structure::{
     SequenceType, JoinedSequence, PatternFinder,
 };
 

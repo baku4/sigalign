@@ -191,7 +191,7 @@ impl Serializable for PatternFinder {
 //   - The "accumulated_lengths" means the accumulated sequence lengths from 0 to the sum of the lengths of all sequences.
 //   - For examples, if there are three records with "ATT", "CC", "GGGG", the "joined_sequence" is "ATTCCGGGG" and the "accumulated_lengths" is [0, 3, 5, 9].
 pub struct JoinedSequence {
-    bytes: Vec<u8>,
+    pub bytes: Vec<u8>,
     record_boundary_positions: Vec<u64>,
 }
 
