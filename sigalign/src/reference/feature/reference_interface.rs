@@ -11,18 +11,18 @@ use super::{
 };
 
 // Reference interface implementation
-impl<'a, S> ReferenceInterface<'a> for Reference<'a, S> where
-    S: SequenceProvider<'a>,
+impl<S> ReferenceInterface for Reference<S> where
+    S: SequenceProvider,
 {
     type Buffer = S::Buffer;
 
     fn locate(&self, pattern: Sequence) -> Vec<PatternLocation> {
         self.pattern_finder.locate_in_record_search_range(pattern, &self.target_record_index)
     }
-    fn get_buffer(&'a self) -> Self::Buffer {
+    fn get_buffer(&self) -> Self::Buffer {
         self.sequence_provider.get_buffer()
     }
-    fn fill_sequence_buffer(&'a self, record_index: usize, buffer: &'a mut Self::Buffer) {
+    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
         self.sequence_provider.fill_sequence_buffer(record_index, buffer)
     }
     fn searchable(&self, pattern: Sequence) -> bool {

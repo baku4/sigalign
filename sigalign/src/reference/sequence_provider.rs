@@ -16,17 +16,17 @@ use super::{
 
 // Basic sequence providers implementations
 mod in_memory;
-// mod indexed_fasta;
+mod indexed_fasta;
 
 
 /// Provide sequence information
-pub trait SequenceProvider<'a> {
+pub trait SequenceProvider {
     type Buffer: SequenceBuffer;
 
     fn total_record_count(&self) -> usize;
-    fn get_buffer(&'a self) -> Self::Buffer;
-    fn fill_sequence_buffer(&'a self, record_index: usize, buffer: &'a mut Self::Buffer);
-    fn get_joined_sequence(&'a self) -> JoinedSequence {
+    fn get_buffer(&self) -> Self::Buffer;
+    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer);
+    fn get_joined_sequence(&self) -> JoinedSequence {
         let total_record_count = self.total_record_count();
         let mut record_boundary_positions = Vec::with_capacity(total_record_count + 1);
         record_boundary_positions.push(0);

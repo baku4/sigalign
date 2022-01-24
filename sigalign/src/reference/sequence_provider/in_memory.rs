@@ -20,16 +20,15 @@ use bincode::{serialize_into, deserialize_from};
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct InMemoryProvider<'a> {
+struct InMemoryProvider {
     record_count: usize,
     combined_sequence: Vec<u8>,
     sequence_index: Vec<usize>,
     combined_label: String,
     label_index: Vec<usize>,
-    _lifetime: PhantomData<&'a ()>,
 }
 
-impl<'a> InMemoryProvider<'a> {
+impl InMemoryProvider {
     pub fn new() -> Self {
         Self {
             record_count: 0,
@@ -37,7 +36,6 @@ impl<'a> InMemoryProvider<'a> {
             sequence_index: vec![0],
             combined_label: String::new(),
             label_index: vec![0],
-            _lifetime: PhantomData,
         }
     }
     pub fn add_record(
@@ -71,34 +69,33 @@ impl<'a> InMemoryProvider<'a> {
     }
 }
 
-struct InMemoryBuffer<'a> {
-    sequence_slice: &'a [u8],
+struct InMemoryBuffer {
+    pointer: *const u8,
+    len: usize,
 }
 
-impl<'a> SequenceBuffer for InMemoryBuffer<'a> {
+impl SequenceBuffer for InMemoryBuffer {
     fn request_sequence(&self) -> &[u8] {
-        self.sequence_slice
+        unsafe { std::slice::from_raw_parts(self.pointer, self.len) }
     }
 }
 
 // Sequence Provider
-impl<'a> SequenceProvider<'a> for InMemoryProvider<'a> {
-    type Buffer = InMemoryBuffer<'a>;
+impl SequenceProvider for InMemoryProvider {
+    type Buffer = InMemoryBuffer;
 
     fn total_record_count(&self) -> usize {
         self.record_count
     }
-    fn get_buffer(&'a self) -> Self::Buffer {
+    fn get_buffer(&self) -> Self::Buffer {
         InMemoryBuffer {
-            sequence_slice: &self.combined_sequence
+            pointer: self.combined_sequence.as_ptr(),
+            len: 0,
         }
     }
-    fn fill_sequence_buffer(&'a self, record_index: usize, buffer: &'a mut Self::Buffer) {
-        buffer.sequence_slice = {
-            &self.combined_sequence[
-                self.sequence_index[record_index]..self.sequence_index[record_index+1]
-            ]
-        };
+    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
+        buffer.pointer = self.combined_sequence.as_ptr();
+        buffer.len = self.sequence_index[record_index+1] - self.sequence_index[record_index];
     }
     fn get_joined_sequence(&self) -> JoinedSequence {
         JoinedSequence::new(
