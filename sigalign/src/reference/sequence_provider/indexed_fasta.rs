@@ -27,8 +27,6 @@ struct IndexedFastaProvider {
     use_reverse_complement: bool,
     fasta_indices: Vec<FastaIndex>,
     fasta_file_path: String,
-    // BufReader
-    // fasta_buf_reader: BufReader<File>,
 }
 
 impl IndexedFastaProvider {

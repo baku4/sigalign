@@ -37,8 +37,8 @@ struct Anchor {
 // ALGORITHM
 
 
-pub fn local_alignment_algorithm<'a, S: SequenceProvider<'a>>(
-    reference: &'a Reference<'a, S>,
+pub fn local_alignment_algorithm<S: SequenceProvider>(
+    reference: &Reference<S>,
     query: Sequence,
     pattern_size: usize,
     penalties: &Penalties,

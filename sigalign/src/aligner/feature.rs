@@ -11,9 +11,9 @@ use super::{
 mod clean_cache;
 
 impl Aligner {
-    pub fn alignment_unchecked<'a, S: SequenceProvider<'a>>(
+    pub fn alignment_unchecked<S: SequenceProvider>(
         &mut self,
-        reference: &Reference<'a, S>,
+        reference: &Reference<S>,
         query: Sequence,
     ) -> AlignmentResult {
         match self {
@@ -21,9 +21,9 @@ impl Aligner {
             Self::Local(aligner) => aligner.alignment(reference, query),
         }
     }
-    pub fn alignment_checked<'a, S: SequenceProvider<'a>>(
+    pub fn alignment_checked<S: SequenceProvider>(
         &mut self,
-        reference: &Reference<'a, S>,
+        reference: &Reference<S>,
         query: Sequence,
     ) -> Result<AlignmentResult> {
         if !reference.searchable(query) {

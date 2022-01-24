@@ -23,8 +23,8 @@ impl AlignerInterface for LocalAligner {
             wave_front_cache,
         }
     }
-    fn alignment<'a, S>(&mut self, reference: &Reference<'a, S>, query: Sequence) -> AlignmentResult where
-        S: SequenceProvider<'a>,
+    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where
+        S: SequenceProvider,
     {
         let reference_alignment_result = local_alignment_algorithm(
             reference,

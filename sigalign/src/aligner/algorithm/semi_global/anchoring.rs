@@ -11,8 +11,8 @@ use std::collections::HashMap;
 const PATTERN_INDEX_GAP_FOR_CHECK_POINTS: usize = 3;
 
 impl Anchors {
-    pub fn create_preset_by_record<'a, S: SequenceProvider<'a>>(
-        reference: &Reference<'a, S>,
+    pub fn create_preset_by_record<S: SequenceProvider>(
+        reference: &Reference<S>,
         query: Sequence,
         pattern_size: usize,
     ) -> HashMap<usize, AnchorsPreset> {
