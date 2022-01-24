@@ -10,6 +10,7 @@ use super::{
 use super::{AlignmentCondition, WaveFrontCache, SingleWaveFrontCache};
 use super::semi_global_alignment_algorithm;
 
+#[derive(Clone)]
 pub struct SemiGlobalAligner {
     pub condition: AlignmentCondition,
     pub wave_front_cache: SingleWaveFrontCache,

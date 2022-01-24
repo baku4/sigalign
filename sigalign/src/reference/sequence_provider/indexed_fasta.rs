@@ -20,7 +20,10 @@ use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::path::Path;
+use serde::{Serialize, Deserialize};
+use bincode::{serialize_into, deserialize_from};
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct IndexedFastaProvider {
     total_record_count: usize,
     line_terminator_size: usize,
@@ -111,6 +114,37 @@ impl SequenceProvider for IndexedFastaProvider {
     }
 }
 
+// Label Provider
+impl LabelProvider for IndexedFastaProvider {
+    fn label_of_record(&self, record_index: usize) -> String {
+        if self.use_reverse_complement {
+            let record_index_quot = record_index / 2;
+            let fasta_index = &self.fasta_indices[record_index_quot];
+            fasta_index.label.clone()
+        } else {
+            let fasta_index = &self.fasta_indices[record_index];
+            fasta_index.label.clone()
+        }
+    }
+}
+
+// Serializable
+impl Serializable for IndexedFastaProvider {
+    fn save_to<W>(&self, writer: W) -> Result<()> where
+        W: std::io::Write
+    {
+        serialize_into(writer, self)?;
+        Ok(())
+    }
+    fn load_from<R>(reader: R) -> Result<Self> where
+        R: std::io::Read,
+        Self: Sized,
+    {
+        let value: Self = deserialize_from(reader)?;
+        Ok(value)
+    }
+}
+
 struct IndexedFastaBuffer {
     fasta_buf_reader: BufReader<File>,
     sequence_buffer: Vec<u8>,
@@ -122,6 +156,7 @@ impl SequenceBuffer for IndexedFastaBuffer {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct FastaIndex {
     label: String,
     sequence_offset: u64,

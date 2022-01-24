@@ -27,8 +27,9 @@ pub trait WaveFrontCache {
 
 const FIRST_ALLOCATED_QUERY_LENGTH: usize = 100;
 
+#[derive(Clone)]
 pub struct SingleWaveFrontCache {
-    allocated_query_length: usize,
+    pub allocated_query_length: usize,
     pub wave_front: WaveFront,
 }
 impl WaveFrontCache for SingleWaveFrontCache {
@@ -61,8 +62,9 @@ impl fmt::Debug for SingleWaveFrontCache {
     }
 }
 
+#[derive(Clone)]
 pub struct DoubleWaveFrontCache {
-    allocated_query_length: usize,
+    pub allocated_query_length: usize,
     pub primary_wave_front: WaveFront,
     pub secondary_wave_front: WaveFront,
 }

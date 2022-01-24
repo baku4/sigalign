@@ -6,19 +6,19 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    Aligner,
+    Aligner, Algorithms,
 };
 
 impl Aligner {
     pub fn clean_extension_cache(&mut self) {
-        match self {
-            Self::SemiGlobal(aligner) => {
+        match &mut self.algorithms {
+            Algorithms::SemiGlobal(aligner) => {
                 aligner.wave_front_cache.clean_cache(
                     &aligner.condition.penalties,
                     &aligner.condition.cutoff,
                 );
             },
-            Self::Local(aligner) => {
+            Algorithms::Local(aligner) => {
                 aligner.wave_front_cache.clean_cache(
                     &aligner.condition.penalties,
                     &aligner.condition.cutoff,

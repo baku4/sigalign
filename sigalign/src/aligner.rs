@@ -19,7 +19,7 @@ mod wave_front_cache;
 use wave_front_cache::{WaveFrontCache, SingleWaveFrontCache, DoubleWaveFrontCache};
 //  - Alignment condition
 mod alignment_condition;
-use alignment_condition::AlignmentCondition;
+pub use alignment_condition::AlignmentCondition;
 
 // Aligner interface
 trait AlignerInterface {
@@ -36,17 +36,41 @@ pub use local::LocalAligner;
 // Features
 mod feature;
 
-pub enum Aligner {
+#[derive(Clone)]
+pub struct Aligner {
+    algorithms: Algorithms,
+}
+
+#[derive(Clone)]
+pub enum Algorithms {
     SemiGlobal(SemiGlobalAligner),
     Local(LocalAligner),
 }
 
 impl Aligner {
-    pub(crate) fn new_semi_global(alignment_condition: AlignmentCondition) -> Self {
-        Self::SemiGlobal(SemiGlobalAligner::new(alignment_condition))
+    pub fn new_semi_global(
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        maximum_penalty_per_length: f32,
+    ) -> Result<Self> {
+        let alignment_condition = AlignmentCondition::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
+        Ok(Self {
+            algorithms: Algorithms::SemiGlobal(SemiGlobalAligner::new(alignment_condition))
+        })
     }
-    pub(crate) fn new_local(alignment_condition: AlignmentCondition) -> Self {
-        Self::Local(LocalAligner::new(alignment_condition))
+    pub fn new_local(
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        maximum_penalty_per_length: f32,
+    ) -> Result<Self> {
+        let alignment_condition = AlignmentCondition::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
+        Ok(Self {
+            algorithms: Algorithms::Local(LocalAligner::new(alignment_condition))
+        })
     }
 }
 

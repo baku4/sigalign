@@ -10,6 +10,7 @@ use super::{
 use super::{AlignmentCondition, WaveFrontCache, DoubleWaveFrontCache};
 use super::local_alignment_algorithm;
 
+#[derive(Clone)]
 pub struct LocalAligner {
     pub condition: AlignmentCondition,
     pub wave_front_cache: DoubleWaveFrontCache,

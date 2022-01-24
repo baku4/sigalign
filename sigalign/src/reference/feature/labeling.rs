@@ -11,5 +11,5 @@ use super::{
 };
 
 pub trait LabelProvider {
-    fn label_of_record(&self, record_index: usize) -> &str;
+    fn label_of_record(&self, record_index: usize) -> String;
 }

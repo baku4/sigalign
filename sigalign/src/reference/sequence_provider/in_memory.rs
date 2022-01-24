@@ -105,28 +105,28 @@ impl SequenceProvider for InMemoryProvider {
     }
 }
 
-// // Label Provider
-// impl LabelProvider for InMemoryProvider {
-//     fn label_of_record(&self, record_index: usize) -> &str {
-//         &self.combined_label[
-//             self.label_index[record_index]..self.label_index[record_index+1]
-//         ]
-//     }
-// }
+// Label Provider
+impl LabelProvider for InMemoryProvider {
+    fn label_of_record(&self, record_index: usize) -> String {
+        String::from(&self.combined_label[
+            self.label_index[record_index]..self.label_index[record_index+1]
+        ])
+    }
+}
 
-// // Serializable
-// impl Serializable for InMemoryProvider {
-//     fn save_to<W>(&self, writer: W) -> Result<()> where
-//         W: std::io::Write
-//     {
-//         serialize_into(writer, self)?;
-//         Ok(())
-//     }
-//     fn load_from<R>(reader: R) -> Result<Self> where
-//         R: std::io::Read,
-//         Self: Sized,
-//     {
-//         let value: Self = deserialize_from(reader)?;
-//         Ok(value)
-//     }
-// }
+// Serializable
+impl Serializable for InMemoryProvider {
+    fn save_to<W>(&self, writer: W) -> Result<()> where
+        W: std::io::Write
+    {
+        serialize_into(writer, self)?;
+        Ok(())
+    }
+    fn load_from<R>(reader: R) -> Result<Self> where
+        R: std::io::Read,
+        Self: Sized,
+    {
+        let value: Self = deserialize_from(reader)?;
+        Ok(value)
+    }
+}

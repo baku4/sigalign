@@ -5,9 +5,13 @@ use super::{
     Sequence,
     ReferenceInterface, PatternLocation,
     Reference, SequenceProvider,
-    Aligner, AlignerInterface,
+    AlignmentCondition,
+    SemiGlobalAligner, LocalAligner,
+    Aligner, Algorithms, AlignerInterface,
 };
 
+mod debug;
+mod cmp;
 mod clean_cache;
 
 impl Aligner {
@@ -16,9 +20,9 @@ impl Aligner {
         reference: &Reference<S>,
         query: Sequence,
     ) -> AlignmentResult {
-        match self {
-            Self::SemiGlobal(aligner) => aligner.alignment(reference, query),
-            Self::Local(aligner) => aligner.alignment(reference, query),
+        match &mut self.algorithms {
+            Algorithms::SemiGlobal(aligner) => aligner.alignment(reference, query),
+            Algorithms::Local(aligner) => aligner.alignment(reference, query),
         }
     }
     pub fn alignment_checked<S: SequenceProvider>(
@@ -29,9 +33,9 @@ impl Aligner {
         if !reference.searchable(query) {
             error_msg!("Query contains unsearchable character")
         }
-        Ok(match self {
-            Self::SemiGlobal(aligner) => aligner.alignment(reference, query),
-            Self::Local(aligner) => aligner.alignment(reference, query),
+        Ok(match &mut self.algorithms {
+            Algorithms::SemiGlobal(aligner) => aligner.alignment(reference, query),
+            Algorithms::Local(aligner) => aligner.alignment(reference, query),
         })
     }
 }

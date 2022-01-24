@@ -8,7 +8,9 @@ use super::{
 };
 use num::integer;
 
-#[derive(Debug)]
+const MINIMUM_PATTERN_SIZE: usize = 4;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlignmentCondition {
     pub penalties: Penalties,
     pub cutoff: Cutoff,
@@ -36,6 +38,11 @@ impl AlignmentCondition {
         let cutoff = Cutoff::new(minimum_aligned_length, maximum_penalty_per_length);
 
         let aligner = Self::new_with_penalties_and_cutoff(penalties, cutoff);
+
+        let pattern_size = &aligner.pattern_size;
+        if *pattern_size < MINIMUM_PATTERN_SIZE {
+            error_msg!("Auto calculated pattern size({}) should reach at least {}", pattern_size, MINIMUM_PATTERN_SIZE);
+        }
 
         Ok(aligner)
     }
@@ -141,10 +148,13 @@ impl Penalties {
 
 impl Cutoff {
     fn new(minimum_aligned_length: usize, maximum_penalty_per_length: f32) -> Self {
-        let penalty_per_scale = (maximum_penalty_per_length * PRECISION_SCALE as f32) as usize;
+        let maximum_penalty_per_scale = (maximum_penalty_per_length * PRECISION_SCALE as f32) as usize;
+        Self::new_with_scaled_max_ppl(minimum_aligned_length, maximum_penalty_per_scale)
+    }
+    fn new_with_scaled_max_ppl(minimum_aligned_length: usize, maximum_penalty_per_scale: usize) -> Self {
         Self {
             minimum_aligned_length,
-            maximum_penalty_per_scale: penalty_per_scale,
+            maximum_penalty_per_scale,
         }
     }
     fn divide_by_gcd(&mut self, gcd: usize) {
