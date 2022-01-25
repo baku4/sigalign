@@ -81,11 +81,11 @@ pub use feature::{
     LabelProvider,
 };
 
-// Sequence providers
+/// Definition and interfaces for `SequenceProvider`
 pub mod sequence_provider;
 pub use sequence_provider::SequenceProvider;
 
-// Alignment target Reference
+/// A bundle of alignment target sequences.
 #[derive(Debug)]
 pub struct Reference<S> where
     S: SequenceProvider,

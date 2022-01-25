@@ -52,6 +52,7 @@ pub mod util;
 mod reference;
 // (3) Aligner and result
 mod aligner;
+/// Alignment result structure
 pub mod result;
 // (4) Public APIs
 mod alignment; // Alignment functions

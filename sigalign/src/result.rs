@@ -13,7 +13,7 @@ pub use crate::core::{
     AlignmentOperation,
     AlignmentCase,
 };
-pub use crate::reference::{
+pub(crate) use crate::reference::{
     Reference,
     SequenceProvider,
     LabelProvider,

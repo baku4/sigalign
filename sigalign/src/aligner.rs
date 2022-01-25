@@ -41,6 +41,7 @@ pub use local::LocalAligner;
 // Features
 mod feature;
 
+/// Alignment performer according to similarity criteria.
 #[derive(Clone)]
 pub struct Aligner {
     pub(crate) algorithms: Algorithms,

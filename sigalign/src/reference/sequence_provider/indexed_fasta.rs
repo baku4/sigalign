@@ -23,6 +23,7 @@ use std::path::Path;
 use serde::{Serialize, Deserialize};
 use bincode::{serialize_into, deserialize_from};
 
+/// Basic `SequenceProvider` implementation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedFastaProvider {
     total_record_count: usize,

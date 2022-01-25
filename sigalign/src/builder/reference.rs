@@ -13,6 +13,7 @@ use super::{
 mod sequence_type_option;
 mod pattern_finder_option;
 
+/// Builder for `Reference`
 pub struct ReferenceBuilder {
     sequence_type_option: SequenceTypeOption, // `None` to infer
     pattern_finder_option: PatternFinderOption,

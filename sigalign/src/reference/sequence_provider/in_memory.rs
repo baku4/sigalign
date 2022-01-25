@@ -19,6 +19,7 @@ use bincode::{serialize_into, deserialize_from};
 
 use std::marker::PhantomData;
 
+/// Basic `SequenceProvider` implementation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InMemoryProvider {
     record_count: usize,
