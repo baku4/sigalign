@@ -6,7 +6,7 @@ use alignment::{
     local_alignment_with_position,
 };
 
-use lt_fm_index::{FmIndex, LtFmIndexAll, LtFmIndexConfig};
+use lt_fm_index::{LtFmIndex, LtFmIndexBuilder};
 
 use std::path::Path;
 use std::collections::HashSet;
@@ -29,7 +29,7 @@ impl StandardAligner {
         minimum_aligned_length: usize,
         penalty_per_length: f32,
     ) -> Self {
-        let aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+        let aligner = Aligner::new_semi_global(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
         
         let penalties = aligner.get_penalties();
 
@@ -53,7 +53,7 @@ impl StandardAligner {
         &self,
         standard_reference: &StandardReference,
         query: Sequence,
-    ) -> AlignmentResultsByRecordIndex {
+    ) -> AlignmentResult {
         standard_reference.semi_global_alignment_results(
             query,
             self.mismatch_penalty,
@@ -68,7 +68,7 @@ impl StandardAligner {
         &self,
         standard_reference: &StandardReference,
         query: Sequence,
-    ) -> AlignmentResultsByRecordIndex {
+    ) -> AlignmentResult {
         standard_reference.local_alignment_results(
             query,
             self.mismatch_penalty,
@@ -88,11 +88,9 @@ pub struct StandardReference {
 
 impl StandardReference {
     pub fn new_from_fasta<P: AsRef<Path> + std::fmt::Debug>(
-        sequence_type: SequenceTypeDep,
+        sequence_type: SequenceType,
         fasta_path: P,
     ) -> Self {
-        let allowed_sequence_type = sequence_type.allowed_type();
-
         let fasta_records = FastaReader::from_file_path(fasta_path).unwrap();
 
         let mut total_record_count = 0;
@@ -100,7 +98,7 @@ impl StandardReference {
 
         for (label, sequence) in fasta_records {
             let record = StandardRecord::new(
-                &allowed_sequence_type,
+                &sequence_type,
                 label,
                 sequence
             );
@@ -123,13 +121,16 @@ impl StandardReference {
         minimum_aligned_length: usize,
         penalty_per_scale: usize,
         pattern_size: usize,
-    ) -> AlignmentResultsByRecordIndex {        
-        AlignmentResultsByRecordIndex(
+    ) -> AlignmentResult {        
+        AlignmentResult(
             self.records.iter().enumerate().filter_map(|(record_index, standard_record)| {
                 let alignment_results = standard_record.semi_global_alignment_results(query, mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_scale, pattern_size);
 
                 if alignment_results.len() != 0 {
-                    Some((record_index, alignment_results))
+                    Some(RecordAlignmentResult {
+                        index: record_index,
+                        result: alignment_results,
+                    })
                 } else {
                     None
                 }
@@ -145,13 +146,16 @@ impl StandardReference {
         minimum_aligned_length: usize,
         penalty_per_scale: usize,
         pattern_size: usize,
-    ) -> AlignmentResultsByRecordIndex {        
-        AlignmentResultsByRecordIndex(
+    ) -> AlignmentResult {        
+        AlignmentResult(
             self.records.iter().enumerate().filter_map(|(record_index, standard_record)| {
                 let alignment_results = standard_record.local_alignment_results(query, mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_scale, pattern_size);
 
                 if alignment_results.len() != 0 {
-                    Some((record_index, alignment_results))
+                    Some(RecordAlignmentResult {
+                        index: record_index,
+                        result: alignment_results,
+                    })
                 } else {
                     None
                 }
@@ -163,30 +167,26 @@ impl StandardReference {
 struct StandardRecord {
     label: String,
     sequence: Vec<u8>,
-    lt_fm_index: LtFmIndexAll,
+    lt_fm_index: LtFmIndex,
 }
 impl StandardRecord {
     fn new(
-        allowed_sequence_type: &AllowedSequenceType,
+        sequence_type: &SequenceType,
         label: String,
         sequence: Vec<u8>,
     ) -> Self {
-        let lt_fm_index_config = match allowed_sequence_type {
-            AllowedSequenceType::NucleotideOnly => {
-                LtFmIndexConfig::for_nucleotide()
-            },
-            AllowedSequenceType::NucleotideWithNoise => {
-                LtFmIndexConfig::for_nucleotide().with_noise()
-            },
-            AllowedSequenceType::AminoacidOnly => {
-                LtFmIndexConfig::for_aminoacid()
-            },
-            AllowedSequenceType::AminoacidWithNoise => {
-                LtFmIndexConfig::for_aminoacid().with_noise()
-            },
+        let mut lt_fm_index_builder = LtFmIndexBuilder::new();
+        lt_fm_index_builder = match sequence_type {
+            SequenceType::NucleotideOnly(_) => lt_fm_index_builder.use_nucleotide_only(),
+            SequenceType::NucleotideWithNoise(_) => lt_fm_index_builder.use_nucleotide_with_noise(),
+            SequenceType::AminoAcidOnly(_) => lt_fm_index_builder.use_amino_acid_only(),
+            SequenceType::AminoAcidWithNoise(_) => lt_fm_index_builder.use_amino_acid_with_noise(),
         };
 
-        let lt_fm_index = lt_fm_index_config.change_kmer_size(3).unwrap().generate(sequence.clone()).unwrap();
+        let lt_fm_index = lt_fm_index_builder
+            .set_suffix_array_sampling_ratio(3).unwrap()
+            .set_lookup_table_kmer_size(4).unwrap()
+            .build(sequence.clone());
 
         Self {
             label,
@@ -203,7 +203,7 @@ impl StandardRecord {
         minimum_aligned_length: usize,
         penalty_per_scale: usize,
         pattern_size: usize,
-    ) -> Vec<AlignmentResult> {
+    ) -> Vec<AnchorAlignmentResult> {
         let query_length = query.len();
         let record_length = self.sequence.len();
 
@@ -283,7 +283,7 @@ impl StandardRecord {
         minimum_aligned_length: usize,
         penalty_per_scale: usize,
         pattern_size: usize,
-    ) -> Vec<AlignmentResult> {
+    ) -> Vec<AnchorAlignmentResult> {
         let query_length = query.len();
         let record_length = self.sequence.len();
 

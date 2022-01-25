@@ -15,7 +15,7 @@ pub fn semi_global_alignment_with_position(
     gap_extend_penalty: usize,
     minimum_aligned_length: usize,
     penalty_per_scale: usize,
-) -> Option<AlignmentResult> {
+) -> Option<AnchorAlignmentResult> {
     // Sequence to align
     let left_record = &record[..record_start_position];
     let left_query = &query[..query_start_position];
@@ -80,7 +80,7 @@ pub fn semi_global_alignment_with_position(
 
     // Cutoff Check
     let length: u32 = operations.iter()
-        .map(|AlignmentOperation { alignment_type: _, count }| *count)
+        .map(|AlignmentOperation { case: _, count }| *count)
         .sum();
     let length = length as usize;
     
@@ -89,7 +89,7 @@ pub fn semi_global_alignment_with_position(
     let penalty_per_scale_of_this_alignment = PRECISION_SCALE * penalty / length;
 
     if (length >= minimum_aligned_length) && (penalty_per_scale_of_this_alignment <= penalty_per_scale) {
-        Some(AlignmentResult {
+        Some(AnchorAlignmentResult {
             penalty,
             length,
             position,
@@ -105,15 +105,15 @@ fn add_one_operation(
     alignment_type_from_crate_bio: &AlignmentOperationFromCrateBio,
 ) {
     let alignment_type_to_add = match alignment_type_from_crate_bio {
-        AlignmentOperationFromCrateBio::Match => AlignmentType::Match,
-        AlignmentOperationFromCrateBio::Subst => AlignmentType::Subst,
-        AlignmentOperationFromCrateBio::Ins => AlignmentType::Insertion,
-        AlignmentOperationFromCrateBio::Del => AlignmentType::Deletion,
+        AlignmentOperationFromCrateBio::Match => AlignmentCase::Match,
+        AlignmentOperationFromCrateBio::Subst => AlignmentCase::Subst,
+        AlignmentOperationFromCrateBio::Ins => AlignmentCase::Insertion,
+        AlignmentOperationFromCrateBio::Del => AlignmentCase::Deletion,
         _ => return
     };
 
     if let Some(alignment_operation) = alignment_operations.last_mut() {
-        if alignment_type_to_add == alignment_operation.alignment_type {
+        if alignment_type_to_add == alignment_operation.case {
             alignment_operation.count += 1;
             return
         }
@@ -121,7 +121,7 @@ fn add_one_operation(
 
     alignment_operations.push(
         AlignmentOperation {
-            alignment_type: alignment_type_to_add,
+            case: alignment_type_to_add,
             count: 1,
         }
     );
@@ -138,7 +138,7 @@ pub fn local_alignment_with_position(
     gap_extend_penalty: usize,
     minimum_aligned_length: usize,
     penalty_per_scale: usize,
-) -> Option<AlignmentResult> {
+) -> Option<AnchorAlignmentResult> {
     // Sequence to align
     let left_record = &record[..record_start_position];
     let left_query = &query[..query_start_position];
@@ -434,7 +434,7 @@ pub fn local_alignment_with_position(
     let length = best_position.0.length + best_position.1.length + pattern_size;
 
     Some(
-        AlignmentResult {
+        AnchorAlignmentResult {
             penalty,
             length,
             position,

@@ -67,6 +67,14 @@ impl SequenceType {
             },
         }
     }
+    pub fn get_allowed_character_list(&self) -> &[u8] {
+        match self {
+            Self::NucleotideOnly(v) => v,
+            Self::NucleotideWithNoise(v) => v,
+            Self::AminoAcidOnly(v) => v,
+            Self::AminoAcidWithNoise(v) => v,
+        }
+    }
     fn query_is_in_character_list(query: Sequence, character_list: &[u8]) -> bool {
         let error = query.iter().try_for_each(|chr| {
             if !character_list.contains(chr) {

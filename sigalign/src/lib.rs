@@ -62,8 +62,7 @@ mod builder; // Struct builders
 #[doc(hidden)]
 pub mod deprecated;
 
-// #[cfg(test)]
-// mod tests;
+mod tests;
 
 
 // Publics

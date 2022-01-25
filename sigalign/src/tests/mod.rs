@@ -1,19 +1,24 @@
 #![allow(dead_code, unused)]
 use super::*;
 use crate::core::*;
+use crate::util::*;
 use crate::reference::*;
-use crate::reference::basic_sequence_provider::*;
-use crate::algorithm::*;
+use crate::reference::sequence_provider::*;
 use crate::aligner::*;
-use crate::utils::*;
+use crate::result::*;
+use crate::alignment::*;
+use crate::builder::*;
+
+// Aligner to verifying result
+mod standard_aligner;
+use standard_aligner::*;
 
 // Supply Functions
 pub mod sample_data;
 use sample_data::*;
 
-mod standard_aligner;
-use standard_aligner::*;
-
 // Test Main
+#[cfg(test)]
 mod test_alignment_algorithm;
-mod test_sequence_provider;
+// #[cfg(test)]
+// mod test_sequence_provider;

@@ -1,6 +1,6 @@
 use super::*;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::collections::hash_map::RandomState;
 use std::collections::hash_set::Intersection;
 use std::time::{Duration, Instant};
@@ -12,7 +12,8 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
 
     let sequence_provider = {
         let start_time = Instant::now();
-        let sequence_provider = InMemoryProvider::from_fasta_file(fasta_file_for_reference).unwrap();
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_fasta_file(fasta_file_for_reference).unwrap();
         let duration = start_time.elapsed().as_micros();
         println!("Generate sequence provider: {:?}", duration);
 
@@ -28,19 +29,19 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     let kmer_size_for_lookup_table = 4;
 
     // For this crate
-    let mut aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut local_aligner = Aligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut semi_global_aligner = Aligner::new_semi_global(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
-    println!("Aligner: {:?}", aligner);
-
-    let sequence_type = SequenceTypeDep::nucleotide_only();
+    println!("Local Aligner: {:?}", local_aligner);
+    println!("Semi Global Aligner: {:?}", semi_global_aligner);
 
     let mut reference = {
         let start_time = Instant::now();
 
-        let lt_fm_index_config = LtFmIndexConfig::new()
-            .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
-
-        let reference = Reference::new_with_config(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = ReferenceBuilder::new()
+            .search_for_nucleotide_only()
+            .change_count_array_kmer(kmer_size_for_lookup_table).unwrap()
+            .build(sequence_provider).unwrap();
         
         let duration = start_time.elapsed().as_micros();
         println!("Generate reference: {:?}", duration);
@@ -54,17 +55,11 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
         println!("{:?} - {:?}", query_record_index, label);
 
         let start_time_1 = Instant::now();
-        let result_of_semi_global = aligner.semi_global_alignment_unchecked(
-            &mut reference,
-            &query
-        );
+        let result_of_semi_global = semi_global_aligner.query_alignment_unchecked(&reference, &query);
         let duration_1 = start_time_1.elapsed().as_micros();
     
         let start_time_2 = Instant::now();
-        let result_of_local = aligner.local_alignment_unchecked(
-            &mut reference,
-            &query
-        );
+        let result_of_local = local_aligner.query_alignment_unchecked(&reference, &query);
 
         let duration_2 = start_time_2.elapsed().as_micros();
 
@@ -84,7 +79,9 @@ fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
 
     let sequence_provider = {
         let start_time = Instant::now();
-        let sequence_provider = InMemoryProvider::from_fasta_file(fasta_file_for_reference).unwrap();
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_fasta_file(fasta_file_for_reference).unwrap();
+
         let duration = start_time.elapsed().as_millis();
         println!("Generate sequence provider: {:?}", duration);
 
@@ -110,21 +107,19 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
     let kmer_size_for_lookup_table = 4;
 
     // For this crate
-    let mut aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut semi_global_aligner = Aligner::new_semi_global(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
-    println!("Aligner: {:?}", aligner);
-
-    let sequence_type = SequenceTypeDep::nucleotide_only();
+    println!("Aligner: {:?}", semi_global_aligner);
 
     let mut reference = {
         let start_time = Instant::now();
 
-        let lt_fm_index_config = LtFmIndexConfig::new()
-            .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
-
-        let reference = Reference::new_with_config(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = ReferenceBuilder::new()
+            .search_for_nucleotide_only()
+            .change_count_array_kmer(kmer_size_for_lookup_table).unwrap()
+            .build(sequence_provider).unwrap();
         
-        let duration = start_time.elapsed().as_millis();
+        let duration = start_time.elapsed().as_micros();
         println!("Generate reference: {:?}", duration);
 
         reference
@@ -139,7 +134,7 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
         let start_time = Instant::now();
 
         let standard_reference = StandardReference::new_from_fasta(
-            sequence_type,
+            SequenceType::new_nucleotide_only(),
             fasta_file_for_reference
         );
 
@@ -155,8 +150,8 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
         println!("{:?} - {:?}", query_record_index, label);
 
         let start_time_1 = Instant::now();
-        let result_of_this_crate = aligner.semi_global_alignment_unchecked(
-            &mut reference,
+        let result_of_this_crate = semi_global_aligner.query_alignment_unchecked(
+            &reference,
             &query
         );
         let duration_1 = start_time_1.elapsed().as_millis();
@@ -184,7 +179,9 @@ fn test_results_of_nucleotide_only_for_local_with_in_memory_provider() {
 
     let sequence_provider = {
         let start_time = Instant::now();
-        let sequence_provider = InMemoryProvider::from_fasta_file(fasta_file_for_reference).unwrap();
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_fasta_file(fasta_file_for_reference).unwrap();
+
         let duration = start_time.elapsed().as_millis();
         println!("Generate sequence provider: {:?}", duration);
 
@@ -210,21 +207,19 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
     let kmer_size_for_lookup_table = 4;
 
     // For this crate
-    let mut aligner = Aligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
+    let mut local_aligner = Aligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length).unwrap();
 
-    println!("Aligner: {:?}", aligner);
-
-    let sequence_type = SequenceTypeDep::nucleotide_only();
+    println!("Aligner: {:?}", local_aligner);
 
     let mut reference = {
         let start_time = Instant::now();
 
-        let lt_fm_index_config = LtFmIndexConfig::new()
-            .change_kmer_size_for_lookup_table(kmer_size_for_lookup_table);
-
-        let reference = Reference::new_with_config(sequence_type.clone(), lt_fm_index_config, sequence_provider).unwrap();
+        let reference = ReferenceBuilder::new()
+            .search_for_nucleotide_only()
+            .change_count_array_kmer(kmer_size_for_lookup_table).unwrap()
+            .build(sequence_provider).unwrap();
         
-        let duration = start_time.elapsed().as_millis();
+        let duration = start_time.elapsed().as_micros();
         println!("Generate reference: {:?}", duration);
 
         reference
@@ -239,7 +234,7 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
         let start_time = Instant::now();
 
         let standard_reference = StandardReference::new_from_fasta(
-            sequence_type,
+            SequenceType::new_nucleotide_only(),
             fasta_file_for_reference
         );
 
@@ -259,8 +254,8 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
         // }
 
         let start_time_1 = Instant::now();
-        let result_of_this_crate = aligner.local_alignment_unchecked(
-            &mut reference,
+        let result_of_this_crate = local_aligner.query_alignment_unchecked(
+            &reference,
             &query
         );
         let duration_1 = start_time_1.elapsed().as_millis();
@@ -288,8 +283,8 @@ struct CmpableAlignmentResult {
     position: AlignmentPosition,
 }
 impl CmpableAlignmentResult {
-    fn alignment_results_to_hash_set_selves(alignment_results: &Vec<AlignmentResult>) -> HashSet<Self> {
-        alignment_results.iter().map(|AlignmentResult {
+    fn alignment_results_to_hash_set_selves(alignment_results: &Vec<AnchorAlignmentResult>) -> HashSet<Self> {
+        alignment_results.iter().map(|AnchorAlignmentResult {
             penalty,
             length,
             position,
@@ -302,8 +297,8 @@ impl CmpableAlignmentResult {
             }
         }).collect()
     }
-    fn alignment_results_to_sorted_selves(alignment_results: &Vec<AlignmentResult>) -> Vec<Self> {
-        let mut vector_of_selves: Vec<Self> = alignment_results.iter().map(|AlignmentResult {
+    fn alignment_results_to_sorted_selves(alignment_results: &Vec<AnchorAlignmentResult>) -> Vec<Self> {
+        let mut vector_of_selves: Vec<Self> = alignment_results.iter().map(|AnchorAlignmentResult {
             penalty,
             length,
             position,
@@ -360,11 +355,11 @@ impl PartialEq for CmpableAlignmentResult {
 impl Eq for CmpableAlignmentResult {}
 
 fn assert_alignment_results_by_index_are_same(
-    result_of_this_crate: &AlignmentResultsByRecordIndex,
-    result_of_standard: &AlignmentResultsByRecordIndex,
+    result_of_this_crate: &AlignmentResult,
+    result_of_standard: &AlignmentResult,
 ) {
-    let mut first_keys: Vec<usize> = result_of_this_crate.0.keys().map(|x| {*x}).collect();
-    let mut second_keys: Vec<usize> = result_of_standard.0.keys().map(|x| {*x}).collect();
+    let mut first_keys: Vec<usize> = result_of_this_crate.0.iter().map(|x| x.index).collect();
+    let mut second_keys: Vec<usize> = result_of_standard.0.iter().map(|x| x.index).collect();
 
     first_keys.sort();
     second_keys.sort();
@@ -374,12 +369,21 @@ fn assert_alignment_results_by_index_are_same(
 
     println!("Results count: {}", first_keys.len());
 
+    let result_of_this_crate_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_this_crate.0.iter()
+        .map(|record_alignment_result| {
+            (record_alignment_result.index, record_alignment_result.result.clone())
+        }).collect();
+    let result_of_standard_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_standard.0.iter()
+        .map(|record_alignment_result| {
+            (record_alignment_result.index, record_alignment_result.result.clone())
+        }).collect();
+
     for key in first_keys {
         let first_sorted_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
-            result_of_this_crate.0.get(&key).unwrap()
+            result_of_this_crate_map.get(&key).unwrap()
         );
         let second_sorted_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
-            result_of_standard.0.get(&key).unwrap()
+            result_of_standard_map.get(&key).unwrap()
         );
 
         assert_eq!(first_sorted_results, second_sorted_results);
@@ -387,11 +391,11 @@ fn assert_alignment_results_by_index_are_same(
 }
 
 fn print_alignment_results_by_index_are_same(
-    result_of_this_crate: &AlignmentResultsByRecordIndex,
-    result_of_standard: &AlignmentResultsByRecordIndex,
+    result_of_this_crate: &AlignmentResult,
+    result_of_standard: &AlignmentResult,
 ) {
-    let mut first_keys: Vec<usize> = result_of_this_crate.0.keys().map(|x| {*x}).collect();
-    let mut second_keys: Vec<usize> = result_of_standard.0.keys().map(|x| {*x}).collect();
+    let mut first_keys: Vec<usize> = result_of_this_crate.0.iter().map(|x| x.index).collect();
+    let mut second_keys: Vec<usize> = result_of_standard.0.iter().map(|x| x.index).collect();
 
     first_keys.sort();
     second_keys.sort();
@@ -407,30 +411,39 @@ fn print_alignment_results_by_index_are_same(
 
     println!("Results count: {}", first_keys.len());
 
+    let result_of_this_crate_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_this_crate.0.iter()
+        .map(|record_alignment_result| {
+            (record_alignment_result.index, record_alignment_result.result.clone())
+        }).collect();
+    let result_of_standard_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_standard.0.iter()
+        .map(|record_alignment_result| {
+            (record_alignment_result.index, record_alignment_result.result.clone())
+        }).collect();
+
     for key in first_keys {
         let first_results_set = CmpableAlignmentResult::alignment_results_to_hash_set_selves(
-            result_of_this_crate.0.get(&key).unwrap()
+            result_of_this_crate_map.get(&key).unwrap()
         );
         let second_results_set = CmpableAlignmentResult::alignment_results_to_hash_set_selves(
-            result_of_standard.0.get(&key).unwrap()
+            result_of_standard_map.get(&key).unwrap()
         );
 
         if first_results_set == second_results_set {
             println!("Same in record index: {}", key);
         } else {
             println!("Different in record index: {}", key);
-            println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate.0.get(&key).unwrap());
-            println!(" - result_of_standard:\n{:#?}", result_of_standard.0.get(&key).unwrap());
+            println!(" - result_of_this_crate:\n{:#?}", result_of_this_crate_map.get(&key).unwrap());
+            println!(" - result_of_standard:\n{:#?}", result_of_standard_map.get(&key).unwrap());
         }
     }
 }
 
 fn print_if_left_result_dont_include_right_result(
-    left_result: &AlignmentResultsByRecordIndex,
-    right_result: &AlignmentResultsByRecordIndex,
+    left_result: &AlignmentResult,
+    right_result: &AlignmentResult,
 ) {
-    let left_keys: HashSet<usize> = left_result.0.keys().map(|x| {*x}).collect();
-    let right_keys: HashSet<usize> = right_result.0.keys().map(|x| {*x}).collect();
+    let left_keys: HashSet<usize> = left_result.0.iter().map(|x| x.index).collect();
+    let right_keys: HashSet<usize> = right_result.0.iter().map(|x| x.index).collect();
 
     let intersection_keys: HashSet<usize> = {
         let intersection = left_keys.intersection(&right_keys);
@@ -439,12 +452,21 @@ fn print_if_left_result_dont_include_right_result(
 
     assert_eq!(intersection_keys, right_keys);
 
+    let left_result_map: HashMap<usize, Vec<AnchorAlignmentResult>> = left_result.0.iter()
+        .map(|record_alignment_result| {
+            (record_alignment_result.index, record_alignment_result.result.clone())
+        }).collect();
+    let right_result_map: HashMap<usize, Vec<AnchorAlignmentResult>> = right_result.0.iter()
+        .map(|record_alignment_result| {
+            (record_alignment_result.index, record_alignment_result.result.clone())
+        }).collect();
+
     for key in intersection_keys {
         let left_cmpable_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
-            left_result.0.get(&key).unwrap()
+            left_result_map.get(&key).unwrap()
         );
         let right_cmpable_results = CmpableAlignmentResult::alignment_results_to_sorted_selves(
-            right_result.0.get(&key).unwrap()
+            right_result_map.get(&key).unwrap()
         );
 
         let left_cmpable_results_set: HashSet<CmpableAlignmentResult> = left_cmpable_results.into_iter().collect();
