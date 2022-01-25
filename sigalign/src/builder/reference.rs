@@ -94,3 +94,48 @@ impl ReferenceBuilder {
         ))
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_inferring_sequence_type() {
+        let only_nc = b"ACGTACGT";
+        let st = SequenceType::infer_sequence_type_from_sequence(only_nc).unwrap();
+        assert_eq!(st, SequenceType::new_nucleotide_only());
+
+        let nc_with_noise_1 = b"ACGTNNNACGT";
+        let st = SequenceType::infer_sequence_type_from_sequence(nc_with_noise_1).unwrap();
+        assert_eq!(st, SequenceType::new_nucleotide_with_noise(b'N'));
+        let nc_with_noise_2 = b"ACGT+++ACGT";
+        let st = SequenceType::infer_sequence_type_from_sequence(nc_with_noise_2).unwrap();
+        assert_eq!(st, SequenceType::new_nucleotide_with_noise(b'+'));
+
+        let only_aa = b"ACDEFWYYY";
+        let st = SequenceType::infer_sequence_type_from_sequence(only_aa).unwrap();
+        assert_eq!(st, SequenceType::new_amino_acid_only());
+
+        let aa_with_noise_1 = b"ACGT***WYYY";
+        let st = SequenceType::infer_sequence_type_from_sequence(aa_with_noise_1).unwrap();
+        assert_eq!(st, SequenceType::new_amino_acid_with_noise(b'*'));
+        let aa_with_noise_2 = b"WYYY+++ACGT";
+        let st = SequenceType::infer_sequence_type_from_sequence(aa_with_noise_2).unwrap();
+        assert_eq!(st, SequenceType::new_amino_acid_with_noise(b'+'));
+
+        let errored_seq_list = [
+            b"AAAACGT+*".to_vec(),
+            b"*+ACGT".to_vec(),
+            b"+ACGT*".to_vec(),
+            b"*ACWY+".to_vec(),
+            b"*WYAC+".to_vec(),
+            b"WY*AC+".to_vec(),
+        ];
+
+        for errored_seq in errored_seq_list {
+            let st_res = SequenceType::infer_sequence_type_from_sequence(&errored_seq);
+            assert!(st_res.is_err())
+        }
+    }
+}

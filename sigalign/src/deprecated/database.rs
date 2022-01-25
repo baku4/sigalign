@@ -204,7 +204,6 @@ impl<'a> Database<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::*;
     
     fn test_create_db() {
         let reverse_complement = true;

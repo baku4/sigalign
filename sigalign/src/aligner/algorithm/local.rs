@@ -39,6 +39,7 @@ struct Anchor {
 
 pub fn local_alignment_algorithm<S: SequenceProvider>(
     reference: &Reference<S>,
+    sequence_buffer: &mut S::Buffer,
     query: Sequence,
     pattern_size: usize,
     penalties: &Penalties,
@@ -48,11 +49,10 @@ pub fn local_alignment_algorithm<S: SequenceProvider>(
     right_wave_front: &mut WaveFront,
 ) -> AlignmentResult {
     let anchors_preset_by_record = Anchors::create_preset_by_record(reference, query, pattern_size);
-    let mut sequence_buffer = reference.get_buffer();
 
     AlignmentResult(
         anchors_preset_by_record.into_iter().filter_map(|(record_index, anchors_preset)| {
-            reference.fill_sequence_buffer(record_index, &mut sequence_buffer);
+            reference.fill_sequence_buffer(record_index, sequence_buffer);
             let record_sequence = sequence_buffer.request_sequence();
             let record_length = record_sequence.len();
 

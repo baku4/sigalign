@@ -5,7 +5,7 @@ use crate::core::{
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
-use crate::reference::{
+pub use crate::reference::{
     Reference, SequenceProvider,
 };
 
@@ -22,9 +22,14 @@ mod alignment_condition;
 pub use alignment_condition::AlignmentCondition;
 
 // Aligner interface
-trait AlignerInterface {
+pub trait AlignerInterface {
     fn new(condition: AlignmentCondition) -> Self where Self: Sized;
-    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where S: SequenceProvider;
+    fn alignment<S>(
+        &mut self,
+        reference: &Reference<S>,
+        sequence_buffer: &mut S::Buffer,
+        query: Sequence,
+    ) -> AlignmentResult where S: SequenceProvider;
 }
 
 // Aligner implementations
@@ -38,7 +43,7 @@ mod feature;
 
 #[derive(Clone)]
 pub struct Aligner {
-    algorithms: Algorithms,
+    pub(crate) algorithms: Algorithms,
 }
 
 #[derive(Clone)]
@@ -71,6 +76,17 @@ impl Aligner {
         Ok(Self {
             algorithms: Algorithms::Local(LocalAligner::new(alignment_condition))
         })
+    }
+    pub fn alignment<S: SequenceProvider>(
+        &mut self,
+        reference: &Reference<S>,
+        sequence_buffer: &mut S::Buffer,
+        query: Sequence,
+    ) -> AlignmentResult {
+        match &mut self.algorithms {
+            Algorithms::SemiGlobal(aligner) => aligner.alignment(reference, sequence_buffer, query),
+            Algorithms::Local(aligner) => aligner.alignment(reference, sequence_buffer, query),
+        }
     }
 }
 

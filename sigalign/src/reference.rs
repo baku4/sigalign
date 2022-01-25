@@ -82,7 +82,7 @@ pub use feature::{
 };
 
 // Sequence providers
-mod sequence_provider;
+pub mod sequence_provider;
 pub use sequence_provider::SequenceProvider;
 
 // Alignment target Reference

@@ -55,7 +55,11 @@ mod reference;
 // Aligner
 mod aligner;
 // Builder
-pub mod builder;
+mod builder;
+// Result
+pub mod result;
+// Attachment
+mod attachment;
 #[doc(hidden)]
 pub mod deprecated;
 #[doc(hidden)]
@@ -63,10 +67,40 @@ pub mod util;
 // #[cfg(test)]
 // mod tests;
 
-pub use reference::Reference;
-pub use aligner::{SemiGlobalAligner, LocalAligner};
+
+// Publics
+pub use reference::{Reference, sequence_provider};
+pub use aligner::Aligner;
+pub use builder::ReferenceBuilder;
 
 mod example {
+    #[test]
+    fn test_get_result_tmp() {
+        use crate::{Aligner, ReferenceBuilder};
+        use crate::sequence_provider::InMemoryProvider;
+
+        // (1) Define `SequenceProvider`
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_record(
+            b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
+            "record_1"
+        );
+        sequence_provider.add_record(
+            b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
+            "record_2",
+        );
+
+        // (2) Make `Reference`
+        let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+
+        // (3) Make `Aligner`
+        let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
+
+        // (4) Alignment
+        let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+        let result = aligner.query_alignment(&reference, query).unwrap();
+        println!("{}", result.to_json_pretty());
+    }
     // #[test]
     // fn print_library_example_quick_start() {
     //     use crate::{Reference, Aligner};

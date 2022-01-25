@@ -16,7 +16,9 @@ use super::{
 
 // Basic sequence providers implementations
 mod in_memory;
+pub use in_memory::InMemoryProvider;
 mod indexed_fasta;
+pub use indexed_fasta::IndexedFastaProvider;
 
 
 /// Provide sequence information

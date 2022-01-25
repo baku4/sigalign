@@ -11,4 +11,5 @@ use crate::reference::{
 
 // Builders
 mod reference;
+pub use reference::ReferenceBuilder;
 mod aligner;

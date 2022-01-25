@@ -13,7 +13,7 @@ pub trait WaveFrontCache {
 
     fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self;
     fn have_enough_space(&self, query_length: usize) -> bool;
-    fn allocate_more_space(
+    fn allocate_needed_space(
         &mut self,
         query_length: usize,
         penalties: &Penalties,
@@ -43,7 +43,7 @@ impl WaveFrontCache for SingleWaveFrontCache {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_more_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
+    fn allocate_needed_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
         let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
         let allocated_wave_front = WaveFront::new_with_query_length(query_length, penalties, cutoff);
         
@@ -82,7 +82,7 @@ impl WaveFrontCache for DoubleWaveFrontCache {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_more_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
+    fn allocate_needed_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
         let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
         let allocated_wave_front = WaveFront::new_with_query_length(query_length, penalties, cutoff);
         

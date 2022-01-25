@@ -20,7 +20,7 @@ use bincode::{serialize_into, deserialize_from};
 use std::marker::PhantomData;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct InMemoryProvider {
+pub struct InMemoryProvider {
     record_count: usize,
     combined_sequence: Vec<u8>,
     sequence_index: Vec<usize>,
@@ -69,7 +69,7 @@ impl InMemoryProvider {
     }
 }
 
-struct InMemoryBuffer {
+pub struct InMemoryBuffer {
     pointer: *const u8,
     len: usize,
 }

@@ -24,7 +24,7 @@ use serde::{Serialize, Deserialize};
 use bincode::{serialize_into, deserialize_from};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct IndexedFastaProvider {
+pub struct IndexedFastaProvider {
     total_record_count: usize,
     line_terminator_size: usize,
     use_reverse_complement: bool,
@@ -145,7 +145,7 @@ impl Serializable for IndexedFastaProvider {
     }
 }
 
-struct IndexedFastaBuffer {
+pub struct IndexedFastaBuffer {
     fasta_buf_reader: BufReader<File>,
     sequence_buffer: Vec<u8>,
 }

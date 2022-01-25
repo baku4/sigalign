@@ -24,11 +24,13 @@ impl AlignerInterface for SemiGlobalAligner {
             wave_front_cache,
         }
     }
-    fn alignment<S>(&mut self, reference: &Reference<S>, query: Sequence) -> AlignmentResult where
+    fn alignment<S>(&mut self, reference: &Reference<S>, sequence_buffer: &mut S::Buffer, query: Sequence) -> AlignmentResult where
         S: SequenceProvider,
     {
+        self.wave_front_cache.allocate_needed_space(query.len(), &self.condition.penalties, &self.condition.cutoff);
         let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
+            sequence_buffer,
             query,
             self.condition.pattern_size,
             &self.condition.penalties,

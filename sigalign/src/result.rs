@@ -1,0 +1,30 @@
+use crate::{Result, error_msg};
+use crate::{Serialize, Deserialize};
+use crate::core::{
+	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+    Sequence,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+};
+pub use crate::core::{
+    AlignmentResult,
+    RecordAlignmentResult,
+    AnchorAlignmentResult,
+    AlignmentPosition,
+    AlignmentOperation,
+    AlignmentCase,
+};
+
+mod fasta_result;
+pub use fasta_result::{
+    FastaAlignmentResult,
+    ReadAlignmentResult,
+};
+mod labeled_result;
+pub use labeled_result::{
+    FastaAlignmentLabeledResult,
+    ReadAlignmentLabeledResult,
+    AlignmentLabeledResult,
+    RecordAlignmentLabeledResult,
+};
+
+mod encoding;
