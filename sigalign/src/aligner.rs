@@ -6,7 +6,7 @@ use crate::core::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 pub use crate::reference::{
-    Reference, SequenceProvider,
+    Reference, SequenceProvider, LabelProvider,
 };
 
 // Core algorithms

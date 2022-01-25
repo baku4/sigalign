@@ -10,6 +10,14 @@ use super::{
     SequenceType, PatternFinder, Serializable,
 };
 
+impl<SL> Reference<SL> where
+    SL: SequenceProvider + LabelProvider,
+{
+    pub fn label_of_record(&self, record_index: usize) -> String {
+        self.sequence_provider.label_of_record(record_index)
+    }
+}
+
 pub trait LabelProvider {
     fn label_of_record(&self, record_index: usize) -> String;
 }

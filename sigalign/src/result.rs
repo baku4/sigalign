@@ -13,7 +13,13 @@ pub use crate::core::{
     AlignmentOperation,
     AlignmentCase,
 };
+pub use crate::reference::{
+    Reference,
+    SequenceProvider,
+    LabelProvider,
+};
 
+// Result structures
 mod fasta_result;
 pub use fasta_result::{
     FastaAlignmentResult,
@@ -27,4 +33,6 @@ pub use labeled_result::{
     RecordAlignmentLabeledResult,
 };
 
-mod encoding;
+// Encoders
+mod to_json;
+mod to_labeled;

@@ -25,25 +25,6 @@ use serde_json::{
     to_writer_pretty,
 };
 
-pub fn write_as_json<V, W>(value: &V, writer: W) -> Result<()> where
-    V: Serialize,
-    W: Write,
-{
-    match to_writer(writer, value) {
-        Ok(_) => Ok(()),
-        Err(err) => error_msg!(err),
-    }
-}
-pub fn write_as_json_pretty<V, W>(value: &V, writer: W) -> Result<()> where
-    V: Serialize,
-    W: Write,
-{
-    match to_writer_pretty(writer, value) {
-        Ok(_) => Ok(()),
-        Err(err) => error_msg!(err),
-    }
-}
-
 impl FastaAlignmentResult {
     pub fn to_json(&self) -> String {
         to_string(self).unwrap()
@@ -51,11 +32,11 @@ impl FastaAlignmentResult {
     pub fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    pub fn write_as_json<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json(self, writer)
+    pub fn write_as_json<W: Write>(&self, writer: W) {
+        to_writer(writer, self).unwrap()
     }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json_pretty(self, writer)
+    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+        to_writer_pretty(writer, self).unwrap()
     }
 }
 impl ReadAlignmentResult {
@@ -65,11 +46,11 @@ impl ReadAlignmentResult {
     pub fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    pub fn write_as_json<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json(self, writer)
+    pub fn write_as_json<W: Write>(&self, writer: W) {
+        to_writer(writer, self).unwrap()
     }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json_pretty(self, writer)
+    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+        to_writer_pretty(writer, self).unwrap()
     }
 }
 impl AlignmentResult {
@@ -79,11 +60,11 @@ impl AlignmentResult {
     pub fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    pub fn write_as_json<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json(self, writer)
+    pub fn write_as_json<W: Write>(&self, writer: W) {
+        to_writer(writer, self).unwrap()
     }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json_pretty(self, writer)
+    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+        to_writer_pretty(writer, self).unwrap()
     }
 }
 impl FastaAlignmentLabeledResult {
@@ -93,11 +74,11 @@ impl FastaAlignmentLabeledResult {
     pub fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    pub fn write_as_json<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json(self, writer)
+    pub fn write_as_json<W: Write>(&self, writer: W) {
+        to_writer(writer, self).unwrap()
     }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json_pretty(self, writer)
+    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+        to_writer_pretty(writer, self).unwrap()
     }
 }
 impl ReadAlignmentLabeledResult {
@@ -107,11 +88,11 @@ impl ReadAlignmentLabeledResult {
     pub fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    pub fn write_as_json<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json(self, writer)
+    pub fn write_as_json<W: Write>(&self, writer: W) {
+        to_writer(writer, self).unwrap()
     }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json_pretty(self, writer)
+    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+        to_writer_pretty(writer, self).unwrap()
     }
 }
 impl AlignmentLabeledResult {
@@ -121,10 +102,10 @@ impl AlignmentLabeledResult {
     pub fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    pub fn write_as_json<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json(self, writer)
+    pub fn write_as_json<W: Write>(&self, writer: W) {
+        to_writer(writer, self).unwrap()
     }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) -> Result<()> {
-        write_as_json_pretty(self, writer)
+    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+        to_writer_pretty(writer, self).unwrap()
     }
 }
