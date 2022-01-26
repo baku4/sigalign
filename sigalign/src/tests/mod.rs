@@ -20,5 +20,5 @@ use sample_data::*;
 // Test Main
 #[cfg(test)]
 mod test_alignment_algorithm;
-// #[cfg(test)]
-// mod test_sequence_provider;
+#[cfg(test)]
+mod test_sequence_provider;
