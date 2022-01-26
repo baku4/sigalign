@@ -10,4 +10,4 @@ description = "Binary implementation"
 [dependencies]
 sigalign = { path = "../../sigalign" }
 anyhow = "1.0.44"
-clap = "2.33.3"
+clap = "3.0.12"
