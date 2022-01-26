@@ -19,6 +19,6 @@ use sample_data::*;
 
 // Test Main
 #[cfg(test)]
-mod test_alignment_algorithm;
+mod print_alignment_result_to_cmp;
 #[cfg(test)]
 mod test_sequence_provider;

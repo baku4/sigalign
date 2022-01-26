@@ -72,7 +72,6 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     }
 }
 
-#[test]
 fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
     println!("Use In-Memory Provider");
 
