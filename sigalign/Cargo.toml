@@ -29,6 +29,7 @@ features = ["bundled"]
 
 [dev-dependencies]
 criterion = "0.3.5"
+pprof = { version = "0.6.2", features = ["flamegraph"] }
 
 [[bench]]
 name = "benchmark"

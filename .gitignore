@@ -16,3 +16,5 @@ Cargo.lock
 
 # OS generated files
 .DS_Store
+# Jupyter notebook cache
+.ipynb_checkpoints
