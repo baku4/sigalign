@@ -10,6 +10,7 @@ pub struct Aligner {
 #[derive(Serialize)]
 struct AlignerState {
     exist: bool,
+    for_local: bool,
     mismatch_penalty: usize,
     gap_open_penalty: usize,
     gap_extend_penalty: usize,
@@ -29,6 +30,7 @@ impl Default for AlignerState {
     fn default() -> Self {
         Self {
             exist: false,
+            for_local: false,
             mismatch_penalty: 0,
             gap_open_penalty: 0,
             gap_extend_penalty: 0,
@@ -42,13 +44,19 @@ impl Default for AlignerState {
 impl Aligner {
     pub fn generate(
         &mut self,
+        for_local: bool,
         mismatch_penalty: usize,
         gap_open_penalty: usize,
         gap_extend_penalty: usize,
         minimum_aligned_length: usize,
         maximum_penalty_per_length: f32,
     ) -> Result<()> {
-        let sig_aligner = SigAligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
+        let sig_aligner = if for_local {
+            SigAligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?
+        } else {
+            SigAligner::new_semi_global(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?
+        };
+        
         let state = {
             let penalties = sig_aligner.get_penalties();
             let cutoff = sig_aligner.get_similarity_cutoff();
@@ -56,6 +64,7 @@ impl Aligner {
 
             AlignerState {
                 exist: true,
+                for_local,
                 mismatch_penalty: penalties[0],
                 gap_open_penalty: penalties[1],
                 gap_extend_penalty: penalties[2],
