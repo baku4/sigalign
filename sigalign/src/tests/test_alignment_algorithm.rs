@@ -72,6 +72,7 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     }
 }
 
+#[test]
 fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
     println!("Use In-Memory Provider");
 
@@ -124,6 +125,22 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
 
         reference
     };
+
+    {
+        let mut buffer = reference.get_buffer();
+        reference.fill_sequence_buffer(0, &mut buffer);
+        let test_seq = buffer.request_sequence();
+        println!("{:?}", String::from_utf8(test_seq.to_vec()));
+
+        reference.fill_sequence_buffer(1, &mut buffer);
+        let test_seq = buffer.request_sequence();
+        println!("{:?}", String::from_utf8(test_seq.to_vec()));
+
+        reference.fill_sequence_buffer(2, &mut buffer);
+        let test_seq = buffer.request_sequence();
+        println!("{:?}", String::from_utf8(test_seq.to_vec()));
+    }
+    
 
     // For comparison
     let standard_aligner = StandardAligner::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, penalty_per_length);

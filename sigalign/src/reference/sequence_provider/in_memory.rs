@@ -95,8 +95,9 @@ impl SequenceProvider for InMemoryProvider {
         }
     }
     fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
-        buffer.pointer = self.combined_sequence.as_ptr();
-        buffer.len = self.sequence_index[record_index+1] - self.sequence_index[record_index];
+        let start_index = self.sequence_index[record_index];
+        buffer.pointer = &self.combined_sequence[start_index];
+        buffer.len = self.sequence_index[record_index+1] - start_index;
     }
     fn get_joined_sequence(&self) -> JoinedSequence {
         JoinedSequence::new(

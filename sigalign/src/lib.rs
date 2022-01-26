@@ -71,6 +71,8 @@ pub use aligner::Aligner;
 pub use builder::ReferenceBuilder;
 
 mod example {
+    use std::io::Cursor;
+
     #[test]
     fn test_get_result_tmp() {
         use crate::{Aligner, ReferenceBuilder};
@@ -97,5 +99,39 @@ mod example {
         let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
         let result = aligner.query_alignment(&reference, query).unwrap();
         println!("{}", result.to_json_pretty());
+    }
+
+    #[test]
+    fn test_save_and_load_tmp() {
+        use crate::{Aligner, Reference, ReferenceBuilder};
+        use crate::sequence_provider::InMemoryProvider;
+
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_record(
+            b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
+            "record_1"
+        );
+        sequence_provider.add_record(
+            b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
+            "record_2",
+        );
+        let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+
+        let mut buffer: Vec<u8> = Vec::new();
+
+
+        reference.save_to(&mut buffer).unwrap();
+
+        println!("{}", buffer.len());
+        let cursor = Cursor::new(buffer);
+
+        let loaded_reference: Reference<InMemoryProvider> = Reference::load_from(cursor).unwrap();
+
+        let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
+        let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+        let result = aligner.query_alignment(&reference, query).unwrap();
+        println!("{}", result.to_json());
+        let result = aligner.query_alignment(&loaded_reference, query).unwrap();
+        println!("{}", result.to_json());
     }
 }

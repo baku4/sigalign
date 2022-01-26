@@ -15,6 +15,7 @@ mod reference_interface;
 mod set_search_range;
 mod io;
 mod labeling;
+mod debug;
 
 pub use io::Serializable;
 pub use labeling::LabelProvider;

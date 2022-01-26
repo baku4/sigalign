@@ -11,8 +11,8 @@ use super::{
     Serializable,
 };
 
-mod fm_index;
 use lt_fm_index::{LtFmIndex, LtFmIndexBuilder};
+mod debug;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
