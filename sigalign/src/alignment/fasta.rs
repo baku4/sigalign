@@ -44,7 +44,7 @@ impl Aligner {
         Ok(self.fasta_alignment_from_reader(reference, fasta_reader))
     }
     pub fn fasta_file_labeled_alignment<SL, P>(&mut self, reference: &Reference<SL>, fasta_file: P) -> Result<FastaAlignmentLabeledResult> where
-    SL: SequenceProvider + LabelProvider,
+       SL: SequenceProvider + LabelProvider,
         P: AsRef<Path> + std::fmt::Debug,
     {
         let fasta_reader = FastaReader::from_file_path(fasta_file)?;
@@ -57,23 +57,25 @@ impl Aligner {
         self.fasta_alignment_from_reader(reference, fasta_reader)
     }
     pub fn fasta_bytes_labeled_alignment<SL>(&mut self, reference: &Reference<SL>, fasta_bytes: &[u8]) -> FastaAlignmentLabeledResult where
-    SL: SequenceProvider + LabelProvider,
+      SL: SequenceProvider + LabelProvider,
     {
         let fasta_reader = FastaReader::from_bytes(fasta_bytes);
         self.fasta_labeled_alignment_from_reader(reference, fasta_reader)
     }
-    pub fn fasta_file_alignment_to_stream<W, S>(&mut self, reference: &Reference<S>, fasta_bytes: &[u8], stream: W) -> Result<()> where
+    pub fn fasta_file_alignment_to_stream<W, P, S>(&mut self, reference: &Reference<S>, fasta_file: P, stream: W) -> Result<()> where
         W: Write,
+        P: AsRef<Path> + std::fmt::Debug,
         S: SequenceProvider,
     {
-        let fasta_reader = FastaReader::from_bytes(fasta_bytes);
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
         self.write_fasta_alignment_from_reader(reference, fasta_reader, stream)
     }
-    pub fn fasta_file_labeled_alignment_to_stream<W, SL>(&mut self, reference: &Reference<SL>, fasta_bytes: &[u8], stream: W) -> Result<()> where
+    pub fn fasta_file_labeled_alignment_to_stream<W, P, SL>(&mut self, reference: &Reference<SL>, fasta_file: P, stream: W) -> Result<()> where
         W: Write,
+        P: AsRef<Path> + std::fmt::Debug,
         SL: SequenceProvider + LabelProvider,
     {
-        let fasta_reader = FastaReader::from_bytes(fasta_bytes);
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
         self.write_fasta_labeled_alignment_from_reader(reference, fasta_reader, stream)
     }
 
@@ -84,7 +86,7 @@ impl Aligner {
         let mut sequence_buffer = reference.get_buffer();
         FastaAlignmentResult(
             fasta_reader.into_iter().filter_map(|(label, query)| {
-                if !reference.searchable(&query) {
+                if reference.searchable(&query) {
                     Some(
                         ReadAlignmentResult {
                             read: label,
@@ -104,7 +106,7 @@ impl Aligner {
         let mut sequence_buffer = reference.get_buffer();
         FastaAlignmentLabeledResult(
             fasta_reader.into_iter().filter_map(|(label, query)| {
-                if !reference.searchable(&query) {
+                if reference.searchable(&query) {
                     Some(
                         ReadAlignmentLabeledResult {
                             read: label,
@@ -125,21 +127,23 @@ impl Aligner {
         let mut sequence_buffer = reference.get_buffer();
         // First read
         writer.write(b"[")?;
-        let (label, query) = match fasta_reader.next() {
-            Some(v) => v,
-            None => error_msg!("Empty fasta file"),
-        };
-        if !reference.searchable(&query) {
-            let read_alignment_result = ReadAlignmentResult {
-                read: label,
-                result: self.alignment(reference, &mut sequence_buffer, &query),
+        let mut need_first_written = true;
+        while need_first_written {
+            if let Some((label, query)) = fasta_reader.next() {
+                if reference.searchable(&query) {
+                    let read_alignment_result = ReadAlignmentResult {
+                        read: label,
+                        result: self.alignment(reference, &mut sequence_buffer, &query),
+                    };
+                    read_alignment_result.write_as_json(&mut writer);
+                    need_first_written = false;
+                }
             };
-            read_alignment_result.write_as_json(&mut writer);
         }
 
         // Middle reads
         fasta_reader.into_iter().for_each(|(label, query)| {
-            if !reference.searchable(&query) {
+            if reference.searchable(&query) {
                 let read_alignment_result = ReadAlignmentResult {
                     read: label,
                     result: self.alignment(reference, &mut sequence_buffer, &query),
@@ -162,21 +166,23 @@ impl Aligner {
         let mut sequence_buffer = reference.get_buffer();
         // First read
         writer.write(b"[")?;
-        let (label, query) = match fasta_reader.next() {
-            Some(v) => v,
-            None => error_msg!("Empty fasta file"),
-        };
-        if !reference.searchable(&query) {
-            let read_labeled_alignment_result = ReadAlignmentLabeledResult {
-                read: label,
-                result: self.alignment(reference, &mut sequence_buffer, &query).to_labeled(reference),
+        let mut need_first_written = true;
+        while need_first_written {
+            if let Some((label, query)) = fasta_reader.next() {
+                if reference.searchable(&query) {
+                    let read_alignment_result = ReadAlignmentResult {
+                        read: label,
+                        result: self.alignment(reference, &mut sequence_buffer, &query),
+                    };
+                    read_alignment_result.write_as_json(&mut writer);
+                    need_first_written = false;
+                }
             };
-            read_labeled_alignment_result.write_as_json(&mut writer);
         }
 
         // Middle reads
         fasta_reader.into_iter().for_each(|(label, query)| {
-            if !reference.searchable(&query) {
+            if reference.searchable(&query) {
                 let read_labeled_alignment_result = ReadAlignmentLabeledResult {
                     read: label,
                     result: self.alignment(reference, &mut sequence_buffer, &query).to_labeled(reference),
