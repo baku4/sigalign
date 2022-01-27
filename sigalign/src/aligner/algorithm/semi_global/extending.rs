@@ -399,7 +399,7 @@ impl Anchor {
             (
                 penalties.e as i64 * (
                     (cutoff.maximum_penalty_per_scale * length_opposite_side) as i64
-                    - (penalties.e * PRECISION_SCALE * penalty_opposite_side) as i64
+                    - (PRECISION_SCALE * penalty_opposite_side) as i64
                 )
                 + cutoff.maximum_penalty_per_scale as i64 * (
                     (

@@ -13,7 +13,7 @@ pub trait WaveFrontCache {
 
     fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self;
     fn have_enough_space(&self, query_length: usize) -> bool;
-    fn allocate_needed_space(
+    fn allocate_more_if_necessary(
         &mut self,
         query_length: usize,
         penalties: &Penalties,
@@ -43,12 +43,14 @@ impl WaveFrontCache for SingleWaveFrontCache {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_needed_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
-        let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
-        let allocated_wave_front = WaveFront::new_with_query_length(query_length, penalties, cutoff);
-        
-        self.allocated_query_length = to_allocate_query_length;
-        self.wave_front = allocated_wave_front;
+    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
+        if self.allocated_query_length < query_length {
+            let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
+            let allocated_wave_front = WaveFront::new_with_query_length(to_allocate_query_length, penalties, cutoff);
+            
+            self.allocated_query_length = to_allocate_query_length;
+            self.wave_front = allocated_wave_front;
+        }
     }
     fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff) {
         *self = Self::new(penalties, cutoff);
@@ -82,13 +84,15 @@ impl WaveFrontCache for DoubleWaveFrontCache {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_needed_space(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
-        let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
-        let allocated_wave_front = WaveFront::new_with_query_length(query_length, penalties, cutoff);
-        
-        self.allocated_query_length = to_allocate_query_length;
-        self.primary_wave_front = allocated_wave_front.clone();
-        self.secondary_wave_front = allocated_wave_front;
+    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
+        if self.allocated_query_length < query_length {
+            let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
+            let allocated_wave_front = WaveFront::new_with_query_length(to_allocate_query_length, penalties, cutoff);
+            
+            self.allocated_query_length = to_allocate_query_length;
+            self.primary_wave_front = allocated_wave_front.clone();
+            self.secondary_wave_front = allocated_wave_front;
+        }
     }
     fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff) {
         *self = Self::new(penalties, cutoff);
@@ -118,12 +122,15 @@ impl WaveFront {
         penalties: &Penalties,
         cutoff: &Cutoff,
     ) -> usize {
-        (
-            cutoff.maximum_penalty_per_scale * (
-                penalties.e * query_length - penalties.o
-            )
-        ) / (
-            PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
-        ) + 1
+        usize::max(
+            penalties.o,
+            (
+                cutoff.maximum_penalty_per_scale * (
+                    penalties.e * query_length - penalties.o
+                )
+            ) / (
+                PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
+            ) + 2
+        )
     }
 }

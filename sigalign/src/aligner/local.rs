@@ -27,7 +27,7 @@ impl AlignerInterface for LocalAligner {
     fn alignment<S>(&mut self, reference: &Reference<S>, sequence_buffer: &mut S::Buffer, query: Sequence) -> AlignmentResult where
         S: SequenceProvider,
     {
-        self.wave_front_cache.allocate_needed_space(query.len(), &self.condition.penalties, &self.condition.cutoff);
+        self.wave_front_cache.allocate_more_if_necessary(query.len(), &self.condition.penalties, &self.condition.cutoff);
         let reference_alignment_result = local_alignment_algorithm(
             reference,
             sequence_buffer,
