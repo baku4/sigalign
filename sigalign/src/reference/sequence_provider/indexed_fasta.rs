@@ -38,7 +38,7 @@ impl IndexedFastaProvider {
     pub fn new<P>(fasta_file_path: P) -> Result<Self> where
         P: AsRef<Path> + std::fmt::Debug,
     {
-        let string_fasta_file_path = match fasta_file_path.as_ref().to_str() {
+        let string_fasta_file_path = match fasta_file_path.as_ref().canonicalize()?.to_str() {
             Some(v) => v.to_string(),
             None => error_msg!("Invalid fasta file path")
         };
