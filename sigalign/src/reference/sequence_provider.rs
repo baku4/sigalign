@@ -12,13 +12,14 @@ use super::{
 use super::{
     Serializable,
     LabelProvider,
+    ReverseComplement,
 };
 
 // Basic sequence providers implementations
 mod in_memory;
-pub use in_memory::InMemoryProvider;
+pub use in_memory::{InMemoryProvider, InMemoryRcProvider};
 mod indexed_fasta;
-pub use indexed_fasta::IndexedFastaProvider;
+pub use indexed_fasta::{IndexedFastaProvider, IndexedFastaRcProvider};
 
 
 /// Provide sequence information

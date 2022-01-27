@@ -10,11 +10,13 @@ use super::{
     SequenceType, PatternFinder,
     Serializable,
     LabelProvider,
+    ReverseComplement,
 };
 
 mod indexing;
+mod reverse_complement;
+pub use reverse_complement::IndexedFastaRcProvider;
 
-use crate::util::reverse_complement_of_nucleotide_sequence;
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
 use std::fs::File;
 use std::cell::{Cell, RefCell};
@@ -28,7 +30,6 @@ use bincode::{serialize_into, deserialize_from};
 pub struct IndexedFastaProvider {
     total_record_count: usize,
     line_terminator_size: usize,
-    use_reverse_complement: bool,
     fasta_indices: Vec<FastaIndex>,
     fasta_file_path: String,
 }
@@ -49,13 +50,32 @@ impl IndexedFastaProvider {
             Self {
                 total_record_count: fasta_indices.len(),
                 line_terminator_size,
-                use_reverse_complement: false,
                 fasta_indices,
                 fasta_file_path: string_fasta_file_path,
             }
         )
     }
-    fn fill_buffer_sequence_from_fasta(&self, record_index: usize, buffer: &mut IndexedFastaBuffer) {
+    pub fn to_rc_provider(self) -> IndexedFastaRcProvider {
+        IndexedFastaRcProvider(self)
+    }
+}
+
+impl SequenceProvider for IndexedFastaProvider {
+    type Buffer = IndexedFastaBuffer;
+
+    fn total_record_count(&self) -> usize {
+        self.total_record_count
+    }
+    fn get_buffer(&self) -> Self::Buffer {
+        let file = File::open(&self.fasta_file_path).unwrap();
+        let buf_reader = BufReader::new(file);
+
+        Self::Buffer {
+            fasta_buf_reader: buf_reader,
+            sequence_buffer: Vec::new(),
+        }
+    }
+    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
         let fasta_index = &self.fasta_indices[record_index];
 
         let mut new_sequence_buffer = Vec::with_capacity(fasta_index.sequence_length);
@@ -79,53 +99,11 @@ impl IndexedFastaProvider {
     }
 }
 
-impl SequenceProvider for IndexedFastaProvider {
-    type Buffer = IndexedFastaBuffer;
-
-    fn total_record_count(&self) -> usize {
-        if self.use_reverse_complement {
-            self.total_record_count * 2
-        } else {
-            self.total_record_count
-        }
-    }
-    fn get_buffer(&self) -> Self::Buffer {
-        let file = File::open(&self.fasta_file_path).unwrap();
-        let buf_reader = BufReader::new(file);
-
-        Self::Buffer {
-            fasta_buf_reader: buf_reader,
-            sequence_buffer: Vec::new(),
-        }
-    }
-    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
-        if self.use_reverse_complement {
-            let record_index_quot = record_index / 2;
-            let record_index_rem = record_index % 2;
-
-            self.fill_buffer_sequence_from_fasta(record_index_quot, buffer);
-
-            if record_index_rem == 1 {
-                let reverse_complement_sequence = reverse_complement_of_nucleotide_sequence(&buffer.sequence_buffer);
-                buffer.sequence_buffer = reverse_complement_sequence;
-            }
-        } else {
-            self.fill_buffer_sequence_from_fasta(record_index, buffer);
-        }
-    }
-}
-
 // Label Provider
 impl LabelProvider for IndexedFastaProvider {
     fn label_of_record(&self, record_index: usize) -> String {
-        if self.use_reverse_complement {
-            let record_index_quot = record_index / 2;
-            let fasta_index = &self.fasta_indices[record_index_quot];
-            fasta_index.label.clone()
-        } else {
-            let fasta_index = &self.fasta_indices[record_index];
-            fasta_index.label.clone()
-        }
+        let fasta_index = &self.fasta_indices[record_index];
+        fasta_index.label.clone()
     }
 }
 

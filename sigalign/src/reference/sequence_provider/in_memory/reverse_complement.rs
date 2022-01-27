@@ -13,44 +13,28 @@ use super::{
     ReverseComplement,
 };
 
-use crate::util::FastaReader;
+use super::{InMemoryProvider, InMemoryBuffer};
+
+use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
 use bincode::{serialize_into, deserialize_from};
 
-mod reverse_complement;
-pub use reverse_complement::InMemoryRcProvider;
-
-/// Basic `SequenceProvider` implementation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InMemoryProvider {
-    record_count: usize,
-    combined_sequence: Vec<u8>,
-    sequence_index: Vec<usize>,
-    combined_label: String,
-    label_index: Vec<usize>,
-}
+pub struct InMemoryRcProvider(InMemoryProvider);
 
-impl InMemoryProvider {
+impl InMemoryRcProvider {
     pub fn new() -> Self {
-        Self {
-            record_count: 0,
-            combined_sequence: Vec::new(),
-            sequence_index: vec![0],
-            combined_label: String::new(),
-            label_index: vec![0],
-        }
+        Self(InMemoryProvider::new())
     }
     pub fn add_record(
         &mut self,
         sequence: &[u8],
         label: &str,
     ) {
-        self.record_count += 1;
-        self.combined_sequence.extend_from_slice(sequence);
-        self.sequence_index.push(self.combined_sequence.len());
-        self.combined_label.push_str(label);
-        self.label_index.push(self.combined_label.len());
+        self.0.add_record(sequence, label);
+        let rc_seq = reverse_complement_of_nucleotide_sequence(sequence);
+        self.0.add_record(&rc_seq, label);
     }
     pub fn add_fasta_file<P>(&mut self, file_path: P) -> Result<()> where
         P: AsRef<std::path::Path> + std::fmt::Debug,
@@ -67,59 +51,40 @@ impl InMemoryProvider {
         R: std::io::Read,
     {
         fasta_reader.for_each(|(label, sequence)| {
-            self.add_record(&sequence, &label);
+            self.0.add_record(&sequence, &label);
+            let rc_seq = reverse_complement_of_nucleotide_sequence(&sequence);
+            self.0.add_record(&rc_seq, &label);
         });
     }
 }
 
-pub struct InMemoryBuffer {
-    pointer: *const u8,
-    len: usize,
-}
-
-impl SequenceBuffer for InMemoryBuffer {
-    fn request_sequence(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.pointer, self.len) }
-    }
-}
-
 // Sequence Provider
-impl SequenceProvider for InMemoryProvider {
+impl SequenceProvider for InMemoryRcProvider {
     type Buffer = InMemoryBuffer;
 
     fn total_record_count(&self) -> usize {
-        self.record_count
+        self.0.record_count
     }
     fn get_buffer(&self) -> Self::Buffer {
-        InMemoryBuffer {
-            pointer: self.combined_sequence.as_ptr(),
-            len: 0,
-        }
+        self.0.get_buffer()
     }
     fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
-        let start_index = self.sequence_index[record_index];
-        buffer.pointer = &self.combined_sequence[start_index];
-        buffer.len = self.sequence_index[record_index+1] - start_index;
+        self.0.fill_sequence_buffer(record_index, buffer);
     }
     fn get_joined_sequence(&self) -> JoinedSequence {
-        JoinedSequence::new(
-            self.combined_sequence.to_vec(),
-            self.sequence_index.iter().map(|x| *x as u64).collect(),
-        )
+        self.0.get_joined_sequence()
     }
 }
 
 // Label Provider
-impl LabelProvider for InMemoryProvider {
+impl LabelProvider for InMemoryRcProvider {
     fn label_of_record(&self, record_index: usize) -> String {
-        String::from(&self.combined_label[
-            self.label_index[record_index]..self.label_index[record_index+1]
-        ])
+        self.0.label_of_record(record_index)
     }
 }
 
 // Serializable
-impl Serializable for InMemoryProvider {
+impl Serializable for InMemoryRcProvider {
     fn save_to<W>(&self, writer: W) -> Result<()> where
         W: std::io::Write
     {
@@ -132,5 +97,16 @@ impl Serializable for InMemoryProvider {
     {
         let value: Self = deserialize_from(reader)?;
         Ok(value)
+    }
+}
+
+// Reverse Complement
+impl ReverseComplement for InMemoryRcProvider {
+    fn is_reverse_complement(&self, record_index: usize) -> bool {
+        if record_index % 2 == 0 {
+            false
+        } else {
+            true
+        }
     }
 }

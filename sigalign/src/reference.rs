@@ -79,6 +79,7 @@ mod feature;
 pub use feature::{
     Serializable,
     LabelProvider,
+    ReverseComplement,
 };
 
 /// Definition and interfaces for `SequenceProvider`

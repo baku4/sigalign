@@ -9,11 +9,19 @@ fn test_sequence_providers_provide_same_sequence() {
     // (1) In memory provider
     let mut in_memory_provider = InMemoryProvider::new();
     in_memory_provider.add_fasta_file(fasta_file_path).unwrap();
+    let mut in_memory_rc_provider = InMemoryRcProvider::new();
+    in_memory_rc_provider.add_fasta_file(fasta_file_path).unwrap();
     // (2) Indexed fasta provider
     let mut indexed_fasta_provider = IndexedFastaProvider::new(fasta_file_path).unwrap();
+    let mut indexed_fasta_rc_provider = IndexedFastaRcProvider::new(fasta_file_path).unwrap();
 
     assert_both_provide_same_sequence(&in_memory_provider, &indexed_fasta_provider);
+    assert_both_provide_same_sequence(&in_memory_rc_provider, &indexed_fasta_rc_provider);
+    
     assert_both_provide_same_label(&in_memory_provider, &indexed_fasta_provider);
+    assert_both_provide_same_label(&in_memory_rc_provider, &indexed_fasta_rc_provider);
+
+    assert_both_provide_same_rc(&in_memory_rc_provider, &indexed_fasta_rc_provider);
 }
 
 #[test]
@@ -21,13 +29,25 @@ fn test_sequence_providers_serialization() {
     let fasta_file_path = NUCLEOTIDE_ONLY_FA_PATH_1;
 
     // (1) In memory provider
-    let mut in_memory_provider = InMemoryProvider::new();
-    in_memory_provider.add_fasta_file(fasta_file_path).unwrap();
-    assert_provider_serialization(&in_memory_provider);
-
+    {
+        let mut in_memory_provider = InMemoryProvider::new();
+        in_memory_provider.add_fasta_file(fasta_file_path).unwrap();
+        assert_provider_serialization(&in_memory_provider);
+    }
+    {
+        let mut in_memory_rc_provider = InMemoryRcProvider::new();
+        in_memory_rc_provider.add_fasta_file(fasta_file_path).unwrap();
+        assert_provider_serialization(&in_memory_rc_provider);
+    }
     // (2) Indexed fasta provider
-    let mut indexed_fasta_provider = IndexedFastaProvider::new(fasta_file_path).unwrap();
-    assert_provider_serialization(&indexed_fasta_provider);
+    {
+        let mut indexed_fasta_provider = IndexedFastaProvider::new(fasta_file_path).unwrap();
+        assert_provider_serialization(&indexed_fasta_provider);
+    }
+    {
+        let mut indexed_fasta_rc_provider = IndexedFastaRcProvider::new(fasta_file_path).unwrap();
+        assert_provider_serialization(&indexed_fasta_rc_provider);
+    }
 }
 
 fn assert_both_provide_same_sequence<S1, S2>(
@@ -90,4 +110,24 @@ fn assert_provider_serialization<S>(
     
     // trait 'PatialEq' impl is not guaranteed
     assert_both_provide_same_sequence(sequence_provider_to_save, &loaded_sequence_provider)
+}
+
+fn assert_both_provide_same_rc<SR1, SR2>(
+    sequence_provider_1: &SR1,
+    sequence_provider_2: &SR2,
+) where
+    SR1: SequenceProvider + ReverseComplement,
+    SR2: SequenceProvider + ReverseComplement,
+{
+    let read_count_1 = sequence_provider_1.total_record_count();
+    let read_count_2 = sequence_provider_2.total_record_count();
+    
+    assert_eq!(read_count_1, read_count_2);
+
+    for record_index in 0..read_count_1 {
+        let is_rc_1 = sequence_provider_1.is_reverse_complement(record_index);
+        let is_rc_2 = sequence_provider_2.is_reverse_complement(record_index);
+
+        assert_eq!(is_rc_1, is_rc_2);
+    }
 }
