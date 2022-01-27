@@ -1,6 +1,6 @@
-use sigalign_demo_aligner::Configuration;
+use sigalign_demo_aligner::Application;
 
 fn main() {
-    let config = Configuration::new();
-    // let result = Configuration::interpret(&config);
+    env_logger::init();
+    Application::run();
 }
