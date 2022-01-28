@@ -16,3 +16,6 @@ Cargo.lock
 
 # OS generated files
 .DS_Store
+
+# Sample test data
+samples/
