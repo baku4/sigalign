@@ -9,7 +9,7 @@ use super::{WaveFront};
 use std::fmt;
 
 pub trait WaveFrontCache {
-    const QUERY_LEN_INC_UNIT: usize = 100;
+    const QUERY_LEN_INC_UNIT: usize = 150;
 
     fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self;
     fn have_enough_space(&self, query_length: usize) -> bool;
@@ -25,7 +25,7 @@ pub trait WaveFrontCache {
     fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff);
 }
 
-const FIRST_ALLOCATED_QUERY_LENGTH: usize = 100;
+const FIRST_ALLOCATED_QUERY_LENGTH: usize = 200;
 
 #[derive(Clone)]
 pub struct SingleWaveFrontCache {
@@ -59,8 +59,8 @@ impl WaveFrontCache for SingleWaveFrontCache {
 impl fmt::Debug for SingleWaveFrontCache {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SingleWaveFrontCache")
-         .field("allocated_query_length", &self.allocated_query_length)
-         .finish()
+            .field("allocated_query_length", &self.allocated_query_length)
+            .finish()
     }
 }
 
@@ -101,8 +101,8 @@ impl WaveFrontCache for DoubleWaveFrontCache {
 impl fmt::Debug for DoubleWaveFrontCache {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DoubleWaveFrontCache")
-         .field("allocated_query_length", &self.allocated_query_length)
-         .finish()
+            .field("allocated_query_length", &self.allocated_query_length)
+            .finish()
     }
 }
 
@@ -131,6 +131,8 @@ impl WaveFront {
             ) / (
                 PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
             ) + 2
+            // According to the formula, value 1 is sufficient for cap.
+            // But since cap can be already added from previous calculations, it should be set to 2.
         )
     }
 }
