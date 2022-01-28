@@ -1,6 +1,6 @@
-use super::{Result, format_err, error_msg};
+use super::{Result, error_msg};
 
-use sigalign::{Reference, ReferenceBuilder};
+use sigalign::Reference;
 use sigalign::sequence_provider::{
     InMemoryProvider, InMemoryRcProvider, IndexedFastaProvider, IndexedFastaRcProvider,
 };

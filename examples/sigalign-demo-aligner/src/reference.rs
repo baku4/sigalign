@@ -2,20 +2,17 @@ use super::{Result, format_err, error_msg};
 
 use std::{
     path::{Path, PathBuf},
-    fs::File,
-    fmt::Error,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 
 use clap::{
     arg, App,
-    AppSettings,
-    ArgMatches,
     ArgGroup,
+    ArgMatches,
 };
 
-use sigalign::{Reference, ReferenceBuilder};
+use sigalign::ReferenceBuilder;
 use sigalign::sequence_provider::{
     InMemoryProvider, InMemoryRcProvider, IndexedFastaProvider, IndexedFastaRcProvider,
 };

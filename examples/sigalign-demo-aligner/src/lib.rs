@@ -1,11 +1,9 @@
 use anyhow::{Result, format_err, bail as error_msg};
 
 use clap::{
-    arg, App,
+    App,
     AppSettings,
 };
-
-use std::path::Path;
 
 mod reference;
 mod alignment;

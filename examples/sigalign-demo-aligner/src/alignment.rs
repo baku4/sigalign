@@ -1,25 +1,29 @@
 use std::{
     path::{PathBuf, Path},
-    time::{Duration, Instant},   
+    time::Instant,   
 };
 
 use super::{Result, format_err, error_msg};
 
 use clap::{
     arg, App,
-    AppSettings,
     ArgGroup,
     ArgMatches,
 };
 
 use super::SelfDescReference;
-use sigalign::{ReferenceBuilder, Aligner, Reference, sequence_provider::InMemoryProvider};
+use sigalign::{
+    ReferenceBuilder,
+    sequence_provider::{InMemoryProvider, InMemoryRcProvider},
+    Aligner,
+};
 
 #[derive(Debug)]
 pub struct AlignmentConfig {
     // Path
     input_fasta_pathbuf: PathBuf,
     input_reference_pathbuf: PathBuf,
+    use_rc: bool,
     // Condition
     px: usize,
     po: usize,
@@ -41,6 +45,7 @@ impl AlignmentConfig {
                 .args(&["semiglobal", "local"]))
             .arg(arg!(-r --reference <FILE> "Define reference fasta(.fa, .fasta, .fna) or Sigalign reference file")
                 .required(true))
+            .arg(arg!(- -reverse  "Use reverse complementary sequence"))
             .arg(arg!(-p --penalties "Mismatch, Gap-open and Gap-extend penalties")
                 .value_names(&["MISM", "GOPN", "GEXT"])
                 .required(true))
@@ -88,6 +93,8 @@ impl AlignmentConfig {
         let input_reference_path = Path::new(input_reference_path_str);
         let input_reference_pathbuf = input_reference_path.to_path_buf();
 
+        let use_rc = matches.is_present("reverse");
+
         // (2) Condition
         let mut penalties = matches.values_of("penalties").unwrap();
         if penalties.len() != 3 {
@@ -117,6 +124,7 @@ impl AlignmentConfig {
             Self {
                 input_fasta_pathbuf,
                 input_reference_pathbuf,
+                use_rc,
                 px,
                 po,
                 pe,
@@ -139,9 +147,15 @@ impl AlignmentConfig {
         
         if use_new_ref {
             eprintln!(" Make new reference from file {:?}", self.input_reference_pathbuf);
-            let mut sequence_provider = InMemoryProvider::new();
-            sequence_provider.add_fasta_file(&self.input_reference_pathbuf)?;
-            Ok(SelfDescReference::InMemory(ReferenceBuilder::new().build(sequence_provider)?))
+            if self.use_rc {
+                let mut sequence_provider = InMemoryProvider::new();
+                sequence_provider.add_fasta_file(&self.input_reference_pathbuf)?;
+                Ok(SelfDescReference::InMemory(ReferenceBuilder::new().build(sequence_provider)?))
+            } else {
+                let mut sequence_provider = InMemoryRcProvider::new();
+                sequence_provider.add_fasta_file(&self.input_reference_pathbuf)?;
+                Ok(SelfDescReference::InMemoryRc(ReferenceBuilder::new().build(sequence_provider)?))
+            }
         } else {
             eprintln!(" Load reference from file {:?}", self.input_reference_pathbuf);
             SelfDescReference::load_from_file(&self.input_reference_pathbuf)
