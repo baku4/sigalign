@@ -25,6 +25,7 @@ pub struct ReferenceConfig {
     // Path
     input_file_pathbuf: PathBuf,
     output_file_pathbuf: PathBuf,
+    overwrite: bool,
     // Sequence provider type
     in_memory: bool,
     use_rc: bool,
@@ -45,6 +46,7 @@ impl ReferenceConfig {
         app.about("Generate reference file")
             .arg(arg!(-i --input <FILE> "Input FASTA path"))
             .arg(arg!(-o --output <FILE> "Output reference path"))
+            .arg(arg!(-w - -overwrite  "Overwrite output reference file"))
             .arg(arg!(-r - -reverse  "Use reverse complementary sequence"))
             .arg(arg!(-c - -cpb  "Use higher compressed (128) Bwt block"))
             .arg(arg!(-s --ssr <INT>  "Suffix array sampling ratio")
@@ -92,14 +94,17 @@ impl ReferenceConfig {
             .ok_or(format_err!("Invalid input file"))?;
         let input_file_path = Path::new(input_file_path_str);
         let input_file_pathbuf = input_file_path.to_path_buf();
-        
+
+        let overwrite = matches.is_present("overwrite");
+
         let output_file_path_str = matches.value_of("output")
             .ok_or(format_err!("Invalid output file"))?;
         let output_file_path = Path::new(output_file_path_str);
-        if output_file_path.exists() {
+        let output_file_pathbuf = output_file_path.to_path_buf();
+
+        if !overwrite && output_file_path.exists() {
             error_msg!("Output file already exist")
         }
-        let output_file_pathbuf = output_file_path.to_path_buf();
 
         // (2) Sequence provider type
         let in_memory = matches.is_present("nom");
@@ -138,6 +143,7 @@ impl ReferenceConfig {
             Self {
                 input_file_pathbuf,
                 output_file_pathbuf,
+                overwrite,
                 in_memory,
                 use_rc,
                 use_128_bwt,
