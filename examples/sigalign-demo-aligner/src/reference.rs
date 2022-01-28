@@ -24,7 +24,7 @@ pub struct ReferenceConfig {
     output_file_pathbuf: PathBuf,
     overwrite: bool,
     // Sequence provider type
-    in_memory: bool,
+    use_indexed_fasta: bool,
     use_rc: bool,
     // Pattern finder config
     use_128_bwt: bool,
@@ -141,7 +141,7 @@ impl ReferenceConfig {
                 input_file_pathbuf,
                 output_file_pathbuf,
                 overwrite,
-                in_memory,
+                use_indexed_fasta: in_memory,
                 use_rc,
                 use_128_bwt,
                 kmer,
@@ -184,7 +184,15 @@ impl ReferenceConfig {
             }
         };
 
-        if self.in_memory {
+        if self.use_indexed_fasta {
+            if self.use_rc {
+                let sp = IndexedFastaRcProvider::new(self.input_file_pathbuf.clone())?;
+                Ok(SelfDescReference::IndexedFastaRc(reference_builder.build(sp)?))
+            } else {
+                let sp = IndexedFastaProvider::new(self.input_file_pathbuf.clone())?;
+                Ok(SelfDescReference::IndexedFasta(reference_builder.build(sp)?))
+            }
+        } else {
             if self.use_rc {
                 let mut sp = InMemoryRcProvider::new();
                 sp.add_fasta_file(self.input_file_pathbuf.clone())?;
@@ -193,14 +201,6 @@ impl ReferenceConfig {
                 let mut sp = InMemoryProvider::new();
                 sp.add_fasta_file(self.input_file_pathbuf.clone())?;
                 Ok(SelfDescReference::InMemory(reference_builder.build(sp)?))
-            }
-        } else {
-            if self.use_rc {
-                let sp = IndexedFastaRcProvider::new(self.input_file_pathbuf.clone())?;
-                Ok(SelfDescReference::IndexedFastaRc(reference_builder.build(sp)?))
-            } else {
-                let sp = IndexedFastaProvider::new(self.input_file_pathbuf.clone())?;
-                Ok(SelfDescReference::IndexedFasta(reference_builder.build(sp)?))
             }
         }
     }
