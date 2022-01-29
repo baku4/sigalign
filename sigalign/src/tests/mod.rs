@@ -14,7 +14,9 @@ mod standard_aligner;
 use standard_aligner::*;
 
 // Supply Functions
+#[cfg(test)]
 pub mod sample_data;
+#[cfg(test)]
 use sample_data::*;
 
 // Test Main
