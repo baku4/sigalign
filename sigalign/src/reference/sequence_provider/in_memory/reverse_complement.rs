@@ -88,15 +88,15 @@ impl Serializable for InMemoryRcProvider {
     fn save_to<W>(&self, writer: W) -> Result<()> where
         W: std::io::Write
     {
-        serialize_into(writer, self)?;
+        self.0.save_to(writer)?;
         Ok(())
     }
     fn load_from<R>(reader: R) -> Result<Self> where
         R: std::io::Read,
         Self: Sized,
     {
-        let value: Self = deserialize_from(reader)?;
-        Ok(value)
+        let in_memory_provider = InMemoryProvider::load_from(reader)?;
+        Ok(Self(in_memory_provider))
     }
 }
 
