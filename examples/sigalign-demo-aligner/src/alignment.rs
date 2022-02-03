@@ -1,6 +1,6 @@
 use std::{
     path::{PathBuf, Path},
-    time::Instant,   
+    time::Instant, io::Write,   
 };
 
 use super::{Result, format_err, error_msg};
@@ -184,21 +184,25 @@ impl AlignmentConfig {
 
 impl SelfDescReference {
     fn alignment(&self, aligner: &mut Aligner, fasta_file: &PathBuf) -> Result<()> {
-        let stdout = std::io::stdout();
-
-        match self {
+        let result = match self {
             Self::InMemory(inner_ref) => {
-                aligner.fasta_file_alignment_to_stream(inner_ref, fasta_file, stdout)
+                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
             },
             Self::InMemoryRc(inner_ref) => {
-                aligner.fasta_file_alignment_to_stream(inner_ref, fasta_file, stdout)
+                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
             },
             Self::IndexedFasta(inner_ref) => {
-                aligner.fasta_file_alignment_to_stream(inner_ref, fasta_file, stdout)
+                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
             },
             Self::IndexedFastaRc(inner_ref) => {
-                aligner.fasta_file_alignment_to_stream(inner_ref, fasta_file, stdout)
+                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
             },
-        }
+        };
+        
+        let mut stdout = std::io::stdout();
+        stdout.write(result.as_bytes())?;
+        stdout.flush()?;
+
+        Ok(())
     }
 }

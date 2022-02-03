@@ -62,43 +62,7 @@ impl Aligner {
         let fasta_reader = FastaReader::from_bytes(fasta_bytes);
         self.fasta_labeled_alignment_from_reader(reference, fasta_reader)
     }
-    pub fn fasta_file_alignment_to_stream<W, P, S>(&mut self, reference: &Reference<S>, fasta_file: P, stream: W) -> Result<()> where
-        W: Write,
-        P: AsRef<Path> + std::fmt::Debug,
-        S: SequenceProvider,
-    {
-        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
-        self.write_fasta_alignment_from_reader(reference, fasta_reader, stream)
-    }
-    pub fn fasta_file_labeled_alignment_to_stream<W, P, SL>(&mut self, reference: &Reference<SL>, fasta_file: P, stream: W) -> Result<()> where
-        W: Write,
-        P: AsRef<Path> + std::fmt::Debug,
-        SL: SequenceProvider + LabelProvider,
-    {
-        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
-        self.write_fasta_labeled_alignment_from_reader(reference, fasta_reader, stream)
-    }
 
-    fn fasta_alignment_from_reader<R, S>(&mut self, reference: &Reference<S>, fasta_reader: FastaReader<R>) -> FastaAlignmentResult where
-        R: Read,    
-        S: SequenceProvider,
-    {
-        let mut sequence_buffer = reference.get_buffer();
-        FastaAlignmentResult(
-            fasta_reader.into_iter().filter_map(|(label, query)| {
-                if reference.searchable(&query) {
-                    Some(
-                        ReadAlignmentResult {
-                            read: label,
-                            result: self.alignment(reference, &mut sequence_buffer, &query),
-                        }
-                    )
-                } else {
-                    None
-                }
-            }).collect()
-        )
-    }
     fn fasta_labeled_alignment_from_reader<R, SL>(&mut self, reference: &Reference<SL>, fasta_reader: FastaReader<R>) -> FastaAlignmentLabeledResult where
         R: Read,    
         SL: SequenceProvider + LabelProvider,
@@ -119,6 +83,52 @@ impl Aligner {
             }).collect()
         )
     }
+    fn fasta_alignment_from_reader<R, S>(&mut self, reference: &Reference<S>, fasta_reader: FastaReader<R>) -> FastaAlignmentResult where
+        R: Read,    
+        S: SequenceProvider,
+    {
+        let mut sequence_buffer = reference.get_buffer();
+        FastaAlignmentResult(
+            fasta_reader.into_iter().filter_map(|(label, query)| {
+                if reference.searchable(&query) {
+                    Some(
+                        ReadAlignmentResult {
+                            read: label,
+                            result: self.alignment(reference, &mut sequence_buffer, &query),
+                        }
+                    )
+                } else {
+                    None
+                }
+            }).collect()
+        )
+    }
+    
+    
+
+    //
+    // FIXME: Debug race condition of stream
+    //
+
+
+
+    fn fasta_file_alignment_to_stream<W, P, S>(&mut self, reference: &Reference<S>, fasta_file: P, stream: W) -> Result<()> where
+        W: Write,
+        P: AsRef<Path> + std::fmt::Debug,
+        S: SequenceProvider,
+    {
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
+        self.write_fasta_alignment_from_reader(reference, fasta_reader, stream)
+    }
+    fn fasta_file_labeled_alignment_to_stream<W, P, SL>(&mut self, reference: &Reference<SL>, fasta_file: P, stream: W) -> Result<()> where
+        W: Write,
+        P: AsRef<Path> + std::fmt::Debug,
+        SL: SequenceProvider + LabelProvider,
+    {
+        let fasta_reader = FastaReader::from_file_path(fasta_file)?;
+        self.write_fasta_labeled_alignment_from_reader(reference, fasta_reader, stream)
+    }
+
     fn write_fasta_alignment_from_reader<R, W, S>(&mut self, reference: &Reference<S>, mut fasta_reader: FastaReader<R>, mut writer: W) -> Result<()> where
         R: Read,
         W: Write,
