@@ -387,11 +387,11 @@ fn assert_alignment_results_by_index_are_same(
 
     let result_of_this_crate_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_this_crate.0.iter()
         .map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.result.clone())
+            (record_alignment_result.index, record_alignment_result.alignments.clone())
         }).collect();
     let result_of_standard_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_standard.0.iter()
         .map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.result.clone())
+            (record_alignment_result.index, record_alignment_result.alignments.clone())
         }).collect();
 
     for key in first_keys {
@@ -429,11 +429,11 @@ fn print_alignment_results_by_index_are_same(
 
     let result_of_this_crate_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_this_crate.0.iter()
         .map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.result.clone())
+            (record_alignment_result.index, record_alignment_result.alignments.clone())
         }).collect();
     let result_of_standard_map: HashMap<usize, Vec<AnchorAlignmentResult>> = result_of_standard.0.iter()
         .map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.result.clone())
+            (record_alignment_result.index, record_alignment_result.alignments.clone())
         }).collect();
 
     for key in first_keys {
@@ -470,11 +470,11 @@ fn print_if_left_result_dont_include_right_result(
 
     let left_result_map: HashMap<usize, Vec<AnchorAlignmentResult>> = left_result.0.iter()
         .map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.result.clone())
+            (record_alignment_result.index, record_alignment_result.alignments.clone())
         }).collect();
     let right_result_map: HashMap<usize, Vec<AnchorAlignmentResult>> = right_result.0.iter()
         .map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.result.clone())
+            (record_alignment_result.index, record_alignment_result.alignments.clone())
         }).collect();
 
     for key in intersection_keys {

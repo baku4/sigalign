@@ -141,7 +141,7 @@ pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
                 Some(
                     RecordAlignmentResult {
                         index: record_index,
-                        result: alignment_results,
+                        alignments: alignment_results,
                     }
                 )
             }

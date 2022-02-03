@@ -129,7 +129,7 @@ impl StandardReference {
                 if alignment_results.len() != 0 {
                     Some(RecordAlignmentResult {
                         index: record_index,
-                        result: alignment_results,
+                        alignments: alignment_results,
                     })
                 } else {
                     None
@@ -154,7 +154,7 @@ impl StandardReference {
                 if alignment_results.len() != 0 {
                     Some(RecordAlignmentResult {
                         index: record_index,
-                        result: alignment_results,
+                        alignments: alignment_results,
                     })
                 } else {
                     None

@@ -115,7 +115,7 @@ impl AlignmentCondition {
 impl AlignmentResult {
     fn multiply_gcd(&mut self, gcd: usize) {
         self.0.iter_mut().for_each(|record_alignment_result| {
-            record_alignment_result.result.iter_mut().for_each(|alignment_result| {
+            record_alignment_result.alignments.iter_mut().for_each(|alignment_result| {
                 alignment_result.multiply_gcd(gcd);
             })
         })

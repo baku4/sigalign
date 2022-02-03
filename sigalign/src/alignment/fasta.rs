@@ -90,7 +90,7 @@ impl Aligner {
                     Some(
                         ReadAlignmentResult {
                             read: label,
-                            alignment: self.alignment(reference, &mut sequence_buffer, &query),
+                            result: self.alignment(reference, &mut sequence_buffer, &query),
                         }
                     )
                 } else {
@@ -110,7 +110,7 @@ impl Aligner {
                     Some(
                         ReadAlignmentLabeledResult {
                             read: label,
-                            alignment: self.alignment(reference, &mut sequence_buffer, &query).to_labeled(reference),
+                            result: self.alignment(reference, &mut sequence_buffer, &query).to_labeled(reference),
                         }
                     )
                 } else {
@@ -133,7 +133,7 @@ impl Aligner {
                 if reference.searchable(&query) {
                     let read_alignment_result = ReadAlignmentResult {
                         read: label,
-                        alignment: self.alignment(reference, &mut sequence_buffer, &query),
+                        result: self.alignment(reference, &mut sequence_buffer, &query),
                     };
                     read_alignment_result.write_as_json(&mut writer);
                     need_first_written = false;
@@ -146,7 +146,7 @@ impl Aligner {
             if reference.searchable(&query) {
                 let read_alignment_result = ReadAlignmentResult {
                     read: label,
-                    alignment: self.alignment(reference, &mut sequence_buffer, &query),
+                    result: self.alignment(reference, &mut sequence_buffer, &query),
                 };
                 writer.write(b","); // Do not error check
                 read_alignment_result.write_as_json(&mut writer);
@@ -172,7 +172,7 @@ impl Aligner {
                 if reference.searchable(&query) {
                     let read_alignment_result = ReadAlignmentResult {
                         read: label,
-                        alignment: self.alignment(reference, &mut sequence_buffer, &query),
+                        result: self.alignment(reference, &mut sequence_buffer, &query),
                     };
                     read_alignment_result.write_as_json(&mut writer);
                     need_first_written = false;
@@ -185,7 +185,7 @@ impl Aligner {
             if reference.searchable(&query) {
                 let read_labeled_alignment_result = ReadAlignmentLabeledResult {
                     read: label,
-                    alignment: self.alignment(reference, &mut sequence_buffer, &query).to_labeled(reference),
+                    result: self.alignment(reference, &mut sequence_buffer, &query).to_labeled(reference),
                 };
                 writer.write(b","); // Do not error check
                 read_labeled_alignment_result.write_as_json(&mut writer);

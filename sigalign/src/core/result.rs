@@ -9,7 +9,7 @@ pub struct AlignmentResult(
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct RecordAlignmentResult {
     pub index: usize,
-    pub result: Vec<AnchorAlignmentResult>,
+    pub alignments: Vec<AnchorAlignmentResult>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]

@@ -18,7 +18,7 @@ pub struct FastaAlignmentLabeledResult(
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct ReadAlignmentLabeledResult {
     pub read: String,
-    pub alignment: AlignmentLabeledResult,
+    pub result: AlignmentLabeledResult,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
@@ -30,5 +30,5 @@ pub struct AlignmentLabeledResult(
 pub struct RecordAlignmentLabeledResult {
     pub index: usize,
     pub label: String,
-    pub result: Vec<AnchorAlignmentResult>,
+    pub alignments: Vec<AnchorAlignmentResult>,
 }
