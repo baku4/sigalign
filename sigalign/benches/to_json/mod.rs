@@ -12,16 +12,6 @@ use serde_json::{
 };
 
 #[inline]
-fn to_json_impl(result: &FastaAlignmentLabeledResult) -> String {
-    result.to_json()
-}
-
-#[inline]
-fn to_json_impl_short(result: &FastaAlignmentLabeledResult) -> String {
-    result.to_json_short()
-}
-
-#[inline]
 fn to_json_with_serde(result: &FastaAlignmentLabeledResult) -> String {
     to_string(&result).unwrap()
 }
@@ -33,27 +23,13 @@ fn to_json_with_serde_pretty(result: &FastaAlignmentLabeledResult) -> String {
 
 
 /*
-sigalign impl VS with serde
+serde json pretty
 */
 
-pub fn bench_to_json_impl_vs_serde(c: &mut Criterion) {
-    let mut group = c.benchmark_group("to_json");
+pub fn bench_to_json_pretty(c: &mut Criterion) {
+    let mut group = c.benchmark_group("to_json_pretty");
 
     let test_result = get_test_alignment_result();
-    
-    group.bench_function(
-        "impl",
-        |b| b.iter(|| {
-            to_json_impl(black_box(&test_result));
-        })
-    );
-
-    group.bench_function(
-        "impl_short",
-        |b| b.iter(|| {
-            to_json_impl_short(black_box(&test_result));
-        })
-    );
 
     group.bench_function(
         "serde",

@@ -6,11 +6,11 @@ mod test_data;
 
 mod to_json;
 use to_json::{
-    bench_to_json_impl_vs_serde
+    bench_to_json_pretty
 };
 
 criterion_group!(
     benches,
-    bench_to_json_impl_vs_serde,
+    bench_to_json_pretty,
 );
 criterion_main!(benches);
