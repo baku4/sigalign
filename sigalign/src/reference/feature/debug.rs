@@ -44,8 +44,5 @@ impl<S> Reference<S> where
     pub fn get_size_of_bwt_block(&self) -> usize {
         self.pattern_finder.get_size_of_bwt_block()
     }
-    pub fn get_lt_fm_index_byte_size(&self) -> usize {
-        self.pattern_finder.get_lt_fm_index_byte_size()
-    }
     // Sequence Provider
 }

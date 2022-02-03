@@ -98,7 +98,7 @@ mod example {
         // (3) Align query to reference
         let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
         let result = aligner.query_alignment(&reference, query).unwrap();
-        println!("{}", result.to_json_pretty());
+        println!("{}", result.to_json());
     }
 
     #[test]

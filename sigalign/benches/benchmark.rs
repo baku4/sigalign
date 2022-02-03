@@ -1,9 +1,16 @@
 use criterion::{
-    black_box, criterion_group, criterion_main, Criterion, BenchmarkId
+    criterion_group, criterion_main,
 };
-use lt_fm_index::*;
 
-// criterion_main!(benches);
-fn main() {
-    
-}
+mod test_data;
+
+mod to_json;
+use to_json::{
+    bench_to_json_impl_vs_serde
+};
+
+criterion_group!(
+    benches,
+    bench_to_json_impl_vs_serde,
+);
+criterion_main!(benches);

@@ -29,7 +29,4 @@ impl PatternFinder {
     pub fn get_lookup_table_kmer_size(&self) -> usize {
         self.lt_fm_index.lookup_table_kmer_size()
     }
-    pub fn get_lt_fm_index_byte_size(&self) -> usize {
-        self.lt_fm_index.inner_bytes_size()
-    }
 }

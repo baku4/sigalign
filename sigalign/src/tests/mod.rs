@@ -23,4 +23,6 @@ use sample_data::*;
 #[cfg(test)]
 mod print_alignment_result_to_cmp;
 #[cfg(test)]
-mod test_sequence_provider;
+mod sequence_provider;
+#[cfg(test)]
+mod reference_serialization;

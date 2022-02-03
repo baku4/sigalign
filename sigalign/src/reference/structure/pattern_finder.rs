@@ -11,6 +11,7 @@ use super::{
     Serializable,
 };
 
+use capwriter::{Saveable, Loadable};
 use lt_fm_index::{LtFmIndex, LtFmIndexBuilder};
 mod debug;
 
@@ -143,41 +144,29 @@ impl Debug for PatternFinder {
 use crate::{EndianType};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
+const LT_FM_INDEX_MIN_LEN: usize = 2_000_000_000;
+
 impl Serializable for PatternFinder {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
     {
-        // Write size information
-        let lt_fm_index_inner_bytes_size = self.lt_fm_index.inner_bytes_size() as u64;
-        let record_boundary_positions_size = self.record_boundary_positions.len() as u64;
-
-        writer.write_u64::<EndianType>(lt_fm_index_inner_bytes_size)?;
-        writer.write_u64::<EndianType>(record_boundary_positions_size)?;
-        
-        // Write lt-fm-index
+        // Write lt_fm_index
         self.lt_fm_index.save_to(&mut writer)?;
+
         // Write record_boundary_positions
-        self.record_boundary_positions.iter().for_each(|position| {
-            writer.write_u64::<EndianType>(*position);
-        });
+        self.record_boundary_positions.save_to(&mut writer)?;
+
         Ok(())
     }
     fn load_from<R>(mut reader: R) -> Result<Self> where
         R: Read,
         Self: Sized,
     {
-        // Read size information
-        let lt_fm_index_size = reader.read_u64::<EndianType>()? as usize;
-        let record_boundary_positions_size = reader.read_u64::<EndianType>()? as usize;
-        
-        // Read lt-fm-index
-        let mut lt_fm_index_vector: Vec<u8> = vec![0; lt_fm_index_size];
-        reader.read_exact(&mut lt_fm_index_vector)?;
-        let lt_fm_index = LtFmIndex::new_from_bytes_checked(lt_fm_index_vector)?;
+        // Read lt_fm_index
+        let lt_fm_index = LtFmIndex::load_from(&mut reader)?;
 
-        // Read record boundary position
-        let mut record_boundary_positions: Vec<u64> = vec![0; record_boundary_positions_size];
-        reader.read_u64_into::<EndianType>(&mut record_boundary_positions)?;
+        // Read record_boundary_positions
+        let record_boundary_positions = Vec::load_from(&mut reader)?;
 
         Ok(Self {
             lt_fm_index,
