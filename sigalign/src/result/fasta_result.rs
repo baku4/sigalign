@@ -18,5 +18,5 @@ pub struct FastaAlignmentResult(
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct ReadAlignmentResult {
     pub read: String,
-    pub result: AlignmentResult,
+    pub alignment: AlignmentResult,
 }

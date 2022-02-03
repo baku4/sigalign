@@ -42,7 +42,7 @@ impl ReadAlignmentResult {
     {
         ReadAlignmentLabeledResult {
             read: self.read,
-            result: self.result.to_labeled(reference),
+            alignment: self.alignment.to_labeled(reference),
         }
     }
 }
