@@ -184,24 +184,22 @@ impl AlignmentConfig {
 
 impl SelfDescReference {
     fn alignment(&self, aligner: &mut Aligner, fasta_file: &PathBuf) -> Result<()> {
-        let result = match self {
+        let stdout = std::io::stdout();
+
+        match self {
             Self::InMemory(inner_ref) => {
-                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
+                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
             },
             Self::InMemoryRc(inner_ref) => {
-                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
+                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
             },
             Self::IndexedFasta(inner_ref) => {
-                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
+                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
             },
             Self::IndexedFastaRc(inner_ref) => {
-                aligner.fasta_file_alignment(inner_ref, fasta_file)?.to_json()
+                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
             },
-        };
-        
-        let mut stdout = std::io::stdout();
-        stdout.write(result.as_bytes())?;
-        stdout.flush()?;
+        }
 
         Ok(())
     }

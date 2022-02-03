@@ -104,32 +104,24 @@ impl Aligner {
         )
     }
     
-    
-
-    //
-    // FIXME: Debug race condition of stream
-    //
-
-
-
-    fn fasta_file_alignment_to_stream<W, P, S>(&mut self, reference: &Reference<S>, fasta_file: P, stream: W) -> Result<()> where
+    pub fn fasta_file_alignment_json_to_stream<W, P, S>(&mut self, reference: &Reference<S>, fasta_file: P, stream: W) -> Result<()> where
         W: Write,
         P: AsRef<Path> + std::fmt::Debug,
         S: SequenceProvider,
     {
         let fasta_reader = FastaReader::from_file_path(fasta_file)?;
-        self.write_fasta_alignment_from_reader(reference, fasta_reader, stream)
+        self.write_fasta_alignment_json_from_reader(reference, fasta_reader, stream)
     }
-    fn fasta_file_labeled_alignment_to_stream<W, P, SL>(&mut self, reference: &Reference<SL>, fasta_file: P, stream: W) -> Result<()> where
+    pub fn fasta_file_labeled_alignment_json_to_stream<W, P, SL>(&mut self, reference: &Reference<SL>, fasta_file: P, stream: W) -> Result<()> where
         W: Write,
         P: AsRef<Path> + std::fmt::Debug,
         SL: SequenceProvider + LabelProvider,
     {
         let fasta_reader = FastaReader::from_file_path(fasta_file)?;
-        self.write_fasta_labeled_alignment_from_reader(reference, fasta_reader, stream)
+        self.write_fasta_labeled_alignment_json_from_reader(reference, fasta_reader, stream)
     }
 
-    fn write_fasta_alignment_from_reader<R, W, S>(&mut self, reference: &Reference<S>, mut fasta_reader: FastaReader<R>, mut writer: W) -> Result<()> where
+    fn write_fasta_alignment_json_from_reader<R, W, S>(&mut self, reference: &Reference<S>, mut fasta_reader: FastaReader<R>, mut writer: W) -> Result<()> where
         R: Read,
         W: Write,
         S: SequenceProvider,
@@ -166,9 +158,11 @@ impl Aligner {
 
         // Last closing
         writer.write(b"]")?;
+        writer.flush()?;
+
         Ok(())
     }
-    fn write_fasta_labeled_alignment_from_reader<R, W, SL>(&mut self, reference: &Reference<SL>, mut fasta_reader: FastaReader<R>, mut writer: W) -> Result<()> where
+    fn write_fasta_labeled_alignment_json_from_reader<R, W, SL>(&mut self, reference: &Reference<SL>, mut fasta_reader: FastaReader<R>, mut writer: W) -> Result<()> where
         R: Read,
         W: Write,
         SL: SequenceProvider + LabelProvider,
@@ -205,6 +199,8 @@ impl Aligner {
 
         // Last closing
         writer.write(b"]")?;
+        writer.flush()?;
+
         Ok(())
     }
 }
