@@ -11,6 +11,7 @@ mod anchoring;
 mod extending;
 mod evaluating;
 
+pub use extending::{PointOfMaximumLength, StartPointOfWaveFront};
 
 // ANCHOR
 

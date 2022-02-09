@@ -107,7 +107,7 @@ impl Anchor {
 }
 
 impl WaveFront {
-    fn point_of_maximum_length(&self) -> PointOfMaximumLength {
+    pub fn point_of_maximum_length(&self) -> PointOfMaximumLength {
         let wave_front_scores = &self.wave_front_scores[..=self.end_point.score];
         
         let index_of_components_and_maximum_length_of_scores = wave_front_scores.iter().map(|wave_front_score| {

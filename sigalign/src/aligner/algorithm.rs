@@ -16,3 +16,10 @@ mod local;
 pub use common_steps::WaveFront;
 pub use local::local_alignment_algorithm;
 pub use semi_global::semi_global_alignment_algorithm;
+
+// Use position table
+use local::{PointOfMaximumLength, StartPointOfWaveFront};
+
+mod common_steps_pos;
+mod local_pos;
+mod semi_global_pos;
