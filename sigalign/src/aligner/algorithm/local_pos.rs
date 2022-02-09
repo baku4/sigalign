@@ -36,6 +36,9 @@ impl RecordAnchors {
 
         let record_length = record_sequence.len();
         let query_length = query_sequence.len();
+
+        let pattern_count = self.anchors_by_pattern.len();
+        let mut valid_position_table = ValidPositionTable::new(pattern_count);
         
         self.anchors_by_pattern.into_iter().enumerate().for_each(|(pattern_index, pattern_anchors)| {
             let query_start_index = pattern_index * pattern_size;
@@ -98,27 +101,63 @@ impl RecordAnchors {
                     }
                 };
 
-                
+                match optional_extensions {
+                    Some((left_extension, right_extension)) => {
+                        let record_position_to_next_patterns = RecordPositionToNextPatterns::new(
+                            &right_extension.operations,
+                            record_start_index,
+                            query_start_index,
+                            pattern_size as u32,
+                        );
+                    },
+                    None => {
+                        
+                    },
+                }
             })
         })
     }
 }
 
-impl Extension {
-    fn make_valid_position_table(
-        &self,
-        reference_start_index: usize,
+struct ValidPositionTable {
+    valid_position_by_pattern: Vec<ValidPosition>,
+}
+impl ValidPositionTable {
+    fn new(pattern_count: usize) -> Self {
+        Self {
+            valid_position_by_pattern: vec![ValidPosition(Vec::new()); pattern_count],
+        }
+    }
+    fn add_valid_positions(
+        &mut self,
+        current_pattern_index: usize,
+        record_position_to_next_patterns: RecordPositionToNextPatterns,
+    ) {
+        //
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ValidPosition(Vec<usize>);
+
+#[derive(Debug)]
+struct RecordPositionToNextPatterns(Vec<Option<usize>>);
+
+impl RecordPositionToNextPatterns {
+    fn new(
+        operations: &Vec<AlignmentOperation>,
+        record_start_index: usize,
         query_start_index: usize,
         pattern_size: u32,
-    ) -> Vec<Option<usize>> {
-        let mut reference_position = reference_start_index + pattern_size as usize;
+    ) -> Self {
+        let mut record_position = record_start_index + pattern_size as usize;
         let mut query_position = query_start_index + pattern_size as usize;
 
         let mut residue_for_next_pattern = 0;
 
-        let mut valid_reference_position_for_next_patterns: Vec<Option<usize>> = Vec::new();
+        let mut record_position_to_next_patterns: Vec<Option<usize>> = Vec::new();
 
-        self.operations.iter().for_each(|alignment_operation| {
+        operations.iter().for_each(|alignment_operation| {
             let case = &alignment_operation.case;
             let count = alignment_operation.count;
 
@@ -128,82 +167,55 @@ impl Extension {
                         residue_for_next_pattern += pattern_size;
 
                         if residue_for_next_pattern <= count {
-                            valid_reference_position_for_next_patterns.push(
-                                Some(reference_position + residue_for_next_pattern as usize - pattern_size as usize)
+                            record_position_to_next_patterns.push(
+                                Some(record_position + residue_for_next_pattern as usize - pattern_size as usize)
                             );
                         } else {
-                            valid_reference_position_for_next_patterns.push(None);
+                            record_position_to_next_patterns.push(None);
                         }
                     }
 
                     residue_for_next_pattern -= count;
-                    reference_position += count as usize;
+                    record_position += count as usize;
                     query_position += count as usize;
                 },
                 AlignmentCase::Subst => {
                     while residue_for_next_pattern < count {
                         residue_for_next_pattern += pattern_size;
 
-                        valid_reference_position_for_next_patterns.push(None);
+                        record_position_to_next_patterns.push(None);
                     }
 
                     residue_for_next_pattern -= count;
-                    reference_position += count as usize;
+                    record_position += count as usize;
                     query_position += count as usize;
                 },
                 AlignmentCase::Insertion => {
                     while residue_for_next_pattern < count {
                         residue_for_next_pattern += pattern_size;
 
-                        valid_reference_position_for_next_patterns.push(None);
+                        record_position_to_next_patterns.push(None);
                     }
 
                     residue_for_next_pattern -= count;
                     query_position += count as usize;
                 },
                 AlignmentCase::Deletion => {
-                    reference_position += count as usize;
+                    record_position += count as usize;
                 },
             };
         });
 
-        valid_reference_position_for_next_patterns
+        Self(record_position_to_next_patterns)
     }
 }
-
-
-#[derive(Debug)]
-pub struct Anchors {
-    anchors: Vec<Anchor>,
-}
-
-// Spare penalty determinant:
-// penalty per scale * length - PRECISION_SCALE * penalty
-#[derive(Debug)]
-struct Anchor {
-    query_position: usize,
-    record_position: usize,
-    size: usize,
-    spare_penalty_determinant_of_left: i64,
-    left_extension: Option<Extension>,
-    right_extension: Option<Extension>,
-}
-
-struct DeterminantVector(Vec<i64>);
-
-struct ValidPositionTable {
-    valid_position_by_pattern: Vec<ValidPosition>,
-}
-
-struct ValidPosition(Vec<usize>);
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_make_valid_position_table() {
+    fn test_record_position_to_next_patterns() {
         let operations = vec![
             AlignmentOperation { case: AlignmentCase::Match, count: 50 },
             AlignmentOperation { case: AlignmentCase::Subst, count: 10 },
@@ -213,21 +225,16 @@ mod tests {
             AlignmentOperation { case: AlignmentCase::Deletion, count: 25 },
             AlignmentOperation { case: AlignmentCase::Match, count: 30 },
         ];
-        let extension = Extension {
-            penalty: 0,
-            length: 0,
-            insertion_count: 0,
-            deletion_count: 0,
-            operations: operations,
-        };
 
-        let valid_position_table = extension.make_valid_position_table(0, 0, 20);
+        let record_position_to_next_patterns = RecordPositionToNextPatterns::new(
+            &operations, 0, 0, 20,
+        );
 
-        let answer = vec![
+        let answer = RecordPositionToNextPatterns(vec![
             Some(20), Some(40), None, Some(80), None, None, Some(135), None,
-        ];
+        ]);
 
-        assert_eq!(valid_position_table, answer);
+        assert_eq!(record_position_to_next_patterns.0, answer.0);
     }
 }
 
