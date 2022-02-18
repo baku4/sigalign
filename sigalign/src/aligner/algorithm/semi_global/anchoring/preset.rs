@@ -30,11 +30,11 @@ impl AnchorsPreset {
             for record_location in reference_location {
                 match anchors_preset_by_record.get_mut(&record_location.record_index) {
                     Some(anchors_preset) => {
-                        anchors_preset.add_new_position(pattern_index, record_location.positions)
+                        anchors_preset.add_new_position(pattern_index, record_location.sorted_positions)
                     },
                     None => {
                         let mut new_anchors_preset = Self::new(pattern_count);
-                        new_anchors_preset.add_new_position(pattern_index, record_location.positions);
+                        new_anchors_preset.add_new_position(pattern_index, record_location.sorted_positions);
                         anchors_preset_by_record.insert(record_location.record_index, new_anchors_preset);
                     }
                 }

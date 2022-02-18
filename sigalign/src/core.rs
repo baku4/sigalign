@@ -26,5 +26,5 @@ pub trait SequenceBuffer {
 #[derive(Debug)]
 pub struct PatternLocation {
     pub record_index: usize,
-    pub positions: Vec<usize>,
+    pub sorted_positions: Vec<usize>,
 }

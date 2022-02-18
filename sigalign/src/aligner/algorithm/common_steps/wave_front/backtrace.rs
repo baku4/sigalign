@@ -19,6 +19,19 @@ impl WaveFront {
             },
         }
     }
+    pub fn backtrace_from_the_last_max_query(&self, penalties: &Penalties) -> Extension {
+        let last_score = self.end_point.score;
+        match self.end_point.k {
+            Some(k) => {
+                let last_score = self.end_point.score;
+                let index_of_component = (self.wave_front_scores[last_score].max_k + k) as usize;
+                Some(self.backtrace_from_point(last_score, index_of_component, penalties))
+            },
+            None => {
+                None
+            },
+        }
+    }
     pub fn backtrace_from_point(
         &self,
         mut score: usize,
@@ -306,6 +319,19 @@ impl WaveFront {
                 },
             };
         }
+    }
+}
+
+impl WaveFrontScore {
+    fn last_maximum_query(&self) {
+        let optional_index_and_maximum_length = self.components_by_k.iter().enumerate()
+            .filter_map(|(component_index, components)| {
+                match components.m.optional_length() {
+                    Some(length) => Some((component_index, length)),
+                    None => None,
+                }
+            }).max_by_key(|(_, length)| *length);
+            
     }
 }
 
