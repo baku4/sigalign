@@ -7,12 +7,16 @@ use super::{
     Reference, SequenceProvider,
 };
 
-mod common_steps;
-use common_steps::{Extension, AlignmentHashSet, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
+mod common_steps_dep;
+use common_steps_dep::{Extension, AlignmentHashSet, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
-mod semi_global;
-mod local;
+mod semi_global_dep;
+mod local_dep;
 
-pub use common_steps::WaveFront;
-pub use local::local_alignment_algorithm;
-pub use semi_global::semi_global_alignment_algorithm;
+pub use common_steps_dep::WaveFront;
+pub use local_dep::local_alignment_algorithm;
+pub use semi_global_dep::semi_global_alignment_algorithm;
+
+// New version!
+// Common steps
+mod pos_table;
