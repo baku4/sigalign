@@ -9,17 +9,17 @@ use super::{
 use std::collections::HashMap;
 
 // Sorted record positions by pattern
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PosTable{
     pub position_by_pattern: Vec<Option<PatternPosition>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PatternPosition {
     pub anchor_positions: Vec<AnchorPosition>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorPosition {
     pub record_position: usize,
     pub pattern_count: usize,
@@ -30,11 +30,11 @@ impl PosTable {
         reference: &Reference<S>,
         query: Sequence,
         pattern_size: usize,
-    ) -> Vec<(usize, Self)> {
+    ) -> HashMap<usize, Self> {
         let qry_len = query.len();
         let pattern_count = qry_len / pattern_size;
 
-        let mut pos_table_map_by_record: HashMap<usize, Self> = HashMap::new();
+        let mut pos_table_by_record: HashMap<usize, Self> = HashMap::new();
 
         for pattern_index in 0..pattern_count {
             let qry_pos = pattern_index * pattern_size;
@@ -43,22 +43,24 @@ impl PosTable {
             let reference_location = reference.locate(pattern);
 
             for record_location in reference_location {
-                match pos_table_map_by_record.get_mut(&record_location.record_index) {
+                match pos_table_by_record.get_mut(&record_location.record_index) {
                     Some(pos_table) => {
                         pos_table.add_new_positions(pattern_index, record_location.positions)
                     },
                     None => {
                         let mut new_pos_table = Self::new_empty(pattern_count);
                         new_pos_table.add_new_positions(pattern_index, record_location.positions);
-                        pos_table_map_by_record.insert(record_location.record_index, new_pos_table);
+                        pos_table_by_record.insert(record_location.record_index, new_pos_table);
                     }
                 }
             }
         }
 
-        pos_table_map_by_record.into_iter().map(|(record_index, pos_table)| {
-            (record_index, pos_table.merge_ungapped_anchors(pattern_size))
-        }).collect()
+        pos_table_by_record.iter_mut().for_each(|(_, pos_table)| {
+            pos_table.merge_ungapped_anchors(pattern_size);
+        });
+
+        pos_table_by_record
     }
     // For New
     fn new_empty(pattern_count: usize) -> Self {
@@ -75,16 +77,13 @@ impl PosTable {
         self.position_by_pattern[pattern_index] = Some(pattern_position);
     }
     // For Merge
-    fn merge_ungapped_anchors(mut self, pattern_size: usize) -> Self {
+    fn merge_ungapped_anchors(&mut self, pattern_size: usize) {
         let pattern_count = self.position_by_pattern.len();
 
-        let mut merged = Self::new_empty(pattern_count);
-
-        let mut left_pattern_position = None;
         let mut right_pattern_position = self.position_by_pattern[pattern_count-1].take();
 
-        for left_index in 0..pattern_count-1 {
-            left_pattern_position = self.position_by_pattern[left_index].take();
+        for left_index in (0..pattern_count-1).rev() {
+            let mut left_pattern_position = self.position_by_pattern[left_index].take();
 
             PatternPosition::merge_right_to_left(
                 &mut left_pattern_position,
@@ -92,13 +91,11 @@ impl PosTable {
                 pattern_size,
             );
 
-            merged.position_by_pattern[left_index + 1] = right_pattern_position.take();
-            right_pattern_position = left_pattern_position.take();
+            self.position_by_pattern[left_index + 1] = right_pattern_position.take();
+            right_pattern_position = left_pattern_position;
         }
 
-        merged.position_by_pattern[0] = right_pattern_position.take();
-
-        merged
+        self.position_by_pattern[0] = right_pattern_position.take();
     }
 }
 
@@ -111,7 +108,39 @@ impl PatternPosition {
 
     fn merge_right_to_left(left: &mut Option<Self>, right: &mut Option<Self>, pattern_size: usize) {
         if let (Some(left), Some(right)) = (left, right) {
-            // TODO: Next
+            let left_anchor_positions = &mut left.anchor_positions;
+            let right_anchor_positions = &mut right.anchor_positions;
+
+            let left_count = left_anchor_positions.len();
+            let mut right_count = right_anchor_positions.len();
+
+            let mut left_index = 0;
+            let mut right_index = 0;
+
+            while (left_index < left_count) && (right_index < right_count) {
+                let left_anchor_position = &mut left_anchor_positions[left_index];
+                let right_anchor_position = &right_anchor_positions[right_index];
+                let right_record_position = right_anchor_position.record_position;
+
+                match (left_anchor_position.record_position + pattern_size).checked_sub(right_record_position) {
+                    Some(record_position_gap) => {
+                        if record_position_gap == 0 {
+                            let right_pattern_count = right_anchor_position.pattern_count;
+                            left_anchor_position.pattern_count += right_pattern_count;
+
+                            right_anchor_positions.remove(right_index);
+
+                            left_index += 1;
+                            right_count -= 1;
+                        } else {
+                            right_index += 1;
+                        }
+                    },
+                    None => {
+                        left_index += 1;
+                    },
+                }
+            }
         }
     }
 }
@@ -124,5 +153,77 @@ impl AnchorPosition {
                 pattern_count: 1,
             }
         }).collect()
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn merge_ungapped_anchors_for_pos_table() {
+        let mut pos_table = PosTable::new_empty(3);
+
+        let pattern_size = 10;
+
+        pos_table.add_new_positions(0, vec![20, 50, 80]);
+        pos_table.add_new_positions(1, vec![10, 30, 70, 90]);
+        pos_table.add_new_positions(2, vec![0, 80, 100, 150]);
+
+        pos_table.merge_ungapped_anchors(pattern_size);
+
+        let answer = PosTable {
+            position_by_pattern: vec![
+                Some(
+                    PatternPosition {
+                        anchor_positions: vec![
+                            AnchorPosition {
+                                record_position: 20,
+                                pattern_count: 2,
+                            },
+                            AnchorPosition {
+                                record_position: 50,
+                                pattern_count: 1,
+                            },
+                            AnchorPosition {
+                                record_position: 80,
+                                pattern_count: 3,
+                            },
+                        ],
+                    },
+                ),
+                Some(
+                    PatternPosition {
+                        anchor_positions: vec![
+                            AnchorPosition {
+                                record_position: 10,
+                                pattern_count: 1,
+                            },
+                            AnchorPosition {
+                                record_position: 70,
+                                pattern_count: 2,
+                            },
+                        ],
+                    },
+                ),
+                Some(
+                    PatternPosition {
+                        anchor_positions: vec![
+                            AnchorPosition {
+                                record_position: 0,
+                                pattern_count: 1,
+                            },
+                            AnchorPosition {
+                                record_position: 150,
+                                pattern_count: 1,
+                            },
+                        ],
+                    },
+                ),
+            ],
+        };
+
+        assert_eq!(pos_table, answer);
     }
 }

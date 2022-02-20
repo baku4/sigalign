@@ -30,7 +30,6 @@ features = ["bundled"]
 
 [dev-dependencies]
 criterion = "0.3.5"
-pprof = { version = "0.6.2", features = ["flamegraph"] }
 # For test data download
 reqwest = { version = "0.11.9", features = ["blocking"] }
 flate2 = "1.0.22"

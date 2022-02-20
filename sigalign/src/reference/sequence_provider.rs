@@ -20,6 +20,8 @@ mod in_memory;
 pub use in_memory::{InMemoryProvider, InMemoryRcProvider};
 mod indexed_fasta;
 pub use indexed_fasta::{IndexedFastaProvider, IndexedFastaRcProvider};
+// Utils for sequence provider
+mod util;
 
 
 /// Provide sequence information
