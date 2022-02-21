@@ -2,15 +2,13 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Reference, SequenceProvider,
 };
 
 // Wavefront structure for alignment
 mod wave_front;
 pub use wave_front::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
-
-// Deprecated
-mod dwfa;
 
 // Extension
 #[derive(Debug, Clone)]
@@ -46,9 +44,6 @@ pub fn calculate_spare_penalty_from_determinant(
         ) as i64 + 1
     ) as usize
 }
-
-
-use std::collections::HashSet;
 
 impl AlignmentOperation {
     pub fn concatenate_operations(
@@ -94,20 +89,5 @@ impl AlignmentOperation {
         left_operations.append(&mut right_operations);
 
         left_operations
-    }
-}
-
-pub struct AlignmentHashSet {
-    hash_set: HashSet<(usize, AlignmentPosition)>
-}
-
-impl AlignmentHashSet {
-    pub fn new() -> Self {
-        Self {
-            hash_set: HashSet::new()
-        }
-    }
-    pub fn insert_and_check_new(&mut self, penalty: usize, alignment_position: AlignmentPosition) -> bool {
-        self.hash_set.insert((penalty, alignment_position))
     }
 }

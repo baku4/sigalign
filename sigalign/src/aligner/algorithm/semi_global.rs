@@ -6,27 +6,25 @@ use super::{
     Reference, SequenceProvider,
 };
 
-use super::{PosTable, PatternPosition, AnchorPosition};
+use super::{PosTable, AnchorPosition, AnchorIndex, Traversed};
 
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
 
-struct AnchorTable(Vec<Vec<Anchor>>);
-
-type AnchorIndex = (usize, usize);
-
-struct Anchor {
-    record_position: usize,
-    pattern_count: usize,
-    anchor_size: usize,
-    state: AnchorState,
+struct AnchorTable {
+    pos_table: PosTable,
+    state_table: StateTable,
 }
 
+struct StateTable(Vec<Vec<AnchorState>>);
+
+#[derive(Debug, Clone)]
 enum AnchorState {
     New,
     Extending(ExtensionState),
     Evaluated(EvaluationState),
 }
 
+#[derive(Debug, Clone)]
 enum ExtensionState {
     Res(Extension, Traversed), // Right Extension Success
     Ref(Extension, Traversed), // Right Extension Failed
@@ -44,16 +42,11 @@ enum ExtensionState {
     RefLtf(Extension, Traversed), // Right Extension Failed when Left Traversed Failed
 }
 
+#[derive(Debug, Clone)]
 enum EvaluationState {
     Invalid,
     Ignored,
     Valid,
-}
-
-#[derive(Debug, Clone)]
-struct Traversed {
-    sorted_list: Vec<AnchorIndex>,
-    at_the_end: Option<AnchorIndex>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,77 +76,62 @@ enum EvaluationResult {
     PushStack(AnchorIndex),
 }
 
-impl AnchorTable {
-    fn new(pos_table: PosTable, pattern_size: usize) -> Self {
-        Self(pos_table.position_by_pattern.into_iter().map(|optional_pattern_position| {
-            match optional_pattern_position {
-                Some(pattern_position) => {
-                    pattern_position.anchor_positions.into_iter().map(|anchor_position| {
-                        Anchor::new(anchor_position.record_position, anchor_position.pattern_count, pattern_size)
-                    }).collect()
-                },
-                None => {
-                    Vec::new()
-                },
-            }
+impl StateTable {
+    fn new(pos_table: &PosTable) -> Self {
+        Self(pos_table.0.iter().map(|pattern_position| {
+            vec![AnchorState::New; pattern_position.len()]
         }).collect())
-    }
-    fn check_traversed(&self, extension: &Extension) -> Traversed {
-        //TODO:
-        Traversed {
-            sorted_list: Vec::new(),
-            at_the_end: None,
-        }
     }
 
     fn evaluate_anchor(
         &mut self,
         anchor_index: &AnchorIndex,
+        pos_table: &PosTable,
     ) -> EvaluationResult {
-        let current_anchor = &mut self.0[anchor_index.0][anchor_index.1];
+        let current_state = &mut self.0[anchor_index.0][anchor_index.1];
 
-        match &mut current_anchor.state {
+        match current_state {
             AnchorState::New => {
-                let extension_result = current_anchor.extend_right();
-                let traversed = self.check_traversed(&extension_result.extension);
+                // let extension_result = pos_table.extend_right();
+                // let traversed = self.check_traversed(&extension_result.extension);
 
-                if extension_result.is_success {
-                    current_anchor.state = AnchorState::Extending(
-                        ExtensionState::Res(
-                            extension_result.extension,
-                            traversed,
-                        )
-                    );
-                } else {
-                    current_anchor.state = AnchorState::Extending(
-                        ExtensionState::Ref(
-                            extension_result.extension,
-                            traversed,
-                        )
-                    );
-                }
+                // if extension_result.is_success {
+                //     current_anchor.state = AnchorState::Extending(
+                //         ExtensionState::Res(
+                //             extension_result.extension,
+                //             traversed,
+                //         )
+                //     );
+                // } else {
+                //     current_anchor.state = AnchorState::Extending(
+                //         ExtensionState::Ref(
+                //             extension_result.extension,
+                //             traversed,
+                //         )
+                //     );
+                // }
                 EvaluationResult::RetainStack
             },
             AnchorState::Extending(extension_state) => {
                 match extension_state {
-                    ExtensionState::Res(extension, traversed) => {
-                        match &traversed.at_the_end {
-                            Some(other_anchor_index) => {
-                                //TODO:
-                                EvaluationResult::RetainStack
-                            },
-                            None => {
-                                let extension_result = current_anchor.extend_left();
-                                if extension_result.is_success {
-                                    //TODO:
-                                    EvaluationResult::RetainStack
-                                } else {
-                                    //TODO:
-                                    EvaluationResult::RetainStack
-                                }
-                            },
-                        }
-                    },
+                    // ExtensionState::Res(extension, traversed) => {
+                    //     match &traversed.at_the_end {
+                    //         Some(other_anchor_index) => {
+                    //             //TODO:
+                    //             EvaluationResult::RetainStack
+                    //         },
+                    //         None => {
+                    //             let extension_result = current_anchor.extend_left();
+                    //             if extension_result.is_success {
+                    //                 //TODO:
+                    //                 EvaluationResult::RetainStack
+                    //             } else {
+                    //                 //TODO:
+                    //                 EvaluationResult::RetainStack
+                    //             }
+                    //         },
+                    //     }
+                    // },
                     _ => {
                         //TODO:
                         EvaluationResult::RetainStack
@@ -163,58 +141,6 @@ impl AnchorTable {
             AnchorState::Evaluated(_) => {
                 EvaluationResult::Done
             },
-        }
-    }
-    
-    fn extend_and_evaluate(&mut self) {
-
-    }
-}
-
-
-
-impl Anchor {
-    fn new(record_position: usize, pattern_count: usize, pattern_size: usize) -> Self {
-        //TODO:
-        Self {
-            record_position: 0,
-            pattern_count: 0,
-            anchor_size: 0,
-            state: AnchorState::New,
-        }
-    }
-
-    fn extend_right(&mut self) -> ExtensionResult {
-        //TODO:
-        ExtensionResult::dummy()
-    }
-
-    fn extend_left(&mut self) -> ExtensionResult {
-        //TODO:
-        ExtensionResult::dummy()
-    }
-}
-
-impl Traversed {
-
-}
-
-impl ExtensionResult {
-    fn dummy() -> Self {
-        Self {
-            extension: Extension {
-                penalty: 0,
-                length: 0,
-                insertion_count: 0,
-                deletion_count: 0,
-                operations: vec![
-                    AlignmentOperation {
-                        case: AlignmentCase::Match,
-                        count: 0,
-                    }
-                ]
-            },
-            is_success: true,
         }
     }
 }
