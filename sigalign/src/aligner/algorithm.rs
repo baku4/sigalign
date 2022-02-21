@@ -21,3 +21,6 @@ pub use semi_global_dep::semi_global_alignment_algorithm;
 // Common steps
 mod pos_table;
 use pos_table::{PosTable, PatternPosition, AnchorPosition};
+
+
+mod semi_global;
