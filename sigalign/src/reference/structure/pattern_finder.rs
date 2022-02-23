@@ -98,7 +98,7 @@ impl PatternFinder {
                 } else if start > position {
                     right = mid;
                 } else {
-                    if (position + pattern_size) < end {
+                    if (position + pattern_size) <= end {
                         let ref_pos = (position - start) as usize;
                         match positions_by_record.get_mut(&index) {
                             Some(v) => {
@@ -127,6 +127,7 @@ impl PatternFinder {
     }
     fn sorted_locations_of_pattern(&self, pattern: Sequence) -> Vec<u64> {
         let mut locations = self.lt_fm_index.locate(pattern);
+        println!("location: {:?}", locations);
         locations.sort();
         locations
     }
