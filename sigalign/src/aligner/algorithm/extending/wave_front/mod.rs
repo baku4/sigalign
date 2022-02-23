@@ -11,7 +11,6 @@ use super::{
 type MatchCounter<'a> = &'a dyn Fn(Sequence, Sequence, usize, usize) -> i32;
 
 mod fill;
-mod backtrace;
 
 // Wave Front
 #[derive(Debug, Clone)]
@@ -92,16 +91,16 @@ impl WaveFrontScore {
     fn range_of_k(&self) -> Vec<i32> {
         (-self.max_k..=self.max_k).collect()
     }
-    fn components_of_k(&self, k: i32) -> &Components {
+    pub fn components_of_k(&self, k: i32) -> &Components {
         &self.components_by_k[(self.max_k + k) as usize]
     }
-    fn m_component_of_k(&self, k: i32) -> &Component {
+    pub fn m_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).m
     }
-    fn i_component_of_k(&self, k: i32) -> &Component {
+    pub fn i_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).i
     }
-    fn d_component_of_k(&self, k: i32) -> &Component {
+    pub fn d_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).d
     }
     fn components_of_k_checked(&self, k: i32) -> Option<&Components> {

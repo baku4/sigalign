@@ -20,12 +20,14 @@ pub use semi_global_dep::semi_global_alignment_algorithm;
 // Common steps
 mod pos_table;
 use pos_table::{PosTable, AnchorPosition, AnchorIndex};
+mod spare_penalty;
+use spare_penalty::{calculate_spare_penalty};
 mod extending;
-use extending::{Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
+use extending::{Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 pub use extending::WaveFront;
-mod traversing;
-use traversing::{Traversed};
-
+mod backtrace;
+use backtrace::{TraversedPositions, TraversedAnchors};
+mod merging;
 
 mod semi_global;
 

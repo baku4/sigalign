@@ -4,7 +4,7 @@ use super::{
     Sequence,
     ReferenceInterface, PatternLocation,
 };
-use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
+use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
 use super::{Anchors, Anchor};
 
 impl Anchors {
@@ -85,7 +85,7 @@ impl Anchor {
         }
     }
     fn spare_penalty_of_right(&self, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        calculate_spare_penalty_from_determinant(
+        calculate_spare_penalty(
             self.spare_penalty_determinant_of_left,
             self.size,
             query_slice_length,
@@ -95,7 +95,7 @@ impl Anchor {
         )
     }
     fn spare_penalty_of_left(&self, spare_penalty_determinant_of_right: i64, penalties: &Penalties, cutoff: &Cutoff, query_slice_length: usize, record_slice_length: usize) -> usize {
-        calculate_spare_penalty_from_determinant(
+        calculate_spare_penalty(
             spare_penalty_determinant_of_right,
             self.size,
             query_slice_length,

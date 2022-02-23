@@ -2,9 +2,13 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, PatternLocation,
+    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Reference, SequenceProvider,
 };
-use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
+
+use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+
+pub type TraversedPositions = Vec<Option<usize>>;
 
 impl WaveFront {
     pub fn backtrace_from_the_end(&self, penalties: &Penalties) -> Option<Extension> {
@@ -19,6 +23,7 @@ impl WaveFront {
             },
         }
     }
+
     pub fn backtrace_from_point(
         &self,
         mut score: usize,
@@ -313,7 +318,7 @@ impl WaveFront {
         index_of_component: usize,
         penalties: &Penalties,
         pattern_size: usize,
-    ) -> (Extension, Vec<Option<usize>>) {
+    ) -> (Extension, TraversedPositions) {
         let penalty_from_start_point = score;
 
         let wave_front_scores = &self.wave_front_scores;
@@ -335,7 +340,7 @@ impl WaveFront {
         // For checking traversed
         let query_length = (fr - k) as usize;
         let pattern_count = (query_length - 1) / pattern_size;
-        let mut record_position_by_pattern: Vec<Option<usize>> = vec![None; pattern_count + 1];
+        let mut record_position_by_pattern: TraversedPositions = vec![None; pattern_count + 1];
         
         loop {
             match component_type {

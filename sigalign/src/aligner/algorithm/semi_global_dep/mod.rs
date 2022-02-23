@@ -5,7 +5,7 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
     Reference, SequenceProvider,
 };
-use super::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
+use super::{Extension, AlignmentHashSet, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
 
 mod anchoring;
 mod extending;

@@ -6,9 +6,9 @@ use super::{
     Reference, SequenceProvider,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, Traversed};
+use super::{PosTable, AnchorPosition, AnchorIndex, TraversedAnchors};
 
-use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty_from_determinant};
+use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
 
 struct AnchorTable {
     pos_table: PosTable,
@@ -26,20 +26,20 @@ enum AnchorState {
 
 #[derive(Debug, Clone)]
 enum ExtensionState {
-    Res(Extension, Traversed), // Right Extension Success
-    Ref(Extension, Traversed), // Right Extension Failed
+    Res(Extension, TraversedAnchors), // Right Extension Success
+    Ref(Extension, TraversedAnchors), // Right Extension Failed
     Rts(ExtensionReference), // Right Traversed Success
     Rtf, // Right Traversed Failed
     Lts(ExtensionReference), // Left Traversed Success
     Ltf, // Left Traversed Failed
-    LesRts(Extension, Traversed, ExtensionReference), // Left Extension Success when Right Traversed Success
-    LefRts(Extension, Traversed, ExtensionReference), // Left Extension Failed when Right Traversed Success
-    LesRtf(Extension, Traversed), // Left Extension Success when Right Traversed Failed
-    LefRtf(Extension, Traversed), // Left Extension Failed when Right Traversed Failed
-    ResLts(Extension, Traversed, ExtensionReference), // Right Extension Success when Left Traversed Success
-    RefLts(Extension, Traversed, ExtensionReference), // Right Extension Failed when Left Traversed Success
-    ResLtf(Extension, Traversed), // Right Extension Success when Left Traversed Failed
-    RefLtf(Extension, Traversed), // Right Extension Failed when Left Traversed Failed
+    LesRts(Extension, TraversedAnchors, ExtensionReference), // Left Extension Success when Right Traversed Success
+    LefRts(Extension, TraversedAnchors, ExtensionReference), // Left Extension Failed when Right Traversed Success
+    LesRtf(Extension, TraversedAnchors), // Left Extension Success when Right Traversed Failed
+    LefRtf(Extension, TraversedAnchors), // Left Extension Failed when Right Traversed Failed
+    ResLts(Extension, TraversedAnchors, ExtensionReference), // Right Extension Success when Left Traversed Success
+    RefLts(Extension, TraversedAnchors, ExtensionReference), // Right Extension Failed when Left Traversed Success
+    ResLtf(Extension, TraversedAnchors), // Right Extension Success when Left Traversed Failed
+    RefLtf(Extension, TraversedAnchors), // Right Extension Failed when Left Traversed Failed
 }
 
 #[derive(Debug, Clone)]
@@ -87,12 +87,13 @@ impl StateTable {
         &mut self,
         anchor_index: &AnchorIndex,
         pos_table: &PosTable,
+        wave_front: &mut WaveFront,
     ) -> EvaluationResult {
         let current_state = &mut self.0[anchor_index.0][anchor_index.1];
 
         match current_state {
             AnchorState::New => {
-                // let extension_result = pos_table.extend_right();
+                // let extension_result = pos_table.extend_right(anchor_index, wave_front);
                 // let traversed = self.check_traversed(&extension_result.extension);
 
                 // if extension_result.is_success {

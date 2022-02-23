@@ -6,6 +6,8 @@ use super::{
     Reference, SequenceProvider,
 };
 
+use super::{PosTable, AnchorPosition, AnchorIndex, calculate_spare_penalty};
+
 // Wavefront structure for alignment
 mod wave_front;
 pub use wave_front::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
@@ -20,74 +22,55 @@ pub struct Extension {
     pub operations: Vec<AlignmentOperation>,
 }
 
-pub fn calculate_spare_penalty_from_determinant(
-    spare_penalty_determinant_of_other_side: i64,
-    anchor_size: usize,
-    query_length_this_side: usize,
-    record_length_this_side: usize,
-    penalties: &Penalties,
-    cutoff: &Cutoff,
-) -> usize {
-    i64::max(
-        penalties.o as i64,
-        (
-            penalties.e as i64 * spare_penalty_determinant_of_other_side
-            + cutoff.maximum_penalty_per_scale as i64 * (
-                (
-                    penalties.e * (
-                        anchor_size + query_length_this_side.min(record_length_this_side)
-                    )
-                ) as i64 - penalties.o as i64
-            )
-        ) / (
-            PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
-        ) as i64 + 1
-    ) as usize
-}
+impl PosTable {
+    pub fn extend_wave_front_right(
+        &self,
+        anchor_index: &AnchorIndex,
+        pattern_size: usize,
+        penalty_margin: i64,
+        record_sequence: Sequence,
+        query_sequence: Sequence,
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        wave_front: &mut WaveFront,
+    ) {
+        let anchor_position = &self.0[anchor_index.0][anchor_index.1];
+        let pattern_count = anchor_position.pattern_count;
+        let anchor_size = pattern_count * pattern_size;
 
-impl AlignmentOperation {
-    pub fn concatenate_operations(
-        mut left_operations: Vec<Self>,
-        mut right_operations: Vec<Self>,
-        anchor_size: u32
-    ) -> Vec<Self> {
-        right_operations.reverse();
+        let record_start_index = anchor_position.record_position + anchor_size;
+        let query_start_index = anchor_index.0 * pattern_size + anchor_size;
 
-        // Add anchor sized Match operation to left operations
-        if let Some(
-            AlignmentOperation {
-                case: AlignmentCase::Match,
-                count,
-            }
-        ) = left_operations.last_mut() {
-            *count += anchor_size;
-        } else {
-            left_operations.push(
-                AlignmentOperation {
-                    case: AlignmentCase::Match,
-                    count: anchor_size,
-                }
-            );
-        };
+        let record_slice = &record_sequence[record_start_index..];
+        let query_slice = &query_sequence[query_start_index..];
 
-        // Add right operations to left operations
-        if let Some(
-            AlignmentOperation {
-                case: AlignmentCase::Match,
-                count: right_count,
-            }
-        ) = right_operations.first_mut() {
-            if let AlignmentOperation {
-                case: AlignmentCase::Match,
-                count: left_count,
-            } = left_operations.last_mut().unwrap() {
-                *left_count += *right_count;
-            }
-            right_operations.remove(0);
-        };
+        let spare_penalty = calculate_spare_penalty(penalty_margin, anchor_size, query_slice.len(), record_slice.len(), penalties, cutoff);
+        
+        wave_front.align_right_to_end_point(record_slice, query_slice, penalties, spare_penalty);
+    }
+    pub fn extend_wave_front_left(
+        &self,
+        anchor_index: &AnchorIndex,
+        pattern_size: usize,
+        penalty_margin: i64,
+        record_sequence: Sequence,
+        query_sequence: Sequence,
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        wave_front: &mut WaveFront,
+    ) {
+        let anchor_position = &self.0[anchor_index.0][anchor_index.1];
+        let pattern_count = anchor_position.pattern_count;
+        let anchor_size = pattern_count * pattern_size;
 
-        left_operations.append(&mut right_operations);
+        let record_last_index = anchor_position.record_position;
+        let query_last_index = anchor_index.0 * pattern_size;
 
-        left_operations
+        let record_slice = &record_sequence[..record_last_index];
+        let query_slice = &query_sequence[..query_last_index];
+
+        let spare_penalty = calculate_spare_penalty(penalty_margin, anchor_size, query_slice.len(), record_slice.len(), penalties, cutoff);
+        
+        wave_front.align_left_to_end_point(record_slice, query_slice, penalties, spare_penalty);
     }
 }
