@@ -26,7 +26,7 @@ mod extending;
 use extending::{Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 pub use extending::WaveFront;
 mod backtrace;
-use backtrace::{TraversedPosition, TraversedAnchor};
+use backtrace::{TraversedPosition, TraversedAnchors, TraversedAnchor};
 mod merging;
 
 mod semi_global;

@@ -111,7 +111,7 @@ impl WaveFront {
         let wave_front_scores = &self.wave_front_scores[..=self.end_point.score];
         
         let index_of_components_and_maximum_length_of_scores = wave_front_scores.iter().map(|wave_front_score| {
-            wave_front_score.index_and_maximum_length()
+            wave_front_score.index_and_maximum_length_dep()
         }).enumerate().collect();
         PointOfMaximumLength {
             index_of_components_and_maximum_length_of_scores,
@@ -120,10 +120,10 @@ impl WaveFront {
 }
 
 impl WaveFrontScore {
-    fn index_and_maximum_length(&self) -> (usize, i32) {
+    fn index_and_maximum_length_dep(&self) -> (usize, i32) {
         let optional_index_and_maximum_length = self.components_by_k.iter().enumerate()
             .filter_map(|(component_index, components)| {
-                match components.m.optional_length() {
+                match components.m.optional_length_dep() {
                     Some(length) => Some((component_index, length)),
                     None => None,
                 }
@@ -141,7 +141,7 @@ impl WaveFrontScore {
 }
 
 impl Component {
-    fn optional_length(&self) -> Option<i32> {
+    fn optional_length_dep(&self) -> Option<i32> {
         match self.bt {
             BackTraceMarker::Empty => None,
             _ => Some(self.fr + self.deletion_count as i32)

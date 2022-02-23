@@ -11,6 +11,8 @@ use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, Back
 
 mod backtrace_wave_front;
 
+pub type TraversedAnchors = Vec<TraversedAnchor>;
+
 #[derive(Debug, Clone)]
 pub struct TraversedPosition {
     pub pattern_count_from_start_point: usize,
@@ -18,7 +20,16 @@ pub struct TraversedPosition {
     pub traversed_length_to_anchor_end: usize,
     pub traversed_penalty_to_anchor_end: usize,
     pub index_of_operation: usize,
-    pub alternative_match_count: usize,
+    pub alternative_match_count: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct TraversedAnchor {
+    pub anchor_index: AnchorIndex,
+    pub remained_length: usize,
+    pub remained_penalty: usize,
+    pub index_of_operation: usize,
+    pub alternative_match_count: u32,
 }
 
 impl TraversedPosition {
@@ -52,15 +63,6 @@ impl TraversedPosition {
             alternative_match_count: self.alternative_match_count,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct TraversedAnchor {
-    pub anchor_index: AnchorIndex,
-    pub remained_length: usize,
-    pub remained_penalty: usize,
-    pub index_of_operation: usize,
-    pub alternative_match_count: usize,
 }
 
 impl PosTable {
@@ -122,5 +124,11 @@ impl AnchorPosition {
         pattern_position.binary_search_by_key(&record_position, |anchor_position| {
             anchor_position.record_position
         }).unwrap()
+    }
+}
+
+impl WaveFrontScore {
+    pub fn index_of_component(&self, k: i32) -> usize {
+        (self.max_k + k) as usize
     }
 }

@@ -375,7 +375,7 @@ impl WaveFront {
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
                                     traversed_penalty_to_anchor_end: score + penalties.x,
                                     index_of_operation: operations.len(),
-                                    alternative_match_count: (alternative_match_count - anchor_size) as usize,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
                             }
@@ -443,7 +443,7 @@ impl WaveFront {
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
                                     traversed_penalty_to_anchor_end: score,
                                     index_of_operation: operations.len(),
-                                    alternative_match_count: (alternative_match_count - anchor_size) as usize,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
                             }
@@ -490,7 +490,7 @@ impl WaveFront {
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
                                     traversed_penalty_to_anchor_end: score,
                                     index_of_operation: operations.len(),
-                                    alternative_match_count: (alternative_match_count - anchor_size) as usize,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
                             }
@@ -731,7 +731,7 @@ impl WaveFront {
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
                                     traversed_penalty_to_anchor_end: score + penalties.x,
                                     index_of_operation: operations.len(),
-                                    alternative_match_count: (alternative_match_count - anchor_size) as usize,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
                             }
@@ -799,7 +799,7 @@ impl WaveFront {
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
                                     traversed_penalty_to_anchor_end: score,
                                     index_of_operation: operations.len(),
-                                    alternative_match_count: (alternative_match_count - anchor_size) as usize,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
                             }
@@ -846,7 +846,7 @@ impl WaveFront {
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
                                     traversed_penalty_to_anchor_end: score,
                                     index_of_operation: operations.len(),
-                                    alternative_match_count: (alternative_match_count - anchor_size) as usize,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
                             }

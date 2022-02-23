@@ -6,22 +6,19 @@ use super::{
     Reference, SequenceProvider,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, TraversedAnchor};
-
+use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchors, TraversedAnchor};
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
 
-type TraversedAnchors = Vec<TraversedAnchor>;
+type PenaltyMargin = i64;
 
-struct AnchorTable {
-    pos_table: PosTable,
-    state_table: StateTable,
-}
+mod extending;
+use extending::ExtensionResult;
 
 struct StateTable(Vec<Vec<AnchorState>>);
 
 #[derive(Debug, Clone)]
 enum AnchorState {
-    New,
+    New(PenaltyMargin),
     Extending(ExtensionState),
     Evaluated(EvaluationState),
 }
@@ -31,9 +28,9 @@ enum ExtensionState {
     Res(Extension, TraversedAnchors), // Right Extension Success
     Ref(Extension, TraversedAnchors), // Right Extension Failed
     Rts(ExtensionReference), // Right Traversed Success
-    Rtf, // Right Traversed Failed
+    Rtf(PenaltyMargin), // Right Traversed Failed
     Lts(ExtensionReference), // Left Traversed Success
-    Ltf, // Left Traversed Failed
+    Ltf(PenaltyMargin), // Left Traversed Failed
     LesRts(Extension, TraversedAnchors, ExtensionReference), // Left Extension Success when Right Traversed Success
     LefRts(Extension, TraversedAnchors, ExtensionReference), // Left Extension Failed when Right Traversed Success
     LesRtf(Extension, TraversedAnchors), // Left Extension Success when Right Traversed Failed
@@ -58,18 +55,8 @@ struct ExtensionReference {
     insertion_count: u32,
     deletion_count: u32,
     anchor_index: AnchorIndex,
-    start_point: OperationStartPoint,
-}
-
-#[derive(Debug, Clone)]
-struct OperationStartPoint {
-    index: usize,
-    count: u32,
-}
-
-struct ExtensionResult {
-    extension: Extension,
-    is_success: bool,
+    index_of_operation: usize,
+    alternative_match_count: u32,
 }
 
 enum EvaluationResult {
@@ -79,9 +66,17 @@ enum EvaluationResult {
 }
 
 impl StateTable {
-    fn new(pos_table: &PosTable) -> Self {
-        Self(pos_table.0.iter().map(|pattern_position| {
-            vec![AnchorState::New; pattern_position.len()]
+    fn new(pos_table: &PosTable, min_penalty_for_pattern: &MinPenaltyForPattern, cutoff: &Cutoff, pattern_size: usize) -> Self {
+        let pattern_count = pos_table.0.len();
+        let left_penalty_margin_for_new_pattern: Vec<i64> = (0..pattern_count).map(|left_pattern_count| {
+            let mut min_penalty = (left_pattern_count / 2) * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even);
+            min_penalty += (left_pattern_count % 2) * min_penalty_for_pattern.odd;
+            let then_max_length =  pattern_size * left_pattern_count + left_pattern_count;
+            (then_max_length * cutoff.maximum_penalty_per_scale - min_penalty) as i64
+        }).collect();
+
+        Self(pos_table.0.iter().zip(left_penalty_margin_for_new_pattern.into_iter()).map(|(pattern_position, left_penalty_margin)| {
+            vec![AnchorState::New(left_penalty_margin); pattern_position.len()]
         }).collect())
     }
 
@@ -94,7 +89,7 @@ impl StateTable {
         let current_state = &mut self.0[anchor_index.0][anchor_index.1];
 
         match current_state {
-            AnchorState::New => {
+            AnchorState::New(penalty_margin) => {
                 // let extension_result = pos_table.extend_wave_front_right(
                 //     anchor_index,
                 //     pattern_size,
