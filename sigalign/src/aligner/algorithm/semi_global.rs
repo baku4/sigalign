@@ -6,9 +6,11 @@ use super::{
     Reference, SequenceProvider,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, TraversedAnchors};
+use super::{PosTable, AnchorPosition, AnchorIndex, TraversedAnchor};
 
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
+
+type TraversedAnchors = Vec<TraversedAnchor>;
 
 struct AnchorTable {
     pos_table: PosTable,
@@ -93,7 +95,10 @@ impl StateTable {
 
         match current_state {
             AnchorState::New => {
-                // let extension_result = pos_table.extend_right(anchor_index, wave_front);
+                // let extension_result = pos_table.extend_wave_front_right(
+                //     anchor_index,
+                //     pattern_size,
+                //     wave_front);
                 // let traversed = self.check_traversed(&extension_result.extension);
 
                 // if extension_result.is_success {
@@ -143,5 +148,21 @@ impl StateTable {
                 EvaluationResult::Done
             },
         }
+    }
+}
+
+impl PosTable {
+    fn extend_right(
+        &self,
+        anchor_index: &AnchorIndex,
+        pattern_size: usize,
+        penalty_margin: i64,
+        record_sequence: Sequence,
+        query_sequence: Sequence,
+        penalties: &Penalties,
+        cutoff: &Cutoff,
+        wave_front: &mut WaveFront,
+    ) {
+        //
     }
 }

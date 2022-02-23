@@ -10,64 +10,110 @@ use super::{PosTable, AnchorPosition, AnchorIndex, Extension};
 use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
 mod backtrace_wave_front;
-pub use backtrace_wave_front::{TraversedPositions};
 
 #[derive(Debug, Clone)]
-pub struct TraversedAnchors {
-    pub sorted_list: Vec<AnchorIndex>,
-    pub at_the_end: Option<AnchorIndex>,
+pub struct TraversedPosition {
+    pub pattern_count_from_start_point: usize,
+    pub traversed_record_length_to_anchor: usize,
+    pub traversed_length_to_anchor_end: usize,
+    pub traversed_penalty_to_anchor_end: usize,
+    pub index_of_operation: usize,
+    pub alternative_match_count: usize,
+}
+
+impl TraversedPosition {
+    fn to_right_traversed_anchor(
+        self,
+        anchor_index: AnchorIndex,
+        length_of_extension: usize,
+        penalty_of_extension: usize,
+        anchor_size: usize,
+    ) -> TraversedAnchor {
+        TraversedAnchor {
+            anchor_index,
+            remained_length: length_of_extension - self.traversed_length_to_anchor_end,
+            remained_penalty: penalty_of_extension - self.traversed_penalty_to_anchor_end,
+            index_of_operation: self.index_of_operation,
+            alternative_match_count: self.alternative_match_count,
+        }
+    }
+    fn to_left_traversed_anchor(
+        self,
+        anchor_index: AnchorIndex,
+        length_of_extension: usize,
+        penalty_of_extension: usize,
+        anchor_size: usize,
+    ) -> TraversedAnchor {
+        TraversedAnchor {
+            anchor_index,
+            remained_length: length_of_extension - self.traversed_length_to_anchor_end,
+            remained_penalty: penalty_of_extension - self.traversed_penalty_to_anchor_end,
+            index_of_operation: self.index_of_operation,
+            alternative_match_count: self.alternative_match_count,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TraversedAnchor {
+    pub anchor_index: AnchorIndex,
+    pub remained_length: usize,
+    pub remained_penalty: usize,
+    pub index_of_operation: usize,
+    pub alternative_match_count: usize,
 }
 
 impl PosTable {
-    pub fn check_right_traversed(&self, pattern_start_index: usize, record_start_index: usize, traversed_positions: &TraversedPositions) -> TraversedAnchors {
-        let sorted_list: Vec<AnchorIndex> = traversed_positions.iter().enumerate().filter_map(|(pattern_index_from_start, optional_record_slice_index)| {
-            match optional_record_slice_index {
-                Some(v) => {
-                    let pattern_index = pattern_start_index + pattern_index_from_start;
-                    let pattern_position = &self.0[pattern_index];
-                    let anchor_index = AnchorPosition::binary_search_index(pattern_position, record_start_index + *v);
-                    Some((pattern_index, anchor_index))
-                },
-                None => {
-                    None
-                },
-            }
-        }).collect();
+    pub fn right_traversed_anchors(
+        &self,
+        traversed_positions: Vec<TraversedPosition>,
+        anchor_pattern_index: usize,
+        anchor_pattern_count: usize,
+        record_start_index: usize,
+        length_of_extension: usize,
+        penalty_of_extension: usize,
+        pattern_size: usize,
+    ) -> Vec<TraversedAnchor> {
+        traversed_positions.into_iter().map(|traversed_position| {
+            let pattern_index = anchor_pattern_index + anchor_pattern_count + traversed_position.pattern_count_from_start_point;
+            let pattern_position = &self.0[pattern_index];
+            
+            let anchor_index_in_pattern = AnchorPosition::binary_search_index(pattern_position, record_start_index + traversed_position.traversed_record_length_to_anchor);
+            let anchor_position = &pattern_position[anchor_index_in_pattern];
 
-        let rightmost_anchor_index = match sorted_list.last() {
-            Some(v) => Some(v.clone()),
-            None => None,
-        };
-
-        TraversedAnchors {
-            sorted_list,
-            at_the_end: rightmost_anchor_index,
-        }
+            let traversed_anchor = traversed_position.to_right_traversed_anchor(
+                (pattern_index, anchor_index_in_pattern),
+                length_of_extension,
+                penalty_of_extension,
+                anchor_position.pattern_count * pattern_size,
+            );
+            traversed_anchor
+        }).collect()
     }
-    pub fn check_left_traversed(&self, pattern_last_index: usize, record_last_index: usize, traversed_positions: &TraversedPositions) -> TraversedAnchors {
-        let sorted_list: Vec<AnchorIndex> = traversed_positions.iter().enumerate().filter_map(|(pattern_index_from_last, optional_record_slice_index)| {
-            match optional_record_slice_index {
-                Some(v) => {
-                    let pattern_index = pattern_last_index - pattern_index_from_last;
-                    let pattern_position = &self.0[pattern_index];
-                    let anchor_index = AnchorPosition::binary_search_index(pattern_position, record_last_index - *v);
-                    Some((pattern_index, anchor_index))
-                },
-                None => {
-                    None
-                },
-            }
-        }).collect();
+    pub fn left_traversed_anchors(
+        &self,
+        traversed_positions: Vec<TraversedPosition>,
+        anchor_pattern_index: usize,
+        record_last_index: usize,
+        length_of_extension: usize,
+        penalty_of_extension: usize,
+        pattern_size: usize,
+    ) -> Vec<TraversedAnchor> {
+        traversed_positions.into_iter().map(|traversed_position| {
+            let pattern_index = anchor_pattern_index - traversed_position.pattern_count_from_start_point;
+            let pattern_position = &self.0[pattern_index];
+            
+            let anchor_index_in_pattern = AnchorPosition::binary_search_index(pattern_position, record_last_index - traversed_position.traversed_record_length_to_anchor);
+            let anchor_position = &pattern_position[anchor_index_in_pattern];
 
-        let leftmost_anchor_index = match sorted_list.last() {
-            Some(v) => Some(v.clone()),
-            None => None,
-        };
-
-        TraversedAnchors {
-            sorted_list,
-            at_the_end: leftmost_anchor_index,
-        }
+            let traversed_anchor = traversed_position.to_left_traversed_anchor(
+                (pattern_index, anchor_index_in_pattern),
+                length_of_extension,
+                penalty_of_extension,
+                anchor_position.pattern_count * pattern_size,
+            );
+            traversed_anchor
+        }).collect()
     }
 }
 

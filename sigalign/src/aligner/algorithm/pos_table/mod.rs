@@ -34,7 +34,7 @@ impl PosTable {
         for pattern_index in 0..pattern_count {
             let qry_pos = pattern_index * pattern_size;
             let pattern = &query[qry_pos..qry_pos+pattern_size];
-
+            
             let reference_location = reference.locate(pattern);
 
             for record_location in reference_location {

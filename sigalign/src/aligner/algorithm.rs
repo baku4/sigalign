@@ -26,7 +26,7 @@ mod extending;
 use extending::{Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 pub use extending::WaveFront;
 mod backtrace;
-use backtrace::{TraversedPositions, TraversedAnchors};
+use backtrace::{TraversedPosition, TraversedAnchor};
 mod merging;
 
 mod semi_global;
@@ -53,29 +53,69 @@ mod tests {
         println!("pos_table: {:#?}", pos_table);
 
         // WaveFront
-
         let penalties = Penalties {
             x: 5,
             o: 6,
             e: 3,
         };
         let mut wave_front = WaveFront::new_allocated(&penalties, 100);
-        let pattern_index = 0;
-        let anchor_position = &pos_table.0[pattern_index][0];
-        let anchor_size = anchor_position.pattern_count * pattern_size;
-        let record_start_position = anchor_position.record_position;
-        let query_start_position = pattern_index * pattern_size;
-        let record_slice = &record_seq[record_start_position+anchor_size..];
-        let query_slice = &query_seq_1[query_start_position+anchor_size..];
 
-        wave_front.align_right_to_end_point(record_slice, query_slice, &penalties, 100);
-        println!("end_point: {:#?}", &wave_front.end_point);
-        let end_score = wave_front.end_point.score;
-        let end_k = wave_front.wave_front_scores[wave_front.end_point.score].max_k + wave_front.end_point.k.unwrap();
-        let (mut extension, traversed) = wave_front.backtrace_from_point_checking_traversed(end_score, end_k as usize, &penalties, pattern_size);
-        extension.operations.reverse();
+        // Right
+        println!("# Right");
+        {
+            let anchor_pattern_index = 0;
+        
+            let anchor_position = &pos_table.0[anchor_pattern_index][0];
+            let anchor_size = anchor_position.pattern_count * pattern_size;
+            let record_start_position = anchor_position.record_position + anchor_size;
+            let query_start_position = anchor_pattern_index * pattern_size + anchor_size;
+            let record_slice = &record_seq[record_start_position..];
+            let query_slice = &query_seq_1[query_start_position..];
 
-        println!("extension: {:#?}", extension);
-        println!("traversed: {:?}", traversed);
+            wave_front.align_right_to_end_point(record_slice, query_slice, &penalties, 100);
+            println!("end_point: {:#?}", &wave_front.end_point);
+            let end_score = wave_front.end_point.score;
+            let end_k = wave_front.wave_front_scores[wave_front.end_point.score].max_k + wave_front.end_point.k.unwrap();
+            let (mut extension, traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(end_score, end_k as usize, &penalties, pattern_size);
+
+            println!("extension: {:#?}", extension);
+            println!("traversed_positions: {:?}", traversed_positions);
+
+            let traversed_anchors = pos_table.right_traversed_anchors(
+                traversed_positions,
+                anchor_pattern_index,
+                anchor_position.pattern_count,
+                record_start_position,
+                extension.length,
+                extension.penalty,
+                pattern_size,
+            );
+            println!("traversed_anchors: {:?}", traversed_anchors);
+        }
+
+        // Left
+        println!("# Left");
+        {
+            let anchor_pattern_index = 7;
+        
+            let anchor_position = &pos_table.0[anchor_pattern_index][0];
+            let anchor_size = anchor_position.pattern_count * pattern_size;
+            let record_last_position = anchor_position.record_position;
+            let query_last_position = anchor_pattern_index * pattern_size;
+            let record_slice = &record_seq[..record_last_position];
+            let query_slice = &query_seq_1[..query_last_position];
+
+            wave_front.align_left_to_end_point(record_slice, query_slice, &penalties, 100);
+            println!("end_point: {:#?}", &wave_front.end_point);
+            let end_score = wave_front.end_point.score;
+            let end_k = wave_front.wave_front_scores[wave_front.end_point.score].max_k + wave_front.end_point.k.unwrap();
+            let (mut extension, traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(end_score, end_k as usize, &penalties, pattern_size);
+
+            println!("extension: {:#?}", extension);
+            println!("traversed_positions: {:?}", traversed_positions);
+
+            let traversed_anchors = pos_table.left_traversed_anchors(traversed_positions, anchor_pattern_index, record_last_position, extension.length, extension.penalty, pattern_size);
+            println!("traversed_anchors: {:?}", traversed_anchors);
+        }
     }
 }
