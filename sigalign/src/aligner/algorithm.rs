@@ -22,13 +22,14 @@ mod pos_table;
 use pos_table::{PosTable, AnchorPosition, AnchorIndex};
 mod spare_penalty;
 use spare_penalty::{calculate_spare_penalty};
-mod extending;
-use extending::{Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
-pub use extending::WaveFront;
+mod extend;
+use extend::{Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+pub use extend::WaveFront;
 mod backtrace;
 use backtrace::{TraversedPosition, TraversedAnchors, TraversedAnchor};
 mod merging;
 
+mod local;
 mod semi_global;
 
 #[cfg(test)]

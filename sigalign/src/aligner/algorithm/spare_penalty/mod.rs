@@ -7,7 +7,7 @@ use super::{
 };
 
 pub fn calculate_spare_penalty(
-    penalty_margin_of_other_side: i64,
+    scaled_penalty_margin_of_other_side: i64,
     anchor_size: usize,
     query_length_this_side: usize,
     record_length_this_side: usize,
@@ -17,7 +17,7 @@ pub fn calculate_spare_penalty(
     i64::max(
         penalties.o as i64,
         (
-            penalties.e as i64 * penalty_margin_of_other_side
+            penalties.e as i64 * scaled_penalty_margin_of_other_side
             + cutoff.maximum_penalty_per_scale as i64 * (
                 (
                     penalties.e * (
