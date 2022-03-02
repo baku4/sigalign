@@ -127,7 +127,6 @@ impl PatternFinder {
     }
     fn sorted_locations_of_pattern(&self, pattern: Sequence) -> Vec<u64> {
         let mut locations = self.lt_fm_index.locate(pattern);
-        println!("location: {:?}", locations);
         locations.sort();
         locations
     }

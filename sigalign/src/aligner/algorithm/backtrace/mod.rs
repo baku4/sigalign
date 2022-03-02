@@ -77,17 +77,29 @@ impl PosTable {
         pattern_size: usize,
     ) -> Vec<TraversedAnchor> {
         traversed_positions.into_iter().map(|traversed_position| {
-            let pattern_index = anchor_pattern_index + anchor_pattern_count + traversed_position.pattern_count_from_start_point;
-            let pattern_position = &self.0[pattern_index];
-            
-            let anchor_index_in_pattern = AnchorPosition::binary_search_index(pattern_position, record_start_index + traversed_position.traversed_record_length_to_anchor);
-            let anchor_position = &pattern_position[anchor_index_in_pattern];
+            let mut pattern_index = anchor_pattern_index + anchor_pattern_count + traversed_position.pattern_count_from_start_point;
+            let mut record_position = record_start_index + traversed_position.traversed_record_length_to_anchor;
+
+            let anchor_index_in_pattern = loop {
+                let pattern_position = &self.0[pattern_index];
+                let anchor_index_in_pattern = AnchorPosition::binary_search_index(pattern_position, record_position);
+                match anchor_index_in_pattern {
+                    Ok(index) => {
+                        break index;
+                    },
+                    Err(_) => {
+                        pattern_index -= 1;
+                        record_position -= pattern_size;
+                    },
+                }
+            };
+            let anchor_size = &self.0[pattern_index][anchor_index_in_pattern].pattern_count * pattern_size;
 
             let traversed_anchor = traversed_position.to_right_traversed_anchor(
                 (pattern_index, anchor_index_in_pattern),
                 length_of_extension,
                 penalty_of_extension,
-                anchor_position.pattern_count * pattern_size,
+                anchor_size,
             );
             traversed_anchor
         }).collect()
@@ -102,17 +114,29 @@ impl PosTable {
         pattern_size: usize,
     ) -> Vec<TraversedAnchor> {
         traversed_positions.into_iter().map(|traversed_position| {
-            let pattern_index = anchor_pattern_index - traversed_position.pattern_count_from_start_point;
-            let pattern_position = &self.0[pattern_index];
-            
-            let anchor_index_in_pattern = AnchorPosition::binary_search_index(pattern_position, record_last_index - traversed_position.traversed_record_length_to_anchor);
-            let anchor_position = &pattern_position[anchor_index_in_pattern];
+            let mut pattern_index = anchor_pattern_index - traversed_position.pattern_count_from_start_point;
+            let mut record_position = record_last_index - traversed_position.traversed_record_length_to_anchor;
+
+            let anchor_index_in_pattern = loop {
+                let pattern_position = &self.0[pattern_index];
+                let anchor_index_in_pattern = AnchorPosition::binary_search_index(pattern_position, record_position);
+                match anchor_index_in_pattern {
+                    Ok(index) => {
+                        break index;
+                    },
+                    Err(_) => {
+                        pattern_index += 1;
+                        record_position += pattern_size;
+                    },
+                }
+            };
+            let anchor_size = &self.0[pattern_index][anchor_index_in_pattern].pattern_count * pattern_size;
 
             let traversed_anchor = traversed_position.to_left_traversed_anchor(
                 (pattern_index, anchor_index_in_pattern),
                 length_of_extension,
                 penalty_of_extension,
-                anchor_position.pattern_count * pattern_size,
+                anchor_size,
             );
             traversed_anchor
         }).collect()
@@ -120,10 +144,10 @@ impl PosTable {
 }
 
 impl AnchorPosition {
-    fn binary_search_index(pattern_position: &Vec<Self>, record_position: usize) -> usize {
+    fn binary_search_index(pattern_position: &Vec<Self>, record_position: usize) -> Result<usize, usize> {
         pattern_position.binary_search_by_key(&record_position, |anchor_position| {
             anchor_position.record_position
-        }).unwrap()
+        })
     }
 }
 

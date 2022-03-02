@@ -34,8 +34,62 @@ mod semi_global;
 
 #[cfg(test)]
 mod tests {
-    use crate::{sequence_provider::*, ReferenceBuilder};
+    use crate::aligner::wave_front_cache;
+    use crate::{sequence_provider::*, ReferenceBuilder, Aligner};
     use super::*;
+    use crate::tests::sample_data::{NUCLEOTIDE_ONLY_FA_PATH_1, NUCLEOTIDE_ONLY_FA_PATH_2, SIMPLE_FA_PATH};
+    use crate::util::FastaReader;
+
+    #[test]
+    fn print_local_alignment_results() {
+        // Reference
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_fasta_file(NUCLEOTIDE_ONLY_FA_PATH_1).unwrap();
+        let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+        let mut sequence_buffer = reference.get_buffer();
+
+        // Alignment conditions
+        let penalties = Penalties {
+            x: 5,
+            o: 6,
+            e: 3,
+        };
+        let cutoff = Cutoff {
+            minimum_aligned_length: 50,
+            maximum_penalty_per_scale: 500,
+        };
+        let pattern_size = 25;
+
+        let mut left_wave_front = WaveFront::new_allocated(&penalties, 2000);
+        let mut right_wave_front = WaveFront::new_allocated(&penalties, 2000);
+
+        // Pos Table
+        let fasta_reader = FastaReader::from_file_path(NUCLEOTIDE_ONLY_FA_PATH_2).unwrap();
+        let mut count = 0;
+        for (label, query) in fasta_reader {
+            println!("# {}", label);
+            let pos_table_map = PosTable::new_by_record(&reference, &query, pattern_size);
+            for (record_index, pos_table) in pos_table_map {
+                println!("index: {}", record_index);
+                reference.fill_sequence_buffer(record_index, &mut sequence_buffer);
+                let record_sequence = sequence_buffer.request_sequence();
+                let local_alignments = local::local_alignment(
+                    &pos_table,
+                    pattern_size,
+                    record_sequence,
+                    &query,
+                    &penalties,
+                    &cutoff,
+                    &mut left_wave_front,
+                    &mut right_wave_front,
+                );
+                println!("local_alignments: {:#?}", local_alignments);
+            }
+        }
+        
+
+
+    }
 
     #[test]
     fn print_wave_front_backtrace_traversed() {
