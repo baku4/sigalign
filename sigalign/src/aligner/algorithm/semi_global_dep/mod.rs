@@ -111,7 +111,7 @@ struct CheckPoint {
 // ALGORITHM
 
 
-pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
+pub fn semi_global_alignment_algorithm_dep<S: SequenceProvider>(
     reference: &Reference<S>,
     sequence_buffer: &mut S::Buffer,
     query: Sequence,

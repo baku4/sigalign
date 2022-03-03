@@ -8,7 +8,7 @@ use super::{
     AlignerInterface,
 };
 use super::{AlignmentCondition, WaveFrontCache, DoubleWaveFrontCache};
-use super::local_alignment_algorithm;
+use super::local_alignment_algorithm_dep;
 
 #[derive(Clone)]
 pub struct LocalAligner {
@@ -28,7 +28,7 @@ impl AlignerInterface for LocalAligner {
         S: SequenceProvider,
     {
         self.wave_front_cache.allocate_more_if_necessary(query.len(), &self.condition.penalties, &self.condition.cutoff);
-        let reference_alignment_result = local_alignment_algorithm(
+        let reference_alignment_result = local_alignment_algorithm_dep(
             reference,
             sequence_buffer,
             query,

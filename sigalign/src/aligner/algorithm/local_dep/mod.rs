@@ -37,7 +37,7 @@ struct Anchor {
 // ALGORITHM
 
 
-pub fn local_alignment_algorithm<S: SequenceProvider>(
+pub fn local_alignment_algorithm_dep<S: SequenceProvider>(
     reference: &Reference<S>,
     sequence_buffer: &mut S::Buffer,
     query: Sequence,
