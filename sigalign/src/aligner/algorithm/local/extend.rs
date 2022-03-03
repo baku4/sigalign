@@ -21,7 +21,7 @@ pub struct LocalExtension {
 }
 
 impl PosTable {
-    pub fn extend_with_right_first(
+    pub fn extend_right_first_for_local(
         &self,
         anchor_index: &AnchorIndex,
         pattern_size: usize,
@@ -133,7 +133,7 @@ impl PosTable {
             right_scaled_penalty_margins,
         }
     }
-    pub fn extend_with_left_first(
+    pub fn extend_left_first_for_local(
         &self,
         anchor_index: &AnchorIndex,
         pattern_size: usize,
