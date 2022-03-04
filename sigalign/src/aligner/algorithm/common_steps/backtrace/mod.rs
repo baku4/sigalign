@@ -11,8 +11,6 @@ use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, Back
 
 mod backtrace_wave_front;
 
-pub type TraversedAnchors = Vec<TraversedAnchor>;
-
 #[derive(Debug, Clone)]
 pub struct TraversedPosition {
     pub pattern_count_from_start_point: usize,

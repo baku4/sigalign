@@ -6,7 +6,7 @@ use super::{
     Reference, SequenceProvider,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchors, TraversedAnchor};
+use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchor};
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
 use super::VPC;
 

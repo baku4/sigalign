@@ -23,7 +23,7 @@ use common_steps::{
     PosTable, AnchorPosition, AnchorIndex,
     calculate_spare_penalty,
     Extension, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker,
-    TraversedPosition, TraversedAnchors, TraversedAnchor,
+    TraversedPosition, TraversedAnchor,
 };
 
 mod local;
