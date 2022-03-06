@@ -31,11 +31,18 @@ fn semi_alignment_query_to_record(
 
     //
     // (1) Get right extension for all anchors
-    //
+    // Change anchors to 3 cases
+    //  - Have owned right extension
+    //  - Have traversed right extension
+    //  - Have right minimum penalty (when traversed from failed extension)
     sorted_anchor_indices.iter().for_each(|current_anchor_index| {
         let current_anchor_need_right_extension = {
             let current_anchor = &anchor_table[current_anchor_index.0][current_anchor_index.1];
-            current_anchor.right_extension_cache.is_none()
+            (
+                current_anchor.right_extension_cache.is_none()
+            ) && (
+                current_anchor.right_minimum_penalty == 0
+            )
         };
         if current_anchor_need_right_extension {
             let scaled_left_penalty_margin = left_penalty_margin_for_new_pattern[current_anchor_index.0];
@@ -53,35 +60,34 @@ fn semi_alignment_query_to_record(
             match optional_right_extension {
                 Some(extension) => {
                     // Add right extension to traversed anchors
-                    let mut symbol = Vec::new();
-                    right_traversed_anchors.into_iter().rev().for_each(|mut traversed_anchor| { // Reverse for sorted symbol
-                        let traversed_anchor_index = traversed_anchor.anchor_index.clone();
-                        traversed_anchor.anchor_index = current_anchor_index.clone(); // Change traversed anchor index to current anchor index
-
+                    right_traversed_anchors.iter().enumerate().for_each(|(index_of_traversed_anchors, traversed_anchor)| {
+                        let traversed_anchor_index = &traversed_anchor.anchor_index;
                         let right_extension_cache = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1].right_extension_cache;
                         *right_extension_cache = Some(
-                            SemiGlobalExtensionDep::Traversed(traversed_anchor, symbol.clone())
+                            SemiGlobalExtension::Traversed(ExtensionReference {
+                                penalty: traversed_anchor.remained_penalty,
+                                length: traversed_anchor.remained_length,
+                                anchor_index: current_anchor_index.clone(),
+                                index_of_traversed_anchors,
+                            })
                         );
-
-                        symbol.push(traversed_anchor_index);
                     });
 
                     // Add right extension to current anchor
                     anchor_table[current_anchor_index.0][current_anchor_index.1].right_extension_cache = Some(
-                        SemiGlobalExtensionDep::Owned(extension, symbol)
+                        SemiGlobalExtension::Owned(extension, right_traversed_anchors)
                     );
                 },
                 None => {
                     // Add right extension to traversed anchors
-                    right_traversed_anchors.into_iter().for_each(|traversed_anchor| {
+                    right_traversed_anchors.iter().for_each(|traversed_anchor| {
                         let traversed_anchor_index = &traversed_anchor.anchor_index;
+                        let anchor = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1];
+                        let right_remained_penalty = traversed_anchor.remained_penalty;
 
-                        let right_extension_cache = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1].right_extension_cache;
-                        if right_extension_cache.is_none() {
-                            *right_extension_cache = Some(
-                                SemiGlobalExtensionDep::FailedTraversed(traversed_anchor.remained_penalty)
-                            );
-                        }
+                        if anchor.right_minimum_penalty < right_remained_penalty {
+                            anchor.right_minimum_penalty = right_remained_penalty;
+                        };
                     });
 
                     // Mark current anchor as registered and invalid
@@ -95,7 +101,9 @@ fn semi_alignment_query_to_record(
 
     //
     // (2) Get left extension for all anchors
-    //
+    // Change anchors to 3 cases
+    //  - Have both right and left extensions
+    //  - Have only right extension
     sorted_anchor_indices.iter().rev().for_each(|current_anchor_index| {
         let current_anchor_need_left_extension = {
             let current_anchor = &anchor_table[current_anchor_index.0][current_anchor_index.1];
@@ -105,29 +113,32 @@ fn semi_alignment_query_to_record(
         if current_anchor_need_left_extension {
             let scaled_right_penalty_margin = {
                 let current_anchor = &anchor_table[current_anchor_index.0][current_anchor_index.1];
-                let right_extension = current_anchor.right_extension_cache.as_ref().unwrap();
-                match right_extension {
-                    SemiGlobalExtensionDep::Owned(extension, _) => {
+                let optional_right_extension = current_anchor.right_extension_cache.as_ref();
+                match optional_right_extension {
+                    Some(SemiGlobalExtension::Owned(extension, _)) => {
                         (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PRECISION_SCALE) as i64
                     },
-                    SemiGlobalExtensionDep::Traversed(traversed_anchor, _) => {
-                        (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64
+                    Some(SemiGlobalExtension::Traversed(extension_reference)) => {
+                        (extension_reference.length * cutoff.maximum_penalty_per_scale) as i64 - (extension_reference.penalty * PRECISION_SCALE) as i64
                     },
-                    SemiGlobalExtensionDep::FailedTraversed(penalty) => {
+                    None => {
+                        let right_minimum_penalty = current_anchor.right_minimum_penalty;
+
                         let anchor_position = &pos_table.0[current_anchor_index.0][current_anchor_index.1];
                         let pattern_count = anchor_position.pattern_count;
                         let anchor_size = pattern_count * pattern_size;
     
-                        let right_record_start_index = anchor_position.record_position + anchor_size;
-                        let right_query_start_index = current_anchor_index.0 * pattern_size + anchor_size;
+                        let left_record_end_index = anchor_position.record_position;
+                        let left_query_end_index = current_anchor_index.0 * pattern_size;
+
+                        let then_right_minimum_length = (record_sequence.len() - left_record_end_index).min(
+                            query_sequence.len() - left_query_end_index
+                        ) - anchor_size;
     
-                        let right_record_slice_len = record_sequence.len() - right_record_start_index;
-                        let right_query_slice_len = query_sequence.len() - right_query_start_index;
-    
-                        let max_gap = (penalty - penalties.o) / penalties.e;
-                        let length = right_record_slice_len.min(right_query_slice_len) + max_gap;
+                        let max_gap = (right_minimum_penalty - penalties.o) / penalties.e;
+                        let then_right_maximum_length = then_right_minimum_length + max_gap;
                         
-                        (length * cutoff.maximum_penalty_per_scale) as i64 - (penalty * PRECISION_SCALE) as i64
+                        (then_right_maximum_length * cutoff.maximum_penalty_per_scale) as i64 - (right_minimum_penalty * PRECISION_SCALE) as i64
                     },
                 }
             };
@@ -147,8 +158,7 @@ fn semi_alignment_query_to_record(
                     let mut leftmost_is_invalid = false;
 
                     // Add left extension to traversed anchors
-                    let mut symbol = Vec::new();
-                    left_traversed_anchors.into_iter().for_each(|mut traversed_anchor| {
+                    left_traversed_anchors.iter().enumerate().for_each(|(index_of_traversed_anchors, traversed_anchor)| {
                         let traversed_anchor_index = traversed_anchor.anchor_index.clone();
                         let anchor = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1];
                         
@@ -159,14 +169,15 @@ fn semi_alignment_query_to_record(
                             if anchor.checked_to_invalid {
                                 leftmost_is_invalid = true;
                             } else {
-                                traversed_anchor.anchor_index = current_anchor_index.clone(); // Change traversed anchor index to current anchor index
-                                
                                 let left_extension_cache = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1].left_extension_cache;
                                 *left_extension_cache = Some(
-                                    SemiGlobalExtensionDep::Traversed(traversed_anchor, symbol.clone())
+                                    SemiGlobalExtension::Traversed(ExtensionReference {
+                                        penalty: traversed_anchor.remained_penalty,
+                                        length: traversed_anchor.remained_length,
+                                        anchor_index: current_anchor_index.clone(),
+                                        index_of_traversed_anchors,
+                                    })
                                 );
-
-                                symbol.push(traversed_anchor_index);
                             }
                         }
                     });
@@ -178,20 +189,36 @@ fn semi_alignment_query_to_record(
                         current_anchor.checked_to_invalid = true;
                     } else {
                         current_anchor.left_extension_cache = Some(
-                            SemiGlobalExtensionDep::Owned(extension, symbol)
+                            SemiGlobalExtension::Owned(extension, left_traversed_anchors)
                         );
                     }
                 },
                 None => {
                     // Add left extension to traversed anchors
-                    left_traversed_anchors.into_iter().for_each(|traversed_anchor| {
+                    left_traversed_anchors.iter().for_each(|traversed_anchor| {
                         let traversed_anchor_index = &traversed_anchor.anchor_index;
 
-                        let left_extension_cache = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1].left_extension_cache;
-                        if left_extension_cache.is_none() {
-                            *left_extension_cache = Some(
-                                SemiGlobalExtensionDep::FailedTraversed(traversed_anchor.remained_penalty)
-                            );
+                        let anchor = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1];
+                        if anchor.right_minimum_penalty != 0 {
+                            let minimum_penalty = anchor.right_minimum_penalty + traversed_anchor.remained_penalty;
+
+                            let anchor_position = &pos_table.0[current_anchor_index.0][current_anchor_index.1];
+        
+                            let left_record_end_index = anchor_position.record_position;
+                            let left_query_end_index = current_anchor_index.0 * pattern_size;
+        
+                            let max_gap = (minimum_penalty - penalties.o) / penalties.e;
+
+                            let then_maximum_length = (
+                                left_record_end_index.min(left_query_end_index)
+                            )+ (
+                                (record_sequence.len() - left_record_end_index).min(query_sequence.len() - left_query_end_index)
+                            ) + max_gap;
+
+                            if (minimum_penalty * PRECISION_SCALE) > (then_maximum_length * cutoff.maximum_penalty_per_scale) {
+                                anchor.registered = true;
+                                anchor.checked_to_invalid = true;
+                            }
                         }
                     });
 
@@ -207,7 +234,164 @@ fn semi_alignment_query_to_record(
     // (3) Get semi-global alignments
     // let mut semi_global_alignments: Vec<SemiGlobalAlignment> = Vec::new();
     sorted_anchor_indices.iter().for_each(|current_anchor_index| {
-        //
+        let current_anchor = &mut anchor_table[current_anchor_index.0][current_anchor_index.1];
+        if !current_anchor.registered {
+            let left_extension_cache = current_anchor.left_extension_cache.as_ref().unwrap();
+
+            //
+            // (1) Make right extension
+            //
+            if current_anchor.right_extension_cache.is_none() {
+                let scaled_left_penalty_margin = {
+                    match left_extension_cache {
+                        SemiGlobalExtension::Owned(extension, _) => {
+                            (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PRECISION_SCALE) as i64
+                        },
+                        SemiGlobalExtension::Traversed(extension_reference) => {
+                            (extension_reference.length * cutoff.maximum_penalty_per_scale) as i64 - (extension_reference.penalty * PRECISION_SCALE) as i64
+                        },
+                    }
+                };
+                let (optional_right_extension, right_traversed_anchors) = pos_table.extend_right(
+                    current_anchor_index,
+                    pattern_size,
+                    record_sequence,
+                    query_sequence,
+                    penalties,
+                    cutoff,
+                    scaled_left_penalty_margin,
+                    wave_front,
+                );
+    
+                match optional_right_extension {
+                    Some(extension) => {
+                        let mut rightmost_is_invalid = false;
+    
+                        // Add right extension to traversed anchors
+                        right_traversed_anchors.iter().enumerate().rev().for_each(|(index_of_traversed_anchors, traversed_anchor)| {
+                            let traversed_anchor_index = traversed_anchor.anchor_index.clone();
+                            let anchor = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1];
+                            
+                            if rightmost_is_invalid {
+                                anchor.registered = true;
+                                anchor.checked_to_invalid = true;
+                            } else {
+                                if anchor.checked_to_invalid {
+                                    rightmost_is_invalid = true;
+                                } else {
+                                    let right_extension_cache = &mut anchor_table[traversed_anchor_index.0][traversed_anchor_index.1].right_extension_cache;
+                                    if right_extension_cache.is_none() {
+                                        *right_extension_cache = Some(
+                                            SemiGlobalExtension::Traversed(ExtensionReference {
+                                                penalty: traversed_anchor.remained_penalty,
+                                                length: traversed_anchor.remained_length,
+                                                anchor_index: current_anchor_index.clone(),
+                                                index_of_traversed_anchors,
+                                            })
+                                        );
+                                    }
+                                }
+                            }
+                        });
+    
+                        // Add right extension to current anchor
+                        if rightmost_is_invalid {
+                            current_anchor.registered = true;
+                            current_anchor.checked_to_invalid = true;
+                        } else {
+                            current_anchor.right_extension_cache = Some(
+                                SemiGlobalExtension::Owned(extension, right_traversed_anchors)
+                            );
+                        }
+                    },
+                    None => {
+                        // Mark current anchor as registered and invalid
+                        current_anchor.registered = true;
+                        current_anchor.checked_to_invalid = true;
+                    },
+                }
+            }
+
+            if !current_anchor.registered { // Right extension can be none if previous part (1) has been failed.
+                //
+                // (2) Get penalty and length
+                //
+                let mut penalty = 0;
+                let mut length = 0;
+
+                let right_extension_cache = current_anchor.left_extension_cache.as_ref().unwrap();
+
+                match left_extension_cache {
+                    SemiGlobalExtension::Owned(extension, _) => {
+                        penalty += extension.penalty;
+                        length += extension.length;
+                    },
+                    SemiGlobalExtension::Traversed(extension_reference) => {
+                        penalty += extension_reference.penalty;
+                        length += extension_reference.length;
+                    },
+                }
+                match right_extension_cache {
+                    SemiGlobalExtension::Owned(extension, _) => {
+                        penalty += extension.penalty;
+                        length += extension.length;
+                    },
+                    SemiGlobalExtension::Traversed(extension_reference) => {
+                        penalty += extension_reference.penalty;
+                        length += extension_reference.length;
+                    },
+                }
+
+                let anchor_size = pos_table.0[current_anchor_index.0][current_anchor_index.1].pattern_count * pattern_size;
+                length += anchor_size;
+
+                if (penalty * PRECISION_SCALE) <= (length * cutoff.maximum_penalty_per_scale) {
+                    //
+                    // (3) Make semi-global alignment
+                    //
+                    let mut symbol = Vec::new();
+
+                    let left_alignment_operations = match left_extension_cache {
+                        SemiGlobalExtension::Owned(extension, traversed_anchors) => {
+                            traversed_anchors.iter().for_each(|traversed_anchor| {
+                                symbol.push(traversed_anchor.anchor_index.clone());
+                            });
+                            extension.operations.clone()
+                        },
+                        SemiGlobalExtension::Traversed(extension_reference) => {
+                            let original_anchor_index = &extension_reference.anchor_index;
+                            
+                            let original_anchor = &anchor_table[original_anchor_index.0][original_anchor_index.1];
+                            
+                            if let SemiGlobalExtension::Owned(extension, traversed_anchors) = original_anchor.left_extension_cache.as_ref().unwrap() {
+                                let traversed_anchor = &traversed_anchors[extension_reference.index_of_traversed_anchors];
+                                let mut operations = extension.operations[traversed_anchor.index_of_operation..].to_vec();
+                                operations[0].count = traversed_anchor.alternative_match_count;
+                                operations
+                            } else {
+                                panic!(""); // Safe
+                            }
+                        },
+                    };
+                    
+                    // leftmost is always me
+
+                    // let semi_global_alignment = SemiGlobalAlignment {
+                    //     symbol: Vec<AnchorIndex>, // sorted anchor indices
+                    //     // Length and penalty
+                    //     penalty: usize,
+                    //     length: usize,
+                    //     // About operation
+                    //     representative_symbol_index: usize,
+                    //     valid_anchor_alignment_operations_and_position: Option<(Vec<AlignmentOperation>, AlignmentPosition)>,
+                    //     // About Optimum
+                    //     leftmost_optimal_symbol_index: usize,
+                    //     rightmost_optimal_symbol_index: usize,
+                    //     non_optimal_anchor_indices: Vec<AnchorIndex>,
+                    // };
+                }
+            }
+        }
     });
 }
 
@@ -229,11 +413,13 @@ struct AnchorTable(Vec<Vec<Anchor>>);
 
 #[derive(Debug, Clone)]
 struct Anchor {
-    left_extension_cache: Option<SemiGlobalExtensionDep>,
-    right_extension_cache: Option<SemiGlobalExtensionDep>,
-    left_minimum_penalty: Option<usize>,
-    right_minimum_penalty: Option<usize>,
-    registered: bool, // If registered in semi alignment
+    // Extension cache
+    left_extension_cache: Option<SemiGlobalExtension>,
+    right_extension_cache: Option<SemiGlobalExtension>,
+    // Fields for failed traversed
+    right_minimum_penalty: usize, // Record remained penalty if traversed from failed right extension. 0 if not traversed failed.
+    // Fields for registration
+    registered: bool, // If registered in semi-global alignment
     checked_to_invalid: bool, // If it's certain that the alignment cannot satisfy the cutoff
     included: bool, // If included in used symbol
 }
@@ -243,8 +429,7 @@ impl Anchor {
         Self {
             left_extension_cache: None,
             right_extension_cache: None,
-            left_minimum_penalty: None,
-            right_minimum_penalty: None,
+            right_minimum_penalty: 0,
             registered: false,
             checked_to_invalid: false,
             included: false,
@@ -260,17 +445,10 @@ enum SemiGlobalExtension {
 
 #[derive(Debug, Clone)]
 struct ExtensionReference {
-    peanlty: usize,
+    penalty: usize,
     length: usize,
     anchor_index: AnchorIndex,
     index_of_traversed_anchors: usize,
-}
-
-#[derive(Debug, Clone)]
-enum SemiGlobalExtensionDep {
-    Owned(Extension, Vec<AnchorIndex>), // Extension, Symbol (sorted)
-    Traversed(TraversedAnchor, Vec<AnchorIndex>), // TraversedAnchor, Symbol (sorted)
-    FailedTraversed(usize), // Min penalty
 }
 
 #[derive(Debug, Clone)]
@@ -283,8 +461,6 @@ pub struct SemiGlobalAlignment {
     // About operation
     representative_symbol_index: usize,
     valid_anchor_alignment_operations_and_position: Option<(Vec<AlignmentOperation>, AlignmentPosition)>,
-    left_traversed_anchors: Vec<TraversedAnchor>,
-    right_traversed_anchors: Vec<TraversedAnchor>,
     // About Optimum
     leftmost_optimal_symbol_index: usize,
     rightmost_optimal_symbol_index: usize,
