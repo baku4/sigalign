@@ -15,6 +15,7 @@ mod valid_position_candidate;
 use valid_position_candidate::VPC;
 mod extend;
 use extend::LocalExtension;
+mod backtrace;
 
 pub fn local_alignment_algorithm<S: SequenceProvider>(
     reference: &Reference<S>,

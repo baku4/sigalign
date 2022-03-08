@@ -38,6 +38,64 @@ mod tests {
     use crate::tests::sample_data::{NUCLEOTIDE_ONLY_FA_PATH_1, NUCLEOTIDE_ONLY_FA_PATH_2, SIMPLE_FA_PATH};
     use crate::util::FastaReader;
 
+    #[test]
+    fn print_semi_global_alignment_results() {
+        // Reference
+        let mut sequence_provider = InMemoryProvider::new();
+        sequence_provider.add_fasta_file(NUCLEOTIDE_ONLY_FA_PATH_1).unwrap();
+        let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+        let mut sequence_buffer = reference.get_buffer();
+
+        // Alignment conditions
+        let penalties = Penalties {
+            x: 5,
+            o: 6,
+            e: 3,
+        };
+        let cutoff = Cutoff {
+            minimum_aligned_length: 50,
+            maximum_penalty_per_scale: 500,
+        };
+        let min_penalty_for_pattern = MinPenaltyForPattern { odd: 6, even: 5 };
+        let pattern_size = 25;
+
+        let mut wave_front = WaveFront::new_allocated(&penalties, 2000);
+
+        // Pos Table
+        let fasta_reader = FastaReader::from_file_path(NUCLEOTIDE_ONLY_FA_PATH_2).unwrap();
+        let mut count = 0;
+        
+        for (label, query) in fasta_reader {
+            println!("# {}", label);
+            let pos_table_map = PosTable::new_by_record(&reference, &query, pattern_size);
+            let pattern_count = query.len() / pattern_size;
+            let left_penalty_margins = semi_global::left_penalty_margin_for_new_pattern(
+                pattern_count,
+                pattern_size,
+                &min_penalty_for_pattern,
+                &cutoff,
+            );
+            
+            for (record_index, pos_table) in pos_table_map {
+                println!("index: {}", record_index);
+                reference.fill_sequence_buffer(record_index, &mut sequence_buffer);
+                let record_sequence = sequence_buffer.request_sequence();
+
+                let anchor_alignment_results = semi_global::semi_global_alignment_query_to_record(
+                    &pos_table,
+                    &left_penalty_margins,
+                    pattern_size,
+                    record_sequence,
+                    &query,
+                    &penalties,
+                    &cutoff,
+                    &mut wave_front,
+                );
+                println!("semi_global_alignments: {:#?}", anchor_alignment_results);
+            }
+        }
+    }
+
     fn print_wave_front_backtrace_traversed() {
         let record_seq = b"AGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG";
         let query_seq_1 = b"AGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGCTACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG";

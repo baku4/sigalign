@@ -36,7 +36,6 @@ impl TraversedPosition {
         anchor_index: AnchorIndex,
         length_of_extension: usize,
         penalty_of_extension: usize,
-        anchor_size: usize,
     ) -> TraversedAnchor {
         TraversedAnchor {
             anchor_index,
@@ -51,7 +50,6 @@ impl TraversedPosition {
         anchor_index: AnchorIndex,
         length_of_extension: usize,
         penalty_of_extension: usize,
-        anchor_size: usize,
     ) -> TraversedAnchor {
         TraversedAnchor {
             anchor_index,
@@ -91,13 +89,11 @@ impl PosTable {
                     },
                 }
             };
-            let anchor_size = &self.0[pattern_index][anchor_index_in_pattern].pattern_count * pattern_size;
 
             let traversed_anchor = traversed_position.to_right_traversed_anchor(
                 (pattern_index, anchor_index_in_pattern),
                 length_of_extension,
                 penalty_of_extension,
-                anchor_size,
             );
             traversed_anchor
         }).collect()
@@ -128,13 +124,11 @@ impl PosTable {
                     },
                 }
             };
-            let anchor_size = &self.0[pattern_index][anchor_index_in_pattern].pattern_count * pattern_size;
 
             let traversed_anchor = traversed_position.to_left_traversed_anchor(
                 (pattern_index, anchor_index_in_pattern),
                 length_of_extension,
                 penalty_of_extension,
-                anchor_size,
             );
             traversed_anchor
         }).collect()
