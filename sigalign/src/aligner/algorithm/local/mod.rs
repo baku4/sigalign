@@ -261,6 +261,9 @@ fn local_alignment_query_to_record(
                 Some(v) => v,
                 None => representative_symbol_index,
             };
+            //FIXME: Delete codes for assertion
+            assert_eq!(leftmost_optimal_symbol_index, representative_symbol_index);
+
             let rightmost_optimal_symbol_index = match optional_rightmost_symbol_index {
                 Some(v) => v,
                 None => representative_symbol_index,
