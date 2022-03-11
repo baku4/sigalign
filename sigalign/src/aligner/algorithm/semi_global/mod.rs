@@ -50,7 +50,7 @@ pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
     AlignmentResult(record_alignment_results)
 }
 
-pub fn semi_global_alignment_query_to_record(
+fn semi_global_alignment_query_to_record(
     pos_table: &PosTable,
     left_penalty_margin_for_new_pattern: &Vec<i64>,
     pattern_size: usize,
@@ -268,7 +268,7 @@ pub fn semi_global_alignment_query_to_record(
     }).collect()
 }
 
-pub fn left_penalty_margin_for_new_pattern(
+fn left_penalty_margin_for_new_pattern(
     pattern_count: usize,
     pattern_size: usize,
     min_penalty_for_pattern: &MinPenaltyForPattern,
