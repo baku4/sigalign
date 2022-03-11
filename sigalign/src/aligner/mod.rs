@@ -11,7 +11,7 @@ pub use crate::reference::{
 
 // Core algorithms
 mod algorithm;
-use algorithm::{WaveFront, local_alignment_algorithm_dep, semi_global_alignment_algorithm_dep};
+use algorithm::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
 
 // Common data structures for aligner
 //  - Cache for alignment extension

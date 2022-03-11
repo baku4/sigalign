@@ -8,7 +8,7 @@ use super::{
     AlignerInterface,
 };
 use super::{AlignmentCondition, WaveFrontCache, SingleWaveFrontCache};
-use super::semi_global_alignment_algorithm_dep;
+use super::semi_global_alignment_algorithm;
 
 #[derive(Clone)]
 pub struct SemiGlobalAligner {
@@ -28,14 +28,14 @@ impl AlignerInterface for SemiGlobalAligner {
         S: SequenceProvider,
     {
         self.wave_front_cache.allocate_more_if_necessary(query.len(), &self.condition.penalties, &self.condition.cutoff);
-        let reference_alignment_result = semi_global_alignment_algorithm_dep(
+        let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
             sequence_buffer,
             query,
             self.condition.pattern_size,
             &self.condition.penalties,
-            &self.condition.cutoff,
             &self.condition.min_penalty_for_pattern,
+            &self.condition.cutoff,
             &mut self.wave_front_cache.wave_front,
         );
 
