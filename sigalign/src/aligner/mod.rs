@@ -90,13 +90,3 @@ impl Aligner {
         }
     }
 }
-
-// TODO: to move
-// Features for aligner
-// mod query_check;
-// mod result_translation;
-// use query_check::SearchableCheck;
-
-// mod interpreter;
-// mod alignment;
-// use interpreter::raw_result_to_json;
