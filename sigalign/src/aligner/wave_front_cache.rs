@@ -9,7 +9,7 @@ use super::{WaveFront};
 use std::fmt;
 
 pub trait WaveFrontCache {
-    const QUERY_LEN_INC_UNIT: usize = 150;
+    const QUERY_LEN_INC_UNIT: usize = 200;
 
     fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self;
     fn have_enough_space(&self, query_length: usize) -> bool;
@@ -122,7 +122,7 @@ impl WaveFront {
         penalties: &Penalties,
         cutoff: &Cutoff,
     ) -> usize {
-        usize::max(
+        let max_score = usize::max(
             penalties.o,
             (
                 cutoff.maximum_penalty_per_scale * (
@@ -133,6 +133,8 @@ impl WaveFront {
             ) + 2
             // According to the formula, value 1 is sufficient for cap.
             // But since cap can be already added from previous calculations, it should be set to 2.
-        )
+        );
+        println!("max_score: {}", max_score);
+        max_score
     }
 }

@@ -108,21 +108,21 @@ impl PosTable {
         //
         // (6) Scaled penalty margin
         //
-        let left_scaled_penalty_margin_of_extension = (left_extension.length * cutoff.maximum_penalty_per_scale) as i64 - (left_extension.penalty * PRECISION_SCALE) as i64;
-        let left_max_scaled_penalty_margin = left_vpc_vector[0].scaled_penalty_margin;
-        let left_scaled_penalty_margins: Vec<i64> = left_traversed_anchors.iter().map(|traversed_anchor| {
-            let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64;
+        let left_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+            &left_extension,
+            &left_vpc_vector,
+            cutoff,
+            penalties,
+            &left_traversed_anchors,
+        );
 
-            left_max_scaled_penalty_margin + remained_scaled_penalty_margin - left_scaled_penalty_margin_of_extension
-        }).collect();
-
-        let right_scaled_penalty_margin_of_extension = (right_extension.length * cutoff.maximum_penalty_per_scale) as i64 - (right_extension.penalty * PRECISION_SCALE) as i64;
-        let right_max_scaled_penalty_margin = right_vpc_vector[0].scaled_penalty_margin;
-        let right_scaled_penalty_margins: Vec<i64> = right_traversed_anchors.iter().map(|traversed_anchor| {
-            let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64;
-
-            right_max_scaled_penalty_margin + remained_scaled_penalty_margin - right_scaled_penalty_margin_of_extension
-        }).collect();
+        let right_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+            &right_extension,
+            &right_vpc_vector,
+            cutoff,
+            penalties,
+            &right_traversed_anchors,
+        );
 
         LocalExtension {
             left_extension,
@@ -220,21 +220,21 @@ impl PosTable {
         //
         // (6) Scaled penalty margin
         //
-        let left_scaled_penalty_margin_of_extension = (left_extension.length * cutoff.maximum_penalty_per_scale) as i64 - (left_extension.penalty * PRECISION_SCALE) as i64;
-        let left_max_scaled_penalty_margin = left_vpc_vector[0].scaled_penalty_margin;
-        let left_scaled_penalty_margins: Vec<i64> = left_traversed_anchors.iter().map(|traversed_anchor| {
-            let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64;
+        let left_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+            &left_extension,
+            &left_vpc_vector,
+            cutoff,
+            penalties,
+            &left_traversed_anchors,
+        );
 
-            left_max_scaled_penalty_margin + remained_scaled_penalty_margin - left_scaled_penalty_margin_of_extension
-        }).collect();
-
-        let right_scaled_penalty_margin_of_extension = (right_extension.length * cutoff.maximum_penalty_per_scale) as i64 - (right_extension.penalty * PRECISION_SCALE) as i64;
-        let right_max_scaled_penalty_margin = right_vpc_vector[0].scaled_penalty_margin;
-        let right_scaled_penalty_margins: Vec<i64> = right_traversed_anchors.iter().map(|traversed_anchor| {
-            let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64;
-
-            right_max_scaled_penalty_margin + remained_scaled_penalty_margin - right_scaled_penalty_margin_of_extension
-        }).collect();
+        let right_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+            &right_extension,
+            &right_vpc_vector,
+            cutoff,
+            penalties,
+            &right_traversed_anchors,
+        );
 
         LocalExtension {
             left_extension,
@@ -245,4 +245,29 @@ impl PosTable {
             right_scaled_penalty_margins,
         }
     }
+}
+
+fn get_scaled_penalty_margins_of_vpc_vector(
+    extension: &Extension,
+    vpc_vector: &Vec<VPC>,
+    cutoff: &Cutoff,
+    penalties: &Penalties,
+    traversed_anchors: &Vec<TraversedAnchor>,
+) -> Vec<i64> {
+    let scaled_penalty_margin_of_extension = (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PRECISION_SCALE) as i64;
+
+    let mut vpc_index_for_traversed_anchor = 0;
+    let mut scaled_penalty_margins: Vec<i64> = traversed_anchors.iter().rev().map(|traversed_anchor| {
+        let length_to_traversed_start_position = extension.length - traversed_anchor.remained_length;
+        let penalty_to_traversed_start_position = extension.penalty - traversed_anchor.remained_penalty;
+        let min_query_length = length_to_traversed_start_position - (penalty_to_traversed_start_position / penalties.e);
+        while min_query_length > vpc_vector[vpc_index_for_traversed_anchor].query_length {
+            vpc_index_for_traversed_anchor += 1;
+        }
+        let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64;
+        vpc_vector[vpc_index_for_traversed_anchor].scaled_penalty_margin + remained_scaled_penalty_margin - scaled_penalty_margin_of_extension
+    }).collect();
+    scaled_penalty_margins.reverse();
+
+    scaled_penalty_margins
 }
