@@ -130,11 +130,8 @@ impl WaveFront {
                 )
             ) / (
                 PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
-            ) + 2
-            // According to the formula, value 1 is sufficient for cap.
-            // But since cap can be already added from previous calculations, it should be set to 2.
+            ) + 1
         );
-        println!("max_score: {}", max_score);
         max_score
     }
 }
