@@ -93,7 +93,6 @@ fn semi_global_alignment_query_to_record(
                 cutoff,
                 wave_front,
             );
-
             if have_valid_right_extension {
                 let right_extension_index = anchor_table.0[current_anchor_index.0][current_anchor_index.1].right_extension_index.clone().unwrap();
                 //
@@ -169,7 +168,7 @@ fn semi_global_alignment_query_to_record(
                 };
 
                 if have_valid_left_extension {
-                    //
+                    // 
                     // (4) Get semi-global alignment
                     //
                     let left_extension_index = anchor_table.0[current_anchor_index.0][current_anchor_index.1].left_extension_index.clone().unwrap();
@@ -282,6 +281,7 @@ fn left_penalty_margin_for_new_pattern(
     }).collect()
 }
 
+#[derive(Debug)]
 struct AnchorTable(Vec<Vec<Anchor>>);
 
 impl AnchorTable {
@@ -416,7 +416,10 @@ impl AnchorTable {
         cutoff: &Cutoff,
         wave_front: &mut WaveFront,
     ) -> bool {
-        if !self.0[current_anchor_index.0][current_anchor_index.1].checked_to_invalid && self.0[current_anchor_index.0][current_anchor_index.1].left_extension_index.is_none() {
+        if self.0[current_anchor_index.0][current_anchor_index.1].checked_to_invalid {
+            return false
+        }
+        if self.0[current_anchor_index.0][current_anchor_index.1].left_extension_index.is_none() {
             // Scaled penalty margin of right
             // Always have right extension
             let scaled_penalty_margin_of_right = match self.0[current_anchor_index.0][current_anchor_index.1].right_extension_index.as_ref().unwrap() {
