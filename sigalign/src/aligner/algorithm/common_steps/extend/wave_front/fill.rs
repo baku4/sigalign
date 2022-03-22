@@ -58,10 +58,13 @@ impl WaveFront {
         &mut self,
         ref_seq: Sequence,
         qry_seq: Sequence,
-        spare_penalty: usize,
+        mut spare_penalty: usize,
         penalties: &Penalties,
         match_counter: MatchCounter,
     ) -> WaveEndPoint {
+        if self.wave_front_scores.len() <= spare_penalty {
+            spare_penalty = self.wave_front_scores.len() - 1;
+        }
         for score in 1..=spare_penalty {
             let new_components_by_k = self.new_components_by_k_of_next_wave_front_score(score, penalties);
 
