@@ -71,6 +71,7 @@ impl AlignmentConfig {
         let start = Instant::now();
         eprintln!("# 3. Make aligner");
         let mut aligner = config.make_aligner().unwrap();
+        eprintln!("{:#?}", aligner);
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
         let start = Instant::now();
