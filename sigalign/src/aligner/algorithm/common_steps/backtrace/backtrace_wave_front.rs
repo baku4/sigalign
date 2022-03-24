@@ -366,7 +366,7 @@ impl WaveFront {
                             let alternative_match_count = fr - k - query_slice_index_of_next_pattern; // fr-k: query slice index of next unmatched
                             let traversed_pattern_count = alternative_match_count / pattern_size as i32;
 
-                            if traversed_pattern_count != 0 {
+                            if traversed_pattern_count > 0 {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
@@ -434,7 +434,7 @@ impl WaveFront {
                             let alternative_match_count = fr - k - query_slice_index_of_next_pattern; // fr-k: query slice index of next unmatched
                             let traversed_pattern_count = alternative_match_count / pattern_size as i32;
 
-                            if traversed_pattern_count != 0 {
+                            if traversed_pattern_count > 0 {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
@@ -481,7 +481,7 @@ impl WaveFront {
                             let alternative_match_count = fr - k - query_slice_index_of_next_pattern; // fr-k: query slice index of next unmatched
                             let traversed_pattern_count = alternative_match_count / pattern_size as i32;
 
-                            if traversed_pattern_count != 0 {
+                            if traversed_pattern_count > 0 {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
@@ -722,7 +722,7 @@ impl WaveFront {
                             let alternative_match_count = fr - k - query_slice_index_of_next_pattern; // fr-k: query slice index of next unmatched
                             let traversed_pattern_count = alternative_match_count / pattern_size as i32;
 
-                            if traversed_pattern_count != 0 {
+                            if traversed_pattern_count > 0 {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
@@ -790,7 +790,7 @@ impl WaveFront {
                             let alternative_match_count = fr - k - query_slice_index_of_next_pattern; // fr-k: query slice index of next unmatched
                             let traversed_pattern_count = alternative_match_count / pattern_size as i32;
 
-                            if traversed_pattern_count != 0 {
+                            if traversed_pattern_count > 0 {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
@@ -837,7 +837,7 @@ impl WaveFront {
                             let alternative_match_count = fr - k - query_slice_index_of_next_pattern; // fr-k: query slice index of next unmatched
                             let traversed_pattern_count = alternative_match_count / pattern_size as i32;
 
-                            if traversed_pattern_count != 0 {
+                            if traversed_pattern_count > 0 {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
