@@ -29,7 +29,7 @@ impl Debug for Aligner {
             },
         };
 
-        f.debug_struct("Point")
+        f.debug_struct("Aligner")
             .field("algorithm", &algorithm)
             .field("alignment_condition", alignment_condition)
             .field("cache_query_length", &cache_query_length)
