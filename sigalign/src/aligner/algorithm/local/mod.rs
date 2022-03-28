@@ -262,8 +262,6 @@ fn local_alignment_query_to_record(
                 Some(v) => v,
                 None => representative_symbol_index,
             };
-            //FIXME: Delete codes for assertion
-            assert_eq!(leftmost_optimal_symbol_index, representative_symbol_index);
 
             let rightmost_optimal_symbol_index = match optional_rightmost_symbol_index {
                 Some(v) => v,
@@ -282,25 +280,28 @@ fn local_alignment_query_to_record(
                 anchor_table[anchor_index.0][anchor_index.1].registered = true;
             });
 
-            let local_alignment = LocalAlignment {
-                // Symbol
-                symbol,
-                // Length and penalty
-                query_length,
-                penalty,
-                length,
-                // About operation
-                representative_symbol_index,
-                valid_anchor_alignment_operations_and_position,
-                left_traversed_anchors,
-                right_traversed_anchors,
-                // About Optimum
-                leftmost_optimal_symbol_index,
-                rightmost_optimal_symbol_index,
-                non_optimal_anchor_indices,
-            };
-
-            local_alignments.push(local_alignment);
+            if let Some((alignment_operations, alignment_position)) = valid_anchor_alignment_operations_and_position {
+                let local_alignment = LocalAlignment {
+                    // Symbol
+                    symbol,
+                    // Length and penalty
+                    query_length,
+                    penalty,
+                    length,
+                    // About operation
+                    representative_symbol_index,
+                    alignment_operations,
+                    alignment_position,
+                    left_traversed_anchors,
+                    right_traversed_anchors,
+                    // About Optimum
+                    leftmost_optimal_symbol_index,
+                    rightmost_optimal_symbol_index,
+                    non_optimal_anchor_indices,
+                };
+    
+                local_alignments.push(local_alignment);
+            }
         }
     });
 
@@ -319,33 +320,26 @@ fn local_alignment_query_to_record(
     });
 
     local_alignments.into_iter().filter_map(|local_alignment| {
-        match local_alignment.valid_anchor_alignment_operations_and_position {
-            Some((alignment_operations, alignment_position)) => {
-                let mut is_unique_position = true;
-                for non_optimal_anchor_index in local_alignment.non_optimal_anchor_indices.into_iter() {
-                    if anchor_table[non_optimal_anchor_index.0][non_optimal_anchor_index.1].included {
-                        is_unique_position = false;
-                        break;
-                    }
-                }
-                if is_unique_position {
-                    local_alignment.symbol.into_iter().for_each(|anchor_index| {
-                        anchor_table[anchor_index.0][anchor_index.1].included = true;
-                    });
-                    let anchor_alignment_result = AnchorAlignmentResult {
-                        penalty: local_alignment.penalty,
-                        length: local_alignment.length,
-                        position: alignment_position,
-                        operations: alignment_operations,
-                    };
-                    Some(anchor_alignment_result)
-                } else {
-                    None
-                }
-            },
-            None => {
-                None
-            },
+        let mut is_unique_position = true;
+        for non_optimal_anchor_index in local_alignment.non_optimal_anchor_indices.into_iter() {
+            if anchor_table[non_optimal_anchor_index.0][non_optimal_anchor_index.1].included {
+                is_unique_position = false;
+                break;
+            }
+        }
+        if is_unique_position {
+            local_alignment.symbol.into_iter().for_each(|anchor_index| {
+                anchor_table[anchor_index.0][anchor_index.1].included = true;
+            });
+            let anchor_alignment_result = AnchorAlignmentResult {
+                penalty: local_alignment.penalty,
+                length: local_alignment.length,
+                position: local_alignment.alignment_position,
+                operations: local_alignment.alignment_operations,
+            };
+            Some(anchor_alignment_result)
+        } else {
+            None
         }
     }).collect()
 }
@@ -376,7 +370,8 @@ pub struct LocalAlignment {
     length: usize,
     // About operation
     representative_symbol_index: usize,
-    valid_anchor_alignment_operations_and_position: Option<(Vec<AlignmentOperation>, AlignmentPosition)>, // None, if (len < cutoff len)
+    alignment_operations: Vec<AlignmentOperation>,
+    alignment_position: AlignmentPosition,
     left_traversed_anchors: Vec<TraversedAnchor>,
     right_traversed_anchors: Vec<TraversedAnchor>,
     // About Optimum
