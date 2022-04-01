@@ -8,7 +8,8 @@ use super::{
 use super::{
     Reference, SequenceProvider, JoinedSequence,
     SequenceType, PatternFinder,
-    Serializable,
+    // traits
+    Divisible, Serializable, SizeAware,
     LabelProvider,
     ReverseComplement,
 };
@@ -97,6 +98,45 @@ impl Serializable for InMemoryRcProvider {
     {
         let in_memory_provider = InMemoryProvider::load_from(reader)?;
         Ok(Self(in_memory_provider))
+    }
+}
+
+// SizeAware
+impl SizeAware for InMemoryRcProvider {
+    fn size_of(&self) -> usize {
+        self.0.size_of()
+    }
+}
+
+// Divisible
+impl Divisible for InMemoryRcProvider {
+    fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
+        // Get record index range list
+        let record_index_range_list = self.0.record_index_range_list_of_max_length(max_seq_len);
+
+        // Adjust all range to even number
+        let adjusted_record_index_range_list = record_index_range_list.into_iter()
+            .filter_map(|(mut v1, mut v2)| {
+                if v1 % 2 == 1 {
+                    v1 -= 1;
+                }
+                if v2 % 2 == 1 {
+                    v2 -= 1;
+                }
+                if v1 == v2 {
+                    None
+                } else {
+                    Some((v1, v2))
+                }
+            }).collect();
+        
+        // Split
+        let splitted = self.0.split_using_record_index_range_list(adjusted_record_index_range_list).into_iter()
+            .map(|inner| {
+                Self(inner)
+            }).collect();
+
+        Ok(splitted)
     }
 }
 

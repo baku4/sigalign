@@ -9,10 +9,13 @@ use super::{
     Reference, JoinedSequence,
     SequenceType, PatternFinder,
 };
+
+// Traits to implement
+mod feature;
+use feature::Divisible;
 use super::{
-    Serializable,
-    LabelProvider,
-    ReverseComplement,
+    Serializable, SizeAware,
+    LabelProvider, ReverseComplement,
 };
 
 // Basic sequence providers implementations

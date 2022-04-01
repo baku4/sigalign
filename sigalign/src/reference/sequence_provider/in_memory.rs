@@ -8,13 +8,15 @@ use super::{
 use super::{
     Reference, SequenceProvider, JoinedSequence,
     SequenceType, PatternFinder,
-    Serializable,
+    // traits
+    Divisible, Serializable, SizeAware,
     LabelProvider,
     ReverseComplement,
 };
 
 use crate::util::FastaReader;
 
+use capwriter::{Saveable, Loadable};
 use serde::{Serialize, Deserialize};
 use bincode::{serialize_into, deserialize_from};
 
@@ -128,45 +130,15 @@ impl Serializable for InMemoryProvider {
     {
         // 1. Write record_count
         writer.write_u64::<EndianType>(self.record_count as u64)?;
-
         // 2. Write combined_sequence
-        //  - Size
-        writer.write_u64::<EndianType>(self.combined_sequence.len() as u64)?;
-        //  - inner bytes
-        writer.write_all(&self.combined_sequence)?;
-
+        self.combined_sequence.save_to(&mut writer)?;
         // 3. Write sequence_index
-        //  - Size
-        writer.write_u64::<EndianType>(self.sequence_index.len() as u64)?;
-        //  - inner bytes
-        #[cfg(target_pointer_width="64")]
-        self.sequence_index.iter().for_each(|position| {
-            writer.write_u64::<EndianType>(*position as u64);
-        });
-        #[cfg(target_pointer_width="32")]
-        self.sequence_index.iter().for_each(|position| {
-            writer.write_u32::<EndianType>(*position as u32);
-        });
-
+        self.sequence_index.save_to(&mut writer)?;
         // 4. Write combined_label
         let combined_label_byte = self.combined_label.as_bytes();
-        //  - Size
-        writer.write_u64::<EndianType>(combined_label_byte.len() as u64)?;
-        //  - inner bytes
-        writer.write_all(combined_label_byte)?;
-
+        combined_label_byte.save_to(&mut writer)?;
         // 5. Write label_index
-        //  - Size
-        writer.write_u64::<EndianType>(self.label_index.len() as u64)?;
-        // - inner bytes
-        #[cfg(target_pointer_width="64")]
-        self.label_index.iter().for_each(|position| {
-            writer.write_u64::<EndianType>(*position as u64);
-        });
-        #[cfg(target_pointer_width="32")]
-        self.label_index.iter().for_each(|position| {
-            writer.write_u32::<EndianType>(*position as u32);
-        });
+        self.label_index.save_to(&mut writer)?;
 
         Ok(())
     }
@@ -175,50 +147,18 @@ impl Serializable for InMemoryProvider {
         Self: Sized,
     {
         // 1. Read record_count
-        let record_count = reader.read_u64::<EndianType>()? as  usize;
-
+        let record_count = reader.read_u64::<EndianType>()? as usize;
         // 2. Read combined_sequence
-        let combined_sequence_size = reader.read_u64::<EndianType>()? as  usize;
-        let mut combined_sequence = vec![0; combined_sequence_size];
-        reader.read_exact(&mut combined_sequence)?;
-
+        let combined_sequence = Vec::load_from(&mut reader)?;
         // 3. Read sequence_index
-        let sequence_index_size = reader.read_u64::<EndianType>()? as  usize;
-        #[cfg(target_pointer_width="64")]
-        let sequence_index: Vec<usize> = {
-            let mut sequence_index = vec![0; sequence_index_size];
-            reader.read_u64_into::<EndianType>(&mut sequence_index)?;
-            sequence_index.into_iter().map(|x| x as usize).collect()
-        };
-        #[cfg(target_pointer_width="32")]
-        let sequence_index: Vec<usize> = {
-            let mut sequence_index = vec![0; sequence_index_size];
-            reader.read_u32_into::<EndianType>(&mut sequence_index)?;
-            sequence_index.into_iter().map(|x| x as usize).collect()
-        };
-
+        let sequence_index = Vec::load_from(&mut reader)?;
         // 4. Read combined_label
-        let combined_label_byte_size =  reader.read_u64::<EndianType>()? as usize;
-        let mut combined_label_byte = vec![0; combined_label_byte_size];
-        reader.read_exact(&mut combined_label_byte)?;
+        let combined_label_byte = Vec::<u8>::load_from(&mut reader)?;
         let combined_label = unsafe {
             String::from_utf8_unchecked(combined_label_byte)
         };
-
         // 5. Read label_index
-        let label_index_size = reader.read_u64::<EndianType>()? as  usize;
-        #[cfg(target_pointer_width="64")]
-        let label_index: Vec<usize> = {
-            let mut label_index = vec![0; label_index_size];
-            reader.read_u64_into::<EndianType>(&mut label_index)?;
-            label_index.into_iter().map(|x| x as usize).collect()
-        };
-        #[cfg(target_pointer_width="32")]
-        let label_index = {
-            let mut label_index = vec![0; label_index_size];
-            reader.read_u32_into::<EndianType>(&mut label_index)?;
-            label_index.into_iter().map(|x| x as usize).collect()
-        };
+        let label_index = Vec::load_from(&mut reader)?;
 
         Ok(Self {
             record_count,
@@ -227,5 +167,142 @@ impl Serializable for InMemoryProvider {
             combined_label,
             label_index,
         })
+    }
+}
+
+// SizeAware
+impl SizeAware for InMemoryProvider {
+    fn size_of(&self) -> usize {
+        8 // record_count
+        + self.combined_sequence.size_of() // combined_sequence
+        + self.sequence_index.size_of() // sequence_index
+        + self.combined_label.as_bytes().size_of() // combined_label
+        + self.label_index.size_of() // label_index
+    }
+}
+
+// Divisible
+impl Divisible for InMemoryProvider {
+    fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
+        // Get record index range list
+        let record_index_range_list = self.record_index_range_list_of_max_length(max_seq_len);
+
+        // Split
+        let splitted = self.split_using_record_index_range_list(record_index_range_list);
+
+        Ok(splitted)
+    }
+}
+impl InMemoryProvider {
+    fn record_index_range_list_of_max_length(&self, max_seq_len: usize) -> Vec<(usize, usize)> {
+        let mut record_index_range_list = Vec::new(); // (start index, last index)
+        let mut start_record_index = 0;
+
+        'outer: loop {
+            let mut first_max_over_record_index = start_record_index + 1;
+
+            while self.sequence_index[first_max_over_record_index] - self.sequence_index[start_record_index] <= max_seq_len {
+                first_max_over_record_index += 1;
+                if first_max_over_record_index == self.sequence_index.len() - 1 {
+                    record_index_range_list.push((start_record_index, first_max_over_record_index));
+                    break 'outer;
+                }
+            }
+
+            // accumulated_length > max_length
+            if first_max_over_record_index == start_record_index + 1 { // One record exceed the max length
+                record_index_range_list.push((start_record_index, first_max_over_record_index));
+                start_record_index = first_max_over_record_index;
+            } else {
+                record_index_range_list.push((start_record_index, first_max_over_record_index - 1));
+                start_record_index = first_max_over_record_index - 1;
+            }
+        }
+        record_index_range_list
+    }
+    fn split_using_record_index_range_list(self, record_index_range_list: Vec<(usize, usize)>) -> Vec<Self> {
+        record_index_range_list.into_iter().map(|(start_record_index, last_record_index)| {
+            // record_count
+            let record_count = last_record_index - start_record_index;
+
+            // combined_sequence
+            let sequence_start_index = self.sequence_index[start_record_index];
+            let sequence_end_index = self.sequence_index[last_record_index];
+            
+            let combined_sequence = self.combined_sequence[sequence_start_index..sequence_end_index].to_vec();
+
+            // sequence_index
+            let sequence_index: Vec<usize> = self.sequence_index[start_record_index..=last_record_index].iter().map(|v| {
+                v - sequence_start_index
+            }).collect();
+
+            // combined_label
+            let label_start_index = self.label_index[start_record_index];
+            let label_end_index = self.label_index[last_record_index];
+
+            let combined_label = self.combined_label[label_start_index..label_end_index].to_string();
+
+            // label_index
+            let label_index: Vec<usize> = self.label_index[start_record_index..=last_record_index].iter().map(|v| {
+                v - label_start_index
+            }).collect();
+
+            Self {
+                record_count,
+                combined_sequence,
+                sequence_index,
+                combined_label,
+                label_index,
+            }
+        }).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn check_splitted_provider_with_fasta_file(fasta_file: &str) {
+        // Original
+        let mut in_memory_provider = InMemoryProvider::new();
+        in_memory_provider.add_fasta_file(fasta_file);
+        let mut org_label_list: Vec<String> = Vec::with_capacity(in_memory_provider.total_record_count());
+        let mut org_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_provider.total_record_count());
+        for idx in 0..in_memory_provider.total_record_count() {
+            // Label
+            let label = in_memory_provider.label_of_record(idx);
+            org_label_list.push(label);
+            // Seq
+            let mut buffer = in_memory_provider.get_buffer();
+            in_memory_provider.fill_sequence_buffer(idx, &mut buffer);
+            let seq = buffer.request_sequence().to_vec();
+            org_seq_list.push(seq);
+        }
+    
+        // Splitted
+        let mut splitted_label_list: Vec<String> = Vec::with_capacity(in_memory_provider.total_record_count());
+        let mut splitted_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_provider.total_record_count());
+    
+        let splitted = in_memory_provider.split_by_max_length(10000).unwrap();
+        println!("splitted_len: {}", splitted.len());
+    
+        for (idx, in_memory_provider) in splitted.into_iter().enumerate() {
+            for ridx in 0..in_memory_provider.total_record_count() {
+                let label = in_memory_provider.label_of_record(ridx);
+                splitted_label_list.push(label);
+    
+                let mut buffer = in_memory_provider.get_buffer();
+                in_memory_provider.fill_sequence_buffer(ridx, &mut buffer);
+                // let seq = String::from_utf8(buffer.request_sequence().to_vec()).unwrap();
+                let seq = buffer.request_sequence().to_vec();
+                splitted_seq_list.push(seq);
+            }
+        }
+    
+        // Compare
+        for idx in 0..org_label_list.len() {
+            assert_eq!(org_label_list[idx], splitted_label_list[idx]);
+            assert_eq!(org_seq_list[idx], splitted_seq_list[idx])
+        }
     }
 }
