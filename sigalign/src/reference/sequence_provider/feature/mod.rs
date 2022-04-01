@@ -6,18 +6,12 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, JoinedSequence,
     SequenceType, PatternFinder,
 };
 
-use std::io::{Write, Read};
-
-pub trait Serializable {
-    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write;
-    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
-}
-
-// Precalculate stored size
-pub trait SizeAware: Serializable {
-    fn size_of(&self) -> usize;
+pub trait Divisible {
+    // Split sequence provider to specific max sized length.
+    // If one record exceeds the max length, splitted provider can contain only one of that record.
+    fn split_by_max_length(self, max_length: usize) -> Result<Vec<Self>> where Self: Sized;
 }

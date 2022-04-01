@@ -8,13 +8,15 @@ use super::{
 use super::{
     Reference, SequenceProvider, JoinedSequence,
     SequenceType, PatternFinder,
-    Serializable,
+    // traits
+    Divisible, Serializable, SizeAware,
     LabelProvider,
     ReverseComplement,
 };
 
 use crate::util::FastaReader;
 
+use capwriter::{Saveable, Loadable};
 use serde::{Serialize, Deserialize};
 use bincode::{serialize_into, deserialize_from};
 
@@ -128,45 +130,15 @@ impl Serializable for InMemoryProvider {
     {
         // 1. Write record_count
         writer.write_u64::<EndianType>(self.record_count as u64)?;
-
         // 2. Write combined_sequence
-        //  - Size
-        writer.write_u64::<EndianType>(self.combined_sequence.len() as u64)?;
-        //  - inner bytes
-        writer.write_all(&self.combined_sequence)?;
-
+        self.combined_sequence.save_to(&mut writer)?;
         // 3. Write sequence_index
-        //  - Size
-        writer.write_u64::<EndianType>(self.sequence_index.len() as u64)?;
-        //  - inner bytes
-        #[cfg(target_pointer_width="64")]
-        self.sequence_index.iter().for_each(|position| {
-            writer.write_u64::<EndianType>(*position as u64);
-        });
-        #[cfg(target_pointer_width="32")]
-        self.sequence_index.iter().for_each(|position| {
-            writer.write_u32::<EndianType>(*position as u32);
-        });
-
+        self.sequence_index.save_to(&mut writer)?;
         // 4. Write combined_label
         let combined_label_byte = self.combined_label.as_bytes();
-        //  - Size
-        writer.write_u64::<EndianType>(combined_label_byte.len() as u64)?;
-        //  - inner bytes
-        writer.write_all(combined_label_byte)?;
-
+        combined_label_byte.save_to(&mut writer)?;
         // 5. Write label_index
-        //  - Size
-        writer.write_u64::<EndianType>(self.label_index.len() as u64)?;
-        // - inner bytes
-        #[cfg(target_pointer_width="64")]
-        self.label_index.iter().for_each(|position| {
-            writer.write_u64::<EndianType>(*position as u64);
-        });
-        #[cfg(target_pointer_width="32")]
-        self.label_index.iter().for_each(|position| {
-            writer.write_u32::<EndianType>(*position as u32);
-        });
+        self.label_index.save_to(&mut writer)?;
 
         Ok(())
     }
@@ -175,50 +147,18 @@ impl Serializable for InMemoryProvider {
         Self: Sized,
     {
         // 1. Read record_count
-        let record_count = reader.read_u64::<EndianType>()? as  usize;
-
+        let record_count = reader.read_u64::<EndianType>()? as usize;
         // 2. Read combined_sequence
-        let combined_sequence_size = reader.read_u64::<EndianType>()? as  usize;
-        let mut combined_sequence = vec![0; combined_sequence_size];
-        reader.read_exact(&mut combined_sequence)?;
-
+        let combined_sequence = Vec::load_from(&mut reader)?;
         // 3. Read sequence_index
-        let sequence_index_size = reader.read_u64::<EndianType>()? as  usize;
-        #[cfg(target_pointer_width="64")]
-        let sequence_index: Vec<usize> = {
-            let mut sequence_index = vec![0; sequence_index_size];
-            reader.read_u64_into::<EndianType>(&mut sequence_index)?;
-            sequence_index.into_iter().map(|x| x as usize).collect()
-        };
-        #[cfg(target_pointer_width="32")]
-        let sequence_index: Vec<usize> = {
-            let mut sequence_index = vec![0; sequence_index_size];
-            reader.read_u32_into::<EndianType>(&mut sequence_index)?;
-            sequence_index.into_iter().map(|x| x as usize).collect()
-        };
-
+        let sequence_index = Vec::load_from(&mut reader)?;
         // 4. Read combined_label
-        let combined_label_byte_size =  reader.read_u64::<EndianType>()? as usize;
-        let mut combined_label_byte = vec![0; combined_label_byte_size];
-        reader.read_exact(&mut combined_label_byte)?;
+        let combined_label_byte = Vec::<u8>::load_from(&mut reader)?;
         let combined_label = unsafe {
             String::from_utf8_unchecked(combined_label_byte)
         };
-
         // 5. Read label_index
-        let label_index_size = reader.read_u64::<EndianType>()? as  usize;
-        #[cfg(target_pointer_width="64")]
-        let label_index: Vec<usize> = {
-            let mut label_index = vec![0; label_index_size];
-            reader.read_u64_into::<EndianType>(&mut label_index)?;
-            label_index.into_iter().map(|x| x as usize).collect()
-        };
-        #[cfg(target_pointer_width="32")]
-        let label_index = {
-            let mut label_index = vec![0; label_index_size];
-            reader.read_u32_into::<EndianType>(&mut label_index)?;
-            label_index.into_iter().map(|x| x as usize).collect()
-        };
+        let label_index = Vec::load_from(&mut reader)?;
 
         Ok(Self {
             record_count,
@@ -228,4 +168,59 @@ impl Serializable for InMemoryProvider {
             label_index,
         })
     }
+}
+
+// SizeAware
+impl SizeAware for InMemoryProvider {
+    fn size_of(&self) -> usize {
+        8 // record_count
+        + self.combined_sequence.size_of() // combined_sequence
+        + self.sequence_index.size_of() // sequence_index
+        + self.combined_label.as_bytes().size_of() // combined_label
+        + self.label_index.size_of() // label_index
+    }
+}
+
+// Divisible
+impl Divisible for InMemoryProvider {
+    fn split_by_max_length(self, max_length: usize) -> Result<Vec<Self>> {
+        // Get record index range list
+        let record_index_range_list = self.record_index_range_list_of_max_length(max_length);
+
+        Ok(Vec::new())
+    }
+}
+impl InMemoryProvider {
+    fn record_index_range_list_of_max_length(&self, max_length: usize) -> Vec<(usize, usize)> {
+        let mut record_index_range_list = Vec::new(); // (start index, last index)
+        let mut start_record_index = 0;
+        let mut max_accumulated_length = max_length;
+
+        for (record_index, accumulated_length) in self.sequence_index[1..].iter().enumerate() {
+            if max_accumulated_length < *accumulated_length {
+                if record_index == start_record_index { // One record exceed the max length
+                    record_index_range_list.push((start_record_index, record_index));
+                    start_record_index = record_index + 1;
+                    max_accumulated_length = *accumulated_length + max_length;
+                } else {
+                    record_index_range_list.push((start_record_index, record_index - 1));
+                    start_record_index = record_index;
+                    max_accumulated_length = self.sequence_index[record_index - 1] + max_length;
+                }
+            }
+        }
+
+        record_index_range_list        
+    }
+}
+
+#[test]
+fn record_index_range_list_of_max_length() {
+    let in_memory_provider = InMemoryProvider {
+        record_count: 10,
+        combined_sequence: Vec::new(),
+        sequence_index: Vec<usize>,
+        combined_label: String,
+        label_index: Vec::new(),
+    };
 }
