@@ -6,7 +6,7 @@ use super::{
     ReferenceInterface, PatternLocation,
 };
 
-use super::Serializable;
+use super::{Serializable, SizeAware};
 use std::io::{Write, Read};
 use std::ops::ControlFlow;
 
@@ -141,5 +141,11 @@ impl Serializable for SequenceType {
                 error_msg!("Failed to read reference sequence type")
             }
         }
+    }
+}
+
+impl SizeAware for SequenceType {
+    fn size_of(&self) -> usize {
+        SEQUENCE_TYPE_SIZE
     }
 }

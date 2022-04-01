@@ -5,7 +5,10 @@ use super::{
     Sequence,
     ReferenceInterface, PatternLocation,
 };
-use super::{Serializable};
+use super::{
+    // Requirement for struct
+    Serializable, SizeAware,
+};
 
 use std::io::{Write, Read};
 

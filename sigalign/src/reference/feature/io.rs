@@ -7,17 +7,19 @@ use super::{
 };
 use super::{
     Reference, SequenceProvider,
+    // Traits implemented by structures
+    Serializable, SizeAware,
+    // Common data structures for Reference
     SequenceType, PatternFinder,
 };
 
 use std::io::{Write, Read};
+use std::path::Path;
+use std::fs::File;
+
 use crate::{EndianType, SizedUint};
 use byteorder::{ReadBytesExt, WriteBytesExt};
-
-pub trait Serializable {
-    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write;
-    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
-}
+use capwriter::{Saveable, Loadable};
 
 impl<S> Reference<S> where
     S: SequenceProvider + Serializable,
@@ -26,12 +28,7 @@ impl<S> Reference<S> where
         W: Write,
     {
         // Save 'target_record_index'
-        let target_record_index_size = self.target_record_index.len() as u32;
-        writer.write_u32::<EndianType>(target_record_index_size)?;
-        self.target_record_index.iter().for_each(|record_index| {
-            writer.write_u32::<EndianType>(*record_index);
-        });
-
+        self.target_record_index.save_to(&mut writer)?;
         // Save 'sequence_type'
         self.sequence_type.save_to(&mut writer)?;
         // Save 'pattern_finder'
@@ -45,10 +42,7 @@ impl<S> Reference<S> where
         Self: Sized,
     {
         // Load 'target_record_index'
-        let target_record_index_size = reader.read_u32::<EndianType>()? as usize;
-        let mut target_record_index = vec![0; target_record_index_size];
-        reader.read_u32_into::<EndianType>(&mut target_record_index)?;
-
+        let target_record_index = Vec::load_from(&mut reader)?;
         // Load 'sequence_type'
         let sequence_type = SequenceType::load_from(&mut reader)?;
         // Load 'pattern_finder'
@@ -61,5 +55,25 @@ impl<S> Reference<S> where
             target_record_index,
             sequence_provider,
         })
+    }
+}
+
+impl<S> Reference<S> where
+    S: SequenceProvider + Serializable + SizeAware,
+{
+    // Save to file
+    pub fn save_to_file<P: AsRef<Path>>(&self, file_path: P) -> Result<()> {
+        let file = File::create(file_path)?;
+        let file_size = self.size_of();
+        file.set_len(file_size as u64)?;
+
+        self.save_to(file)?;
+        Ok(())
+    }
+    fn size_of(&self) -> usize {
+        self.target_record_index.size_of() // target_record_index
+        + self.sequence_type.size_of() // sequence_type
+        + self.pattern_finder.size_of() // pattern_finder
+        + self.sequence_provider.size_of() // sequence_provider
     }
 }

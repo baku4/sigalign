@@ -7,20 +7,17 @@ use super::{
 };
 use super::{
     Reference, SequenceProvider,
-    // Requirement for struct
-    Serializable, SizeAware,
-    // Basic struct
     SequenceType, PatternFinder,
 };
 
-mod new;
-mod reference_interface;
-mod set_search_range;
-mod io;
-mod labeling;
-mod reverse_complement;
-mod debug;
+use std::io::{Write, Read};
 
-// For sequence provider
-pub use labeling::LabelProvider;
-pub use reverse_complement::ReverseComplement;
+pub trait Serializable {
+    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write;
+    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized;
+}
+
+// Precalculate stored size
+pub trait SizeAware {
+    fn size_of(&self) -> usize;
+}

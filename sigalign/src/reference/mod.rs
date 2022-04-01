@@ -68,6 +68,12 @@ use crate::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+// Traits implemented by structures
+mod requirement;
+pub use requirement::{
+    Serializable, SizeAware,
+};
+
 // Common data structures for Reference
 mod structure;
 pub use structure::{
@@ -77,9 +83,8 @@ pub use structure::{
 // Features for Reference
 mod feature;
 pub use feature::{
-    Serializable,
-    LabelProvider,
-    ReverseComplement,
+    // For sequence provider
+    LabelProvider, ReverseComplement,
 };
 
 /// Definition and interfaces for `SequenceProvider`

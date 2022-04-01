@@ -8,7 +8,7 @@ use super::{
 
 use super::{
     SequenceType,
-    Serializable,
+    Serializable, SizeAware,
 };
 
 use capwriter::{Saveable, Loadable};
@@ -174,6 +174,13 @@ impl Serializable for PatternFinder {
         })
     }
 }
+
+impl SizeAware for PatternFinder {
+    fn size_of(&self) -> usize {
+        self.lt_fm_index.size_of() + self.record_boundary_positions.size_of()
+    }
+}
+
 
 // Contain two vectors necessary to create `PatternIndex`.
 //   - The "joined_sequence" means the sequence of concatenated sequences of all record.
