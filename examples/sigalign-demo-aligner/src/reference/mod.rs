@@ -5,7 +5,6 @@ use std::{
     time::Instant,
 };
 
-
 use clap::{
     arg, App,
     ArgGroup,
@@ -14,9 +13,11 @@ use clap::{
 
 use sigalign::ReferenceBuilder;
 use sigalign::sequence_provider::{
-    InMemoryProvider, InMemoryRcProvider, IndexedFastaProvider, IndexedFastaRcProvider,
+    Divisible,
+    InMemoryProvider, InMemoryRcProvider,
 };
 
+// Reference config
 #[derive(Debug, Clone)]
 pub struct ReferenceConfig {
     // Path
@@ -24,7 +25,7 @@ pub struct ReferenceConfig {
     output_file_pathbuf: PathBuf,
     overwrite: bool,
     // Sequence provider type
-    use_indexed_fasta: bool,
+    divide_size: Option<usize>,
     use_rc: bool,
     // Pattern finder config
     use_128_bwt: bool,
@@ -35,8 +36,13 @@ pub struct ReferenceConfig {
     noise: Option<u8>,
 }
 
-mod self_desc_ref;
-pub use self_desc_ref::SelfDescReference;
+// Reference structs
+mod structure;
+pub use structure::{
+    ReferencePaths,
+    SelfDescSeqPrvs,
+    SelfDescReference,
+};
 
 impl ReferenceConfig {
     pub fn add_args(app: App) -> App {
@@ -50,7 +56,7 @@ impl ReferenceConfig {
                 .required(false))
             .arg(arg!(-k --klt <INT> "Kmer size for count array lookup table")
                 .required(false))
-            .arg(arg!(-m - -nom  "Use index-fasta provider instead of in-memory")
+            .arg(arg!(-d --divide <INT> "Split by sequence length")
                 .required(false))
             .arg(arg!(--no "Define sequence type as nucleotide only")
                 .required(false))
@@ -67,19 +73,28 @@ impl ReferenceConfig {
     pub fn run_command(matches: &ArgMatches) {
         let total_start = Instant::now();
 
+
         let start = Instant::now();
         eprintln!("# 1. Parsing configuration");
         let config = Self::new_with_validation(matches).unwrap();
+        eprintln!("{:#?}", config);
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
-        let start = Instant::now();
-        eprintln!("# 2. Make reference");
-        let self_desc_reference = config.make_reference().unwrap();
-        eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
         let start = Instant::now();
-        eprintln!("# 3. Save reference");
-        self_desc_reference.save_to_file(&config.output_file_pathbuf).unwrap();
+        eprintln!("# 2. Make sequence provider");
+        let self_desc_seq_prv = config.make_sequence_provider().unwrap();
+        eprintln!("Split sequence provider to {}", self_desc_seq_prv.splitted_size());
+        let reference_paths = ReferencePaths::new_to_save(
+            &config.output_file_pathbuf,
+            self_desc_seq_prv.splitted_size(),
+        );
+        eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
+
+
+        let start = Instant::now();
+        eprintln!("# 3. Make reference");
+        config.save_reference(reference_paths, self_desc_seq_prv).unwrap();
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
         eprintln!("# 4. All processes are completed");
@@ -104,7 +119,10 @@ impl ReferenceConfig {
         }
 
         // (2) Sequence provider type
-        let in_memory = matches.is_present("nom");
+        let divide_size = match matches.value_of("divide") {
+            Some(v) => Some(v.parse::<usize>()?),
+            None => None,
+        };
         let use_rc = matches.is_present("reverse");
         
         // (3) Pattern finder config
@@ -141,7 +159,7 @@ impl ReferenceConfig {
                 input_file_pathbuf,
                 output_file_pathbuf,
                 overwrite,
-                use_indexed_fasta: in_memory,
+                divide_size,
                 use_rc,
                 use_128_bwt,
                 kmer,
@@ -151,23 +169,31 @@ impl ReferenceConfig {
             }
         )
     }
-    fn make_reference(&self) -> Result<SelfDescReference> {
+    fn make_sequence_provider(&self) -> Result<SelfDescSeqPrvs> {
+        SelfDescSeqPrvs::new(
+            self.use_rc,
+            &self.input_file_pathbuf,
+            &self.divide_size,
+        )
+    }
+    fn save_reference(
+        &self,
+        reference_paths: ReferencePaths,
+        self_desc_seq_prv: SelfDescSeqPrvs,
+    ) -> Result<()> {
+        // Reference builder
         let mut reference_builder = ReferenceBuilder::new();
-
         if self.use_128_bwt {
             reference_builder = reference_builder.change_bwt_vector_size_to_128();
         } else {
             reference_builder = reference_builder.change_bwt_vector_size_to_64();
         };
-
         if let Some(kmer) = self.kmer {
             reference_builder = reference_builder.change_count_array_kmer(kmer)?;
         };
-
         if let Some(sa_sampling_ratio) = self.sa_sampling_ratio {
             reference_builder = reference_builder.change_suffix_array_sampling_ratio(sa_sampling_ratio)?;
         };
-
         if let Some(for_aminoacid) = self.for_aminoacid {
             if for_aminoacid {
                 if let Some(noise) = self.noise {
@@ -184,24 +210,10 @@ impl ReferenceConfig {
             }
         };
 
-        if self.use_indexed_fasta {
-            if self.use_rc {
-                let sp = IndexedFastaRcProvider::new(self.input_file_pathbuf.clone())?;
-                Ok(SelfDescReference::IndexedFastaRc(reference_builder.build(sp)?))
-            } else {
-                let sp = IndexedFastaProvider::new(self.input_file_pathbuf.clone())?;
-                Ok(SelfDescReference::IndexedFasta(reference_builder.build(sp)?))
-            }
-        } else {
-            if self.use_rc {
-                let mut sp = InMemoryRcProvider::new();
-                sp.add_fasta_file(self.input_file_pathbuf.clone())?;
-                Ok(SelfDescReference::InMemoryRc(reference_builder.build(sp)?))
-            } else {
-                let mut sp = InMemoryProvider::new();
-                sp.add_fasta_file(self.input_file_pathbuf.clone())?;
-                Ok(SelfDescReference::InMemory(reference_builder.build(sp)?))
-            }
-        }
+        SelfDescReference::build_and_save_to_file(
+            &reference_builder,
+            reference_paths,
+            self_desc_seq_prv,
+        )
     }
 }

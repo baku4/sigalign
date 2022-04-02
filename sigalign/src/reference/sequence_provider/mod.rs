@@ -12,7 +12,7 @@ use super::{
 
 // Traits to implement
 mod feature;
-use feature::Divisible;
+pub use feature::Divisible;
 use super::{
     Serializable, SizeAware,
     LabelProvider, ReverseComplement,

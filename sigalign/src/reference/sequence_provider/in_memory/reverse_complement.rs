@@ -118,10 +118,10 @@ impl Divisible for InMemoryRcProvider {
         let adjusted_record_index_range_list = record_index_range_list.into_iter()
             .filter_map(|(mut v1, mut v2)| {
                 if v1 % 2 == 1 {
-                    v1 -= 1;
+                    v1 += 1;
                 }
                 if v2 % 2 == 1 {
-                    v2 -= 1;
+                    v2 += 1;
                 }
                 if v1 == v2 {
                     None

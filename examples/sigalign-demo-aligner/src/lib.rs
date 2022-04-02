@@ -8,7 +8,11 @@ use clap::{
 mod reference;
 mod alignment;
 
-use reference::{ReferenceConfig, SelfDescReference};
+use reference::{
+    ReferenceConfig,
+    ReferencePaths,
+    SelfDescReference,
+};
 use alignment::AlignmentConfig;
 
 pub struct Application;

@@ -262,9 +262,14 @@ impl InMemoryProvider {
 mod tests {
     use super::*;
 
+    #[test]
+    fn record_index_range_list_of_max_length() {
+        check_splitted_provider_with_fasta_file("c:\\Users\\khun\\Downloads\\sa_test_mg\\test_ref_seq.fa")
+    }
+
     fn check_splitted_provider_with_fasta_file(fasta_file: &str) {
         // Original
-        let mut in_memory_provider = InMemoryProvider::new();
+        let mut in_memory_provider = InMemoryRcProvider::new();
         in_memory_provider.add_fasta_file(fasta_file);
         let mut org_label_list: Vec<String> = Vec::with_capacity(in_memory_provider.total_record_count());
         let mut org_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_provider.total_record_count());

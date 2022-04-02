@@ -11,7 +11,10 @@ use clap::{
     ArgMatches,
 };
 
-use super::SelfDescReference;
+use super::{
+    ReferencePaths,
+    SelfDescReference,
+};
 use sigalign::{
     ReferenceBuilder,
     sequence_provider::{InMemoryProvider, InMemoryRcProvider},
@@ -23,7 +26,6 @@ pub struct AlignmentConfig {
     // Path
     input_fasta_pathbuf: PathBuf,
     input_reference_pathbuf: PathBuf,
-    use_rc: bool,
     // Condition
     px: usize,
     po: usize,
@@ -43,9 +45,8 @@ impl AlignmentConfig {
             .group(ArgGroup::new("algorithm")
                 .required(true)
                 .args(&["semiglobal", "local"]))
-            .arg(arg!(-r --reference <FILE> "Define reference fasta(.fa, .fasta, .fna) or Sigalign reference file")
+            .arg(arg!(-r --reference <FILE> "SigAlign reference file")
                 .required(true))
-            .arg(arg!(- -reverse  "Use reverse complementary sequence"))
             .arg(arg!(-p --penalties "Mismatch, Gap-open and Gap-extend penalties")
                 .value_names(&["MISM", "GOPN", "GEXT"])
                 .required(true))
@@ -61,23 +62,53 @@ impl AlignmentConfig {
         let start = Instant::now();
         eprintln!("# 1. Parsing configuration");
         let config = Self::new_with_validation(matches).unwrap();
+        let reference_paths = config.get_reference_paths();
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
         let start = Instant::now();
-        eprintln!("# 2. Get reference");
-        let self_desc_reference = config.get_reference().unwrap();
-        eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
-
-        let start = Instant::now();
-        eprintln!("# 3. Make aligner");
+        eprintln!("# 2. Make aligner");
         let mut aligner = config.make_aligner().unwrap();
         eprintln!("{:#?}", aligner);
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
-        let start = Instant::now();
-        eprintln!("# 4. Alignment");
-        self_desc_reference.alignment(&mut aligner, &config.input_fasta_pathbuf).unwrap();
-        eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
+        eprintln!("# 3. Alignment");
+        let mut stdout = std::io::stdout();
+        stdout.write(b"[").unwrap(); // Opening
+
+        for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
+            eprintln!("  Reference {}", ref_idx);
+
+            // Load reference
+            let ref_load_start = Instant::now();
+            let self_desc_reference = SelfDescReference::load_from_file(&ref_path).unwrap();
+            eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
+
+            // Alignment
+            let do_align_start = Instant::now();
+            if ref_idx != 0 {
+                stdout.write(b",").unwrap();
+            }
+            match self_desc_reference {
+                SelfDescReference::InMemory(inner_ref) => {
+                    aligner.fasta_file_alignment_json_to_stream(
+                        &inner_ref,
+                        &config.input_fasta_pathbuf,
+                        &mut stdout,
+                    ).unwrap();
+                },
+                SelfDescReference::InMemoryRc(inner_ref) => {
+                    aligner.fasta_file_alignment_json_to_stream(
+                        &inner_ref,
+                        &config.input_fasta_pathbuf,
+                        &mut stdout,
+                    ).unwrap();
+                },
+            }
+            eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
+        }
+        stdout.write(b"]").unwrap(); // Closing
+        stdout.flush().unwrap();
+
 
         eprintln!("# 5. All processes are completed");
         eprintln!(" - Total time elapsed: {} s", total_start.elapsed().as_secs_f64());
@@ -93,8 +124,6 @@ impl AlignmentConfig {
             .ok_or(format_err!("Invalid reference fasta"))?;
         let input_reference_path = Path::new(input_reference_path_str);
         let input_reference_pathbuf = input_reference_path.to_path_buf();
-
-        let use_rc = matches.is_present("reverse");
 
         // (2) Condition
         let mut penalties = matches.values_of("penalties").unwrap();
@@ -125,7 +154,6 @@ impl AlignmentConfig {
             Self {
                 input_fasta_pathbuf,
                 input_reference_pathbuf,
-                use_rc,
                 px,
                 po,
                 pe,
@@ -135,32 +163,14 @@ impl AlignmentConfig {
             }
         )
     }
-    fn get_reference(&self) -> Result<SelfDescReference> {
-        let use_new_ref = if let Some(ext) = self.input_reference_pathbuf.extension() {
-            if let Some(ext) = ext.to_str() {
-                vec!["fa", "fasta", "fna"].contains(&ext)
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-        
-        if use_new_ref {
-            eprintln!(" Make new reference from file {:?}", self.input_reference_pathbuf);
-            if self.use_rc {
-                let mut sequence_provider = InMemoryProvider::new();
-                sequence_provider.add_fasta_file(&self.input_reference_pathbuf)?;
-                Ok(SelfDescReference::InMemory(ReferenceBuilder::new().build(sequence_provider)?))
-            } else {
-                let mut sequence_provider = InMemoryRcProvider::new();
-                sequence_provider.add_fasta_file(&self.input_reference_pathbuf)?;
-                Ok(SelfDescReference::InMemoryRc(ReferenceBuilder::new().build(sequence_provider)?))
-            }
-        } else {
-            eprintln!(" Load reference from file {:?}", self.input_reference_pathbuf);
-            SelfDescReference::load_from_file(&self.input_reference_pathbuf)
+    fn get_reference_paths(&self) -> ReferencePaths {
+        let reference_paths = ReferencePaths::new_for_load(&self.input_reference_pathbuf);
+        eprintln!(" Load reference from file");
+        for path in &reference_paths.0 {
+            eprintln!("{:?}", path);
         }
+
+        reference_paths
     }
     fn make_aligner(&self) -> Result<Aligner> {
         if self.use_local_alg {
@@ -180,28 +190,5 @@ impl AlignmentConfig {
                 self.max_ppl,
             )
         }
-    }
-}
-
-impl SelfDescReference {
-    fn alignment(&self, aligner: &mut Aligner, fasta_file: &PathBuf) -> Result<()> {
-        let stdout = std::io::stdout();
-
-        match self {
-            Self::InMemory(inner_ref) => {
-                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
-            },
-            Self::InMemoryRc(inner_ref) => {
-                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
-            },
-            Self::IndexedFasta(inner_ref) => {
-                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
-            },
-            Self::IndexedFastaRc(inner_ref) => {
-                aligner.fasta_file_alignment_json_to_stream(inner_ref, fasta_file, stdout)?
-            },
-        }
-
-        Ok(())
     }
 }

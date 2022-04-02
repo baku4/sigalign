@@ -14,11 +14,13 @@ mod sequence_type_option;
 mod pattern_finder_option;
 
 /// Builder for `Reference`
+#[derive(Debug, Clone)]
 pub struct ReferenceBuilder {
     sequence_type_option: SequenceTypeOption, // `None` to infer
     pattern_finder_option: PatternFinderOption,
 }
 
+#[derive(Debug, Clone)]
 struct SequenceTypeOption {
     sequence_type: Option<SequenceType>, // `None` to infer
 }
@@ -31,6 +33,7 @@ impl Default for SequenceTypeOption {
     }
 }
 
+#[derive(Debug, Clone)]
 struct PatternFinderOption {
     sa_sampling_ratio: u64,
     kmer_size: Option<usize>, // `None` to recommend

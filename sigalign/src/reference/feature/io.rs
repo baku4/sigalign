@@ -61,7 +61,7 @@ impl<S> Reference<S> where
 impl<S> Reference<S> where
     S: SequenceProvider + Serializable + SizeAware,
 {
-    // Save to file
+    /// Save to file
     pub fn save_to_file<P: AsRef<Path>>(&self, file_path: P) -> Result<()> {
         let file = File::create(file_path)?;
         let file_size = self.size_of();
@@ -70,7 +70,8 @@ impl<S> Reference<S> where
         self.save_to(file)?;
         Ok(())
     }
-    fn size_of(&self) -> usize {
+    /// Precalculate size of saved file
+    pub fn size_of(&self) -> usize {
         self.target_record_index.size_of() // target_record_index
         + self.sequence_type.size_of() // sequence_type
         + self.pattern_finder.size_of() // pattern_finder
