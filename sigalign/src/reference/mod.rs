@@ -72,6 +72,7 @@ use std::marker::PhantomData;
 mod requirement;
 pub use requirement::{
     Serializable, SizeAware,
+    Divisible,
 };
 
 // Common data structures for Reference
@@ -96,10 +97,10 @@ pub use sequence_provider::SequenceProvider;
 pub struct Reference<S> where
     S: SequenceProvider,
 {
-    sequence_type: SequenceType,
-    pattern_finder: PatternFinder,
-    target_record_index: Vec<u32>,
-    sequence_provider: S,
+    pub sequence_type: SequenceType,
+    pub pattern_finder: PatternFinder,
+    pub target_record_index: Vec<u32>,
+    pub sequence_provider: S,
 }
 
 impl<S> Reference<S> where

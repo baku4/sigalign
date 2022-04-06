@@ -11,10 +11,8 @@ use super::{
 };
 
 // Traits to implement
-mod feature;
-pub use feature::Divisible;
-use super::{
-    Serializable, SizeAware,
+pub use super::{
+    Serializable, SizeAware, Divisible,
     LabelProvider, ReverseComplement,
 };
 

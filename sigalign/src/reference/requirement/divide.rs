@@ -6,7 +6,7 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, JoinedSequence,
+    Reference, SequenceProvider,
     SequenceType, PatternFinder,
 };
 

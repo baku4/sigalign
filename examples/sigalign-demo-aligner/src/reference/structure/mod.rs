@@ -2,7 +2,7 @@ use super::{Result, error_msg};
 
 use sigalign::{ReferenceBuilder, Reference};
 use sigalign::sequence_provider::{
-    Divisible,
+    Divisible, SizeAware,
     InMemoryProvider, InMemoryRcProvider,
 };
 
@@ -107,25 +107,42 @@ impl SelfDescReference {
         reference_paths: ReferencePaths,
         self_desc_seq_prv: SelfDescSeqPrvs,
     ) -> Result<()> {
+        use std::time::Instant;
+
         match self_desc_seq_prv {
             SelfDescSeqPrvs::InMemory(sps) => {
                 for (ref_idx, sp) in sps.into_iter().enumerate() {
+                    eprintln!(" - Saving reference {}", ref_idx);
+                    eprintln!("    Size:");
+                    eprintln!("      Sequence provider: {}", sp.size_of());
+                    let start_time = Instant::now();
                     let reference = reference_builder.clone().build(sp)?;
+                    eprintln!("      Pattern finder: {}", reference.pattern_finder.size_of());
+                    eprintln!("      Target record index: {}", reference.target_record_index.len() * 4);
                     let self_desc_ref = SelfDescReference::InMemory(reference);
-
+                    eprintln!("    Time elapsed to generate: {} s", start_time.elapsed().as_secs_f64());
+                    let start_time = Instant::now();
                     self_desc_ref.save_to_file(&reference_paths.0[ref_idx])?;
+                    eprintln!("    Time elapsed to save: {} s", start_time.elapsed().as_secs_f64());
                 }
             },
             SelfDescSeqPrvs::InMemoryRc(sps) => {
                 for (ref_idx, sp) in sps.into_iter().enumerate() {
+                    eprintln!(" - Saving reference {}", ref_idx);
+                    eprintln!("    Size:");
+                    eprintln!("      Sequence provider: {}", sp.size_of());
+                    let start_time = Instant::now();
                     let reference = reference_builder.clone().build(sp)?;
+                    eprintln!("      Pattern finder: {}", reference.pattern_finder.size_of());
+                    eprintln!("      Target record index: {}", reference.target_record_index.len() * 4);
                     let self_desc_ref = SelfDescReference::InMemoryRc(reference);
-
+                    eprintln!("    Time elapsed to generate: {} s", start_time.elapsed().as_secs_f64());
+                    let start_time = Instant::now();
                     self_desc_ref.save_to_file(&reference_paths.0[ref_idx])?;
+                    eprintln!("    Time elapsed to save: {} s", start_time.elapsed().as_secs_f64());
                 }
             },
         }
-        
         
         Ok(())
     }
