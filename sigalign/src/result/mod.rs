@@ -33,6 +33,9 @@ pub use labeled_result::{
     RecordAlignmentLabeledResult,
 };
 
+// Features
+mod result_counts;
+
 // Encoders
 mod to_json;
 mod to_labeled;
