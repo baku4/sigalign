@@ -7,6 +7,7 @@ use clap::{
 
 mod reference;
 mod alignment;
+mod two_step_alignment;
 
 use reference::{
     ReferenceConfig,
@@ -14,6 +15,7 @@ use reference::{
     SelfDescReference,
 };
 use alignment::AlignmentConfig;
+use two_step_alignment::TSAlignmentConfig;
 
 pub struct Application;
 
@@ -36,6 +38,11 @@ impl Application {
                     App::new("alignment")
                 )
             )
+            .subcommand(
+                TSAlignmentConfig::add_args(
+                    App::new("tsa")
+                )
+            )
             .get_matches();
         
         match matches.subcommand() {
@@ -44,6 +51,9 @@ impl Application {
             },
             Some(("alignment", sub_matches)) => {
                 AlignmentConfig::run_command(sub_matches)
+            },
+            Some(("tsa", sub_matches)) => {
+                TSAlignmentConfig::run_command(sub_matches)
             },
             _ => unreachable!(""),
         }
