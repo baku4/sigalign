@@ -45,7 +45,7 @@ type SizedUint = u32;
 
 #[doc(hidden)]
 // (1) Default Modules
-mod core;
+pub mod core;
 #[doc(hidden)]
 pub mod util;
 // (2) Reference implementation
