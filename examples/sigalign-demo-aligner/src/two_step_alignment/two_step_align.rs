@@ -96,15 +96,15 @@ fn two_steps_alignment_to_writer<R, W, S>(
                     read: label,
                     result: result_2,
                 };
+                writer.write(b","); // Do not error check
                 read_alignment_result.write_as_json(&mut writer);
-                need_first_written = false;
             } else {
                 let read_alignment_result = ReadAlignmentResult {
                     read: label,
                     result: result_1,
                 };
+                writer.write(b","); // Do not error check
                 read_alignment_result.write_as_json(&mut writer);
-                need_first_written = false;
             }
         }
         // Ignore unsearchable query
