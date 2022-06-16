@@ -61,31 +61,10 @@ fn write_fasta_alignment_json_from_reader_checking_unmapped_query<R, W, S>(
     let mut sequence_buffer = reference.get_buffer();
 
     let mut qry_idx = 0;
+    let mut is_first_result = true;
 
     // First read
     writer.write(b"[")?;
-    let mut need_first_written = true;
-    while need_first_written {
-        if let Some((label, query)) = fasta_reader.next() {
-            if reference.searchable(&query) {
-                let read_alignment_result = ReadAlignmentResult {
-                    read: label,
-                    result: aligner.alignment(reference, &mut sequence_buffer, &query),
-                };
-                if read_alignment_result.result_counts() == 0 {
-                    let pos = unmapped_sorted_query_idx.binary_search(&qry_idx).unwrap_or_else(|e| e);
-                    unmapped_sorted_query_idx.insert(pos, qry_idx);
-                } else {
-                    read_alignment_result.write_as_json(&mut writer);
-                    need_first_written = false;
-                }
-            }
-
-            qry_idx += 1;
-        };
-    }
-
-    // Middle reads
     fasta_reader.into_iter().for_each(|(label, query)| {
         if reference.searchable(&query) {
             let read_alignment_result = ReadAlignmentResult {
@@ -96,16 +75,18 @@ fn write_fasta_alignment_json_from_reader_checking_unmapped_query<R, W, S>(
                 let pos = unmapped_sorted_query_idx.binary_search(&qry_idx).unwrap_or_else(|e| e);
                 unmapped_sorted_query_idx.insert(pos, qry_idx);
             } else {
-                writer.write(b","); // Do not error check
-                read_alignment_result.write_as_json(&mut writer);
+                if is_first_result {
+                    read_alignment_result.write_as_json(&mut writer);
+                    is_first_result = false;
+                } else {
+                    writer.write(b","); // Do not error check
+                    read_alignment_result.write_as_json(&mut writer);
+                }
             }
         }
-        // Ignore unsearchable query
 
         qry_idx += 1;
     });
-
-    // Last closing
     writer.write(b"]")?;
     writer.flush()?;
 
@@ -185,7 +166,7 @@ fn write_fasta_alignment_json_from_reader_using_unmapped_query<R, W, S>(
                         read_alignment_result.write_as_json(&mut writer);
                         is_first_result = false;
                     } else {
-                        writer.write(b","); // Do not error check
+                        writer.write(b",");
                         read_alignment_result.write_as_json(&mut writer);
                     }
 
