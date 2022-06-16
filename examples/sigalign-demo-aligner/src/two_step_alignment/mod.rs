@@ -114,7 +114,7 @@ impl TSAlignmentConfig {
                 write_fasta_alignment_to_stdout_checking_unmapped(
                     self_desc_reference,
                     &mut aligner,
-                    ref_path,
+                    &config.input_fasta_pathbuf,
                     &mut stdout,
                     &mut unmapped_sorted_query_idx,
                 ).unwrap();
@@ -146,7 +146,7 @@ impl TSAlignmentConfig {
                 write_fasta_alignment_to_stdout_using_unmapped(
                     self_desc_reference,
                     &mut aligner,
-                    ref_path,
+                    &config.input_fasta_pathbuf,
                     &mut stdout,
                     &mut unmapped_sorted_query_idx,
                 ).unwrap();
@@ -273,43 +273,6 @@ impl TSAlignmentConfig {
                 self.min_len_2,
                 self.max_ppl_2,
             )?)
-        }
-    }
-    fn make_aligners(&self) -> Result<(Aligner, Aligner)> {
-        if self.use_local_alg {
-            Ok((
-                Aligner::new_local(
-                    self.px_1,
-                    self.po_1,
-                    self.pe_1,
-                    self.min_len_1,
-                    self.max_ppl_1,
-                )?,
-                Aligner::new_local(
-                    self.px_2,
-                    self.po_2,
-                    self.pe_2,
-                    self.min_len_2,
-                    self.max_ppl_2,
-                )?,
-            ))
-        } else {
-            Ok((
-                Aligner::new_semi_global(
-                    self.px_1,
-                    self.po_1,
-                    self.pe_1,
-                    self.min_len_1,
-                    self.max_ppl_1,
-                )?,
-                Aligner::new_semi_global(
-                    self.px_2,
-                    self.po_2,
-                    self.pe_2,
-                    self.min_len_2,
-                    self.max_ppl_2,
-                )?,
-            ))
         }
     }
 }
