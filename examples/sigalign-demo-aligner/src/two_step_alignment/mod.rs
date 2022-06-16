@@ -25,7 +25,8 @@ mod co_alignment; // Assuming that use one reference
 use co_alignment::co_alignment_to_stdout;
 mod sep_alignment; // Assuming that use multiple references
 use sep_alignment::{
-    write_fasta_alignment_to_stdout_checking_unmapped,
+    count_fasta_query,
+    write_fasta_alignment_to_stdout_checking_mapped,
     write_fasta_alignment_to_stdout_using_unmapped,
 };
 
@@ -88,7 +89,8 @@ impl TSAlignmentConfig {
 
         let mut stdout = std::io::stdout();
         stdout.write(b"[").unwrap(); // Opening
-        let mut unmapped_sorted_query_idx = Vec::with_capacity(10_000);
+        let query_count = count_fasta_query(&config.input_fasta_pathbuf);
+        let mut unmapped_sorted_query_idx = (0..query_count).collect();
 
         eprintln!("### 1st Alignment ###");
         {
@@ -111,7 +113,7 @@ impl TSAlignmentConfig {
                 if ref_idx != 0 {
                     stdout.write(b",").unwrap();
                 }
-                write_fasta_alignment_to_stdout_checking_unmapped(
+                write_fasta_alignment_to_stdout_checking_mapped(
                     self_desc_reference,
                     &mut aligner,
                     &config.input_fasta_pathbuf,
