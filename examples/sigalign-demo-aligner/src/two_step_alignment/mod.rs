@@ -140,9 +140,7 @@ impl TSAlignmentConfig {
     
                 // Alignment
                 let do_align_start = Instant::now();
-                if ref_idx != 0 {
-                    stdout.write(b",").unwrap();
-                }
+                stdout.write(b",").unwrap();
                 write_fasta_alignment_to_stdout_using_unmapped(
                     self_desc_reference,
                     &mut aligner,
