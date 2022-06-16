@@ -15,7 +15,7 @@ use sigalign::{
     util::FastaReader,
 };
 
-pub fn two_step_alignment_to_stdout(
+pub fn co_alignment_to_stdout(
     self_desc_reference: SelfDescReference,
     aligner_1: &mut Aligner,
     aligner_2: &mut Aligner,
@@ -26,7 +26,7 @@ pub fn two_step_alignment_to_stdout(
 
     match self_desc_reference {
         SelfDescReference::InMemory(inner_ref) => {
-            two_steps_alignment_to_writer(
+            co_alignment_to_writer(
                 &inner_ref,
                 aligner_1,
                 aligner_2,
@@ -35,7 +35,7 @@ pub fn two_step_alignment_to_stdout(
             )
         },
         SelfDescReference::InMemoryRc(inner_ref) => {
-            two_steps_alignment_to_writer(
+            co_alignment_to_writer(
                 &inner_ref,
                 aligner_1,
                 aligner_2,
@@ -46,7 +46,7 @@ pub fn two_step_alignment_to_stdout(
     }
 }
 
-fn two_steps_alignment_to_writer<R, W, S>(
+fn co_alignment_to_writer<R, W, S>(
     reference: &Reference<S>,
     aligner_1: &mut Aligner,
     aligner_2: &mut Aligner,

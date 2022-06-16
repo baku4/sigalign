@@ -21,8 +21,13 @@ use sigalign::{
     Aligner,
 };
 
-mod two_step_align;
-use two_step_align::two_step_alignment_to_stdout;
+mod co_alignment; // Assuming that use one reference
+use co_alignment::co_alignment_to_stdout;
+mod sep_alignment; // Assuming that use multiple references
+use sep_alignment::{
+    write_fasta_alignment_to_stdout_checking_unmapped,
+    write_fasta_alignment_to_stdout_using_unmapped,
+};
 
 #[derive(Debug)]
 pub struct TSAlignmentConfig {
@@ -81,39 +86,74 @@ impl TSAlignmentConfig {
         let reference_paths = config.get_reference_paths();
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
-        let start = Instant::now();
-        eprintln!("# 2. Make aligner");
-        let (mut aligner_1, mut aligner_2) = config.make_aligners().unwrap();
-        eprintln!("1st Aligner:\n{:#?}", aligner_1);
-        eprintln!("2st Aligner:\n{:#?}", aligner_2);
-        eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
-
-        eprintln!("# 3. Alignment");
         let mut stdout = std::io::stdout();
         stdout.write(b"[").unwrap(); // Opening
+        let mut unmapped_sorted_query_idx = Vec::with_capacity(10_000);
 
-        for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
-            eprintln!("  Reference {}", ref_idx);
+        eprintln!("### 1st Alignment ###");
+        {
+            eprintln!("# 2. Make aligner");
+            let start = Instant::now();
+            let mut aligner = config.make_1st_aligner().unwrap();
+            eprintln!("Aligner:\n{:#?}", aligner);
+            eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
-            // Load reference
-            let ref_load_start = Instant::now();
-            let self_desc_reference = SelfDescReference::load_from_file(&ref_path).unwrap();
-            eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
-
-            // Alignment
-            let do_align_start = Instant::now();
-            if ref_idx != 0 {
-                stdout.write(b",").unwrap();
+            for (ref_idx, ref_path) in reference_paths.0.iter().enumerate() {
+                eprintln!("  Reference {}", ref_idx);
+    
+                // Load reference
+                let ref_load_start = Instant::now();
+                let self_desc_reference = SelfDescReference::load_from_file(ref_path).unwrap();
+                eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
+    
+                // Alignment
+                let do_align_start = Instant::now();
+                if ref_idx != 0 {
+                    stdout.write(b",").unwrap();
+                }
+                write_fasta_alignment_to_stdout_checking_unmapped(
+                    self_desc_reference,
+                    &mut aligner,
+                    ref_path,
+                    &mut stdout,
+                    &mut unmapped_sorted_query_idx,
+                ).unwrap();
+                eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
             }
-            two_step_alignment_to_stdout(
-                self_desc_reference,
-                &mut aligner_1,
-                &mut aligner_2,
-                &config.input_fasta_pathbuf,
-                &mut stdout,
-            ).unwrap();
-            eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
         }
+
+        eprintln!("### 2nd Alignment ###");
+        {
+            eprintln!("# 2. Make aligner");
+            let start = Instant::now();
+            let mut aligner = config.make_2nd_aligner().unwrap();
+            eprintln!("Aligner:\n{:#?}", aligner);
+            eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
+
+            for (ref_idx, ref_path) in reference_paths.0.iter().enumerate() {
+                eprintln!("  Reference {}", ref_idx);
+    
+                // Load reference
+                let ref_load_start = Instant::now();
+                let self_desc_reference = SelfDescReference::load_from_file(ref_path).unwrap();
+                eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
+    
+                // Alignment
+                let do_align_start = Instant::now();
+                if ref_idx != 0 {
+                    stdout.write(b",").unwrap();
+                }
+                write_fasta_alignment_to_stdout_using_unmapped(
+                    self_desc_reference,
+                    &mut aligner,
+                    ref_path,
+                    &mut stdout,
+                    &mut unmapped_sorted_query_idx,
+                ).unwrap();
+                eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
+            }
+        }
+        
         stdout.write(b"]").unwrap(); // Closing
         stdout.flush().unwrap();
 
@@ -196,6 +236,44 @@ impl TSAlignmentConfig {
         }
 
         reference_paths
+    }
+    fn make_1st_aligner(&self) -> Result<Aligner> {
+        if self.use_local_alg {
+            Ok(Aligner::new_local(
+                self.px_1,
+                self.po_1,
+                self.pe_1,
+                self.min_len_1,
+                self.max_ppl_1,
+            )?)
+        } else {
+            Ok(Aligner::new_semi_global(
+                self.px_1,
+                self.po_1,
+                self.pe_1,
+                self.min_len_1,
+                self.max_ppl_1,
+            )?)
+        }
+    }
+    fn make_2nd_aligner(&self) -> Result<Aligner> {
+        if self.use_local_alg {
+            Ok(Aligner::new_local(
+                self.px_2,
+                self.po_2,
+                self.pe_2,
+                self.min_len_2,
+                self.max_ppl_2,
+            )?)
+        } else {
+            Ok(Aligner::new_semi_global(
+                self.px_2,
+                self.po_2,
+                self.pe_2,
+                self.min_len_2,
+                self.max_ppl_2,
+            )?)
+        }
     }
     fn make_aligners(&self) -> Result<(Aligner, Aligner)> {
         if self.use_local_alg {
