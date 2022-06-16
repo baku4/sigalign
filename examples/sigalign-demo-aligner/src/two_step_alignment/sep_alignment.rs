@@ -72,8 +72,9 @@ fn write_fasta_alignment_json_from_reader_checking_unmapped_query<R, W, S>(
                 result: aligner.alignment(reference, &mut sequence_buffer, &query),
             };
             if read_alignment_result.result_counts() == 0 {
-                let pos = unmapped_sorted_query_idx.binary_search(&qry_idx).unwrap_or_else(|e| e);
-                unmapped_sorted_query_idx.insert(pos, qry_idx);
+                if let Err(pos) = unmapped_sorted_query_idx.binary_search(&qry_idx) {
+                    unmapped_sorted_query_idx.insert(pos, qry_idx);
+                }
             } else {
                 if is_first_result {
                     read_alignment_result.write_as_json(&mut writer);
