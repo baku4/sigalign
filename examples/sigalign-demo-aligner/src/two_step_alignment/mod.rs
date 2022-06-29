@@ -1,6 +1,7 @@
 use std::{
     path::{PathBuf, Path},
-    time::Instant, io::Write,   
+    time::Instant, io::Write,
+    fs::File,
 };
 
 use super::{Result, format_err, error_msg};
@@ -26,8 +27,8 @@ use co_alignment::co_alignment_to_stdout;
 mod sep_alignment; // Assuming that use multiple references
 use sep_alignment::{
     count_fasta_query,
-    write_fasta_alignment_to_stdout_checking_mapped,
-    write_fasta_alignment_to_stdout_using_unmapped,
+    write_fasta_alignment_to_file_checking_mapped,
+    write_fasta_alignment_to_file_using_unmapped,
 };
 
 #[derive(Debug)]
@@ -35,6 +36,7 @@ pub struct TSAlignmentConfig {
     // Path
     input_fasta_pathbuf: PathBuf,
     input_reference_pathbuf: PathBuf,
+    output_json_pathbuf: PathBuf,
     // Condition
     px_1: usize,
     po_1: usize,
@@ -60,6 +62,8 @@ impl TSAlignmentConfig {
                 .required(true)
                 .args(&["semiglobal", "local"]))
             .arg(arg!(-r --reference <FILE> "SigAlign reference file")
+                .required(true))
+            .arg(arg!(-o --output <FILE> "Output json path without extension. Output will be saved to {{output}}.{{ref_num}}.json")
                 .required(true))
             .arg(arg!(-p1 --penalties_1 "Mismatch, Gap-open and Gap-extend penalties (1st)")
                 .value_names(&["MISM", "GOPN", "GEXT"])
@@ -87,8 +91,6 @@ impl TSAlignmentConfig {
         let reference_paths = config.get_reference_paths();
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
-        let mut stdout = std::io::stdout();
-        stdout.write(b"[").unwrap(); // Opening
         let query_count = count_fasta_query(&config.input_fasta_pathbuf);
         let mut unmapped_sorted_query_idx = (0..query_count).collect();
 
@@ -102,6 +104,12 @@ impl TSAlignmentConfig {
 
             for (ref_idx, ref_path) in reference_paths.0.iter().enumerate() {
                 eprintln!("  Reference {}", ref_idx);
+
+                // Get output file path
+                let mut output_json_pathbuf = config.output_json_pathbuf.clone();
+                output_json_pathbuf.set_extension(format!("0.{}.json", ref_idx));
+                eprintln!("  Output file path {:?}", output_json_pathbuf);
+                let mut output_file = File::create(output_json_pathbuf).unwrap();
     
                 // Load reference
                 let ref_load_start = Instant::now();
@@ -110,14 +118,11 @@ impl TSAlignmentConfig {
     
                 // Alignment
                 let do_align_start = Instant::now();
-                if ref_idx != 0 {
-                    stdout.write(b",").unwrap();
-                }
-                write_fasta_alignment_to_stdout_checking_mapped(
+                write_fasta_alignment_to_file_checking_mapped(
                     self_desc_reference,
                     &mut aligner,
                     &config.input_fasta_pathbuf,
-                    &mut stdout,
+                    &mut output_file,
                     &mut unmapped_sorted_query_idx,
                 ).unwrap();
                 eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
@@ -134,6 +139,12 @@ impl TSAlignmentConfig {
 
             for (ref_idx, ref_path) in reference_paths.0.iter().enumerate() {
                 eprintln!("  Reference {}", ref_idx);
+
+                // Get output file path
+                let mut output_json_pathbuf = config.output_json_pathbuf.clone();
+                output_json_pathbuf.set_extension(format!("1.{}.json", ref_idx));
+                eprintln!("  Output file path {:?}", output_json_pathbuf);
+                let mut output_file = File::create(output_json_pathbuf).unwrap();
     
                 // Load reference
                 let ref_load_start = Instant::now();
@@ -142,20 +153,16 @@ impl TSAlignmentConfig {
     
                 // Alignment
                 let do_align_start = Instant::now();
-                stdout.write(b",").unwrap();
-                write_fasta_alignment_to_stdout_using_unmapped(
+                write_fasta_alignment_to_file_using_unmapped(
                     self_desc_reference,
                     &mut aligner,
                     &config.input_fasta_pathbuf,
-                    &mut stdout,
+                    &mut output_file,
                     &mut unmapped_sorted_query_idx,
                 ).unwrap();
                 eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
             }
         }
-        
-        stdout.write(b"]").unwrap(); // Closing
-        stdout.flush().unwrap();
 
         eprintln!("# 5. All processes are completed");
         eprintln!(" - Total time elapsed: {} s", total_start.elapsed().as_secs_f64());
@@ -171,6 +178,11 @@ impl TSAlignmentConfig {
             .ok_or(format_err!("Invalid reference fasta"))?;
         let input_reference_path = Path::new(input_reference_path_str);
         let input_reference_pathbuf = input_reference_path.to_path_buf();
+
+        let output_json_path_str = matches.value_of("output")
+            .ok_or(format_err!("Invalid output path"))?;
+        let output_json_path = Path::new(output_json_path_str);
+        let output_json_pathbuf = output_json_path.to_path_buf();
 
         // (2) Condition
         let mut penalties_1 = matches.values_of("penalties_1").unwrap();
@@ -214,6 +226,7 @@ impl TSAlignmentConfig {
             Self {
                 input_fasta_pathbuf,
                 input_reference_pathbuf,
+                output_json_pathbuf,
                 px_1,
                 po_1,
                 pe_1,

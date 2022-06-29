@@ -21,11 +21,11 @@ pub fn count_fasta_query(fasta_pathbuf: &std::path::PathBuf) -> usize {
 
 // 1st step
 
-pub fn write_fasta_alignment_to_stdout_checking_mapped(
+pub fn write_fasta_alignment_to_file_checking_mapped(
     self_desc_reference: SelfDescReference,
     aligner: &mut Aligner,
     fasta_pathbuf: &std::path::PathBuf,
-    stdout: &mut std::io::Stdout,
+    file: &mut std::fs::File,
     unmapped_sorted_query_idx: &mut Vec<usize>,
 ) -> Result<()> {
     let fasta_reader = FastaReader::from_file_path(fasta_pathbuf)?;
@@ -36,7 +36,7 @@ pub fn write_fasta_alignment_to_stdout_checking_mapped(
                 &inner_ref,
                 aligner,
                 fasta_reader,
-                stdout,
+                file,
                 unmapped_sorted_query_idx,
             )
         },
@@ -45,7 +45,7 @@ pub fn write_fasta_alignment_to_stdout_checking_mapped(
                 &inner_ref,
                 aligner,
                 fasta_reader,
-                stdout,
+                file,
                 unmapped_sorted_query_idx,
             )
         },
@@ -99,11 +99,11 @@ fn write_fasta_alignment_json_from_reader_checking_mapped_query<R, W, S>(
 
 // 2nd step
 
-pub fn write_fasta_alignment_to_stdout_using_unmapped(
+pub fn write_fasta_alignment_to_file_using_unmapped(
     self_desc_reference: SelfDescReference,
     aligner: &mut Aligner,
     fasta_pathbuf: &std::path::PathBuf,
-    stdout: &mut std::io::Stdout,
+    file: &mut std::fs::File,
     unmapped_sorted_query_idx: &mut Vec<usize>,
 ) -> Result<()> {
     let fasta_reader = FastaReader::from_file_path(fasta_pathbuf)?;
@@ -114,7 +114,7 @@ pub fn write_fasta_alignment_to_stdout_using_unmapped(
                 &inner_ref,
                 aligner,
                 fasta_reader,
-                stdout,
+                file,
                 unmapped_sorted_query_idx,
             )
         },
@@ -123,7 +123,7 @@ pub fn write_fasta_alignment_to_stdout_using_unmapped(
                 &inner_ref,
                 aligner,
                 fasta_reader,
-                stdout,
+                file,
                 unmapped_sorted_query_idx,
             )
         },

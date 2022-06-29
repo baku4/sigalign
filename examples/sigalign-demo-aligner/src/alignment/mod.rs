@@ -1,6 +1,7 @@
 use std::{
     path::{PathBuf, Path},
-    time::Instant, io::Write,   
+    time::Instant, io::Write,
+    fs::File,
 };
 
 use super::{Result, format_err, error_msg};
@@ -26,6 +27,7 @@ pub struct AlignmentConfig {
     // Path
     input_fasta_pathbuf: PathBuf,
     input_reference_pathbuf: PathBuf,
+    output_json_pathbuf: PathBuf,
     // Condition
     px: usize,
     po: usize,
@@ -46,6 +48,8 @@ impl AlignmentConfig {
                 .required(true)
                 .args(&["semiglobal", "local"]))
             .arg(arg!(-r --reference <FILE> "SigAlign reference file")
+                .required(true))
+            .arg(arg!(-o --output <FILE> "Output json path without extension. Output will be saved to {{output}}.{{ref_num}}.json")
                 .required(true))
             .arg(arg!(-p --penalties "Mismatch, Gap-open and Gap-extend penalties")
                 .value_names(&["MISM", "GOPN", "GEXT"])
@@ -72,11 +76,15 @@ impl AlignmentConfig {
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
         eprintln!("# 3. Alignment");
-        let mut stdout = std::io::stdout();
-        stdout.write(b"[").unwrap(); // Opening
 
         for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
             eprintln!("  Reference {}", ref_idx);
+
+            // Get output file path
+            let mut output_json_pathbuf = config.output_json_pathbuf.clone();
+            output_json_pathbuf.set_extension(format!("{}.json", ref_idx));
+            eprintln!("  Output file path {:?}", output_json_pathbuf);
+            let mut output_file = File::create(output_json_pathbuf).unwrap();
 
             // Load reference
             let ref_load_start = Instant::now();
@@ -85,30 +93,24 @@ impl AlignmentConfig {
 
             // Alignment
             let do_align_start = Instant::now();
-            if ref_idx != 0 {
-                stdout.write(b",").unwrap();
-            }
             match self_desc_reference {
                 SelfDescReference::InMemory(inner_ref) => {
                     aligner.fasta_file_alignment_json_to_stream(
                         &inner_ref,
                         &config.input_fasta_pathbuf,
-                        &mut stdout,
+                        &mut output_file,
                     ).unwrap();
                 },
                 SelfDescReference::InMemoryRc(inner_ref) => {
                     aligner.fasta_file_alignment_json_to_stream(
                         &inner_ref,
                         &config.input_fasta_pathbuf,
-                        &mut stdout,
+                        &mut output_file,
                     ).unwrap();
                 },
             }
             eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
         }
-        stdout.write(b"]").unwrap(); // Closing
-        stdout.flush().unwrap();
-
 
         eprintln!("# 5. All processes are completed");
         eprintln!(" - Total time elapsed: {} s", total_start.elapsed().as_secs_f64());
@@ -124,6 +126,11 @@ impl AlignmentConfig {
             .ok_or(format_err!("Invalid reference fasta"))?;
         let input_reference_path = Path::new(input_reference_path_str);
         let input_reference_pathbuf = input_reference_path.to_path_buf();
+
+        let output_json_path_str = matches.value_of("output")
+            .ok_or(format_err!("Invalid output path"))?;
+        let output_json_path = Path::new(output_json_path_str);
+        let output_json_pathbuf = output_json_path.to_path_buf();
 
         // (2) Condition
         let mut penalties = matches.values_of("penalties").unwrap();
@@ -154,6 +161,7 @@ impl AlignmentConfig {
             Self {
                 input_fasta_pathbuf,
                 input_reference_pathbuf,
+                output_json_pathbuf,
                 px,
                 po,
                 pe,
