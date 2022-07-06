@@ -93,23 +93,28 @@ impl AlignmentConfig {
 
             // Alignment
             let do_align_start = Instant::now();
-            match self_desc_reference {
+            let alignment_result = match self_desc_reference {
                 SelfDescReference::InMemory(inner_ref) => {
-                    aligner.fasta_file_alignment_json_to_stream(
+                    aligner.fasta_file_alignment_unchecked(
                         &inner_ref,
-                        &config.input_fasta_pathbuf,
-                        &mut output_file,
-                    ).unwrap();
+                        &config.input_fasta_pathbuf
+                    ).unwrap()
                 },
                 SelfDescReference::InMemoryRc(inner_ref) => {
-                    aligner.fasta_file_alignment_json_to_stream(
+                    aligner.fasta_file_alignment_unchecked(
                         &inner_ref,
-                        &config.input_fasta_pathbuf,
-                        &mut output_file,
-                    ).unwrap();
+                        &config.input_fasta_pathbuf
+                    ).unwrap()
                 },
-            }
+            };
             eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
+            
+            // Serialize and save
+            let serialize_start = Instant::now();
+            let serialized = alignment_result.to_json();
+            output_file.write_all(serialized.as_bytes()).unwrap();
+            output_file.flush().unwrap();
+            eprintln!("   - Saved to json file {} s", serialize_start.elapsed().as_secs_f64());
         }
 
         eprintln!("# 5. All processes are completed");
