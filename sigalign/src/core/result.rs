@@ -1,5 +1,6 @@
 // Result of alignment
 use crate::{Deserialize, Serialize};
+#[cfg(feature = "short_key")]
 use serde::ser::{Serializer, SerializeStruct};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
@@ -8,10 +9,13 @@ pub struct AlignmentResult(
 );
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize)]
+#[cfg_attr(not(feature = "short_key"), derive(Serialize))]
+
 pub struct RecordAlignmentResult {
     pub index: usize,
     pub alignments: Vec<AnchorAlignmentResult>,
 }
+#[cfg(feature = "short_key")]
 impl Serialize for RecordAlignmentResult {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer,
@@ -24,12 +28,14 @@ impl Serialize for RecordAlignmentResult {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize)]
+#[cfg_attr(not(feature = "short_key"), derive(Serialize))]
 pub struct AnchorAlignmentResult {
     pub penalty: usize,
     pub length: usize,
     pub position: AlignmentPosition,
     pub operations: Vec<AlignmentOperation>,
 }
+#[cfg(feature = "short_key")]
 impl Serialize for AnchorAlignmentResult {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer,
@@ -44,10 +50,12 @@ impl Serialize for AnchorAlignmentResult {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize)]
+#[cfg_attr(not(feature = "short_key"), derive(Serialize))]
 pub struct AlignmentPosition {
     pub record: (usize, usize),
     pub query: (usize, usize),
 }
+#[cfg(feature = "short_key")]
 impl Serialize for AlignmentPosition {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer,
@@ -60,10 +68,12 @@ impl Serialize for AlignmentPosition {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize)]
+#[cfg_attr(not(feature = "short_key"), derive(Serialize))]
 pub struct AlignmentOperation {
     pub case: AlignmentCase,
     pub count: u32,
 }
+#[cfg(feature = "short_key")]
 impl Serialize for AlignmentOperation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer,
@@ -76,12 +86,14 @@ impl Serialize for AlignmentOperation {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize)]
+#[cfg_attr(not(feature = "short_key"), derive(Serialize))]
 pub enum AlignmentCase {
     Match,
     Subst,
     Insertion,
     Deletion,
 }
+#[cfg(feature = "short_key")]
 impl Serialize for AlignmentCase {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer,

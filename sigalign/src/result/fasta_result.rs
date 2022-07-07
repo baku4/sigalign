@@ -1,7 +1,6 @@
 // Fasta alignment result
 use crate::{Result, error_msg};
 use crate::{Serialize, Deserialize};
-use serde::ser::{Serializer, SerializeStruct};
 use super::{
     AlignmentResult,
     RecordAlignmentResult,
@@ -10,6 +9,8 @@ use super::{
     AlignmentOperation,
     AlignmentCase,
 };
+#[cfg(feature = "short_key")]
+use serde::ser::{Serializer, SerializeStruct};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct FastaAlignmentResult(
@@ -17,10 +18,12 @@ pub struct FastaAlignmentResult(
 );
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Deserialize)]
+#[cfg_attr(not(feature = "short_key"), derive(Serialize))]
 pub struct ReadAlignmentResult {
     pub read: String,
     pub result: AlignmentResult,
 }
+#[cfg(feature = "short_key")]
 impl Serialize for ReadAlignmentResult {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
         S: Serializer,
