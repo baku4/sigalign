@@ -36,6 +36,7 @@ flate2 = "1.0.22"
 
 [features]
 short_key = []
+four_dp = []
 
 [[bench]]
 name = "benchmark"

@@ -7,7 +7,10 @@ pub struct Penalties {
     pub e: usize,
 }
 
+#[cfg(not(feature = "four_dp"))]
 pub const PRECISION_SCALE: usize = 10_000; // Ensuring accuracy to the third decimal place.
+#[cfg(feature = "four_dp")]
+pub const PRECISION_SCALE: usize = 100_000; // Ensuring accuracy to the fourth decimal place.
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Cutoff {
