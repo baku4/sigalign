@@ -86,29 +86,32 @@ impl AlignmentConfig {
             eprintln!("  Output file path {:?}", output_json_pathbuf);
             let mut output_file = File::create(output_json_pathbuf).unwrap();
 
-            // Load reference
-            let ref_load_start = Instant::now();
-            let self_desc_reference = SelfDescReference::load_from_file(&ref_path).unwrap();
-            eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
+            let alignment_result = {
+                // Load reference
+                let ref_load_start = Instant::now();
+                let self_desc_reference = SelfDescReference::load_from_file(&ref_path).unwrap();
+                eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
 
-            // Alignment
-            let do_align_start = Instant::now();
-            let alignment_result = match self_desc_reference {
-                SelfDescReference::InMemory(inner_ref) => {
-                    aligner.fasta_file_alignment_unchecked(
-                        &inner_ref,
-                        &config.input_fasta_pathbuf
-                    ).unwrap()
-                },
-                SelfDescReference::InMemoryRc(inner_ref) => {
-                    aligner.fasta_file_alignment_unchecked(
-                        &inner_ref,
-                        &config.input_fasta_pathbuf
-                    ).unwrap()
-                },
+                // Alignment
+                let do_align_start = Instant::now();
+                let alignment_result = match self_desc_reference {
+                    SelfDescReference::InMemory(inner_ref) => {
+                        aligner.fasta_file_alignment_unchecked(
+                            &inner_ref,
+                            &config.input_fasta_pathbuf
+                        ).unwrap()
+                    },
+                    SelfDescReference::InMemoryRc(inner_ref) => {
+                        aligner.fasta_file_alignment_unchecked(
+                            &inner_ref,
+                            &config.input_fasta_pathbuf
+                        ).unwrap()
+                    },
+                };
+                eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
+                alignment_result
             };
-            eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
-            
+
             // Serialize and save
             let serialize_start = Instant::now();
             let serialized = alignment_result.to_json();
