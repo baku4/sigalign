@@ -15,13 +15,14 @@ use reference::{
     SelfDescReference,
 };
 use alignment::AlignmentConfig;
+#[cfg(feature = "tsa")]
 use two_step_alignment::TSAlignmentConfig;
 
 pub struct Application;
 
 impl Application {
     pub fn run() {
-        let matches = App::new("sigalign-demo-aligner")
+        let app = App::new("sigalign-demo-aligner")
             .version("0.1.0")
             .author("baku <bahkhun@gmail.com>")
             .about("Binary demo implementation")
@@ -37,13 +38,9 @@ impl Application {
                 AlignmentConfig::add_args(
                     App::new("alignment")
                 )
-            )
-            .subcommand(
-                TSAlignmentConfig::add_args(
-                    App::new("tsa")
-                )
-            )
-            .get_matches();
+            );
+        
+        let matches = app.get_matches();
         
         match matches.subcommand() {
             Some(("reference", sub_matches)) => {
@@ -52,6 +49,7 @@ impl Application {
             Some(("alignment", sub_matches)) => {
                 AlignmentConfig::run_command(sub_matches)
             },
+            #[cfg(feature = "tsa")]
             Some(("tsa", sub_matches)) => {
                 TSAlignmentConfig::run_command(sub_matches)
             },
