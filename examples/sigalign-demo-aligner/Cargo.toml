@@ -16,3 +16,4 @@ env_logger = "0.9.0"
 
 [features]
 tsa = []
+tsv = [] # Print TSV formatted output to stdout. Ignore output parameter.

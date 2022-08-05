@@ -22,6 +22,11 @@ use sigalign::{
     Aligner,
 };
 
+#[cfg(feature = "tsv")]
+mod tsv;
+#[cfg(feature = "tsv")]
+use tsv::alignment_as_tsv_to_stdout;
+
 #[derive(Debug)]
 pub struct AlignmentConfig {
     // Path
@@ -76,7 +81,7 @@ impl AlignmentConfig {
         eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
 
         eprintln!("# 3. Alignment");
-
+        #[cfg(not(feature = "tsv"))]
         for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
             eprintln!("  Reference {}", ref_idx);
 
@@ -118,6 +123,45 @@ impl AlignmentConfig {
             output_file.write_all(serialized.as_bytes()).unwrap();
             output_file.flush().unwrap();
             eprintln!("   - Saved to json file {} s", serialize_start.elapsed().as_secs_f64());
+        }
+        #[cfg(feature = "tsv")]
+        {
+            let mut stdout = std::io::stdout();
+            eprintln!("  ! TSV feature is on. Ignore output params.");
+
+            for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
+                eprintln!("  Reference {}", ref_idx);
+
+                // Load reference
+                let ref_load_start = Instant::now();
+                let self_desc_reference = SelfDescReference::load_from_file(&ref_path).unwrap();
+                eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
+
+                // Alignment
+                let do_align_start = Instant::now();
+                match self_desc_reference {
+                    SelfDescReference::InMemory(inner_ref) => {
+                        alignment_as_tsv_to_stdout(
+                            &mut aligner,
+                            ref_idx,
+                            inner_ref,
+                            &config.input_fasta_pathbuf,
+                            &mut stdout,
+                        )
+                    },
+                    SelfDescReference::InMemoryRc(inner_ref) => {
+                        alignment_as_tsv_to_stdout(
+                            &mut aligner,
+                            ref_idx,
+                            inner_ref,
+                            &config.input_fasta_pathbuf,
+                            &mut stdout,
+                        )
+                    },
+                };
+                stdout.flush().unwrap();
+                eprintln!("   - Alignment {} s", do_align_start.elapsed().as_secs_f64());
+            }
         }
 
         eprintln!("# 5. All processes are completed");
