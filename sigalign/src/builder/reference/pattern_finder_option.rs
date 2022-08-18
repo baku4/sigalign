@@ -12,7 +12,7 @@ use super::{
 
 impl ReferenceBuilder {
     pub fn change_suffix_array_sampling_ratio(mut self, sampling_ratio: u64) -> Result<Self> {
-        if sampling_ratio == 2 {
+        if sampling_ratio <= 0 {
             error_msg!("Sampling ratio accept positive integer.")
         } else {
             self.pattern_finder_option.sa_sampling_ratio = sampling_ratio;
