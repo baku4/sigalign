@@ -53,7 +53,6 @@ impl FastaIndex {
                 // Push new FastaIndex
                 let new_fasta_index = if sequence_length_of_lines.len() == 1 {
                     FastaIndex {
-                        label,
                         sequence_offset: offset_to_sequence_start_point as u64,
                         sequence_length: sequence_length,
                         length_of_one_line: sequence_length_of_lines[0],
@@ -62,7 +61,6 @@ impl FastaIndex {
                     }
                 } else {
                     FastaIndex {
-                        label,
                         sequence_offset: offset_to_sequence_start_point as u64,
                         sequence_length: sequence_length,
                         length_of_one_line: sequence_length_of_lines[0],
@@ -93,7 +91,6 @@ impl FastaIndex {
         // Push last FastaIndex TODO: Deduplicate code
         let new_fasta_index = if sequence_length_of_lines.len() == 1 {
             FastaIndex {
-                label,
                 sequence_offset: offset_to_sequence_start_point as u64,
                 sequence_length: sequence_length,
                 length_of_one_line: sequence_length_of_lines[0],
@@ -102,7 +99,6 @@ impl FastaIndex {
             }
         } else {
             FastaIndex {
-                label,
                 sequence_offset: offset_to_sequence_start_point as u64,
                 sequence_length: sequence_length,
                 length_of_one_line: sequence_length_of_lines[0],

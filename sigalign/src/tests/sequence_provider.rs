@@ -18,8 +18,8 @@ fn test_sequence_providers_provide_same_sequence() {
     assert_both_provide_same_sequence(&in_memory_provider, &indexed_fasta_provider);
     assert_both_provide_same_sequence(&in_memory_rc_provider, &indexed_fasta_rc_provider);
     
-    assert_both_provide_same_label(&in_memory_provider, &indexed_fasta_provider);
-    assert_both_provide_same_label(&in_memory_rc_provider, &indexed_fasta_rc_provider);
+    // assert_both_provide_same_label(&in_memory_provider, &indexed_fasta_provider);
+    // assert_both_provide_same_label(&in_memory_rc_provider, &indexed_fasta_rc_provider);
 
     assert_both_provide_same_rc(&in_memory_rc_provider, &indexed_fasta_rc_provider);
 }

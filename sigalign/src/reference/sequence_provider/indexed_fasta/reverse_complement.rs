@@ -22,7 +22,6 @@ use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::path::Path;
 use serde::{Serialize, Deserialize};
-use bincode::{serialize_into, deserialize_from};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct IndexedFastaRcProvider(
@@ -63,28 +62,19 @@ impl SequenceProvider for IndexedFastaRcProvider {
     }
 }
 
-// Label Provider
-impl LabelProvider for IndexedFastaRcProvider {
-    fn label_of_record(&self, record_index: usize) -> String {
-        let record_index_quot = record_index / 2;
-        self.0.label_of_record(record_index_quot)
-    }
-}
-
 // Serializable
 impl Serializable for IndexedFastaRcProvider {
     fn save_to<W>(&self, writer: W) -> Result<()> where
         W: std::io::Write
     {
-        serialize_into(writer, self)?;
-        Ok(())
+        self.0.save_to(writer)
     }
     fn load_from<R>(reader: R) -> Result<Self> where
         R: std::io::Read,
         Self: Sized,
     {
-        let value: Self = deserialize_from(reader)?;
-        Ok(value)
+        let inner = IndexedFastaProvider::load_from(reader)?;
+        Ok(Self(inner))
     }
 }
 

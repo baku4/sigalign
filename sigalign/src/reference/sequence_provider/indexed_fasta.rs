@@ -22,8 +22,9 @@ use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
 use std::path::Path;
+
+use capwriter::{Saveable, Loadable};
 use serde::{Serialize, Deserialize};
-use bincode::{serialize_into, deserialize_from};
 
 /// Basic `SequenceProvider` implementation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,28 +100,54 @@ impl SequenceProvider for IndexedFastaProvider {
     }
 }
 
-// Label Provider
-impl LabelProvider for IndexedFastaProvider {
-    fn label_of_record(&self, record_index: usize) -> String {
-        let fasta_index = &self.fasta_indices[record_index];
-        fasta_index.label.clone()
-    }
-}
+use crate::{EndianType};
+use byteorder::{ReadBytesExt, WriteBytesExt};
+use bytemuck::{Pod, Zeroable};
+use bytemuck::{cast_slice, cast, cast_slice_mut};
 
 // Serializable
 impl Serializable for IndexedFastaProvider {
-    fn save_to<W>(&self, writer: W) -> Result<()> where
+    fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: std::io::Write
     {
-        serialize_into(writer, self)?;
+        // 1. Write total_record_count
+        writer.write_u64::<EndianType>(self.total_record_count as u64)?;
+        // 2. Write line_terminator_size
+        writer.write_u64::<EndianType>(self.line_terminator_size as u64)?;
+        // 3. Write fasta_indices
+        //  length
+        writer.write_u64::<EndianType>(self.fasta_indices.len() as u64)?;
+        //  slice
+        let slice: &[u8] = cast_slice(&self.fasta_indices);
+        writer.write_all(slice);
+        // 4. Write fasta_file_path
+        let slice: &[u8] = self.fasta_file_path.as_bytes();
+        slice.save_to(writer);
         Ok(())
     }
-    fn load_from<R>(reader: R) -> Result<Self> where
+    fn load_from<R>(mut reader: R) -> Result<Self> where
         R: std::io::Read,
         Self: Sized,
     {
-        let value: Self = deserialize_from(reader)?;
-        Ok(value)
+        // 1. Read total_record_count
+        let total_record_count = reader.read_u64::<EndianType>()? as usize;
+        // 2. Read line_terminator_size
+        let line_terminator_size = reader.read_u64::<EndianType>()? as usize;
+        // 3. Read fasta_indices
+        let len = reader.read_u64::<EndianType>()? as usize;
+        let mut fasta_indices: Vec<FastaIndex> = vec![FastaIndex::zeroed(); len];
+        let buffer: &mut [u8] = cast_slice_mut(&mut fasta_indices);
+        reader.read_exact(buffer);
+        // 4. Read fasta_file_path
+        let byte = Vec::<u8>::load_from(reader)?;
+        let fasta_file_path = String::from_utf8(byte)?;
+        
+        Ok(Self {
+            total_record_count,
+            line_terminator_size,
+            fasta_indices,
+            fasta_file_path,
+        })
     }
 }
 
@@ -135,9 +162,9 @@ impl SequenceBuffer for IndexedFastaBuffer {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Pod, Zeroable)]
 struct FastaIndex {
-    label: String,
     sequence_offset: u64,
     sequence_length: usize,
     length_of_one_line: usize,
