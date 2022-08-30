@@ -65,6 +65,7 @@ impl AlignmentConfig {
                 .multiple_values(true)
                 .required(true))
     }
+    #[cfg(not(feature = "no_aln"))]
     pub fn run_command(matches: &ArgMatches) {
         let total_start = Instant::now();
 
@@ -169,6 +170,35 @@ impl AlignmentConfig {
         eprintln!("# 5. All processes are completed");
         eprintln!(" - Total time elapsed: {} s", total_start.elapsed().as_secs_f64());
     }
+    #[cfg(feature = "no_aln")]
+    pub fn run_command(matches: &ArgMatches) {
+        eprintln!("# ! NO_ALN feature is on");
+        let total_start = Instant::now();
+
+        let start = Instant::now();
+        eprintln!("# 1. Parsing configuration");
+        let config = Self::new_with_validation(matches).unwrap();
+        let reference_paths = config.get_reference_paths();
+        eprintln!(" - Time elapsed: {} s", start.elapsed().as_secs_f64());
+
+        eprintln!("# 2. Make aligner (SKIP)");
+        eprintln!("# 3. Alignment (Load reference only)");
+        for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
+            eprintln!("  Reference {}", ref_idx);
+
+            // Get output file path
+            let mut output_json_pathbuf = config.output_json_pathbuf.clone();
+            output_json_pathbuf.set_extension(format!("{}.json", ref_idx));
+            eprintln!("  Output file path {:?} (Do not create)", output_json_pathbuf);
+
+            let ref_load_start = Instant::now();
+            let _ = SelfDescReference::load_from_file(&ref_path).unwrap();
+            eprintln!("   - Load reference {} s", ref_load_start.elapsed().as_secs_f64());
+        }
+        eprintln!("# 5. All processes are completed");
+        eprintln!(" - Total time elapsed: {} s", total_start.elapsed().as_secs_f64());
+    }
+
     fn new_with_validation(matches: &ArgMatches) -> Result<Self> {
         // (1) Path
         let input_fasta_path_str = matches.value_of("input")
