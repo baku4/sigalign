@@ -128,6 +128,8 @@ impl AlignmentConfig {
         {
             let mut stdout = std::io::stdout();
             eprintln!("  ! TSV feature is on. Ignore output params.");
+            #[cfg(feature = "revcom")]
+            eprintln!("  ! REVCOM feature is on.");
 
             for (ref_idx, ref_path) in reference_paths.0.into_iter().enumerate() {
                 eprintln!("  Reference {}", ref_idx);

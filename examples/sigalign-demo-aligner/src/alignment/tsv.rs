@@ -3,7 +3,10 @@ use std::io::{Stdout, Write};
 
 use super::{Result, format_err, error_msg};
 
-use sigalign::util::FastaReader;
+use sigalign::util::{
+    FastaReader,
+    reverse_complement_of_nucleotide_sequence,
+};
 use sigalign::{
     Reference,
     core::ReferenceInterface,
@@ -29,24 +32,69 @@ pub fn alignment_as_tsv_to_stdout<S: SequenceProvider>(
     
     let fasta_reader = FastaReader::from_file_path(fasta_file_path).unwrap();
     fasta_reader.for_each(|(label, query)| {
-        let result = aligner.alignment(&reference, &mut sequence_buffer, &query);
+        #[cfg(not(feature = "revcom"))]
+        {
+            let result = aligner.alignment(&reference, &mut sequence_buffer, &query);
 
-        result.0.into_iter().for_each(|RecordAlignmentResult {
-            index: record_index,
-            alignments: anchor_results,
-        }| {
-            anchor_results.into_iter().for_each(|anchor_result| {
-                let line = format!(
-                    "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-                    label, reference_index, record_index, anchor_result.penalty, anchor_result.length,
-                    anchor_result.position.query.0, anchor_result.position.query.1,
-                    anchor_result.position.record.0, anchor_result.position.record.1,
-                    operations_to_string(&anchor_result.operations)
-                );
-
-                stdout.write(line.as_bytes()).unwrap();
+            result.0.into_iter().for_each(|RecordAlignmentResult {
+                index: record_index,
+                alignments: anchor_results,
+            }| {
+                anchor_results.into_iter().for_each(|anchor_result| {
+                    let line = format!(
+                        "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                        label, reference_index, record_index, anchor_result.penalty, anchor_result.length,
+                        anchor_result.position.query.0, anchor_result.position.query.1,
+                        anchor_result.position.record.0, anchor_result.position.record.1,
+                        operations_to_string(&anchor_result.operations)
+                    );
+    
+                    stdout.write(line.as_bytes()).unwrap();
+                });
             });
-        });
+        }
+        #[cfg(feature = "revcom")]
+        {
+            let rev_com_query = reverse_complement_of_nucleotide_sequence(&query);
+
+            // Org Query
+            let result = aligner.alignment(&reference, &mut sequence_buffer, &query);
+            result.0.into_iter().for_each(|RecordAlignmentResult {
+                index: record_index,
+                alignments: anchor_results,
+            }| {
+                anchor_results.into_iter().for_each(|anchor_result| {
+                    let line = format!(
+                        "{}\tF\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                        label, reference_index, record_index, anchor_result.penalty, anchor_result.length,
+                        anchor_result.position.query.0, anchor_result.position.query.1,
+                        anchor_result.position.record.0, anchor_result.position.record.1,
+                        operations_to_string(&anchor_result.operations)
+                    );
+    
+                    stdout.write(line.as_bytes()).unwrap();
+                });
+            });
+
+            // Rc Query
+            let result = aligner.alignment(&reference, &mut sequence_buffer, &rev_com_query);
+            result.0.into_iter().for_each(|RecordAlignmentResult {
+                index: record_index,
+                alignments: anchor_results,
+            }| {
+                anchor_results.into_iter().for_each(|anchor_result| {
+                    let line = format!(
+                        "{}\tR\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                        label, reference_index, record_index, anchor_result.penalty, anchor_result.length,
+                        anchor_result.position.query.0, anchor_result.position.query.1,
+                        anchor_result.position.record.0, anchor_result.position.record.1,
+                        operations_to_string(&anchor_result.operations)
+                    );
+    
+                    stdout.write(line.as_bytes()).unwrap();
+                });
+            });
+        }
     });
 }
 
