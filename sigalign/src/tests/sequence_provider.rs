@@ -68,8 +68,8 @@ fn assert_both_provide_same_sequence<S1, S2>(
         sequence_provider_1.fill_sequence_buffer(record_index, &mut sequence_buffer_1);
         sequence_provider_2.fill_sequence_buffer(record_index, &mut sequence_buffer_2);
 
-        let sequence_1 = sequence_buffer_1.request_sequence().to_vec();
-        let sequence_2 = sequence_buffer_2.request_sequence().to_vec();
+        let sequence_1 = String::from_utf8(sequence_buffer_1.request_sequence().to_vec()).unwrap();
+        let sequence_2 = String::from_utf8(sequence_buffer_2.request_sequence().to_vec()).unwrap();
 
         assert_eq!(sequence_1, sequence_2);
     }

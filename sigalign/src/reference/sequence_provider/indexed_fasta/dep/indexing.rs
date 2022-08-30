@@ -24,7 +24,6 @@ impl FastaIndex {
         let mut offset_to_sequence_start_point = 0;
         let mut sequence_length = 0;
         let mut sequence_length_of_lines = Vec::new();
-        let mut label = String::new();
 
         // Init with first line (This line is always description)
         let line_terminator_size = if let Some(line) = line_buf_reader.next() {
@@ -40,8 +39,6 @@ impl FastaIndex {
             } else {
                 error_msg!("Line terminator cannot defined in fasta file.");
             };
-
-            label = Self::parse_label_from_line(line);
 
             line_terminator
         } else {
@@ -76,7 +73,6 @@ impl FastaIndex {
                 offset_to_current_line += offset;
                 offset_to_sequence_start_point = offset_to_current_line;
                 
-                label = Self::parse_label_from_line(line);
                 sequence_length = 0;
                 sequence_length_of_lines.clear();
             } else { // Line is of sequence

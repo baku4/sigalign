@@ -8,7 +8,8 @@ use super::{
 use super::{
     Reference, SequenceProvider, JoinedSequence,
     SequenceType, PatternFinder,
-    Serializable,
+    // Trait
+    Serializable, SizeAware,
     LabelProvider,
     ReverseComplement,
 };
@@ -119,10 +120,10 @@ impl Serializable for IndexedFastaProvider {
         writer.write_u64::<EndianType>(self.fasta_indices.len() as u64)?;
         //  slice
         let slice: &[u8] = cast_slice(&self.fasta_indices);
-        writer.write_all(slice);
+        writer.write_all(slice)?;
         // 4. Write fasta_file_path
         let slice: &[u8] = self.fasta_file_path.as_bytes();
-        slice.save_to(writer);
+        slice.save_to(writer)?;
         Ok(())
     }
     fn load_from<R>(mut reader: R) -> Result<Self> where
@@ -137,7 +138,7 @@ impl Serializable for IndexedFastaProvider {
         let len = reader.read_u64::<EndianType>()? as usize;
         let mut fasta_indices: Vec<FastaIndex> = vec![FastaIndex::zeroed(); len];
         let buffer: &mut [u8] = cast_slice_mut(&mut fasta_indices);
-        reader.read_exact(buffer);
+        reader.read_exact(buffer)?;
         // 4. Read fasta_file_path
         let byte = Vec::<u8>::load_from(reader)?;
         let fasta_file_path = String::from_utf8(byte)?;
@@ -148,6 +149,16 @@ impl Serializable for IndexedFastaProvider {
             fasta_indices,
             fasta_file_path,
         })
+    }
+}
+
+// Size aware
+impl SizeAware for IndexedFastaProvider {
+    fn size_of(&self) -> usize {
+        8 // total_record_count
+        + 8 // line_terminator_size
+        + 8 + (self.fasta_indices.len() * std::mem::size_of::<FastaIndex>() as usize) // fasta_indices
+        + self.fasta_file_path.as_bytes().len() // fasta_file_path
     }
 }
 
