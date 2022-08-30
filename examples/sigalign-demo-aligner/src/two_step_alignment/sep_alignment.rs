@@ -31,7 +31,7 @@ pub fn write_fasta_alignment_to_file_checking_mapped(
     let fasta_reader = FastaReader::from_file_path(fasta_pathbuf)?;
 
     match self_desc_reference {
-        SelfDescReference::InMemory(inner_ref) => {
+        SelfDescReference::Ref(inner_ref) => {
             write_fasta_alignment_json_from_reader_checking_mapped_query(
                 &inner_ref,
                 aligner,
@@ -40,7 +40,7 @@ pub fn write_fasta_alignment_to_file_checking_mapped(
                 unmapped_sorted_query_idx,
             )
         },
-        SelfDescReference::InMemoryRc(inner_ref) => {
+        SelfDescReference::RecRc(inner_ref) => {
             write_fasta_alignment_json_from_reader_checking_mapped_query(
                 &inner_ref,
                 aligner,
@@ -109,7 +109,7 @@ pub fn write_fasta_alignment_to_file_using_unmapped(
     let fasta_reader = FastaReader::from_file_path(fasta_pathbuf)?;
 
     match self_desc_reference {
-        SelfDescReference::InMemory(inner_ref) => {
+        SelfDescReference::Ref(inner_ref) => {
             write_fasta_alignment_json_from_reader_using_unmapped_query(
                 &inner_ref,
                 aligner,
@@ -118,7 +118,7 @@ pub fn write_fasta_alignment_to_file_using_unmapped(
                 unmapped_sorted_query_idx,
             )
         },
-        SelfDescReference::InMemoryRc(inner_ref) => {
+        SelfDescReference::RecRc(inner_ref) => {
             write_fasta_alignment_json_from_reader_using_unmapped_query(
                 &inner_ref,
                 aligner,

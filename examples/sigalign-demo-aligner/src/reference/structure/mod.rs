@@ -3,7 +3,16 @@ use super::{Result, error_msg};
 use sigalign::{ReferenceBuilder, Reference};
 use sigalign::sequence_provider::{
     Divisible, SizeAware,
-    InMemoryProvider, InMemoryRcProvider,
+};
+#[cfg(not(feature = "idx_fa"))]
+use sigalign::sequence_provider::{
+    InMemoryProvider as SeqProvider,
+    InMemoryRcProvider as SeqRcProvider,
+};
+#[cfg(feature = "idx_fa")]
+use sigalign::sequence_provider::{
+    IndexedFastaProvider as SeqProvider,
+    IndexedFastaRcProvider as SeqRcProvider,
 };
 
 use std::fs::File;
@@ -56,51 +65,70 @@ impl ReferencePaths {
 }
 
 pub enum SelfDescSeqPrvs {
-    InMemory(Vec<InMemoryProvider>),
-    InMemoryRc(Vec<InMemoryRcProvider>),
+    SeqProviders(Vec<SeqProvider>),
+    SeqRcProviders(Vec<SeqRcProvider>),
 }
 
 impl SelfDescSeqPrvs {
+    #[cfg(not(feature = "idx_fa"))]
     pub fn new(
         use_rc: bool,
         fasta_file: &PathBuf,
         divide_size: &Option<usize>,
     ) -> Result<Self> {
         if use_rc {
-            let mut in_mem_rc_p = InMemoryRcProvider::new();
+            let mut in_mem_rc_p = SeqRcProvider::new();
             in_mem_rc_p.add_fasta_file(fasta_file)?;
             let sps = match divide_size {
                 None => vec![in_mem_rc_p],
                 Some(max_length) => in_mem_rc_p.split_by_max_length(*max_length)?,
             };
             
-            Ok(Self::InMemoryRc(sps))
+            Ok(Self::SeqRcProviders(sps))
         } else {
-            let mut in_mem_p = InMemoryProvider::new();
+            let mut in_mem_p = SeqProvider::new();
             in_mem_p.add_fasta_file(fasta_file)?;
             let sps = match divide_size {
                 None => vec![in_mem_p],
                 Some(max_length) => in_mem_p.split_by_max_length(*max_length)?,
             };
-            Ok(Self::InMemory(sps))
+            Ok(Self::SeqProviders(sps))
+        }
+    }
+    #[cfg(feature = "idx_fa")]
+    pub fn new(
+        use_rc: bool,
+        fasta_file: &PathBuf,
+        divide_size: &Option<usize>,
+    ) -> Result<Self> {
+        if use_rc {
+            let sp = SeqRcProvider::new(fasta_file)?;
+            let sps = vec![sp];
+            
+            Ok(Self::SeqRcProviders(sps))
+        } else {
+            let sp = SeqProvider::new(fasta_file)?;
+            let sps = vec![sp];
+            
+            Ok(Self::SeqProviders(sps))
         }
     }
     pub fn splitted_size(&self) -> usize {
         match self {
-            Self::InMemory(v) => v.len(),
-            Self::InMemoryRc(v) => v.len(),
+            Self::SeqProviders(v) => v.len(),
+            Self::SeqRcProviders(v) => v.len(),
         }
     }
 }
 
 pub enum SelfDescReference {
-    InMemory(Reference<InMemoryProvider>),
-    InMemoryRc(Reference<InMemoryRcProvider>),
+    Ref(Reference<SeqProvider>),
+    RecRc(Reference<SeqRcProvider>),
 }
 
 impl SelfDescReference {    
-    const IN_MEM_MAGIC_NUM: u8 = 11;
-    const IN_MEM_RC_MAGIC_NUM: u8 = 22;
+    const REF_MAGIC_NUM: u8 = 11;
+    const REF_RC_MAGIC_NUM: u8 = 22;
 
     pub fn build_and_save_to_file(
         reference_builder: &ReferenceBuilder,
@@ -110,7 +138,7 @@ impl SelfDescReference {
         use std::time::Instant;
 
         match self_desc_seq_prv {
-            SelfDescSeqPrvs::InMemory(sps) => {
+            SelfDescSeqPrvs::SeqProviders(sps) => {
                 for (ref_idx, sp) in sps.into_iter().enumerate() {
                     eprintln!(" - Saving reference {}", ref_idx);
                     eprintln!("    Size:");
@@ -119,14 +147,14 @@ impl SelfDescReference {
                     let reference = reference_builder.clone().build(sp)?;
                     eprintln!("      Pattern finder: {}", reference.pattern_finder.size_of());
                     eprintln!("      Target record index: {}", reference.target_record_index.len() * 4);
-                    let self_desc_ref = SelfDescReference::InMemory(reference);
+                    let self_desc_ref = SelfDescReference::Ref(reference);
                     eprintln!("    Time elapsed to generate: {} s", start_time.elapsed().as_secs_f64());
                     let start_time = Instant::now();
                     self_desc_ref.save_to_file(&reference_paths.0[ref_idx])?;
                     eprintln!("    Time elapsed to save: {} s", start_time.elapsed().as_secs_f64());
                 }
             },
-            SelfDescSeqPrvs::InMemoryRc(sps) => {
+            SelfDescSeqPrvs::SeqRcProviders(sps) => {
                 for (ref_idx, sp) in sps.into_iter().enumerate() {
                     eprintln!(" - Saving reference {}", ref_idx);
                     eprintln!("    Size:");
@@ -135,7 +163,7 @@ impl SelfDescReference {
                     let reference = reference_builder.clone().build(sp)?;
                     eprintln!("      Pattern finder: {}", reference.pattern_finder.size_of());
                     eprintln!("      Target record index: {}", reference.target_record_index.len() * 4);
-                    let self_desc_ref = SelfDescReference::InMemoryRc(reference);
+                    let self_desc_ref = SelfDescReference::RecRc(reference);
                     eprintln!("    Time elapsed to generate: {} s", start_time.elapsed().as_secs_f64());
                     let start_time = Instant::now();
                     self_desc_ref.save_to_file(&reference_paths.0[ref_idx])?;
@@ -148,14 +176,14 @@ impl SelfDescReference {
     }
     fn magic_number(&self) -> u8 {
         match self {
-            Self::InMemory(_) => Self::IN_MEM_MAGIC_NUM,
-            Self::InMemoryRc(_) => Self::IN_MEM_RC_MAGIC_NUM,
+            Self::Ref(_) => Self::REF_MAGIC_NUM,
+            Self::RecRc(_) => Self::REF_RC_MAGIC_NUM,
         }
     }
     fn size_of(&self) -> usize {
         match self {
-            Self::InMemory(v) => v.size_of() + 1,
-            Self::InMemoryRc(v) => v.size_of() + 1,
+            Self::Ref(v) => v.size_of() + 1,
+            Self::RecRc(v) => v.size_of() + 1,
         }
     }
     fn save_to_file(&self, out_path: &PathBuf) -> Result<()> {
@@ -163,11 +191,11 @@ impl SelfDescReference {
         out_file.set_len(self.size_of() as u64)?;
 
         match self {
-            Self::InMemory(inner_ref) => {
+            Self::Ref(inner_ref) => {
                 out_file.write(&[self.magic_number()])?;
                 inner_ref.save_to(out_file)?;
             },
-            Self::InMemoryRc(inner_ref) => {
+            Self::RecRc(inner_ref) => {
                 out_file.write(&[self.magic_number()])?;
                 inner_ref.save_to(out_file)?;
             },
@@ -183,13 +211,13 @@ impl SelfDescReference {
         in_file.read_exact(&mut magic_number)?;
 
         match magic_number[0] {
-            Self::IN_MEM_MAGIC_NUM => {
+            Self::REF_MAGIC_NUM => {
                 let inner_ref = Reference::load_from(in_file)?;
-                Ok(Self::InMemory(inner_ref))
+                Ok(Self::Ref(inner_ref))
             },
-            Self::IN_MEM_RC_MAGIC_NUM => {
+            Self::REF_RC_MAGIC_NUM => {
                 let inner_ref = Reference::load_from(in_file)?;
-                Ok(Self::InMemoryRc(inner_ref))
+                Ok(Self::RecRc(inner_ref))
             },
             _ => error_msg!("Invalid reference file")
         }

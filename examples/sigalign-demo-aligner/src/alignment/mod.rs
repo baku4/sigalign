@@ -100,13 +100,13 @@ impl AlignmentConfig {
                 // Alignment
                 let do_align_start = Instant::now();
                 let alignment_result = match self_desc_reference {
-                    SelfDescReference::InMemory(inner_ref) => {
+                    SelfDescReference::Ref(inner_ref) => {
                         aligner.fasta_file_alignment_unchecked(
                             &inner_ref,
                             &config.input_fasta_pathbuf
                         ).unwrap()
                     },
-                    SelfDescReference::InMemoryRc(inner_ref) => {
+                    SelfDescReference::RecRc(inner_ref) => {
                         aligner.fasta_file_alignment_unchecked(
                             &inner_ref,
                             &config.input_fasta_pathbuf
@@ -140,7 +140,7 @@ impl AlignmentConfig {
                 // Alignment
                 let do_align_start = Instant::now();
                 match self_desc_reference {
-                    SelfDescReference::InMemory(inner_ref) => {
+                    SelfDescReference::Ref(inner_ref) => {
                         alignment_as_tsv_to_stdout(
                             &mut aligner,
                             ref_idx,
@@ -149,7 +149,7 @@ impl AlignmentConfig {
                             &mut stdout,
                         )
                     },
-                    SelfDescReference::InMemoryRc(inner_ref) => {
+                    SelfDescReference::RecRc(inner_ref) => {
                         alignment_as_tsv_to_stdout(
                             &mut aligner,
                             ref_idx,

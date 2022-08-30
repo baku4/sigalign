@@ -25,7 +25,7 @@ pub fn co_alignment_to_stdout(
     let fasta_reader = FastaReader::from_file_path(fasta_pathbuf)?;
 
     match self_desc_reference {
-        SelfDescReference::InMemory(inner_ref) => {
+        SelfDescReference::Ref(inner_ref) => {
             co_alignment_to_writer(
                 &inner_ref,
                 aligner_1,
@@ -34,7 +34,7 @@ pub fn co_alignment_to_stdout(
                 stdout,
             )
         },
-        SelfDescReference::InMemoryRc(inner_ref) => {
+        SelfDescReference::RecRc(inner_ref) => {
             co_alignment_to_writer(
                 &inner_ref,
                 aligner_1,
