@@ -10,6 +10,29 @@ use num::integer;
 
 const MINIMUM_PATTERN_SIZE: usize = 4;
 
+pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
+    let mut n = 1;
+    loop { // TODO: Optimize
+        let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
+        let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
+        let max_penalty = (
+            (
+                (
+                    (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                )
+                + 4 * cutoff.maximum_penalty_per_scale
+            ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
+        ).ceil() - 2_f32;
+
+        let pattern_size = max_penalty.min(upper_bound);
+
+        if pattern_size >= lower_bound {
+            return pattern_size as usize
+        }
+        n += 1;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlignmentCondition {
     pub penalties: Penalties,
@@ -52,7 +75,7 @@ impl AlignmentCondition {
         cutoff.divide_by_gcd(gcd);
 
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
-        let max_pattern_size = Self::max_pattern_size_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+        let max_pattern_size = calculate_max_pattern_size(&cutoff, &min_penalty_for_pattern);
         
         Self {
             penalties,
@@ -60,28 +83,6 @@ impl AlignmentCondition {
             min_penalty_for_pattern,
             gcd_for_compression: gcd,
             pattern_size: max_pattern_size,
-        }
-    }
-    fn max_pattern_size_satisfying_cutoff(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
-        let mut n = 1;
-        loop { // TODO: Optimize
-            let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
-            let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
-            let max_penalty = (
-                (
-                    (
-                        (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
-                    )
-                    + 4 * cutoff.maximum_penalty_per_scale
-                ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
-            ).ceil() - 2_f32;
-
-            let pattern_size = max_penalty.min(upper_bound);
-
-            if pattern_size >= lower_bound {
-                return pattern_size as usize
-            }
-            n += 1;
         }
     }
     pub fn result_of_uncompressed_penalty(&self, mut reference_alignment_result: AlignmentResult) -> AlignmentResult {
@@ -207,7 +208,7 @@ mod tests {
         let penalties = Penalties::new(4, 6, 2);
         let cutoff = Cutoff::new(50, 0.15);
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
-        let pattern_size = AlignmentCondition::max_pattern_size_satisfying_cutoff(&cutoff, &min_penalty_for_pattern);
+        let pattern_size = calculate_max_pattern_size(&cutoff, &min_penalty_for_pattern);
         println!("{}", pattern_size);
     }
 }

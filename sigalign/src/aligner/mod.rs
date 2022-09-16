@@ -19,7 +19,10 @@ mod wave_front_cache;
 use wave_front_cache::{WaveFrontCache, SingleWaveFrontCache, DoubleWaveFrontCache};
 //  - Alignment condition
 mod alignment_condition;
-pub use alignment_condition::AlignmentCondition;
+pub use alignment_condition::{
+    AlignmentCondition,
+    calculate_max_pattern_size,
+};
 
 // Aligner interface
 pub trait AlignerInterface {
