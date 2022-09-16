@@ -58,10 +58,6 @@ pub mod result;
 mod alignment; // Alignment functions
 mod builder; // Struct builders
 
-// Deprecated modules
-#[doc(hidden)]
-pub mod deprecated;
-
 mod tests;
 
 

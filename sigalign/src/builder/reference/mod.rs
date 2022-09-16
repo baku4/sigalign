@@ -1,5 +1,3 @@
-use crate::deprecated::database::sequence_provider;
-
 use super::{
     Result, error_msg,
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
