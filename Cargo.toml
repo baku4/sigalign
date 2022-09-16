@@ -2,6 +2,7 @@
 members = [
     "sigalign",
     "sigalign-py",
+    "tests",
     "examples/sigalign-demo-aligner",
     "examples/sigalign-demo-wasm",
 ]
