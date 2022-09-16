@@ -14,14 +14,10 @@ use super::{
     ReverseComplement,
 };
 
-
-use std::ffi::{OsString, OsStr};
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
-use std::fs::File;
-use std::cell::{Cell, RefCell};
-use std::os::unix::prelude::OsStrExt;
-use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
+
+use crate::util::{path_to_byte, byte_to_pathbuf};
 
 use capwriter::{Saveable, Loadable};
 use faimm::IndexedFasta as FaiIndexedFasta;
@@ -103,7 +99,7 @@ impl Serializable for IndexedFastaProvider {
         // 1. Write total_record_count
         writer.write_u64::<EndianType>(self.total_record_count as u64)?;
         // 2. Write fasta_file_path_buf
-        let byte = self.fasta_file_path_buf.as_os_str().as_bytes();
+        let byte = path_to_byte(&self.fasta_file_path_buf)?;
         byte.save_to(writer)?;
 
         Ok(())
@@ -113,7 +109,7 @@ impl Serializable for IndexedFastaProvider {
         let total_record_count = reader.read_u64::<EndianType>()? as usize;
         // 2. Read fasta_file_path_buf
         let byte = Vec::<u8>::load_from(reader)?;
-        let fasta_file_path_buf = PathBuf::from(OsStr::from_bytes(&byte).to_os_string());
+        let fasta_file_path_buf = byte_to_pathbuf(&byte)?;
 
         Ok(Self {
             total_record_count,
@@ -125,6 +121,7 @@ impl Serializable for IndexedFastaProvider {
 // SizeAware
 impl SizeAware for IndexedFastaProvider {
     fn size_of(&self) -> usize {
-        8 + self.fasta_file_path_buf.as_os_str().as_bytes().size_of()
+        let byte_of_path = self.fasta_file_path_buf.to_str().unwrap().as_bytes();
+        8 + byte_of_path.size_of()
     }
 }

@@ -23,7 +23,6 @@ use std::ffi::{OsString, OsStr};
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
 use std::fs::File;
 use std::cell::{Cell, RefCell};
-use std::os::unix::prelude::OsStrExt;
 use std::sync::{Arc, Mutex};
 use std::path::{Path, PathBuf};
 
