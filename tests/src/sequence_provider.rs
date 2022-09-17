@@ -1,52 +1,66 @@
-use super::*;
+use super::{
+    Result, error_msg,
+    get_lf_fa_path,
+    get_crlf_fa_path,
+    get_two_line_fa_path,
+    SequenceBuffer,
+    SequenceProvider,
+    LabelProvider,
+    Serializable,
+    ReverseComplement,
+    InMemoryProvider,
+    InMemoryRcProvider,
+    IndexedFastaProvider,
+    IndexedFastaRcProvider,
+};
 use std::io::Cursor;
 
 #[test]
-fn test_sequence_providers_provide_same_sequence() {
-    let fasta_file_path = NUCLEOTIDE_ONLY_FA_PATH_1;
+fn sequence_providers_provide_same_sequence() {
+    for fa in [get_lf_fa_path(), get_crlf_fa_path(), get_two_line_fa_path()] {
+        // Make SequenceProvider
+        // (1) In memory provider
+        let mut in_memory_provider = InMemoryProvider::new();
+        in_memory_provider.add_fasta_file(&fa).unwrap();
+        let mut in_memory_rc_provider = InMemoryRcProvider::new();
+        in_memory_rc_provider.add_fasta_file(&fa).unwrap();
+        // (2) Indexed fasta provider
+        let mut indexed_fasta_provider = IndexedFastaProvider::new(&fa).unwrap();
+        let mut indexed_fasta_rc_provider = IndexedFastaRcProvider::new(&fa).unwrap();
 
-    // Make SequenceProvider
-    // (1) In memory provider
-    let mut in_memory_provider = InMemoryProvider::new();
-    in_memory_provider.add_fasta_file(fasta_file_path).unwrap();
-    let mut in_memory_rc_provider = InMemoryRcProvider::new();
-    in_memory_rc_provider.add_fasta_file(fasta_file_path).unwrap();
-    // (2) Indexed fasta provider
-    let mut indexed_fasta_provider = IndexedFastaProvider::new(fasta_file_path).unwrap();
-    let mut indexed_fasta_rc_provider = IndexedFastaRcProvider::new(fasta_file_path).unwrap();
+        assert_both_provide_same_sequence(&in_memory_provider, &indexed_fasta_provider);
+        assert_both_provide_same_sequence(&in_memory_rc_provider, &indexed_fasta_rc_provider);
+        
+        // assert_both_provide_same_label(&in_memory_provider, &indexed_fasta_provider);
+        // assert_both_provide_same_label(&in_memory_rc_provider, &indexed_fasta_rc_provider);
 
-    assert_both_provide_same_sequence(&in_memory_provider, &indexed_fasta_provider);
-    assert_both_provide_same_sequence(&in_memory_rc_provider, &indexed_fasta_rc_provider);
-    
-    // assert_both_provide_same_label(&in_memory_provider, &indexed_fasta_provider);
-    // assert_both_provide_same_label(&in_memory_rc_provider, &indexed_fasta_rc_provider);
-
-    assert_both_provide_same_rc(&in_memory_rc_provider, &indexed_fasta_rc_provider);
+        assert_both_provide_same_rc(&in_memory_rc_provider, &indexed_fasta_rc_provider);
+    }
 }
 
 #[test]
-fn test_sequence_providers_serialization() {
-    let fasta_file_path = NUCLEOTIDE_ONLY_FA_PATH_1;
-
-    // (1) In memory provider
-    {
-        let mut in_memory_provider = InMemoryProvider::new();
-        in_memory_provider.add_fasta_file(fasta_file_path).unwrap();
-        assert_provider_serialization(&in_memory_provider);
-    }
-    {
-        let mut in_memory_rc_provider = InMemoryRcProvider::new();
-        in_memory_rc_provider.add_fasta_file(fasta_file_path).unwrap();
-        assert_provider_serialization(&in_memory_rc_provider);
-    }
-    // (2) Indexed fasta provider
-    {
-        let mut indexed_fasta_provider = IndexedFastaProvider::new(fasta_file_path).unwrap();
-        assert_provider_serialization(&indexed_fasta_provider);
-    }
-    {
-        let mut indexed_fasta_rc_provider = IndexedFastaRcProvider::new(fasta_file_path).unwrap();
-        assert_provider_serialization(&indexed_fasta_rc_provider);
+fn sequence_providers_serialization() {
+    for fa in [get_lf_fa_path(), get_crlf_fa_path(), get_two_line_fa_path()] {
+        // (1) In memory provider
+        {
+            let mut in_memory_provider = InMemoryProvider::new();
+            in_memory_provider.add_fasta_file(&fa).unwrap();
+            assert_provider_serialization(&in_memory_provider);
+        }
+        {
+            let mut in_memory_rc_provider = InMemoryRcProvider::new();
+            in_memory_rc_provider.add_fasta_file(&fa).unwrap();
+            assert_provider_serialization(&in_memory_rc_provider);
+        }
+        // (2) Indexed fasta provider
+        {
+            let mut indexed_fasta_provider = IndexedFastaProvider::new(&fa).unwrap();
+            assert_provider_serialization(&indexed_fasta_provider);
+        }
+        {
+            let mut indexed_fasta_rc_provider = IndexedFastaRcProvider::new(&fa).unwrap();
+            assert_provider_serialization(&indexed_fasta_rc_provider);
+        }
     }
 }
 
