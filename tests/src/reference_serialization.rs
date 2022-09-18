@@ -1,25 +1,33 @@
-use super::*;
+use super::{
+    Reference,
+    ReferenceBuilder,
+    InMemoryProvider,
+    get_lf_fa_path,
+};
 use std::io::Cursor;
 
-
 #[test]
-fn test_reference_serialization() {
-    let reference_to_save = get_reference();
+fn reference_serialization() {
+    // First saved buffer
+    let first_reference = get_test_reference();
 
-    let mut buffer = Vec::new();
+    let mut buffer_1 = Vec::new();
+    first_reference.save_to(&mut buffer_1).unwrap();
+    
+    let cursor = Cursor::new(buffer_1.clone());
+    let second_reference: Reference<InMemoryProvider> = Reference::load_from(cursor).unwrap();
 
-    reference_to_save.save_to(&mut buffer);
+    // Second saved buffer
+    let mut buffer_2 = Vec::new();
+    second_reference.save_to(&mut buffer_2).unwrap();
 
-    let mut cursor = Cursor::new(buffer);
-
-    let loaded_reference: Reference<InMemoryProvider> = Reference::load_from(cursor).unwrap();
+    assert_eq!(buffer_1, buffer_2);
 }
 
-fn get_reference() -> Reference<InMemoryProvider> {
-    let reference_fasta_path = prepare_reference_1();
-
+fn get_test_reference() -> Reference<InMemoryProvider> {
+    let ref_file = get_lf_fa_path();
     let mut in_memory_provider = InMemoryProvider::new();
-    in_memory_provider.add_fasta_file(&reference_fasta_path).unwrap();
+    in_memory_provider.add_fasta_file(ref_file).unwrap();
 
     ReferenceBuilder::new()
         .search_for_nucleotide_only()

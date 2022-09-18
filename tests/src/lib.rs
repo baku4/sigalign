@@ -23,8 +23,8 @@ use sigalign::sequence_provider::{
 use anyhow::{Result, bail as error_msg};
 
 // Aligner to verifying result
-// mod dp_derived_aligner;
-// use dp_derived_aligner::*;
+mod dp_based_aligner;
+use dp_based_aligner::*;
 
 // Data Path
 pub mod test_data;
@@ -43,8 +43,8 @@ mod read_fasta;
 // Sequence providers provide same information
 #[cfg(test)]
 mod sequence_provider;
-// #[cfg(test)]
-// mod reference_serialization;
+#[cfg(test)]
+mod reference_serialization;
 // #[cfg(test)]
 // mod print_alignment_result_to_cmp;
 
