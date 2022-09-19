@@ -45,4 +45,7 @@ impl<S> Reference<S> where
         self.pattern_finder.get_size_of_bwt_block()
     }
     // Sequence Provider
+    pub fn total_record_count(&self) -> usize {
+        self.sequence_provider.total_record_count()
+    }
 }

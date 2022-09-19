@@ -21,6 +21,7 @@ use sigalign::sequence_provider::{
     IndexedFastaRcProvider,
 };
 use anyhow::{Result, bail as error_msg};
+use ahash::{AHashMap, AHashSet};
 
 // Aligner to verifying result
 mod dp_based_aligner;
