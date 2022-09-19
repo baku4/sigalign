@@ -32,7 +32,7 @@ pub fn get_ref_for_val_path() -> PathBuf {
     path
 }
 pub fn get_qry_for_val_path() -> PathBuf {
-    let mut path = PathBuf::from(BUILD_REF_DIR);
+    let mut path = PathBuf::from(VALIDATE_RES_DIR);
     path.push(QRY_FILE);
     path
 }

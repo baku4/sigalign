@@ -140,7 +140,7 @@ pub fn optimal_local_alignment(
 
         left_alignments_with_length_and_penalty.push((left_alignment, length, penalty));
 
-        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PRECISION_SCALE <= maximum_penalty_per_scale);
+        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PRECISION_SCALE <= maximum_penalty_per_scale * length);
         if satisfy_cutoff_alone {
             break
         }
@@ -158,7 +158,7 @@ pub fn optimal_local_alignment(
         let (length, penalty) = get_length_and_penalty_of_alignment(&right_alignment);
         right_alignments_with_length_and_penalty.push((right_alignment, length, penalty));
 
-        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PRECISION_SCALE <= maximum_penalty_per_scale);
+        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PRECISION_SCALE <= maximum_penalty_per_scale * length);
         if satisfy_cutoff_alone {
             break
         }
@@ -166,25 +166,27 @@ pub fn optimal_local_alignment(
 
     // Find best position
     let mut indices_of_alignment: Vec<IndexOfAlignment> = Vec::new();
-    for (left_index, (_, left_len, left_pen)) in left_alignments_with_length_and_penalty.iter().enumerate() {
-        for (right_index, (_, right_len, right_pen)) in right_alignments_with_length_and_penalty.iter().enumerate() {
+    for (left_index, (left_alignment, left_len, left_pen)) in left_alignments_with_length_and_penalty.iter().enumerate() {
+        for (right_index, (right_alignment, right_len, right_pen)) in right_alignments_with_length_and_penalty.iter().enumerate() {
             let length = left_len + right_len + pattern_size;
+            let query_length = get_query_length(left_alignment) + get_query_length(right_alignment) + pattern_size;
             let penalty = left_pen + right_pen;
             indices_of_alignment.push(
                 IndexOfAlignment {
                     left_alignment_index: left_index,
                     right_alignment_index: right_index,
                     length,
+                    query_length,
                     penalty,
                 }
             )
         }
     }
     // Sort by:
-    //  - (1) Longer length is left
+    //  - (1) Longer query length is left
     //  - (2) smaller penalty is left
     indices_of_alignment.sort_by(|a, b| {
-        if a.length == b.length {
+        if a.query_length == b.query_length {
             a.penalty.partial_cmp(&b.penalty).unwrap()
         } else {
             b.length.partial_cmp(&a.length).unwrap()
@@ -194,7 +196,7 @@ pub fn optimal_local_alignment(
     let optimal_index_of_alignment = {
         let mut optimal_index_of_alignment = None;
         for index_of_alignment in indices_of_alignment {
-            let satisfy_cutoff = (index_of_alignment.length >= minimum_aligned_length) && (index_of_alignment.penalty * PRECISION_SCALE <= maximum_penalty_per_scale);
+            let satisfy_cutoff = (index_of_alignment.length >= minimum_aligned_length) && (index_of_alignment.penalty * PRECISION_SCALE <= maximum_penalty_per_scale * index_of_alignment.length);
 
             if satisfy_cutoff {
                 optimal_index_of_alignment = Some(index_of_alignment);
@@ -239,12 +241,12 @@ fn merge_left_and_right_alignments(
     // Position & Operation
     let position = AlignmentPosition {
         record: (
-            left_alignment.xstart,
-            record_start_position + pattern_size + right_alignment.xend
+            record_start_position - left_alignment.x_aln_len(),
+            record_start_position + pattern_size + right_alignment.x_aln_len()
         ),
         query: (
-            left_alignment.ystart,
-            query_start_position + pattern_size + right_alignment.yend
+            query_start_position - left_alignment.y_aln_len(),
+            query_start_position + pattern_size + right_alignment.y_aln_len()
         ),
     };
 
@@ -300,7 +302,11 @@ struct IndexOfAlignment {
     left_alignment_index: usize,
     right_alignment_index: usize,
     length: usize,
+    query_length: usize,
     penalty: usize,
+}
+fn get_query_length(alignment: &AlignmentFromCrateBio) -> usize {
+    alignment.y_aln_len()
 }
 fn get_length_and_penalty_of_alignment(alignment: &AlignmentFromCrateBio) -> (usize, usize) {
     let length: usize = alignment.operations.iter().map(|op| {
@@ -331,33 +337,31 @@ fn print_sorted_indices_of_alignment() {
 
     let raw_vec: Vec<usize> = (0..index_count).collect();
 
-    let mut left_index = raw_vec.clone();
-    left_index.shuffle(&mut rng);
-    let mut right_index = raw_vec.clone();
-    right_index.shuffle(&mut rng);
     let mut length = raw_vec.clone();
+    let mut query_length = raw_vec.clone();
     for i in index_count / 2..index_count {
-        length[i] = length[i] / 2;
+        query_length[i] = query_length[i] / 2;
     }
-    length.shuffle(&mut rng);
+    query_length.shuffle(&mut rng);
     let mut penalty = raw_vec.clone();
     penalty.shuffle(&mut rng);
     
     let mut ioa_list = Vec::with_capacity(index_count);
 
-    for (((v1, v2), v3), v4) in left_index.iter().zip(right_index.iter()).zip(length.iter()).zip(penalty.iter()) {
+    for ((v1, v2), v3) in length.iter().zip(query_length.iter()).zip(penalty.iter()) {
         ioa_list.push(
             IndexOfAlignment {
-                left_alignment_index: *v1,
-                right_alignment_index: *v2,
-                length: *v3,
-                penalty: *v4,
+                left_alignment_index: 0,
+                right_alignment_index: 0,
+                length: *v1,
+                query_length: *v2,
+                penalty: *v3,
             }
         )
     }
 
     ioa_list.sort_by(|a, b| {
-        if a.length == b.length {
+        if a.query_length == b.query_length {
             a.penalty.partial_cmp(&b.penalty).unwrap()
         } else {
             b.length.partial_cmp(&a.length).unwrap()
