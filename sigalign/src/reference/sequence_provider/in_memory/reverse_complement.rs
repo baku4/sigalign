@@ -19,7 +19,6 @@ use super::{InMemoryProvider, InMemoryBuffer};
 use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
-use bincode::{serialize_into, deserialize_from};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InMemoryRcProvider(InMemoryProvider);

@@ -18,7 +18,6 @@ use crate::util::FastaReader;
 
 use capwriter::{Saveable, Loadable};
 use serde::{Serialize, Deserialize};
-use bincode::{serialize_into, deserialize_from};
 
 mod reverse_complement;
 pub use reverse_complement::InMemoryRcProvider;

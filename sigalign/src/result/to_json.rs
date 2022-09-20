@@ -28,6 +28,7 @@ use serde_json::{
     to_string_pretty,
     to_writer,
     to_writer_pretty,
+    from_str,
 };
 
 impl FastaAlignmentResult {
@@ -42,6 +43,9 @@ impl FastaAlignmentResult {
     }
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
+    }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
     }
 }
 
@@ -58,6 +62,9 @@ impl ReadAlignmentResult {
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
     }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
+    }
 }
 impl AlignmentResult {
     pub fn to_json(&self) -> String {
@@ -71,6 +78,9 @@ impl AlignmentResult {
     }
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
+    }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
     }
 }
 impl FastaAlignmentLabeledResult {
@@ -86,6 +96,9 @@ impl FastaAlignmentLabeledResult {
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
     }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
+    }
 }
 impl ReadAlignmentLabeledResult {
     pub fn to_json(&self) -> String {
@@ -99,6 +112,9 @@ impl ReadAlignmentLabeledResult {
     }
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
+    }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
     }
 }
 impl AlignmentLabeledResult {
@@ -114,6 +130,9 @@ impl AlignmentLabeledResult {
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
     }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
+    }
 }
 impl RecordAlignmentLabeledResult {
     pub fn to_json(&self) -> String {
@@ -127,5 +146,17 @@ impl RecordAlignmentLabeledResult {
     }
     pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
         to_writer_pretty(writer, self).unwrap()
+    }
+    pub fn from_json(s: &str) -> Result<Self> {
+        translate_str_to_result(s)
+    }
+}
+
+fn translate_str_to_result<'a, T>(s: &'a str) -> Result<T> where
+    T: Deserialize<'a>
+{
+    match from_str(s) {
+        Ok(v) => Ok(v),
+        Err(e) => error_msg!("Str to result translation failed. {}", e),
     }
 }
