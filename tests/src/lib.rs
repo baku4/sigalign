@@ -35,7 +35,17 @@ use test_data::{
     get_two_line_fa_path,
     get_ref_for_val_path,
     get_qry_for_val_path,
+    get_local_tmp_dir,
 };
+
+use log::{info, warn, error};
+#[cfg(test)]
+pub fn init_logger() {
+    let _ = env_logger::builder()
+        .target(env_logger::Target::Stdout)
+        .is_test(true)
+        .try_init();
+}
 
 // Test Main
 // Fasta reader can read various type of FASTA formatted file
@@ -46,43 +56,7 @@ mod read_fasta;
 mod sequence_provider;
 #[cfg(test)]
 mod reference_serialization;
+#[cfg(test)]
+mod same_result_with_dp;
 // #[cfg(test)]
 // mod print_alignment_result_to_cmp;
-
-
-
-#[test]
-fn test_dp_based_alignment() {
-    let ref_file = get_ref_for_val_path();
-    let qry_file = get_qry_for_val_path();
-
-    // Build reference
-    let mut sequence_provider = InMemoryProvider::new();
-    sequence_provider.add_fasta_file(ref_file).unwrap();
-
-    let reference = ReferenceBuilder::new()
-        .change_bwt_vector_size_to_128()
-        .change_count_array_kmer(4).unwrap()
-        .change_suffix_array_sampling_ratio(2).unwrap()
-        .build(sequence_provider).unwrap();
-
-    // Gen aligner
-    let dp_based_aligner = DpBasedAligner::new(
-        4,
-        6,
-        2,
-        50,
-        0.1,
-    );
-
-    println!("dp_based_aligner: {:?}", dp_based_aligner);
-
-    // Do alignment
-    let mut qry_reader = FastaReader::from_file_path(qry_file).unwrap();
-    for _ in 0.. 4 {
-        let (label, query) = qry_reader.next().unwrap();
-        let alignment_result = dp_based_aligner.local_alignment(&reference, &query);
-
-        println!("alignment_result: \n{:?}", alignment_result);
-    }
-}

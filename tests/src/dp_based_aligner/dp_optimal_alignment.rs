@@ -113,7 +113,7 @@ pub fn optimal_local_alignment(
     }).collect();
 
     let right_query_len = right_query.len();
-    let right_substrings: Vec<&[u8]> = (0..right_query_len).map(|right_query_end_index| {
+    let right_substrings: Vec<&[u8]> = (1..=right_query_len).map(|right_query_end_index| {
         &right_query[..right_query_end_index]
     }).rev().collect();
 
@@ -127,7 +127,8 @@ pub fn optimal_local_alignment(
 
     // Get Alignments of all substring
     //  - Left
-    let mut left_alignments_with_length_and_penalty: Vec<(AlignmentFromCrateBio, usize, usize)> = Vec::with_capacity(left_substrings.len());
+    let mut left_alignments_with_length_and_penalty: Vec<(AlignmentFromCrateBio, usize, usize)> = Vec::with_capacity(left_substrings.len()+1);
+    left_alignments_with_length_and_penalty.push((AlignmentFromCrateBio::default(), 0, 0));
     for left_substring in left_substrings {
         let left_scoring = if left_record.len() > left_substring.len() {
             scoring.clone().xclip_prefix(0)
@@ -145,8 +146,10 @@ pub fn optimal_local_alignment(
             break
         }
     }
+    
     //  - Right
-    let mut right_alignments_with_length_and_penalty: Vec<(AlignmentFromCrateBio, usize, usize)> = Vec::with_capacity(right_substrings.len());
+    let mut right_alignments_with_length_and_penalty: Vec<(AlignmentFromCrateBio, usize, usize)> = Vec::with_capacity(right_substrings.len()+1);
+    right_alignments_with_length_and_penalty.push((AlignmentFromCrateBio::default(), 0, 0));
     for right_substring in right_substrings {
         let right_scoring = if right_record.len() > right_query.len() {
             scoring.clone().xclip_suffix(0)
@@ -205,7 +208,7 @@ pub fn optimal_local_alignment(
         }
         optimal_index_of_alignment
     };
-
+    
     match optimal_index_of_alignment {
         Some(index_of_alignment) => {
             let (left_alignment, _, _) = &left_alignments_with_length_and_penalty[index_of_alignment.left_alignment_index];

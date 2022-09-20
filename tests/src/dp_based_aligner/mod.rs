@@ -1,19 +1,6 @@
 use ahash::{AHashMap, AHashSet};
 
-use super::{
-    Aligner,
-    Reference,
-    ReferenceInterface,
-    SequenceBuffer,
-    InMemoryProvider,
-    PRECISION_SCALE,
-    AlignmentResult,
-    RecordAlignmentResult,
-    AnchorAlignmentResult,
-    AlignmentOperation,
-    AlignmentCase,
-    PatternLocation,
-};
+use super::*;
 
 mod dp_optimal_alignment;
 use dp_optimal_alignment::{
@@ -53,9 +40,9 @@ impl DpBasedAligner {
             pattern_size,
         }
     }
-    pub fn semi_global_alignment(
+    pub fn semi_global_alignment<S: SequenceProvider>(
         &self,
-        reference: &Reference<InMemoryProvider>,
+        reference: &Reference<S>,
         query: &[u8],
     ) -> AlignmentResult {
         self.do_alignment(
@@ -64,9 +51,9 @@ impl DpBasedAligner {
             optimal_semi_global_alignment,
         )
     }
-    pub fn local_alignment(
+    pub fn local_alignment<S: SequenceProvider>(
         &self,
-        reference: &Reference<InMemoryProvider>,
+        reference: &Reference<S>,
         query: &[u8],
     ) -> AlignmentResult {
         self.do_alignment(
@@ -75,13 +62,14 @@ impl DpBasedAligner {
             optimal_local_alignment,
         )
     }
-    fn do_alignment<F>(
+    fn do_alignment<S, F>(
         &self,
-        reference: &Reference<InMemoryProvider>,
+        reference: &Reference<S>,
         query: &[u8],
         alignment_algorithm: F,
     ) -> AlignmentResult where
-        F: Fn(&[u8], &[u8], usize, usize, usize, usize, usize, usize, usize, usize) ->  Option<AnchorAlignmentResult>
+        S: SequenceProvider,
+        F: Fn(&[u8], &[u8], usize, usize, usize, usize, usize, usize, usize, usize) ->  Option<AnchorAlignmentResult>,
     {
         let alignment_start_positions_by_record = self.get_alignment_start_position(reference, query);
         let mut sequence_buffer = reference.get_buffer();
@@ -120,9 +108,9 @@ impl DpBasedAligner {
         }
         AlignmentResult(record_alignment_results)
     }
-    fn get_alignment_start_position(
+    fn get_alignment_start_position<S: SequenceProvider>(
         &self,
-        reference: &Reference<InMemoryProvider>,
+        reference: &Reference<S>,
         query: &[u8],
     ) -> AHashMap<usize, Vec<AlignmentStartPosition>> {
         // Slice query to patterns

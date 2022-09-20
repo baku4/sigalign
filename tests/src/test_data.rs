@@ -23,9 +23,9 @@ pub fn get_two_line_fa_path() -> PathBuf {
 }
 
 // For result validation
-pub const VALIDATE_RES_DIR: &str = "test_data/validate_result";
-pub const REF_FILE: &str = "reference.fa";
-pub const QRY_FILE: &str = "query.fa";
+const VALIDATE_RES_DIR: &str = "test_data/validate_result";
+const REF_FILE: &str = "reference.fa";
+const QRY_FILE: &str = "query.fa";
 pub fn get_ref_for_val_path() -> PathBuf {
     let mut path = PathBuf::from(VALIDATE_RES_DIR);
     path.push(REF_FILE);
@@ -37,18 +37,21 @@ pub fn get_qry_for_val_path() -> PathBuf {
     path
 }
 
-fn get_sample_data_dir() -> Result<PathBuf> {
-    let current_dir = env::current_dir()?;
-    
-    let sample_data_dir = current_dir.join(BUILD_REF_DIR);
+// For data caching
+const LOCAL_TMP_DIR: &str = "tmp";
+pub fn get_local_tmp_dir() -> Result<PathBuf> {
+    // let current_dir = env::current_dir()?;
+    // let local_tmp_dir = current_dir.join(LOCAL_TMP_DIR);
 
-    if sample_data_dir.exists() {
-        if !sample_data_dir.is_dir() {
-            error_msg!("Sample data path is not directory")
+    let local_tmp_dir = PathBuf::from(LOCAL_TMP_DIR);
+
+    if local_tmp_dir.exists() {
+        if !local_tmp_dir.is_dir() {
+            error_msg!("Local tmp path {:?} is not directory", local_tmp_dir)
         }
     } else {
-        fs::create_dir(&sample_data_dir)?;
+        fs::create_dir(&local_tmp_dir)?;
     }
 
-    Ok(sample_data_dir)
+    Ok(local_tmp_dir)
 }
