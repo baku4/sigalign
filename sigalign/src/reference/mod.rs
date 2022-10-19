@@ -35,8 +35,8 @@
             - The larger the value, the larger the memory usage, but the faster the algorithm.
             - Since memory usage increases exponentially with the number of characters supported by the sequence type, it is not recommended to increase this value too much.
     - `LtFmIndexConfig` is optional parameter for `Reference` generation. If `LtFmIndexConfig` is not passed, the default config is used.
-3. [SequenceProvider]
-    - `SequenceProvider` is `trait` to provide sequence to `Reference`.
+3. [SequenceStorage]
+    - `SequenceStorage` is `trait` to provide sequence to `Reference`.
     - It require **two** methods.
         - `total_record_count` to get the number of records.
         - `sequence_of_record` to get sequence from index of record.
@@ -45,9 +45,9 @@
             - The "joined_sequence" means the sequence of concatenated sequences of all record.
             - The "accumulated_lengths" means the accumulated sequence lengths from 0 to the sum of the lengths of all sequences.
             - For examples, if there are three records with "ATT", "CC", "GGGG", the "joined_sequence" is "ATTCCGGGG" and the "accumulated_lengths" is [0, 3, 5, 9].
-        - Since this "joined_sequence" can be very large in size (because there is all sequence), the strategy of memory allocation can be different for each sequence provider. For example, if the length of the entire sequence can be known in advance, allocating whole memory at once is faster than summing up each sequence.
-        - Therefore, according to the size of the entire sequence and the characteristics of the sequence provider, whether to override this method or not can be determined by user.
-    - `SequenceProvider` is mutable inside the `Reference`.
+        - Since this "joined_sequence" can be very large in size (because there is all sequence), the strategy of memory allocation can be different for each sequence storage. For example, if the length of the entire sequence can be known in advance, allocating whole memory at once is faster than summing up each sequence.
+        - Therefore, according to the size of the entire sequence and the characteristics of the sequence storage, whether to override this method or not can be determined by user.
+    - `SequenceStorage` is mutable inside the `Reference`.
         - A buffer or pointer may be required.
 
 # (2) Search range
@@ -84,39 +84,39 @@ pub use structure::{
 // Features for Reference
 mod feature;
 pub use feature::{
-    // For sequence provider
-    LabelProvider, ReverseComplement,
+    // For sequence storage
+    LabelStorage, ReverseComplement,
 };
 
-/// Definition and interfaces for `SequenceProvider`
-pub mod sequence_provider;
-pub use sequence_provider::SequenceProvider;
+/// Definition and interfaces for `SequenceStorage`
+pub mod sequence_storage;
+pub use sequence_storage::SequenceStorage;
 
 /// A bundle of alignment target sequences.
 #[derive(Debug)]
 pub struct Reference<S> where
-    S: SequenceProvider,
+    S: SequenceStorage,
 {
     pub sequence_type: SequenceType,
     pub pattern_finder: PatternFinder,
     pub target_record_index: Vec<u32>,
-    pub sequence_provider: S,
+    pub sequence_storage: S,
 }
 
 impl<S> Reference<S> where
-    S: SequenceProvider,
+    S: SequenceStorage,
 {
     pub(crate) fn new(
         sequence_type: SequenceType,
         pattern_finder: PatternFinder,
         target_record_index: Vec<u32>,
-        sequence_provider: S
+        sequence_storage: S
     ) -> Self {
         Self {
             sequence_type,
             pattern_finder,
             target_record_index,
-            sequence_provider,
+            sequence_storage: sequence_storage,
         }
     }
 }

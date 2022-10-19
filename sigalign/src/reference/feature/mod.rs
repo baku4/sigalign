@@ -6,7 +6,7 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     // Requirement for struct
     Serializable, SizeAware,
     // Basic struct
@@ -21,6 +21,6 @@ mod labeling;
 mod reverse_complement;
 mod debug;
 
-// For sequence provider
-pub use labeling::LabelProvider;
+// For sequence storage
+pub use labeling::LabelStorage;
 pub use reverse_complement::ReverseComplement;

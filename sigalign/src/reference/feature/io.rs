@@ -6,7 +6,7 @@ use super::{
     ReferenceInterface, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     // Traits implemented by structures
     Serializable, SizeAware,
     // Common data structures for Reference
@@ -22,7 +22,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use capwriter::{Saveable, Loadable};
 
 impl<S> Reference<S> where
-    S: SequenceProvider + Serializable,
+    S: SequenceStorage + Serializable,
 {
     pub fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
@@ -33,8 +33,8 @@ impl<S> Reference<S> where
         self.sequence_type.save_to(&mut writer)?;
         // Save 'pattern_finder'
         self.pattern_finder.save_to(&mut writer)?;
-        // Save 'sequence_provider'
-        self.sequence_provider.save_to(&mut writer)?;
+        // Save 'sequence_storage'
+        self.sequence_storage.save_to(&mut writer)?;
         Ok(())
     }
     pub fn load_from<R>(mut reader: R) -> Result<Self> where
@@ -47,19 +47,19 @@ impl<S> Reference<S> where
         let sequence_type = SequenceType::load_from(&mut reader)?;
         // Load 'pattern_finder'
         let pattern_finder = PatternFinder::load_from(&mut reader)?;
-        // Load 'sequence_provider'
-        let sequence_provider = S::load_from(&mut reader)?;
+        // Load 'sequence_storage'
+        let sequence_storage = S::load_from(&mut reader)?;
         Ok(Self {
             sequence_type,
             pattern_finder,
             target_record_index,
-            sequence_provider,
+            sequence_storage: sequence_storage,
         })
     }
 }
 
 impl<S> Reference<S> where
-    S: SequenceProvider + Serializable + SizeAware,
+    S: SequenceStorage + Serializable + SizeAware,
 {
     /// Save to file
     pub fn save_to_file<P: AsRef<Path>>(&self, file_path: P) -> Result<()> {
@@ -75,6 +75,6 @@ impl<S> Reference<S> where
         self.target_record_index.size_of() // target_record_index
         + self.sequence_type.size_of() // sequence_type
         + self.pattern_finder.size_of() // pattern_finder
-        + self.sequence_provider.size_of() // sequence_provider
+        + self.sequence_storage.size_of() // sequence_storage
     }
 }

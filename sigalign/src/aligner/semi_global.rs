@@ -4,7 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     AlignerInterface,
 };
 use super::{AlignmentCondition, WaveFrontCache, SingleWaveFrontCache};
@@ -25,7 +25,7 @@ impl AlignerInterface for SemiGlobalAligner {
         }
     }
     fn alignment<S>(&mut self, reference: &Reference<S>, sequence_buffer: &mut S::Buffer, query: Sequence) -> AlignmentResult where
-        S: SequenceProvider,
+        S: SequenceStorage,
     {
         self.wave_front_cache.allocate_more_if_necessary(query.len(), &self.condition.penalties, &self.condition.cutoff);
         let reference_alignment_result = semi_global_alignment_algorithm(

@@ -4,7 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceProvider, SequenceType, JoinedSequence, PatternFinder,
+    Reference, SequenceStorage, SequenceType, JoinedSequence, PatternFinder,
 };
 
 // About options
@@ -55,8 +55,8 @@ impl ReferenceBuilder {
             pattern_finder_option: PatternFinderOption::default(),
         }
     }
-    pub fn build<S: SequenceProvider>(self, sequence_provider: S) -> Result<Reference<S>> {
-        let joined_sequence = sequence_provider.get_joined_sequence();
+    pub fn build<S: SequenceStorage>(self, sequence_storage: S) -> Result<Reference<S>> {
+        let joined_sequence = sequence_storage.get_joined_sequence();
         
         let sequence_type = match self.sequence_type_option.sequence_type {
             Some(sequence_type) => sequence_type,
@@ -86,13 +86,13 @@ impl ReferenceBuilder {
             kmer_size_for_lookup_table,
         )?;
 
-        let target_record_index: Vec<u32> = (0..sequence_provider.total_record_count()).map(|v| v as u32).collect();
+        let target_record_index: Vec<u32> = (0..sequence_storage.total_record_count()).map(|v| v as u32).collect();
 
         Ok(Reference::new(
             sequence_type,
             pattern_finder,
             target_record_index,
-            sequence_provider,
+            sequence_storage,
         ))
     }
 }

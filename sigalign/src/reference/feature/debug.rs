@@ -6,12 +6,12 @@ use super::{
     ReferenceInterface, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     SequenceType, PatternFinder, Serializable,
 };
 
 impl<S> Reference<S> where
-    S: SequenceProvider,
+    S: SequenceStorage,
 {
     // Sequence Type
     pub fn get_whether_text_type_is_nucleotide(&self) -> bool {
@@ -44,8 +44,8 @@ impl<S> Reference<S> where
     pub fn get_size_of_bwt_block(&self) -> usize {
         self.pattern_finder.get_size_of_bwt_block()
     }
-    // Sequence Provider
+    // Sequence Storage
     pub fn total_record_count(&self) -> usize {
-        self.sequence_provider.total_record_count()
+        self.sequence_storage.total_record_count()
     }
 }

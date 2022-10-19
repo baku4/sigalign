@@ -6,7 +6,7 @@ use crate::core::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use crate::reference::{
-    Reference, SequenceProvider, SequenceType, JoinedSequence, PatternFinder,
+    Reference, SequenceStorage, SequenceType, JoinedSequence, PatternFinder,
 };
 
 // Builders

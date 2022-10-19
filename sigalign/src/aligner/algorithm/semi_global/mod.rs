@@ -3,13 +3,13 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
 };
 
 use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchor};
 use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
 
-pub fn semi_global_alignment_algorithm<S: SequenceProvider>(
+pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
     reference: &Reference<S>,
     sequence_buffer: &mut S::Buffer,
     query: Sequence,

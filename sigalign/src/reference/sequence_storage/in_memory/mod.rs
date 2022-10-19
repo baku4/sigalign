@@ -6,11 +6,11 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider, JoinedSequence,
+    Reference, SequenceStorage, JoinedSequence,
     SequenceType, PatternFinder,
     // traits
     Divisible, Serializable, SizeAware,
-    LabelProvider,
+    LabelStorage,
     ReverseComplement,
 };
 
@@ -20,11 +20,11 @@ use capwriter::{Saveable, Loadable};
 use serde::{Serialize, Deserialize};
 
 mod reverse_complement;
-pub use reverse_complement::InMemoryRcProvider;
+pub use reverse_complement::InMemoryRcStorage;
 
-/// Basic `SequenceProvider` implementation
+/// Basic `SequenceStorage` implementation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InMemoryProvider {
+pub struct InMemoryStorage {
     record_count: usize,
     combined_sequence: Vec<u8>,
     sequence_index: Vec<usize>,
@@ -32,7 +32,7 @@ pub struct InMemoryProvider {
     label_index: Vec<usize>,
 }
 
-impl InMemoryProvider {
+impl InMemoryStorage {
     pub fn new() -> Self {
         Self {
             record_count: 0,
@@ -84,8 +84,8 @@ impl SequenceBuffer for InMemoryBuffer {
     }
 }
 
-// Sequence Provider
-impl SequenceProvider for InMemoryProvider {
+// Sequence Storage
+impl SequenceStorage for InMemoryStorage {
     type Buffer = InMemoryBuffer;
 
     fn total_record_count(&self) -> usize {
@@ -110,8 +110,8 @@ impl SequenceProvider for InMemoryProvider {
     }
 }
 
-// Label Provider
-impl LabelProvider for InMemoryProvider {
+// Label Storage
+impl LabelStorage for InMemoryStorage {
     fn label_of_record(&self, record_index: usize) -> String {
         String::from(&self.combined_label[
             self.label_index[record_index]..self.label_index[record_index+1]
@@ -123,7 +123,7 @@ use crate::{EndianType};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
 // Serializable
-impl Serializable for InMemoryProvider {
+impl Serializable for InMemoryStorage {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: std::io::Write
     {
@@ -170,7 +170,7 @@ impl Serializable for InMemoryProvider {
 }
 
 // SizeAware
-impl SizeAware for InMemoryProvider {
+impl SizeAware for InMemoryStorage {
     fn size_of(&self) -> usize {
         8 // record_count
         + self.combined_sequence.size_of() // combined_sequence
@@ -181,7 +181,7 @@ impl SizeAware for InMemoryProvider {
 }
 
 // Divisible
-impl Divisible for InMemoryProvider {
+impl Divisible for InMemoryStorage {
     fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
         // Get record index range list
         let record_index_range_list = self.record_index_range_list_of_max_length(max_seq_len);
@@ -192,7 +192,7 @@ impl Divisible for InMemoryProvider {
         Ok(splitted)
     }
 }
-impl InMemoryProvider {
+impl InMemoryStorage {
     fn record_index_range_list_of_max_length(&self, max_seq_len: usize) -> Vec<(usize, usize)> {
         let mut record_index_range_list = Vec::new(); // (start index, last index)
         let mut start_record_index = 0;
@@ -263,40 +263,40 @@ mod tests {
 
     #[test]
     fn record_index_range_list_of_max_length() {
-        check_splitted_provider_with_fasta_file("c:\\Users\\khun\\Downloads\\sa_test_mg\\test_ref_seq.fa")
+        check_splitted_storage_with_fasta_file("c:\\Users\\khun\\Downloads\\sa_test_mg\\test_ref_seq.fa")
     }
 
-    fn check_splitted_provider_with_fasta_file(fasta_file: &str) {
+    fn check_splitted_storage_with_fasta_file(fasta_file: &str) {
         // Original
-        let mut in_memory_provider = InMemoryRcProvider::new();
-        in_memory_provider.add_fasta_file(fasta_file);
-        let mut org_label_list: Vec<String> = Vec::with_capacity(in_memory_provider.total_record_count());
-        let mut org_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_provider.total_record_count());
-        for idx in 0..in_memory_provider.total_record_count() {
+        let mut in_memory_storage = InMemoryRcStorage::new();
+        in_memory_storage.add_fasta_file(fasta_file);
+        let mut org_label_list: Vec<String> = Vec::with_capacity(in_memory_storage.total_record_count());
+        let mut org_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_storage.total_record_count());
+        for idx in 0..in_memory_storage.total_record_count() {
             // Label
-            let label = in_memory_provider.label_of_record(idx);
+            let label = in_memory_storage.label_of_record(idx);
             org_label_list.push(label);
             // Seq
-            let mut buffer = in_memory_provider.get_buffer();
-            in_memory_provider.fill_sequence_buffer(idx, &mut buffer);
+            let mut buffer = in_memory_storage.get_buffer();
+            in_memory_storage.fill_sequence_buffer(idx, &mut buffer);
             let seq = buffer.request_sequence().to_vec();
             org_seq_list.push(seq);
         }
     
         // Splitted
-        let mut splitted_label_list: Vec<String> = Vec::with_capacity(in_memory_provider.total_record_count());
-        let mut splitted_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_provider.total_record_count());
+        let mut splitted_label_list: Vec<String> = Vec::with_capacity(in_memory_storage.total_record_count());
+        let mut splitted_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_storage.total_record_count());
     
-        let splitted = in_memory_provider.split_by_max_length(10000).unwrap();
+        let splitted = in_memory_storage.split_by_max_length(10000).unwrap();
         println!("splitted_len: {}", splitted.len());
     
-        for (idx, in_memory_provider) in splitted.into_iter().enumerate() {
-            for ridx in 0..in_memory_provider.total_record_count() {
-                let label = in_memory_provider.label_of_record(ridx);
+        for (idx, in_memory_storage) in splitted.into_iter().enumerate() {
+            for ridx in 0..in_memory_storage.total_record_count() {
+                let label = in_memory_storage.label_of_record(ridx);
                 splitted_label_list.push(label);
     
-                let mut buffer = in_memory_provider.get_buffer();
-                in_memory_provider.fill_sequence_buffer(ridx, &mut buffer);
+                let mut buffer = in_memory_storage.get_buffer();
+                in_memory_storage.fill_sequence_buffer(ridx, &mut buffer);
                 // let seq = String::from_utf8(buffer.request_sequence().to_vec()).unwrap();
                 let seq = buffer.request_sequence().to_vec();
                 splitted_seq_list.push(seq);

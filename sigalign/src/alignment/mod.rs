@@ -12,8 +12,8 @@ use crate::aligner::{
     LocalAligner,
     SemiGlobalAligner,
     Reference,
-    SequenceProvider,
-    LabelProvider,
+    SequenceStorage,
+    LabelStorage,
 };
 use crate::result::{
     FastaAlignmentLabeledResult,

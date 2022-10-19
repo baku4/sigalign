@@ -15,8 +15,8 @@ pub use crate::core::{
 };
 pub(crate) use crate::reference::{
     Reference,
-    SequenceProvider,
-    LabelProvider,
+    SequenceStorage,
+    LabelStorage,
 };
 
 // Result structures

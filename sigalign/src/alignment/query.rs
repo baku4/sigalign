@@ -11,8 +11,8 @@ use super::{
     LocalAligner,
     SemiGlobalAligner,
     Reference,
-    SequenceProvider,
-    LabelProvider,
+    SequenceStorage,
+    LabelStorage,
 };
 use super::{
     FastaAlignmentLabeledResult,
@@ -37,7 +37,7 @@ use std::io::{Write, Read};
 
 
 impl Aligner {
-    pub fn query_alignment<S: SequenceProvider>(
+    pub fn query_alignment<S: SequenceStorage>(
         &mut self,
         reference: &Reference<S>,
         query: Sequence,
@@ -51,7 +51,7 @@ impl Aligner {
             Algorithms::Local(aligner) => aligner.alignment(reference, &mut sequence_buffer, query),
         })
     }
-    pub fn query_alignment_unchecked<S: SequenceProvider>(
+    pub fn query_alignment_unchecked<S: SequenceStorage>(
         &mut self,
         reference: &Reference<S>,
         query: Sequence,
@@ -62,7 +62,7 @@ impl Aligner {
             Algorithms::Local(aligner) => aligner.alignment(reference, &mut sequence_buffer, query),
         }
     }
-    pub fn query_labeled_alignment<SL: SequenceProvider + LabelProvider>(
+    pub fn query_labeled_alignment<SL: SequenceStorage + LabelStorage>(
         &mut self,
         reference: &Reference<SL>,
         query: Sequence,
@@ -77,7 +77,7 @@ impl Aligner {
         };
         Ok(alignment_result.to_labeled(reference))
     }
-    pub fn query_labeled_alignment_unchecked<SL: SequenceProvider + LabelProvider>(
+    pub fn query_labeled_alignment_unchecked<SL: SequenceStorage + LabelStorage>(
         &mut self,
         reference: &Reference<SL>,
         query: Sequence,

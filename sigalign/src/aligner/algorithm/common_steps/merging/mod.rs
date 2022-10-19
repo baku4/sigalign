@@ -3,7 +3,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
 };
 
 impl AlignmentOperation {

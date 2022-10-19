@@ -4,7 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceProvider, SequenceType, JoinedSequence, PatternFinder,
+    Reference, SequenceStorage, SequenceType, JoinedSequence, PatternFinder,
 };
 use super::{
     ReferenceBuilder, SequenceTypeOption, PatternFinderOption,

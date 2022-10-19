@@ -6,41 +6,44 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider, JoinedSequence,
+    Reference, SequenceStorage, JoinedSequence,
     SequenceType, PatternFinder,
+    // Trait
     Serializable, SizeAware,
-    LabelProvider,
+    LabelStorage,
     ReverseComplement,
 };
-use super::{IndexedFastaProvider, IndexedFastaBuffer};
+use super::{
+    IndexedFastaStorage,
+    IndexedFastaBuffer,
+    FaiIndexedFasta,
+};
 
-use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
-
+use std::ffi::{OsString, OsStr};
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
 use std::fs::File;
 use std::cell::{Cell, RefCell};
 use std::sync::{Arc, Mutex};
-use std::path::Path;
-use serde::{Serialize, Deserialize};
+use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct IndexedFastaRcProvider(
-    pub(super) IndexedFastaProvider
-);
+use crate::util::reverse_complement_of_nucleotide_sequence;
 
-impl IndexedFastaRcProvider {
+pub struct IndexedFastaRcStorage(pub(super) IndexedFastaStorage);
+
+impl IndexedFastaRcStorage {
     pub fn new<P>(fasta_file_path: P) -> Result<Self> where
         P: AsRef<Path> + std::fmt::Debug,
     {
-        let indexed_fasta_provider = IndexedFastaProvider::new(fasta_file_path)?;
-        Ok(Self(indexed_fasta_provider))
+        let indexed_fasta_storage = IndexedFastaStorage::new(fasta_file_path)?;
+        
+        Ok(Self(indexed_fasta_storage))
     }
-    pub fn to_non_rc_provider(self) -> IndexedFastaProvider {
+    pub fn to_non_rc_storage(self) -> IndexedFastaStorage {
         self.0
     }
 }
 
-impl SequenceProvider for IndexedFastaRcProvider {
+impl SequenceStorage for IndexedFastaRcStorage {
     type Buffer = IndexedFastaBuffer;
 
     fn total_record_count(&self) -> usize {
@@ -62,36 +65,31 @@ impl SequenceProvider for IndexedFastaRcProvider {
     }
 }
 
-// Serializable
-impl Serializable for IndexedFastaRcProvider {
-    fn save_to<W>(&self, writer: W) -> Result<()> where
-        W: std::io::Write
-    {
-        self.0.save_to(writer)
-    }
-    fn load_from<R>(reader: R) -> Result<Self> where
-        R: std::io::Read,
-        Self: Sized,
-    {
-        let inner = IndexedFastaProvider::load_from(reader)?;
-        Ok(Self(inner))
-    }
-}
-
-// Size aware
-impl SizeAware for IndexedFastaRcProvider {
-    fn size_of(&self) -> usize {
-        self.0.size_of()
-    }
-}
-
 // Reverse Complement
-impl ReverseComplement for IndexedFastaRcProvider {
+impl ReverseComplement for IndexedFastaRcStorage {
     fn is_reverse_complement(&self, record_index: usize) -> bool {
         if record_index % 2 == 0 {
             false
         } else {
             true
         }
+    }
+}
+
+// Serializable
+impl Serializable for IndexedFastaRcStorage {
+    fn save_to<W>(&self, writer: W) -> Result<()> where W: Write {
+        self.0.save_to(writer)
+    }
+    fn load_from<R>(reader: R) -> Result<Self> where R: Read, Self: Sized {
+        let indexed_fasta_storage = IndexedFastaStorage::load_from(reader)?;
+        Ok(Self(indexed_fasta_storage))
+    }
+}
+
+// SizeAware
+impl SizeAware for IndexedFastaRcStorage {
+    fn size_of(&self) -> usize {
+        self.0.size_of()
     }
 }

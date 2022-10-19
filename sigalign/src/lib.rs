@@ -5,21 +5,21 @@ Similarity Guided Alignment
 # Quick Start
 ```rust
 use sigalign::{Aligner, ReferenceBuilder};
-use sigalign::sequence_provider::InMemoryProvider;
+use sigalign::sequence_storage::InMemoryStorage;
 
 // (1) Make `Reference`
-//  - Make `SequenceProvider`
-let mut sequence_provider = InMemoryProvider::new();
-sequence_provider.add_record(
+//  - Make `SequenceStorage`
+let mut sequence_storage = InMemoryStorage::new();
+sequence_storage.add_record(
     b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
     "record_1"
 );
-sequence_provider.add_record(
+sequence_storage.add_record(
     b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
     "record_2",
 );
-//  - Pass `SequenceProvider` to `ReferenceBuilder`
-let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+//  - Pass `SequenceStorage` to `ReferenceBuilder`
+let reference = ReferenceBuilder::new().build(sequence_storage).unwrap();
 
 // (2) Make `Aligner`
 let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
@@ -44,10 +44,10 @@ type SizedUint = u64;
 type SizedUint = u32;
 
 #[doc(hidden)]
-// (1) Default Modules
+// (1) Core structures
 pub mod core;
-#[doc(hidden)]
-pub mod util;
+// (2) Utility for library
+
 // (2) Reference implementation
 mod reference;
 // (3) Aligner and result
@@ -58,11 +58,14 @@ pub mod result;
 mod alignment; // Alignment functions
 mod builder; // Struct builders
 
+pub mod util;
+
+
 mod tests;
 
 
-// Publics
-pub use reference::{Reference, sequence_provider};
+// Publics Structure
+pub use reference::{Reference, sequence_storage};
 pub use aligner::Aligner;
 pub use builder::ReferenceBuilder;
 
@@ -72,21 +75,21 @@ mod example {
     #[test]
     fn test_get_result_tmp() {
         use crate::{Aligner, ReferenceBuilder};
-        use crate::sequence_provider::InMemoryProvider;
+        use crate::sequence_storage::InMemoryStorage;
 
         // (1) Make `Reference`
-        //  - Make `SequenceProvider`
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_record(
+        //  - Make `SequenceStorage`
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_record(
             b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
             "record_1"
         );
-        sequence_provider.add_record(
+        sequence_storage.add_record(
             b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
             "record_2",
         );
-        //  - Pass `SequenceProvider` to `ReferenceBuilder`
-        let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+        //  - Pass `SequenceStorage` to `ReferenceBuilder`
+        let reference = ReferenceBuilder::new().build(sequence_storage).unwrap();
 
         // (2) Make `Aligner`
         let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
@@ -100,18 +103,18 @@ mod example {
     #[test]
     fn test_save_and_load_tmp() {
         use crate::{Aligner, Reference, ReferenceBuilder};
-        use crate::sequence_provider::InMemoryProvider;
+        use crate::sequence_storage::InMemoryStorage;
 
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_record(
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_record(
             b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
             "record_1"
         );
-        sequence_provider.add_record(
+        sequence_storage.add_record(
             b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
             "record_2",
         );
-        let reference = ReferenceBuilder::new().build(sequence_provider).unwrap();
+        let reference = ReferenceBuilder::new().build(sequence_storage).unwrap();
 
         let mut buffer: Vec<u8> = Vec::new();
 
@@ -121,7 +124,7 @@ mod example {
         println!("{}", buffer.len());
         let cursor = Cursor::new(buffer);
 
-        let loaded_reference: Reference<InMemoryProvider> = Reference::load_from(cursor).unwrap();
+        let loaded_reference: Reference<InMemoryStorage> = Reference::load_from(cursor).unwrap();
 
         let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
         let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";

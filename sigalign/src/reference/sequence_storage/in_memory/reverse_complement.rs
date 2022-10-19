@@ -6,26 +6,26 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider, JoinedSequence,
+    Reference, SequenceStorage, JoinedSequence,
     SequenceType, PatternFinder,
     // traits
     Divisible, Serializable, SizeAware,
-    LabelProvider,
+    LabelStorage,
     ReverseComplement,
 };
 
-use super::{InMemoryProvider, InMemoryBuffer};
+use super::{InMemoryStorage, InMemoryBuffer};
 
 use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InMemoryRcProvider(InMemoryProvider);
+pub struct InMemoryRcStorage(InMemoryStorage);
 
-impl InMemoryRcProvider {
+impl InMemoryRcStorage {
     pub fn new() -> Self {
-        Self(InMemoryProvider::new())
+        Self(InMemoryStorage::new())
     }
     pub fn add_record(
         &mut self,
@@ -58,8 +58,8 @@ impl InMemoryRcProvider {
     }
 }
 
-// Sequence Provider
-impl SequenceProvider for InMemoryRcProvider {
+// Sequence Storage
+impl SequenceStorage for InMemoryRcStorage {
     type Buffer = InMemoryBuffer;
 
     fn total_record_count(&self) -> usize {
@@ -76,15 +76,15 @@ impl SequenceProvider for InMemoryRcProvider {
     }
 }
 
-// Label Provider
-impl LabelProvider for InMemoryRcProvider {
+// Label Storage
+impl LabelStorage for InMemoryRcStorage {
     fn label_of_record(&self, record_index: usize) -> String {
         self.0.label_of_record(record_index)
     }
 }
 
 // Serializable
-impl Serializable for InMemoryRcProvider {
+impl Serializable for InMemoryRcStorage {
     fn save_to<W>(&self, writer: W) -> Result<()> where
         W: std::io::Write
     {
@@ -95,20 +95,20 @@ impl Serializable for InMemoryRcProvider {
         R: std::io::Read,
         Self: Sized,
     {
-        let in_memory_provider = InMemoryProvider::load_from(reader)?;
-        Ok(Self(in_memory_provider))
+        let in_memory_storage = InMemoryStorage::load_from(reader)?;
+        Ok(Self(in_memory_storage))
     }
 }
 
 // SizeAware
-impl SizeAware for InMemoryRcProvider {
+impl SizeAware for InMemoryRcStorage {
     fn size_of(&self) -> usize {
         self.0.size_of()
     }
 }
 
 // Divisible
-impl Divisible for InMemoryRcProvider {
+impl Divisible for InMemoryRcStorage {
     fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
         // Get record index range list
         let record_index_range_list = self.0.record_index_range_list_of_max_length(max_seq_len);
@@ -140,7 +140,7 @@ impl Divisible for InMemoryRcProvider {
 }
 
 // Reverse Complement
-impl ReverseComplement for InMemoryRcProvider {
+impl ReverseComplement for InMemoryRcStorage {
     fn is_reverse_complement(&self, record_index: usize) -> bool {
         if record_index % 2 == 0 {
             false

@@ -6,18 +6,18 @@ use super::{
     ReferenceInterface, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     SequenceType, PatternFinder, Serializable,
 };
 
 impl<SL> Reference<SL> where
-    SL: SequenceProvider + LabelProvider,
+    SL: SequenceStorage + LabelStorage,
 {
     pub fn label_of_record(&self, record_index: usize) -> String {
-        self.sequence_provider.label_of_record(record_index)
+        self.sequence_storage.label_of_record(record_index)
     }
 }
 
-pub trait LabelProvider {
+pub trait LabelStorage {
     fn label_of_record(&self, record_index: usize) -> String;
 }

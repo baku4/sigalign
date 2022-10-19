@@ -6,7 +6,7 @@ use crate::core::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 pub use crate::reference::{
-    Reference, SequenceProvider, LabelProvider,
+    Reference, SequenceStorage, LabelStorage,
 };
 
 // Core algorithms
@@ -32,7 +32,7 @@ pub trait AlignerInterface {
         reference: &Reference<S>,
         sequence_buffer: &mut S::Buffer,
         query: Sequence,
-    ) -> AlignmentResult where S: SequenceProvider;
+    ) -> AlignmentResult where S: SequenceStorage;
 }
 
 // Aligner implementations
@@ -81,7 +81,7 @@ impl Aligner {
             algorithms: Algorithms::Local(LocalAligner::new(alignment_condition))
         })
     }
-    pub fn alignment<S: SequenceProvider>(
+    pub fn alignment<S: SequenceStorage>(
         &mut self,
         reference: &Reference<S>,
         sequence_buffer: &mut S::Buffer,

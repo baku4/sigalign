@@ -6,15 +6,15 @@ use super::{
     ReferenceInterface, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     SequenceType, PatternFinder, Serializable,
 };
 
 impl<SR> Reference<SR> where
-    SR: SequenceProvider + ReverseComplement,
+    SR: SequenceStorage + ReverseComplement,
 {
     pub fn is_reverse_complement(&self, record_index: usize) -> bool {
-        self.sequence_provider.is_reverse_complement(record_index)
+        self.sequence_storage.is_reverse_complement(record_index)
     }
 }
 

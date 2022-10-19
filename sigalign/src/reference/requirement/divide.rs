@@ -6,12 +6,12 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     SequenceType, PatternFinder,
 };
 
 pub trait Divisible {
-    // Split sequence provider to specific max sized length.
-    // If one record exceeds the max length, splitted provider can contain only one of that record.
+    // Split sequence storage to specific max sized length.
+    // If one record exceeds the max length, splitted storage can contain only one of that record.
     fn split_by_max_length(self, max_length: usize) -> Result<Vec<Self>> where Self: Sized;
 }

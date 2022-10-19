@@ -3,7 +3,7 @@ use sigalign::result::{
     FastaAlignmentLabeledResult,
 };
 use sigalign::{Aligner, Reference, ReferenceBuilder};
-use sigalign::sequence_provider::{InMemoryProvider, InMemoryRcProvider};
+use sigalign::sequence_storage::{InMemoryStorage, InMemoryRcStorage};
 
 const NUCLEOTIDE_ONLY_FA_PATH_1: &str = "../sample_data/nucleotide_only/ERR209055.fa";
 const NUCLEOTIDE_ONLY_FA_PATH_2: &str = "../sample_data/nucleotide_only/ERR209056.fa";
@@ -19,9 +19,9 @@ fn get_test_local_aligner() -> Aligner {
     Aligner::new_local(5, 6, 3, 50, 0.05).unwrap()
 }
 
-fn get_test_reference() -> Reference<InMemoryRcProvider> {
-    let mut sequence_provider = InMemoryRcProvider::new();
-    sequence_provider.add_fasta_file(NUCLEOTIDE_ONLY_FA_PATH_1).unwrap();
+fn get_test_reference() -> Reference<InMemoryRcStorage> {
+    let mut sequence_storage = InMemoryRcStorage::new();
+    sequence_storage.add_fasta_file(NUCLEOTIDE_ONLY_FA_PATH_1).unwrap();
 
-    ReferenceBuilder::new().build(sequence_provider).unwrap()
+    ReferenceBuilder::new().build(sequence_storage).unwrap()
 }

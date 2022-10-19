@@ -6,8 +6,8 @@ use crate::core::{
 };
 use super::{
     Reference,
-    SequenceProvider,
-    LabelProvider,
+    SequenceStorage,
+    LabelStorage,
 };
 use super::{
     FastaAlignmentLabeledResult,
@@ -26,7 +26,7 @@ use super::{
 
 impl FastaAlignmentResult {
     pub fn to_labeled<SL>(self, reference: &Reference<SL>) -> FastaAlignmentLabeledResult where
-        SL: SequenceProvider + LabelProvider,
+        SL: SequenceStorage + LabelStorage,
     {
         FastaAlignmentLabeledResult(
             self.0.into_iter().map(|read_alignment_result| {
@@ -38,7 +38,7 @@ impl FastaAlignmentResult {
 
 impl ReadAlignmentResult {
     pub fn to_labeled<SL>(self, reference: &Reference<SL>) -> ReadAlignmentLabeledResult where
-        SL: SequenceProvider + LabelProvider,
+        SL: SequenceStorage + LabelStorage,
     {
         ReadAlignmentLabeledResult {
             read: self.read,
@@ -49,7 +49,7 @@ impl ReadAlignmentResult {
 
 impl AlignmentResult {
     pub fn to_labeled<SL>(self, reference: &Reference<SL>) -> AlignmentLabeledResult where
-        SL: SequenceProvider + LabelProvider,
+        SL: SequenceStorage + LabelStorage,
     {
         AlignmentLabeledResult(
             self.0.into_iter().map(|record_alignment_result| {
@@ -61,7 +61,7 @@ impl AlignmentResult {
 
 impl RecordAlignmentResult {
     pub fn to_labeled<SL>(self, reference: &Reference<SL>) -> RecordAlignmentLabeledResult where
-        SL: SequenceProvider + LabelProvider,
+        SL: SequenceStorage + LabelStorage,
     {
         RecordAlignmentLabeledResult {
             index: self.index,

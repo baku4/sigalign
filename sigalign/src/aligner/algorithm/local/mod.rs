@@ -3,7 +3,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
 };
 
 use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchor};
@@ -17,7 +17,7 @@ mod extend;
 use extend::LocalExtension;
 mod backtrace;
 
-pub fn local_alignment_algorithm<S: SequenceProvider>(
+pub fn local_alignment_algorithm<S: SequenceStorage>(
     reference: &Reference<S>,
     sequence_buffer: &mut S::Buffer,
     query: Sequence,

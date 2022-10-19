@@ -13,20 +13,20 @@ use super::{
 // Traits to implement
 pub use super::{
     Serializable, SizeAware, Divisible,
-    LabelProvider, ReverseComplement,
+    LabelStorage, ReverseComplement,
 };
 
-// Basic sequence providers implementations
+// Basic sequence storages implementations
 mod in_memory;
-pub use in_memory::{InMemoryProvider, InMemoryRcProvider};
+pub use in_memory::{InMemoryStorage, InMemoryRcStorage};
 mod indexed_fasta;
-pub use indexed_fasta::{IndexedFastaProvider, IndexedFastaRcProvider};
-// Utils for sequence provider
+pub use indexed_fasta::{IndexedFastaStorage, IndexedFastaRcStorage};
+// Utils for sequence storage
 mod util;
 
 
 /// Provide sequence information
-pub trait SequenceProvider {
+pub trait SequenceStorage {
     type Buffer: SequenceBuffer;
 
     fn total_record_count(&self) -> usize;

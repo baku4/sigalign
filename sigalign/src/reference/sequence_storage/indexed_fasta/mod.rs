@@ -6,11 +6,11 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider, JoinedSequence,
+    Reference, SequenceStorage, JoinedSequence,
     SequenceType, PatternFinder,
     // Trait
     Serializable, SizeAware,
-    LabelProvider,
+    LabelStorage,
     ReverseComplement,
 };
 
@@ -23,16 +23,16 @@ use capwriter::{Saveable, Loadable};
 use faimm::IndexedFasta as FaiIndexedFasta;
 
 mod reverse_complement;
-pub use reverse_complement::IndexedFastaRcProvider;
+pub use reverse_complement::IndexedFastaRcStorage;
 
-/// Basic `SequenceProvider` implementation
+/// Basic `SequenceStorage` implementation
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IndexedFastaProvider {
+pub struct IndexedFastaStorage {
     total_record_count: usize,
     fasta_file_path_buf: PathBuf,
 }
 
-impl IndexedFastaProvider {
+impl IndexedFastaStorage {
     pub fn new<P>(fasta_file_path: P) -> Result<Self> where
         P: AsRef<Path> + std::fmt::Debug,
     {
@@ -51,8 +51,8 @@ impl IndexedFastaProvider {
             fasta_file_path_buf,
         })
     }
-    pub fn to_rc_provider(self) -> IndexedFastaRcProvider {
-        IndexedFastaRcProvider(self)
+    pub fn to_rc_storage(self) -> IndexedFastaRcStorage {
+        IndexedFastaRcStorage(self)
     }
 }
 
@@ -66,7 +66,7 @@ impl SequenceBuffer for IndexedFastaBuffer {
     }
 }
 
-impl SequenceProvider for IndexedFastaProvider {
+impl SequenceStorage for IndexedFastaStorage {
     type Buffer = IndexedFastaBuffer;
 
     fn total_record_count(&self) -> usize {
@@ -94,7 +94,7 @@ use bytemuck::{Pod, Zeroable};
 use bytemuck::{cast_slice, cast, cast_slice_mut};
 
 // Serializable
-impl Serializable for IndexedFastaProvider {
+impl Serializable for IndexedFastaStorage {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where W: Write {
         // 1. Write total_record_count
         writer.write_u64::<EndianType>(self.total_record_count as u64)?;
@@ -119,7 +119,7 @@ impl Serializable for IndexedFastaProvider {
 }
 
 // SizeAware
-impl SizeAware for IndexedFastaProvider {
+impl SizeAware for IndexedFastaStorage {
     fn size_of(&self) -> usize {
         let byte_of_path = self.fasta_file_path_buf.to_str().unwrap().as_bytes();
         8 + byte_of_path.size_of()

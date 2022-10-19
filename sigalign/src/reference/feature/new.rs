@@ -6,6 +6,6 @@ use super::{
     ReferenceInterface, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     SequenceType, PatternFinder, Serializable,
 };

@@ -4,7 +4,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
     AlignmentCondition,
     SemiGlobalAligner, LocalAligner,
     Aligner, Algorithms, AlignerInterface,

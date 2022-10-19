@@ -3,7 +3,7 @@ use super::{
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceProvider,
+    Reference, SequenceStorage,
 };
 
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ pub struct AnchorPosition {
 }
 
 impl PosTable {
-    pub fn new_by_record<S: SequenceProvider>(
+    pub fn new_by_record<S: SequenceStorage>(
         reference: &Reference<S>,
         query: Sequence,
         pattern_size: usize,

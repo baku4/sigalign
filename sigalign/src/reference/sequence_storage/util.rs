@@ -6,14 +6,12 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 use super::{
-    Reference, SequenceProvider, JoinedSequence,
+    Reference, SequenceStorage, JoinedSequence,
     SequenceType, PatternFinder,
     Serializable,
-    LabelProvider,
+    LabelStorage,
     ReverseComplement,
 };
-
-mod fasta_path_finder;
 
 use std::path::{Path, PathBuf};
 
