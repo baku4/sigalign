@@ -11,7 +11,7 @@ use super::{
     // Trait
     Serializable, SizeAware,
     LabelStorage,
-    ReverseComplement,
+    RcStorage,
 };
 use super::{
     IndexedFastaStorage,
@@ -28,6 +28,7 @@ use std::path::{Path, PathBuf};
 
 use crate::util::reverse_complement_of_nucleotide_sequence;
 
+/// Basic `SequenceStorage` implementation
 pub struct IndexedFastaRcStorage(pub(super) IndexedFastaStorage);
 
 impl IndexedFastaRcStorage {
@@ -66,7 +67,7 @@ impl SequenceStorage for IndexedFastaRcStorage {
 }
 
 // Reverse Complement
-impl ReverseComplement for IndexedFastaRcStorage {
+impl RcStorage for IndexedFastaRcStorage {
     fn is_reverse_complement(&self, record_index: usize) -> bool {
         if record_index % 2 == 0 {
             false

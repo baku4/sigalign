@@ -11,7 +11,7 @@ use super::{
     // traits
     Divisible, Serializable, SizeAware,
     LabelStorage,
-    ReverseComplement,
+    RcStorage,
 };
 
 use super::{InMemoryStorage, InMemoryBuffer};
@@ -20,6 +20,7 @@ use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use serde::{Serialize, Deserialize};
 
+/// Basic `SequenceStorage` implementation
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InMemoryRcStorage(InMemoryStorage);
 
@@ -140,7 +141,7 @@ impl Divisible for InMemoryRcStorage {
 }
 
 // Reverse Complement
-impl ReverseComplement for InMemoryRcStorage {
+impl RcStorage for InMemoryRcStorage {
     fn is_reverse_complement(&self, record_index: usize) -> bool {
         if record_index % 2 == 0 {
             false

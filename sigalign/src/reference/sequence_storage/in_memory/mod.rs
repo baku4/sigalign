@@ -11,7 +11,7 @@ use super::{
     // traits
     Divisible, Serializable, SizeAware,
     LabelStorage,
-    ReverseComplement,
+    RcStorage,
 };
 
 use crate::util::FastaReader;

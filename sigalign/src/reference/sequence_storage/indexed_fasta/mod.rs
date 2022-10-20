@@ -11,7 +11,7 @@ use super::{
     // Trait
     Serializable, SizeAware,
     LabelStorage,
-    ReverseComplement,
+    RcStorage,
 };
 
 use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};

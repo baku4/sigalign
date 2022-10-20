@@ -18,7 +18,7 @@ use super::{
 };
 use sigalign::{
     ReferenceBuilder,
-    sequence_provider::{InMemoryProvider, InMemoryRcProvider},
+    sequence_storage::{InMemoryStorage, InMemoryRcStorage},
     Aligner,
 };
 

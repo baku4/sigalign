@@ -5,8 +5,8 @@ use pyo3::prelude::*;
 use pyo3::types::*;
 use pyo3::exceptions::PyException;
 use sigalign::Reference as SigReference;
-use sigalign::basic_sequence_provider::*;
-use sigalign::reference::{LtFmIndexConfig, SequenceProvider, Writable};
+use sigalign::basic_sequence_storage::*;
+use sigalign::reference::{LtFmIndexConfig, SequenceStorage, Writable};
 
 use std::io::{Write, Read};
 use std::fs::File;
@@ -154,8 +154,8 @@ const TAG_FOR_INDEXED_FASTA_REFERENCE: [u8; 8] = [115, 97, 45, 105, 100, 120, 10
 
 #[derive(Debug)]
 pub enum SigReferenceHolder {
-    InMemory(SigReference<InMemoryProvider>),
-    IndexedFasta(SigReference<IndexedFastaProvider>),
+    InMemory(SigReference<InMemoryStorage>),
+    IndexedFasta(SigReference<IndexedFastaStorage>),
 }
 impl SigReferenceHolder {
     fn new(
@@ -165,13 +165,13 @@ impl SigReferenceHolder {
     ) -> Result<Self> {
         Ok(
             if in_memory {
-                let sequence_provider = InMemoryProvider::from_fasta_file(fasta_file_path)?;
-                let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_provider)?;
+                let sequence_storage = InMemoryStorage::from_fasta_file(fasta_file_path)?;
+                let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_storage)?;
     
                 Self::InMemory(sig_reference)
             } else {
-                let sequence_provider = IndexedFastaProvider::new(fasta_file_path)?;
-                let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_provider)?;
+                let sequence_storage = IndexedFastaStorage::new(fasta_file_path)?;
+                let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_storage)?;
     
                 Self::IndexedFasta(sig_reference)
             }
@@ -183,12 +183,12 @@ impl SigReferenceHolder {
         fasta_file_path: &str,
     ) -> Result<Self> {
         if in_memory {
-            let sequence_provider = InMemoryProvider::from_fasta_file_of_nucleotide_with_reverse_complement(fasta_file_path)?;
-            let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_provider)?;
+            let sequence_storage = InMemoryStorage::from_fasta_file_of_nucleotide_with_reverse_complement(fasta_file_path)?;
+            let sig_reference = SigReference::new_with_lt_fm_index_config(lt_fm_index_config, sequence_storage)?;
 
             Ok(Self::InMemory(sig_reference))
         } else {
-            error_msg!("Reverse complementary sequence can be used with only in-memory provider")
+            error_msg!("Reverse complementary sequence can be used with only in-memory storage")
         }
     }
     // One byte tag to save the type information of sig-reference.
@@ -209,12 +209,12 @@ impl SigReferenceHolder {
         }
     }
     fn load_to_in_memory<R: Read>(reader: R) -> Result<Self> {
-        let sig_reference_in_memory = SigReference::<InMemoryProvider>::read_from(reader)?;
+        let sig_reference_in_memory = SigReference::<InMemoryStorage>::read_from(reader)?;
 
         Ok(Self::InMemory(sig_reference_in_memory))
     }
     fn load_to_indexed_fasta<R: Read>(reader: R, fasta_file_path: &str) -> Result<Self> {
-        let sig_reference_indexed_fasta = SigReference::<IndexedFastaProvider>::read_from(reader, fasta_file_path)?;
+        let sig_reference_indexed_fasta = SigReference::<IndexedFastaStorage>::read_from(reader, fasta_file_path)?;
 
         Ok(Self::IndexedFasta(sig_reference_indexed_fasta))
     }

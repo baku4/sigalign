@@ -6,19 +6,19 @@ use sigalign::{
 use sigalign::core::*;
 use sigalign::util::*;
 use sigalign::result::*;
-use sigalign::sequence_provider::{
+use sigalign::sequence_storage::{
     // Trait
-    SequenceProvider,
+    SequenceStorage,
     Divisible,
-    LabelProvider,
-    ReverseComplement,
+    LabelStorage,
+    RcStorage,
     Serializable,
     SizeAware,
-    // Provider
-    InMemoryProvider,
-    InMemoryRcProvider,
-    IndexedFastaProvider,
-    IndexedFastaRcProvider,
+    // Storage
+    InMemoryStorage,
+    InMemoryRcStorage,
+    IndexedFastaStorage,
+    IndexedFastaRcStorage,
 };
 use anyhow::{Result, bail as error_msg};
 use ahash::{AHashMap, AHashSet};
@@ -51,9 +51,9 @@ pub fn init_logger() {
 // Fasta reader can read various type of FASTA formatted file
 #[cfg(test)]
 mod read_fasta;
-// Sequence providers provide same information
+// Sequence storages provide same information
 #[cfg(test)]
-mod sequence_provider;
+mod sequence_storage;
 #[cfg(test)]
 mod reference_serialization;
 #[cfg(test)]

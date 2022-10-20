@@ -17,6 +17,6 @@ env_logger = "0.9.0"
 [features]
 tsa = []
 tsv = [] # Print TSV formatted output to stdout. Ignore output parameter.
-idx_fa = [] # Use indexed fasta as sequence provider
+idx_fa = [] # Use indexed fasta as sequence storage
 revcom = [] # Align also reverse complementary seq of query. Only available with 'tsv' feature.
 no_aln = [] # Do not make aligner and load reference only for debug

@@ -2,7 +2,7 @@ use super::*;
 use std::{path::PathBuf, ops::Range, io::{Read, Write}};
 use ahash::{AHashMap, AHashSet};
 
-type DefaultReference = Reference<InMemoryRcProvider>;
+type DefaultReference = Reference<InMemoryRcStorage>;
 
 #[test]
 fn print_debug_status_of_local_alignment_results() {
@@ -145,14 +145,14 @@ fn get_default_aligners(is_local: bool) -> (DpBasedAligner, Aligner) {
 fn get_default_reference() -> DefaultReference {
     let ref_file = get_ref_for_val_path();
 
-    let mut sequence_provider = InMemoryRcProvider::new();
-    sequence_provider.add_fasta_file(ref_file).unwrap();
+    let mut sequence_storage = InMemoryRcStorage::new();
+    sequence_storage.add_fasta_file(ref_file).unwrap();
 
     let reference = ReferenceBuilder::new()
-        .change_bwt_vector_size_to_128()
+        .change_bwt_block_size_to_128()
         .change_count_array_kmer(4).unwrap()
-        .change_suffix_array_sampling_ratio(2).unwrap()
-        .build(sequence_provider).unwrap();
+        .change_sampling_ratio(2).unwrap()
+        .build(sequence_storage).unwrap();
 
     reference
 }

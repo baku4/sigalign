@@ -8,7 +8,7 @@ use sigalign::{
     ReferenceBuilder as SigReferenceBuilder,
     Aligner as SigAligner,
 };
-use sigalign::sequence_provider::InMemoryProvider;
+use sigalign::sequence_storage::InMemoryStorage;
 
 mod reference;
 mod aligner;

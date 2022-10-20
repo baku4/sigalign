@@ -10,7 +10,7 @@ use sigalign::util::{
 use sigalign::{
     Reference,
     core::ReferenceInterface,
-    sequence_provider::SequenceProvider,
+    sequence_storage::SequenceStorage,
     Aligner,
 };
 use sigalign::{
@@ -21,7 +21,7 @@ use sigalign::{
 // | query label | reference index | record index | penalty | length |
 //  query start position | query end position | record start position | record end position |
 //  string operations |
-pub fn alignment_as_tsv_to_stdout<S: SequenceProvider>(
+pub fn alignment_as_tsv_to_stdout<S: SequenceStorage>(
     aligner: &mut Aligner,
     reference_index: usize,
     reference: Reference<S>,

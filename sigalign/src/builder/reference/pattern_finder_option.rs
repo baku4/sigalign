@@ -10,8 +10,10 @@ use super::{
     ReferenceBuilder, SequenceTypeOption, PatternFinderOption,
 };
 
+/// Change options for the `index` of sequence
 impl ReferenceBuilder {
-    pub fn change_suffix_array_sampling_ratio(mut self, sampling_ratio: u64) -> Result<Self> {
+    /// Change sampling ratio of suffix array
+    pub fn change_sampling_ratio(mut self, sampling_ratio: u64) -> Result<Self> {
         if sampling_ratio <= 0 {
             error_msg!("Sampling ratio accept positive integer.")
         } else {
@@ -19,6 +21,7 @@ impl ReferenceBuilder {
             Ok(self)
         }
     }
+    /// Change kmer size of lookup table
     pub fn change_count_array_kmer(mut self, kmer: usize) -> Result<Self> {
         if kmer < 2 {
             error_msg!("The size of the kmer cannot be less than 2")
@@ -27,11 +30,13 @@ impl ReferenceBuilder {
             Ok(self)
         }
     }
-    pub fn change_bwt_vector_size_to_64(mut self) -> Self {
+    /// Change BWT block size to 64
+    pub fn change_bwt_block_size_to_64(mut self) -> Self {
         self.pattern_finder_option.use_bwt_128 = false;
         self
     }
-    pub fn change_bwt_vector_size_to_128(mut self) -> Self {
+    /// Change BWT block size to 128
+    pub fn change_bwt_block_size_to_128(mut self) -> Self {
         self.pattern_finder_option.use_bwt_128 = true;
         self
     }

@@ -18,6 +18,7 @@ impl<SL> Reference<SL> where
     }
 }
 
+/// Storage for label of sequences.
 pub trait LabelStorage {
     fn label_of_record(&self, record_index: usize) -> String;
 }

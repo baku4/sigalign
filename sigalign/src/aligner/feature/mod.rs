@@ -12,5 +12,5 @@ use super::{
 
 mod debug;
 mod cmp;
-mod clean_cache;
+mod extension_workspace;
 mod print_status;

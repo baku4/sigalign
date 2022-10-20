@@ -1,19 +1,33 @@
+/*!
+The customizable storage of sequences inside the [Reference].
+
+- `SequenceStorage` is storage of sequences.
+
+- The record means one sequence and its additional information such as label.
+
+- The basically implemented [InMemoryStorage] is recommended in most cases.
+*/
+
+// Re-export
+pub use crate::core::SequenceBuffer;
+pub use super::JoinedSequence;
+
 use super::{
     Result, error_msg,
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface, PatternLocation,
 };
 use super::{
-    Reference, JoinedSequence,
+    Reference,
     SequenceType, PatternFinder,
 };
 
 // Traits to implement
 pub use super::{
     Serializable, SizeAware, Divisible,
-    LabelStorage, ReverseComplement,
+    LabelStorage, RcStorage,
 };
 
 // Basic sequence storages implementations
@@ -24,8 +38,26 @@ pub use indexed_fasta::{IndexedFastaStorage, IndexedFastaRcStorage};
 // Utils for sequence storage
 mod util;
 
+/**
+Storage for alignment target sequences
 
-/// Provide sequence information
+- `SequenceStorage` requires `Buffer` and three methods.
+    1. `Buffer`
+        * Buffer implements [SequenceBuffer]
+        * [SequenceBuffer] needs one method: `request_sequence`.
+            * `request_sequence` returns pointer to byte of sequence in `Buffer`.
+    2. Required methods
+        1. `total_record_count`
+            * The number of records in this storage.
+        2. `get_buffer`
+            * Returns empty `Buffer` of `SequenceStorage`.
+        3. `fill_sequence_buffer`
+            * Fills `Buffer` with sequence of record index.
+
+- Method of `get_joined_sequence` can be overrode for better performance.
+    - [JoinedSequence] is required to create index to build [Reference].
+    - By default, this method is implemented by summing up each sequence.
+*/
 pub trait SequenceStorage {
     type Buffer: SequenceBuffer;
 

@@ -10,6 +10,7 @@ use super::{
     SequenceType, PatternFinder,
 };
 
+/// Divide into several chunks
 pub trait Divisible {
     // Split sequence storage to specific max sized length.
     // If one record exceeds the max length, splitted storage can contain only one of that record.

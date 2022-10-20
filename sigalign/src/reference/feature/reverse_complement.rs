@@ -11,7 +11,7 @@ use super::{
 };
 
 impl<SR> Reference<SR> where
-    SR: SequenceStorage + ReverseComplement,
+    SR: SequenceStorage + RcStorage,
 {
     pub fn is_reverse_complement(&self, record_index: usize) -> bool {
         self.sequence_storage.is_reverse_complement(record_index)
@@ -19,6 +19,7 @@ impl<SR> Reference<SR> where
 }
 
 // For reverse complementary for nucleotide sequence
-pub trait ReverseComplement {
+/// Storage for reverse complementary (for nucleotide sequence) information of sequences.
+pub trait RcStorage {
     fn is_reverse_complement(&self, record_index: usize) -> bool;
 }

@@ -10,7 +10,7 @@ use sigalign::{
     Reference,
     result::ReadAlignmentResult,
     ReferenceBuilder,
-    sequence_provider::{SequenceProvider, InMemoryProvider, InMemoryRcProvider},
+    sequence_storage::{SequenceStorage, InMemoryStorage, InMemoryRcStorage},
     Aligner,
     util::FastaReader,
 };
@@ -60,7 +60,7 @@ fn write_fasta_alignment_json_from_reader_checking_mapped_query<R, W, S>(
 ) -> Result<()> where
     R: Read,
     W: Write,
-    S: SequenceProvider,
+    S: SequenceStorage,
 {
     let mut sequence_buffer = reference.get_buffer();
 
@@ -138,7 +138,7 @@ fn write_fasta_alignment_json_from_reader_using_unmapped_query<R, W, S>(
 ) -> Result<()> where
     R: Read,
     W: Write,
-    S: SequenceProvider,
+    S: SequenceStorage,
 {
     let mut sequence_buffer = reference.get_buffer();
 

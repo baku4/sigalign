@@ -5,19 +5,19 @@ use std::collections::hash_map::RandomState;
 use std::collections::hash_set::Intersection;
 use std::time::{Duration, Instant};
 
-fn test_local_results_include_semi_global_results_with_in_memory_provider() {
-    println!("Use In-Memory Provider");
+fn test_local_results_include_semi_global_results_with_in_memory_storage() {
+    println!("Use In-Memory Storage");
 
     let fasta_file_for_reference = NUCLEOTIDE_ONLY_FA_PATH_1;
 
-    let sequence_provider = {
+    let sequence_storage = {
         let start_time = Instant::now();
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_fasta_file(fasta_file_for_reference).unwrap();
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta_file(fasta_file_for_reference).unwrap();
         let duration = start_time.elapsed().as_micros();
-        println!("Generate sequence provider: {:?}", duration);
+        println!("Generate sequence storage: {:?}", duration);
 
-        sequence_provider
+        sequence_storage
     };
 
     let mismatch_penalty = 4;
@@ -41,7 +41,7 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
         let reference = ReferenceBuilder::new()
             .search_for_nucleotide_only()
             .change_count_array_kmer(kmer_size_for_lookup_table).unwrap()
-            .build(sequence_provider).unwrap();
+            .build(sequence_storage).unwrap();
         
         let duration = start_time.elapsed().as_micros();
         println!("Generate reference: {:?}", duration);
@@ -72,31 +72,31 @@ fn test_local_results_include_semi_global_results_with_in_memory_provider() {
     }
 }
 
-fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_provider() {
-    println!("Use In-Memory Provider");
+fn test_results_of_nucleotide_only_for_semi_global_with_in_memory_storage() {
+    println!("Use In-Memory Storage");
 
     let fasta_file_for_reference = NUCLEOTIDE_ONLY_FA_PATH_1;
 
-    let sequence_provider = {
+    let sequence_storage = {
         let start_time = Instant::now();
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_fasta_file(fasta_file_for_reference).unwrap();
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta_file(fasta_file_for_reference).unwrap();
 
         let duration = start_time.elapsed().as_millis();
-        println!("Generate sequence provider: {:?}", duration);
+        println!("Generate sequence storage: {:?}", duration);
 
-        sequence_provider
+        sequence_storage
     };
     
     print_results_of_nucleotide_only_for_semi_global(
         fasta_file_for_reference,
-        sequence_provider,
+        sequence_storage,
     );
 }
 
-fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
+fn print_results_of_nucleotide_only_for_semi_global<S: SequenceStorage>(
     fasta_file_for_reference: &str,
-    sequence_provider: S,
+    sequence_storage: S,
 ) {
     let mismatch_penalty = 4;
     let gap_open_penalty = 6;
@@ -117,7 +117,7 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
         let reference = ReferenceBuilder::new()
             .search_for_nucleotide_only()
             .change_count_array_kmer(kmer_size_for_lookup_table).unwrap()
-            .build(sequence_provider).unwrap();
+            .build(sequence_storage).unwrap();
         
         let duration = start_time.elapsed().as_micros();
         println!("Generate reference: {:?}", duration);
@@ -188,31 +188,31 @@ fn print_results_of_nucleotide_only_for_semi_global<S: SequenceProvider>(
     }
 }
 
-fn test_results_of_nucleotide_only_for_local_with_in_memory_provider() {
-    println!("Use In-Memory Provider");
+fn test_results_of_nucleotide_only_for_local_with_in_memory_storage() {
+    println!("Use In-Memory Storage");
 
     let fasta_file_for_reference = NUCLEOTIDE_ONLY_FA_PATH_1;
 
-    let sequence_provider = {
+    let sequence_storage = {
         let start_time = Instant::now();
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_fasta_file(fasta_file_for_reference).unwrap();
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta_file(fasta_file_for_reference).unwrap();
 
         let duration = start_time.elapsed().as_millis();
-        println!("Generate sequence provider: {:?}", duration);
+        println!("Generate sequence storage: {:?}", duration);
 
-        sequence_provider
+        sequence_storage
     };
     
     print_results_of_nucleotide_only_for_local(
         fasta_file_for_reference,
-        sequence_provider,
+        sequence_storage,
     );
 }
 
-fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
+fn print_results_of_nucleotide_only_for_local<S: SequenceStorage>(
     fasta_file_for_reference: &str,
-    sequence_provider: S,
+    sequence_storage: S,
 ) {
     let mismatch_penalty = 4;
     let gap_open_penalty = 6;
@@ -233,7 +233,7 @@ fn print_results_of_nucleotide_only_for_local<S: SequenceProvider>(
         let reference = ReferenceBuilder::new()
             .search_for_nucleotide_only()
             .change_count_array_kmer(kmer_size_for_lookup_table).unwrap()
-            .build(sequence_provider).unwrap();
+            .build(sequence_storage).unwrap();
         
         let duration = start_time.elapsed().as_micros();
         println!("Generate reference: {:?}", duration);

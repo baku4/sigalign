@@ -10,7 +10,7 @@ use super::{
     SequenceType, PatternFinder,
     Serializable,
     LabelStorage,
-    ReverseComplement,
+    RcStorage,
 };
 
 use std::path::{Path, PathBuf};

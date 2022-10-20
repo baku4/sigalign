@@ -23,4 +23,4 @@ mod debug;
 
 // For sequence storage
 pub use labeling::LabelStorage;
-pub use reverse_complement::ReverseComplement;
+pub use reverse_complement::RcStorage;

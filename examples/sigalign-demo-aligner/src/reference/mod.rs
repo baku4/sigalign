@@ -12,9 +12,9 @@ use clap::{
 };
 
 use sigalign::ReferenceBuilder;
-use sigalign::sequence_provider::{
+use sigalign::sequence_storage::{
     Divisible,
-    InMemoryProvider, InMemoryRcProvider,
+    InMemoryStorage, InMemoryRcStorage,
 };
 
 // Reference config
@@ -24,7 +24,7 @@ pub struct ReferenceConfig {
     input_file_pathbuf: PathBuf,
     output_file_pathbuf: PathBuf,
     overwrite: bool,
-    // Sequence provider type
+    // Sequence storage type
     divide_size: Option<usize>,
     use_rc: bool,
     // Pattern finder config
@@ -82,9 +82,9 @@ impl ReferenceConfig {
 
 
         let start = Instant::now();
-        eprintln!("# 2. Make sequence provider");
-        let self_desc_seq_prv = config.make_sequence_provider().unwrap();
-        eprintln!("Split sequence provider to {}", self_desc_seq_prv.splitted_size());
+        eprintln!("# 2. Make sequence storage");
+        let self_desc_seq_prv = config.make_sequence_storage().unwrap();
+        eprintln!("Split sequence storage to {}", self_desc_seq_prv.splitted_size());
         let reference_paths = ReferencePaths::new_to_save(
             &config.output_file_pathbuf,
             self_desc_seq_prv.splitted_size(),
@@ -118,7 +118,7 @@ impl ReferenceConfig {
             error_msg!("Output file already exist")
         }
 
-        // (2) Sequence provider type
+        // (2) Sequence storage type
         let divide_size = match matches.value_of("divide") {
             Some(v) => Some(v.parse::<usize>()?),
             None => None,
@@ -169,7 +169,7 @@ impl ReferenceConfig {
             }
         )
     }
-    fn make_sequence_provider(&self) -> Result<SelfDescSeqPrvs> {
+    fn make_sequence_storage(&self) -> Result<SelfDescSeqPrvs> {
         SelfDescSeqPrvs::new(
             self.use_rc,
             &self.input_file_pathbuf,
@@ -184,15 +184,15 @@ impl ReferenceConfig {
         // Reference builder
         let mut reference_builder = ReferenceBuilder::new();
         if self.use_128_bwt {
-            reference_builder = reference_builder.change_bwt_vector_size_to_128();
+            reference_builder = reference_builder.change_bwt_block_size_to_128();
         } else {
-            reference_builder = reference_builder.change_bwt_vector_size_to_64();
+            reference_builder = reference_builder.change_bwt_block_size_to_64();
         };
         if let Some(kmer) = self.kmer {
             reference_builder = reference_builder.change_count_array_kmer(kmer)?;
         };
         if let Some(sa_sampling_ratio) = self.sa_sampling_ratio {
-            reference_builder = reference_builder.change_suffix_array_sampling_ratio(sa_sampling_ratio)?;
+            reference_builder = reference_builder.change_sampling_ratio(sa_sampling_ratio)?;
         };
         if let Some(for_aminoacid) = self.for_aminoacid {
             if for_aminoacid {

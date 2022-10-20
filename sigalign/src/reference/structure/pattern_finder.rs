@@ -183,12 +183,14 @@ impl SizeAware for PatternFinder {
 
 
 // Contain two vectors necessary to create `PatternIndex`.
-//   - The "joined_sequence" means the sequence of concatenated sequences of all record.
-//   - The "accumulated_lengths" means the accumulated sequence lengths from 0 to the sum of the lengths of all sequences.
-//   - For examples, if there are three records with "ATT", "CC", "GGGG", the "joined_sequence" is "ATTCCGGGG" and the "accumulated_lengths" is [0, 3, 5, 9].
+
+/// Contain two vectors necessary to create index of sequences.
+///   - The "joined_sequence" means the sequence of concatenated sequences of all record.
+///   - The "accumulated_lengths" means the accumulated sequence lengths from 0 to the sum of the lengths of all sequences.
+///   - For examples, if there are three records with "ATT", "CC", "GGGG", the "joined_sequence" is "ATTCCGGGG" and the "accumulated_lengths" is [0, 3, 5, 9].
 pub struct JoinedSequence {
     pub bytes: Vec<u8>,
-    record_boundary_positions: Vec<u64>,
+    pub record_boundary_positions: Vec<u64>,
 }
 
 impl JoinedSequence {

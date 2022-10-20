@@ -1,33 +1,39 @@
 /*!
 # SigAlign
-Similarity Guided Alignment
+*Similarity-guided Align*
 
 # Quick Start
 ```rust
-use sigalign::{Aligner, ReferenceBuilder};
-use sigalign::sequence_storage::InMemoryStorage;
+use crate::{Aligner, ReferenceBuilder};
+use crate::sequence_storage::InMemoryStorage;
 
-// (1) Make `Reference`
+// (1) Build `Reference`
 //  - Make `SequenceStorage`
 let mut sequence_storage = InMemoryStorage::new();
 sequence_storage.add_record(
-    b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
+    b"ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA",
     "record_1"
 );
 sequence_storage.add_record(
-    b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
+    b"TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC",
     "record_2",
 );
 //  - Pass `SequenceStorage` to `ReferenceBuilder`
 let reference = ReferenceBuilder::new().build(sequence_storage).unwrap();
 
 // (2) Make `Aligner`
-let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
+let mut aligner = Aligner::new_local(
+    4,   // Mismatch penalty
+    6,   // Gap-open penalty
+    2,   // Gap-extend penalty
+    50,  // Minimum aligned length
+    0.2, // Maximum penalty per length
+).unwrap();
 
 // (3) Align query to reference
-let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+let query = b"CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA";
 let result = aligner.query_alignment(&reference, query).unwrap();
-println!("{}", result.to_json_pretty());
+println!("{}", result.to_json());
 ```
 */
 
@@ -43,31 +49,31 @@ type SizedUint = u64;
 #[cfg(target_pointer_width = "32")]
 type SizedUint = u32;
 
+
 #[doc(hidden)]
 // (1) Core structures
 pub mod core;
-// (2) Utility for library
-
 // (2) Reference implementation
 mod reference;
 // (3) Aligner and result
 mod aligner;
-/// Alignment result structure
+/// Structure of alignment result
 pub mod result;
 // (4) Public APIs
 mod alignment; // Alignment functions
 mod builder; // Struct builders
-
+/// Utilities
 pub mod util;
 
-
-mod tests;
-
-
-// Publics Structure
+/*
+Re-export publics
+*/
 pub use reference::{Reference, sequence_storage};
 pub use aligner::Aligner;
 pub use builder::ReferenceBuilder;
+
+// For unit tests
+mod tests;
 
 mod example {
     use std::io::Cursor;
@@ -77,25 +83,31 @@ mod example {
         use crate::{Aligner, ReferenceBuilder};
         use crate::sequence_storage::InMemoryStorage;
 
-        // (1) Make `Reference`
+        // (1) Build `Reference`
         //  - Make `SequenceStorage`
         let mut sequence_storage = InMemoryStorage::new();
         sequence_storage.add_record(
-            b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
+            b"ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA",
             "record_1"
         );
         sequence_storage.add_record(
-            b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
+            b"TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC",
             "record_2",
         );
         //  - Pass `SequenceStorage` to `ReferenceBuilder`
         let reference = ReferenceBuilder::new().build(sequence_storage).unwrap();
 
         // (2) Make `Aligner`
-        let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
+        let mut aligner = Aligner::new_local(
+            4, // (1) Mismatch penalty
+            6, // (2) Gap-open penalty
+            2, // (3) Gap-extend penalty
+            50, // (4) Minimum aligned length
+            0.2, // (5) Maximum penalty per length
+        ).unwrap();
 
         // (3) Align query to reference
-        let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+        let query = b"CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA";
         let result = aligner.query_alignment(&reference, query).unwrap();
         println!("{}", result.to_json());
     }
@@ -107,11 +119,11 @@ mod example {
 
         let mut sequence_storage = InMemoryStorage::new();
         sequence_storage.add_record(
-            b"ATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCAAGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCATCGTATGCAGCACATAAAAATGCCAGAACCA",
+            b"ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA",
             "record_1"
         );
         sequence_storage.add_record(
-            b"TTCCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCACCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGCGTATGCAGCACATAAAAAT",
+            b"TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC",
             "record_2",
         );
         let reference = ReferenceBuilder::new().build(sequence_storage).unwrap();
@@ -126,8 +138,8 @@ mod example {
 
         let loaded_reference: Reference<InMemoryStorage> = Reference::load_from(cursor).unwrap();
 
-        let mut aligner = Aligner::new_local(4, 6, 2, 100, 0.1).unwrap();
-        let query = b"TTCCTCTGTCATCAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGATAACGGAAGCACACCGATCTTAACCGGAGGTGCCGGATGAAAATGGAAAACGGTTCTTACGTCCGGCTTTTCCTCTGTTCCGATATTTTCCTCAT";
+        let mut aligner = Aligner::new_local(4, 6, 2, 50, 0.2).unwrap();
+        let query = b"CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA";
         let result = aligner.query_alignment(&reference, query).unwrap();
         println!("{}", result.to_json());
         let result = aligner.query_alignment(&loaded_reference, query).unwrap();

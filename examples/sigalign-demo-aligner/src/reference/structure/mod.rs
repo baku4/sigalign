@@ -1,18 +1,18 @@
 use super::{Result, error_msg};
 
 use sigalign::{ReferenceBuilder, Reference};
-use sigalign::sequence_provider::{
+use sigalign::sequence_storage::{
     Divisible, SizeAware,
 };
 #[cfg(not(feature = "idx_fa"))]
-use sigalign::sequence_provider::{
-    InMemoryProvider as SeqProvider,
-    InMemoryRcProvider as SeqRcProvider,
+use sigalign::sequence_storage::{
+    InMemoryStorage as SeqStorage,
+    InMemoryRcStorage as SeqRcStorage,
 };
 #[cfg(feature = "idx_fa")]
-use sigalign::sequence_provider::{
-    IndexedFastaProvider as SeqProvider,
-    IndexedFastaRcProvider as SeqRcProvider,
+use sigalign::sequence_storage::{
+    IndexedFastaStorage as SeqStorage,
+    IndexedFastaRcStorage as SeqRcStorage,
 };
 
 use std::fs::File;
@@ -65,8 +65,8 @@ impl ReferencePaths {
 }
 
 pub enum SelfDescSeqPrvs {
-    SeqProviders(Vec<SeqProvider>),
-    SeqRcProviders(Vec<SeqRcProvider>),
+    SeqStorages(Vec<SeqStorage>),
+    SeqRcStorages(Vec<SeqRcStorage>),
 }
 
 impl SelfDescSeqPrvs {
@@ -77,22 +77,22 @@ impl SelfDescSeqPrvs {
         divide_size: &Option<usize>,
     ) -> Result<Self> {
         if use_rc {
-            let mut in_mem_rc_p = SeqRcProvider::new();
+            let mut in_mem_rc_p = SeqRcStorage::new();
             in_mem_rc_p.add_fasta_file(fasta_file)?;
             let sps = match divide_size {
                 None => vec![in_mem_rc_p],
                 Some(max_length) => in_mem_rc_p.split_by_max_length(*max_length)?,
             };
             
-            Ok(Self::SeqRcProviders(sps))
+            Ok(Self::SeqRcStorages(sps))
         } else {
-            let mut in_mem_p = SeqProvider::new();
+            let mut in_mem_p = SeqStorage::new();
             in_mem_p.add_fasta_file(fasta_file)?;
             let sps = match divide_size {
                 None => vec![in_mem_p],
                 Some(max_length) => in_mem_p.split_by_max_length(*max_length)?,
             };
-            Ok(Self::SeqProviders(sps))
+            Ok(Self::SeqStorages(sps))
         }
     }
     #[cfg(feature = "idx_fa")]
@@ -102,28 +102,28 @@ impl SelfDescSeqPrvs {
         divide_size: &Option<usize>,
     ) -> Result<Self> {
         if use_rc {
-            let sp = SeqRcProvider::new(fasta_file)?;
+            let sp = SeqRcStorage::new(fasta_file)?;
             let sps = vec![sp];
             
-            Ok(Self::SeqRcProviders(sps))
+            Ok(Self::SeqRcStorages(sps))
         } else {
-            let sp = SeqProvider::new(fasta_file)?;
+            let sp = SeqStorage::new(fasta_file)?;
             let sps = vec![sp];
             
-            Ok(Self::SeqProviders(sps))
+            Ok(Self::SeqStorages(sps))
         }
     }
     pub fn splitted_size(&self) -> usize {
         match self {
-            Self::SeqProviders(v) => v.len(),
-            Self::SeqRcProviders(v) => v.len(),
+            Self::SeqStorages(v) => v.len(),
+            Self::SeqRcStorages(v) => v.len(),
         }
     }
 }
 
 pub enum SelfDescReference {
-    Ref(Reference<SeqProvider>),
-    RecRc(Reference<SeqRcProvider>),
+    Ref(Reference<SeqStorage>),
+    RecRc(Reference<SeqRcStorage>),
 }
 
 impl SelfDescReference {    
@@ -138,11 +138,11 @@ impl SelfDescReference {
         use std::time::Instant;
 
         match self_desc_seq_prv {
-            SelfDescSeqPrvs::SeqProviders(sps) => {
+            SelfDescSeqPrvs::SeqStorages(sps) => {
                 for (ref_idx, sp) in sps.into_iter().enumerate() {
                     eprintln!(" - Saving reference {}", ref_idx);
                     eprintln!("    Size:");
-                    eprintln!("      Sequence provider: {}", sp.size_of());
+                    eprintln!("      Sequence storage: {}", sp.size_of());
                     let start_time = Instant::now();
                     let reference = reference_builder.clone().build(sp)?;
                     eprintln!("      Pattern finder: {}", reference.pattern_finder.size_of());
@@ -154,11 +154,11 @@ impl SelfDescReference {
                     eprintln!("    Time elapsed to save: {} s", start_time.elapsed().as_secs_f64());
                 }
             },
-            SelfDescSeqPrvs::SeqRcProviders(sps) => {
+            SelfDescSeqPrvs::SeqRcStorages(sps) => {
                 for (ref_idx, sp) in sps.into_iter().enumerate() {
                     eprintln!(" - Saving reference {}", ref_idx);
                     eprintln!("    Size:");
-                    eprintln!("      Sequence provider: {}", sp.size_of());
+                    eprintln!("      Sequence storage: {}", sp.size_of());
                     let start_time = Instant::now();
                     let reference = reference_builder.clone().build(sp)?;
                     eprintln!("      Pattern finder: {}", reference.pattern_finder.size_of());

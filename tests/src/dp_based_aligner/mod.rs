@@ -40,7 +40,7 @@ impl DpBasedAligner {
             pattern_size,
         }
     }
-    pub fn semi_global_alignment<S: SequenceProvider>(
+    pub fn semi_global_alignment<S: SequenceStorage>(
         &self,
         reference: &Reference<S>,
         query: &[u8],
@@ -51,7 +51,7 @@ impl DpBasedAligner {
             optimal_semi_global_alignment,
         )
     }
-    pub fn local_alignment<S: SequenceProvider>(
+    pub fn local_alignment<S: SequenceStorage>(
         &self,
         reference: &Reference<S>,
         query: &[u8],
@@ -68,7 +68,7 @@ impl DpBasedAligner {
         query: &[u8],
         alignment_algorithm: F,
     ) -> AlignmentResult where
-        S: SequenceProvider,
+        S: SequenceStorage,
         F: Fn(&[u8], &[u8], usize, usize, usize, usize, usize, usize, usize, usize) ->  Option<AnchorAlignmentResult>,
     {
         let alignment_start_positions_by_record = self.get_alignment_start_position(reference, query);
@@ -108,7 +108,7 @@ impl DpBasedAligner {
         }
         AlignmentResult(record_alignment_results)
     }
-    fn get_alignment_start_position<S: SequenceProvider>(
+    fn get_alignment_start_position<S: SequenceStorage>(
         &self,
         reference: &Reference<S>,
         query: &[u8],

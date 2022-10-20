@@ -1,10 +1,10 @@
 use crate::{Result, error_msg};
-use super::{SigReference, SigReferenceBuilder, InMemoryProvider};
+use super::{SigReference, SigReferenceBuilder, InMemoryStorage};
 use super::{Deserialize, Serialize, serialize_to_string};
 
 // Reference
 pub struct Reference {
-    pub sig_reference: Option<SigReference<InMemoryProvider>>,
+    pub sig_reference: Option<SigReference<InMemoryStorage>>,
     state: ReferenceState,
 }
 
@@ -49,9 +49,9 @@ impl Reference {
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_fasta_bytes(fasta_bytes.as_bytes());
-        self.generate_with_sequence_provider(sequence_provider, sampling_ratio, bwt_block, lookup_table_kmer_size)?;
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta_bytes(fasta_bytes.as_bytes());
+        self.generate_with_sequence_storage(sequence_storage, sampling_ratio, bwt_block, lookup_table_kmer_size)?;
 
         Ok(())
     }
@@ -62,9 +62,9 @@ impl Reference {
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
-        let mut sequence_provider = InMemoryProvider::new();
-        sequence_provider.add_fasta_file(fasta_file_path)?;
-        self.generate_with_sequence_provider(sequence_provider, sampling_ratio, bwt_block, lookup_table_kmer_size)?;
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta_file(fasta_file_path)?;
+        self.generate_with_sequence_storage(sequence_storage, sampling_ratio, bwt_block, lookup_table_kmer_size)?;
 
         Ok(())
     }
@@ -78,26 +78,26 @@ impl Reference {
         }
     }
 
-    fn generate_with_sequence_provider(
+    fn generate_with_sequence_storage(
         &mut self,
-        sequence_provider: InMemoryProvider,
+        sequence_storage: InMemoryStorage,
         sampling_ratio: usize,
         bwt_block: usize,
         lookup_table_kmer_size: usize,
     ) -> Result<()> {
         let mut sig_reference_builder = SigReferenceBuilder::new()
-        .change_suffix_array_sampling_ratio(sampling_ratio as u64)?
+        .change_sampling_ratio(sampling_ratio as u64)?
             .change_count_array_kmer(lookup_table_kmer_size)?;
 
         if bwt_block == 64 {
-            sig_reference_builder = sig_reference_builder.change_bwt_vector_size_to_64();
+            sig_reference_builder = sig_reference_builder.change_bwt_block_size_to_64();
         } else if bwt_block == 128 {
-            sig_reference_builder = sig_reference_builder.change_bwt_vector_size_to_128();
+            sig_reference_builder = sig_reference_builder.change_bwt_block_size_to_128();
         } else {
             error_msg!("Bwt block only allow 64 or 128")
         }
 
-        let sig_reference = sig_reference_builder.build(sequence_provider)?;
+        let sig_reference = sig_reference_builder.build(sequence_storage)?;
 
         let state = {
             // pattern finder

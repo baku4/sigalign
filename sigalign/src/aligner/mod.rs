@@ -44,7 +44,53 @@ pub use local::LocalAligner;
 // Features
 mod feature;
 
-/// Alignment performer according to similarity criteria.
+/**
+Alignment executor
+
+- Aligner has two modes
+    1. Semi-global algorithm
+        * At each end of the alignment, either the query or the reference is fully consumed.
+        * For example,
+            * Case 1
+                ```text
+                QUERY : -------------
+                            |||||||||
+                RECORD:     -------------
+                ```
+            * Case 2
+                ```text
+                QUERY :     -------------
+                            |||||||||
+                RECORD: -------------
+                ```
+            * Case 3
+                ```text
+                QUERY : -------------
+                           |||||||
+                RECORD:    -------
+                ```
+            * Case 4
+                ```text
+                QUERY :    -------
+                           |||||||
+                RECORD: -------------
+                ```
+    2. Local algorithm
+        * The alignment can contain only parts of record and query sequence.
+        * For example,
+            ```text
+            QUERY : ----------------
+                          |||||||
+            RECORD:    ----------------
+            ```
+        * The result is the same as the semi-global alignments of all substrings in the query sequence.
+
+- Aligner controls work space required to alignment.
+    - Aligner has cache for alignment extension.
+        - The size of the cache is proportional to the square of the query length.
+        - The semi-global mode uses about half of the cache than local mode for the same query length.
+    - Aligner automatically controls sequence buffer when a reference is passed.
+*/
 #[derive(Clone)]
 pub struct Aligner {
     pub(crate) algorithms: Algorithms,
@@ -56,7 +102,9 @@ pub enum Algorithms {
     Local(LocalAligner),
 }
 
+/// Basic methods
 impl Aligner {
+    /// Create [Aligner] with semi-global mode
     pub fn new_semi_global(
         mismatch_penalty: usize,
         gap_open_penalty: usize,
@@ -69,6 +117,7 @@ impl Aligner {
             algorithms: Algorithms::SemiGlobal(SemiGlobalAligner::new(alignment_condition))
         })
     }
+    /// Create [Aligner] with local mode
     pub fn new_local(
         mismatch_penalty: usize,
         gap_open_penalty: usize,
@@ -81,6 +130,7 @@ impl Aligner {
             algorithms: Algorithms::Local(LocalAligner::new(alignment_condition))
         })
     }
+    /// Perform alignment with reference and sequence buffer
     pub fn alignment<S: SequenceStorage>(
         &mut self,
         reference: &Reference<S>,
