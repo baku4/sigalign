@@ -1,7 +1,28 @@
 # SigAlign
 ***Si**milarity-**g**uided **Align***
 
-# Quick Start
+## Key Features
+1. Simplified parameters
+    * **3** gap-affine penalties
+        1. Mismatch penalty
+        2. Gap-open penalty
+        3. Gap-extend penalty
+    * **2** similarity cut-offs
+        1. Minimum length
+        2. Maximum penalty per length
+2. Non-heuristic
+    * No exception for similarity cut-offs.
+        * If there is an alignment result, the optimal alignment is always included in the result. <-> If there is no result, the optimal alignment does not satisfy the similarity cut-offs. 
+3. Reproducible algorithm
+    * *Semi-global*
+        1.	Generate dynamic programming (DP) matrix.
+        2.	Sort out the most optimal semi-global alignment from DP matrix.
+        3.	Repeatedly sort out the next optimal alignment of which location is not overlapped with previous alignments.
+        4.	Print all alignments satisfying cut-offs.
+    * *Local*
+        1. For all substrings of query, perform the semi-global alignment.
+
+## Quick Start
 ```rust
 use crate::{Aligner, ReferenceBuilder};
 use crate::sequence_storage::InMemoryStorage;
