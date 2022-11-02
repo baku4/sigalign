@@ -39,6 +39,7 @@ println!("{}", result.to_json());
 
 use anyhow::{Result, bail as error_msg};
 use serde::{Serialize, Deserialize, de::DeserializeOwned};
+use ahash::AHashMap;
 
 #[cfg(target_endian = "little")]
 type EndianType = byteorder::LittleEndian;

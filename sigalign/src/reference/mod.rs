@@ -7,7 +7,6 @@ use crate::core::{
 };
 use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 use crate::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::marker::PhantomData;
 
 // Traits implemented by structures

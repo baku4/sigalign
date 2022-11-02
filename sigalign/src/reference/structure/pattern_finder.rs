@@ -15,9 +15,9 @@ use capwriter::{Saveable, Loadable};
 use lt_fm_index::{LtFmIndex, LtFmIndexBuilder};
 mod debug;
 
-use std::collections::HashMap;
 use std::fmt::Debug;
 use std::io::{Write, Read};
+use crate::AHashMap;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct PatternFinder {
@@ -68,8 +68,8 @@ impl PatternFinder {
     pub fn locate_in_record_search_range(&self, pattern: Sequence, target_record_index: &[u32]) -> Vec<PatternLocation> {
         let sorted_locations = self.sorted_locations_of_pattern(pattern);
 
-        let mut positions_by_record: HashMap<usize, Vec<usize>> = HashMap::new();
-        // TODO: (1) Apply capacity (2) Change to faster hasher
+        // TODO: Test performance by CAP size
+        let mut positions_by_record: AHashMap<usize, Vec<usize>> = AHashMap::with_capacity(sorted_locations.len());
 
         let pattern_size = pattern.len() as u64;
         let search_range_count = target_record_index.len();

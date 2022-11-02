@@ -5,8 +5,7 @@ use super::{
     ReferenceInterface, SequenceBuffer, PatternLocation,
     Reference, SequenceStorage,
 };
-
-use std::collections::HashMap;
+use crate::AHashMap;
 
 pub type AnchorIndex = (usize, usize);
 
@@ -25,11 +24,11 @@ impl PosTable {
         reference: &Reference<S>,
         query: Sequence,
         pattern_size: usize,
-    ) -> HashMap<usize, Self> {
+    ) -> AHashMap<usize, Self> {
         let qry_len = query.len();
         let pattern_count = qry_len / pattern_size;
 
-        let mut pos_table_by_record: HashMap<usize, Self> = HashMap::new();
+        let mut pos_table_by_record: AHashMap<usize, Self> = AHashMap::new();
 
         for pattern_index in 0..pattern_count {
             let qry_pos = pattern_index * pattern_size;
