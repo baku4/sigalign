@@ -1,12 +1,9 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceStorage,
+	Penalties,
+    AlignmentOperation, AlignmentCase,
 };
 
-use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+use super::{Extension, WaveFront, BackTraceMarker};
 use super::{TraversedPosition};
 
 impl WaveFront {

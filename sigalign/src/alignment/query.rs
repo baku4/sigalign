@@ -1,39 +1,20 @@
 use crate::{Result, error_msg};
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface,
 };
 use super::{
     Aligner,
     Algorithms,
     AlignerInterface,
-    LocalAligner,
-    SemiGlobalAligner,
     Reference,
     SequenceStorage,
     LabelStorage,
 };
 use super::{
-    FastaAlignmentLabeledResult,
-    ReadAlignmentLabeledResult,
     AlignmentLabeledResult,
-    RecordAlignmentLabeledResult,
-    FastaAlignmentResult,
-    ReadAlignmentResult,
     AlignmentResult,
-    RecordAlignmentResult,
-    AnchorAlignmentResult,
-    AlignmentPosition,
-    AlignmentOperation,
-    AlignmentCase,
 };
-
-
-use crate::util::{FastaReader};
-
-use std::path::Path;
-use std::io::{Write, Read};
 
 /// Methods for alignment with query
 /// [SequenceBuffer] is handled automatically

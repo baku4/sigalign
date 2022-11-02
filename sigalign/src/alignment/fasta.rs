@@ -1,15 +1,9 @@
-use crate::{Result, error_msg};
+use crate::{Result};
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface,
 };
 use super::{
     Aligner,
-    Algorithms,
-    AlignerInterface,
-    LocalAligner,
-    SemiGlobalAligner,
     Reference,
     SequenceStorage,
     LabelStorage,
@@ -17,16 +11,8 @@ use super::{
 use super::{
     FastaAlignmentLabeledResult,
     ReadAlignmentLabeledResult,
-    AlignmentLabeledResult,
-    RecordAlignmentLabeledResult,
     FastaAlignmentResult,
     ReadAlignmentResult,
-    AlignmentResult,
-    RecordAlignmentResult,
-    AnchorAlignmentResult,
-    AlignmentPosition,
-    AlignmentOperation,
-    AlignmentCase,
 };
 
 
@@ -256,6 +242,7 @@ impl Aligner {
         }
 
         // Middle reads
+        #[allow(unused_must_use)]
         fasta_reader.into_iter().for_each(|(label, query)| {
             if reference.searchable(&query) {
                 let read_alignment_result = ReadAlignmentResult {
@@ -297,6 +284,7 @@ impl Aligner {
         }
 
         // Middle reads
+        #[allow(unused_must_use)]
         fasta_reader.into_iter().for_each(|(label, query)| {
             if reference.searchable(&query) {
                 let read_labeled_alignment_result = ReadAlignmentLabeledResult {

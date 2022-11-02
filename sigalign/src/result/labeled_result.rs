@@ -1,13 +1,7 @@
 // Labeled alignment result
-use crate::{Result, error_msg};
 use crate::{Serialize, Deserialize};
 use super::{
-    AlignmentResult,
-    RecordAlignmentResult,
     AnchorAlignmentResult,
-    AlignmentPosition,
-    AlignmentOperation,
-    AlignmentCase,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]

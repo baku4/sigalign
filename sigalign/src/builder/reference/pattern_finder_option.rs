@@ -1,13 +1,9 @@
 use super::{
     Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceStorage, SequenceType, JoinedSequence, PatternFinder,
+    SequenceType,
 };
 use super::{
-    ReferenceBuilder, SequenceTypeOption, PatternFinderOption,
+    ReferenceBuilder, PatternFinderOption,
 };
 
 /// Change options for the `index` of sequence

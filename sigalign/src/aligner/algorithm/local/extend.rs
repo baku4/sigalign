@@ -1,13 +1,10 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+	Penalties, PRECISION_SCALE, Cutoff,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceStorage,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchor};
-use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
+use super::{PosTable, AnchorIndex, TraversedAnchor};
+use super::{Extension, WaveFront, calculate_spare_penalty};
 use super::VPC;
 
 #[derive(Debug, Clone)]

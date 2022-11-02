@@ -1,9 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceStorage,
+    AlignmentOperation, AlignmentCase,
 };
 
 impl AlignmentOperation {

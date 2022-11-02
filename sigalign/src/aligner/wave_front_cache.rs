@@ -1,11 +1,7 @@
-use super::{Result, error_msg};
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, PatternLocation,
+	Penalties, PRECISION_SCALE, Cutoff,
 };
-use super::{WaveFront};
+use super::WaveFront;
 use std::fmt;
 
 pub trait WaveFrontCache {

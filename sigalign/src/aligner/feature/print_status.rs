@@ -1,13 +1,6 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, PatternLocation,
-    Reference, SequenceStorage,
     AlignmentCondition,
-    SemiGlobalAligner, LocalAligner,
-    Aligner, Algorithms, AlignerInterface,
+    Aligner, Algorithms,
 };
 
 /// Print status of [Aligner]
@@ -22,7 +15,7 @@ impl Aligner {
     }
     /// Print pattern size
     pub fn get_pattern_size(&self) -> usize {
-        self.get_condition().pattern_size
+        self.get_condition().get_pattern_size()
     }
     /// Print type of algorithm
     pub fn is_local_mode(&self) -> bool {

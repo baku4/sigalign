@@ -1,5 +1,4 @@
 // Alignment conditions that affect the alignment result
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Penalties {
     pub x: usize,

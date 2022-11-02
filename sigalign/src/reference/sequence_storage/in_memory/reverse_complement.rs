@@ -1,13 +1,8 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Result,
 };
 use super::{
-    Reference, SequenceStorage, JoinedSequence,
-    SequenceType, PatternFinder,
+    SequenceStorage, JoinedSequence,
     // traits
     Divisible, Serializable, SizeAware,
     LabelStorage,

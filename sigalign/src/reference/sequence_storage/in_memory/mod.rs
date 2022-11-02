@@ -1,13 +1,9 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Result,
+    SequenceBuffer,
 };
 use super::{
-    Reference, SequenceStorage, JoinedSequence,
-    SequenceType, PatternFinder,
+    SequenceStorage, JoinedSequence,
     // traits
     Divisible, Serializable, SizeAware,
     LabelStorage,
@@ -257,14 +253,10 @@ impl InMemoryStorage {
     }
 }
 
+// FIXME: Move to tests module
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn record_index_range_list_of_max_length() {
-        check_splitted_storage_with_fasta_file("c:\\Users\\khun\\Downloads\\sa_test_mg\\test_ref_seq.fa")
-    }
 
     fn check_splitted_storage_with_fasta_file(fasta_file: &str) {
         // Original

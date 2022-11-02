@@ -1,10 +1,3 @@
-use crate::{Result, error_msg};
-use crate::{Serialize, Deserialize};
-use crate::core::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-};
 pub use crate::core::{
     AlignmentResult,
     RecordAlignmentResult,

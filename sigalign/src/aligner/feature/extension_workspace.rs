@@ -1,11 +1,5 @@
-use crate::aligner::wave_front_cache::WaveFrontCache;
-
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, PatternLocation,
+    WaveFrontCache,
     Aligner, Algorithms,
 };
 

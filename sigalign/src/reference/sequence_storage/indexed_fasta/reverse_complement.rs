@@ -1,30 +1,19 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Result,
 };
 use super::{
-    Reference, SequenceStorage, JoinedSequence,
-    SequenceType, PatternFinder,
+    SequenceStorage,
     // Trait
     Serializable, SizeAware,
-    LabelStorage,
     RcStorage,
 };
 use super::{
     IndexedFastaStorage,
     IndexedFastaBuffer,
-    FaiIndexedFasta,
 };
 
-use std::ffi::{OsString, OsStr};
-use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
-use std::fs::File;
-use std::cell::{Cell, RefCell};
-use std::sync::{Arc, Mutex};
-use std::path::{Path, PathBuf};
+use std::io::{Read, Write};
+use std::path::Path;
 
 use crate::util::reverse_complement_of_nucleotide_sequence;
 

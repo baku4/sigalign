@@ -1,13 +1,10 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceStorage,
+	Penalties,
+    AlignmentOperation, AlignmentCase,
 };
 
 use super::{PosTable, AnchorPosition, AnchorIndex, Extension};
-use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
+use super::{WaveFront, WaveFrontScore, BackTraceMarker};
 
 mod backtrace_wave_front;
 

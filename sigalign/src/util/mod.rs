@@ -1,5 +1,3 @@
-use super::{Result, error_msg};
-
 mod file_reader;
 pub use file_reader::FastaReader;
 

@@ -2,12 +2,12 @@ use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface, SequenceBuffer,
     Reference, SequenceStorage,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, TraversedPosition, TraversedAnchor};
-use super::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, calculate_spare_penalty};
+use super::{PosTable, AnchorIndex, TraversedAnchor};
+use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
 
 pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
     reference: &Reference<S>,

@@ -1,12 +1,7 @@
 use crate::{Result, error_msg};
-use crate::{Serialize, Deserialize};
+use crate::Deserialize;
 use super::{
     AlignmentResult,
-    RecordAlignmentResult,
-    AnchorAlignmentResult,
-    AlignmentPosition,
-    AlignmentOperation,
-    AlignmentCase,
 };
 use super::{
     FastaAlignmentResult,

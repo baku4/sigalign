@@ -1,13 +1,10 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+    Result,
     Sequence,
-    ReferenceInterface, PatternLocation,
+    PatternLocation,
 };
 
 use super::{
-    SequenceType,
     Serializable, SizeAware,
 };
 
@@ -140,11 +137,6 @@ impl Debug for PatternFinder {
             .finish()
     }
 }
-
-use crate::{EndianType};
-use byteorder::{ReadBytesExt, WriteBytesExt};
-
-const LT_FM_INDEX_MIN_LEN: usize = 2_000_000_000;
 
 impl Serializable for PatternFinder {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where

@@ -1,10 +1,7 @@
 use super::{Result, error_msg};
 use super::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, PatternLocation,
-    Reference, SequenceStorage,
+	AlignmentResult, AnchorAlignmentResult,
 };
 use num::integer;
 
@@ -189,6 +186,7 @@ impl MinPenaltyForPattern {
 mod tests {
     use super::*;
 
+    #[test]
     fn test_gcd_calculation_for_penalties() {
         let mut penalties = Penalties::new(4, 6, 2);
         let gcd = penalties.gcd_of_penalties();
@@ -203,7 +201,7 @@ mod tests {
         assert_eq!(penalties, Penalties::new(4, 5, 3));
     }
 
-    #[test]
+    #[allow(dead_code)]
     fn print_calculate_maximum_kmer() {
         let penalties = Penalties::new(4, 6, 2);
         let cutoff = Cutoff::new(50, 0.15);

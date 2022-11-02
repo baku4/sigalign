@@ -1,3 +1,5 @@
+// TODO: Delete unused_imports
+#[allow(unused_imports)]
 use super::{
     Result, error_msg,
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,

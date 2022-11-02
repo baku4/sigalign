@@ -1,9 +1,6 @@
-use super::{Result, error_msg};
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+	AlignmentResult,
     Sequence,
-    ReferenceInterface, PatternLocation,
     Reference, SequenceStorage,
     AlignerInterface,
 };

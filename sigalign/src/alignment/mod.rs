@@ -1,10 +1,10 @@
 // Additional features for aligner
-use crate::{Result, error_msg};
 use crate::core::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface,
 };
+// TODO: Delete unused_imports
+#[allow(unused_imports)]
 use crate::aligner::{
     Aligner,
     Algorithms,
@@ -15,6 +15,8 @@ use crate::aligner::{
     SequenceStorage,
     LabelStorage,
 };
+// TODO: Delete unused_imports
+#[allow(unused_imports)]
 use crate::result::{
     FastaAlignmentLabeledResult,
     ReadAlignmentLabeledResult,

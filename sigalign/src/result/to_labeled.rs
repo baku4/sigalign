@@ -1,9 +1,3 @@
-use crate::{Result, error_msg};
-use crate::core::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-};
 use super::{
     Reference,
     SequenceStorage,
@@ -18,10 +12,6 @@ use super::{
     ReadAlignmentResult,
     AlignmentResult,
     RecordAlignmentResult,
-    AnchorAlignmentResult,
-    AlignmentPosition,
-    AlignmentOperation,
-    AlignmentCase,
 };
 
 impl FastaAlignmentResult {

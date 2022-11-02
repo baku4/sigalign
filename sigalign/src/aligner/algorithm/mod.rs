@@ -9,6 +9,8 @@ use super::{
 
 mod common_steps;
 pub use common_steps::WaveFront;
+// TODO: Delete unused_imports
+#[allow(unused_imports)]
 use common_steps::{
     PosTable, AnchorPosition, AnchorIndex,
     calculate_spare_penalty,

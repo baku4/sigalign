@@ -1,9 +1,7 @@
 use super::{
     Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface, PatternLocation,
 };
 use super::{
     Reference, SequenceStorage,
@@ -13,7 +11,6 @@ use super::{
     SequenceType, PatternFinder,
 };
 
-mod new;
 mod reference_interface;
 mod set_search_range;
 mod io;

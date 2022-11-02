@@ -1,7 +1,7 @@
-use crate::{Result, error_msg};
+use crate::Result;
 
 use std::path::Path;
-use std::{fs::read, io::{Read, Write, BufReader}};
+use std::io::Read;
 use std::fs::File;
 
 use seq_io::fasta::{

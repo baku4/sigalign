@@ -1,20 +1,15 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    Result,
+    SequenceBuffer,
 };
 use super::{
-    Reference, SequenceStorage, JoinedSequence,
-    SequenceType, PatternFinder,
+    SequenceStorage,
     // Trait
     Serializable, SizeAware,
-    LabelStorage,
     RcStorage,
 };
 
-use std::io::{Read, BufRead, BufReader, Seek, SeekFrom, Write};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use crate::util::{path_to_byte, byte_to_pathbuf};
@@ -90,8 +85,6 @@ impl SequenceStorage for IndexedFastaStorage {
 
 use crate::{EndianType};
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use bytemuck::{Pod, Zeroable};
-use bytemuck::{cast_slice, cast, cast_slice_mut};
 
 // Serializable
 impl Serializable for IndexedFastaStorage {

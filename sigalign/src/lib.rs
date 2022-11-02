@@ -38,18 +38,13 @@ println!("{}", result.to_json());
 */
 
 use anyhow::{Result, bail as error_msg};
-use serde::{Serialize, Deserialize, de::DeserializeOwned};
+use serde::{Serialize, Deserialize};
 use ahash::AHashMap;
 
 #[cfg(target_endian = "little")]
 type EndianType = byteorder::LittleEndian;
 #[cfg(target_endian = "big")]
 type EndianType = byteorder::BigEndian;
-#[cfg(target_pointer_width = "64")]
-type SizedUint = u64;
-#[cfg(target_pointer_width = "32")]
-type SizedUint = u32;
-
 
 #[doc(hidden)]
 // (1) Core structures
@@ -76,6 +71,7 @@ pub use builder::ReferenceBuilder;
 // For unit tests
 mod tests;
 
+#[cfg(test)]
 mod example {
     use std::io::Cursor;
 

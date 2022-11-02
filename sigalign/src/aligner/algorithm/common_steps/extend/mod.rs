@@ -1,12 +1,10 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+	Penalties, Cutoff,
+    AlignmentOperation,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
-    Reference, SequenceStorage,
 };
 
-use super::{PosTable, AnchorPosition, AnchorIndex, calculate_spare_penalty};
+use super::{PosTable, AnchorIndex, calculate_spare_penalty};
 
 // Wavefront structure for alignment
 mod wave_front;

@@ -1,13 +1,12 @@
 use crate::{Result, error_msg};
+// TODO: Delete unused_imports
+#[allow(unused_imports)]
 use crate::core::{
 	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface, PatternLocation,
 };
-use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
-use crate::{Deserialize, Serialize};
-use std::marker::PhantomData;
 
 // Traits implemented by structures
 mod requirement;
@@ -35,6 +34,7 @@ pub use sequence_storage::SequenceStorage;
 
 
 // For Documentation
+#[allow(unused_imports)]
 use super::{ReferenceBuilder, Aligner};
 /**
 The target of alignment

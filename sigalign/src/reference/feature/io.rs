@@ -1,9 +1,5 @@
 use super::{
-    Result, error_msg,
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, PatternLocation,
+    Result,
 };
 use super::{
     Reference, SequenceStorage,
@@ -17,8 +13,6 @@ use std::io::{Write, Read};
 use std::path::Path;
 use std::fs::File;
 
-use crate::{EndianType, SizedUint};
-use byteorder::{ReadBytesExt, WriteBytesExt};
 use capwriter::{Saveable, Loadable};
 
 impl<S> Reference<S> where
