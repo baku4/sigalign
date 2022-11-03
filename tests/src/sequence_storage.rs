@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use super::{
     Result, error_msg,
     get_lf_fa_path,
@@ -8,6 +9,8 @@ use super::{
     LabelStorage,
     Serializable,
     RcStorage,
+    Divisible,
+
     InMemoryStorage,
     InMemoryRcStorage,
     IndexedFastaStorage,
@@ -25,8 +28,8 @@ fn sequence_storages_provide_same_sequence() {
         let mut in_memory_rc_storage = InMemoryRcStorage::new();
         in_memory_rc_storage.add_fasta_file(&fa).unwrap();
         // (2) Indexed fasta storage
-        let mut indexed_fasta_storage = IndexedFastaStorage::new(&fa).unwrap();
-        let mut indexed_fasta_rc_storage = IndexedFastaRcStorage::new(&fa).unwrap();
+        let indexed_fasta_storage = IndexedFastaStorage::new(&fa).unwrap();
+        let indexed_fasta_rc_storage = IndexedFastaRcStorage::new(&fa).unwrap();
 
         assert_both_provide_same_sequence(&in_memory_storage, &indexed_fasta_storage);
         assert_both_provide_same_sequence(&in_memory_rc_storage, &indexed_fasta_rc_storage);
@@ -54,11 +57,11 @@ fn sequence_storages_serialization() {
         }
         // (2) Indexed fasta storage
         {
-            let mut indexed_fasta_storage = IndexedFastaStorage::new(&fa).unwrap();
+            let indexed_fasta_storage = IndexedFastaStorage::new(&fa).unwrap();
             assert_storage_serialization(&indexed_fasta_storage);
         }
         {
-            let mut indexed_fasta_rc_storage = IndexedFastaRcStorage::new(&fa).unwrap();
+            let indexed_fasta_rc_storage = IndexedFastaRcStorage::new(&fa).unwrap();
             assert_storage_serialization(&indexed_fasta_rc_storage);
         }
     }
@@ -143,5 +146,51 @@ fn assert_both_provide_same_rc<SR1, SR2>(
         let is_rc_2 = sequence_storage_2.is_reverse_complement(record_index);
 
         assert_eq!(is_rc_1, is_rc_2);
+    }
+}
+
+// Test divisible
+// TODO: To modify (C&P from original crate)
+fn check_splitted_storage_with_fasta_file(fasta_file: &str) {
+    // Original
+    let mut in_memory_storage = InMemoryRcStorage::new();
+    in_memory_storage.add_fasta_file(fasta_file);
+    let mut org_label_list: Vec<String> = Vec::with_capacity(in_memory_storage.total_record_count());
+    let mut org_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_storage.total_record_count());
+    for idx in 0..in_memory_storage.total_record_count() {
+        // Label
+        let label = in_memory_storage.label_of_record(idx);
+        org_label_list.push(label);
+        // Seq
+        let mut buffer = in_memory_storage.get_buffer();
+        in_memory_storage.fill_sequence_buffer(idx, &mut buffer);
+        let seq = buffer.request_sequence().to_vec();
+        org_seq_list.push(seq);
+    }
+
+    // Splitted
+    let mut splitted_label_list: Vec<String> = Vec::with_capacity(in_memory_storage.total_record_count());
+    let mut splitted_seq_list: Vec<Vec<u8>> = Vec::with_capacity(in_memory_storage.total_record_count());
+
+    let splitted = in_memory_storage.split_by_max_length(10000).unwrap();
+    println!("splitted_len: {}", splitted.len());
+
+    for (idx, in_memory_storage) in splitted.into_iter().enumerate() {
+        for ridx in 0..in_memory_storage.total_record_count() {
+            let label = in_memory_storage.label_of_record(ridx);
+            splitted_label_list.push(label);
+
+            let mut buffer = in_memory_storage.get_buffer();
+            in_memory_storage.fill_sequence_buffer(ridx, &mut buffer);
+            // let seq = String::from_utf8(buffer.request_sequence().to_vec()).unwrap();
+            let seq = buffer.request_sequence().to_vec();
+            splitted_seq_list.push(seq);
+        }
+    }
+
+    // Compare
+    for idx in 0..org_label_list.len() {
+        assert_eq!(org_label_list[idx], splitted_label_list[idx]);
+        assert_eq!(org_seq_list[idx], splitted_seq_list[idx])
     }
 }

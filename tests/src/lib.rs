@@ -39,7 +39,6 @@ use test_data::{
 };
 
 use log::{info, warn, error};
-#[cfg(test)]
 pub fn init_logger() {
     let _ = env_logger::builder()
         .target(env_logger::Target::Stdout)
@@ -48,15 +47,15 @@ pub fn init_logger() {
 }
 
 // Test Main
+// Validate result
+mod validate_result; 
 // Fasta reader can read various type of FASTA formatted file
-#[cfg(test)]
 mod read_fasta;
 // Sequence storages provide same information
-#[cfg(test)]
 mod sequence_storage;
-#[cfg(test)]
+// Save and load reference
 mod reference_serialization;
-#[cfg(test)]
+// Compare result with "Dynamic Programming" method
 mod same_result_with_dp;
 // #[cfg(test)]
 // mod print_alignment_result_to_cmp;

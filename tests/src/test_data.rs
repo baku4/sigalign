@@ -1,7 +1,10 @@
 use super::{Result, error_msg};
+use std::io::{Read, Write};
 use std::{env, path::PathBuf, fs};
 
-// For reference building
+// 
+// (1) For reference building
+//
 const BUILD_REF_DIR: &str = "test_data/build_reference";
 const LF_FILE: &str = "LF.fa";
 const CRLF_FILE: &str = "CRLF.fa";
@@ -22,7 +25,9 @@ pub fn get_two_line_fa_path() -> PathBuf {
     path
 }
 
-// For result validation
+// 
+// (2) For result validation
+//
 const VALIDATE_RES_DIR: &str = "test_data/validate_result";
 const REF_FILE: &str = "reference.fa";
 const QRY_FILE: &str = "query.fa";
@@ -37,12 +42,11 @@ pub fn get_qry_for_val_path() -> PathBuf {
     path
 }
 
-// For data caching
+//
+// (3) For data caching
+//
 const LOCAL_TMP_DIR: &str = "tmp";
 pub fn get_local_tmp_dir() -> Result<PathBuf> {
-    // let current_dir = env::current_dir()?;
-    // let local_tmp_dir = current_dir.join(LOCAL_TMP_DIR);
-
     let local_tmp_dir = PathBuf::from(LOCAL_TMP_DIR);
 
     if local_tmp_dir.exists() {

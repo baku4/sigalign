@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 sigalign = { path = "../sigalign", features = ["short_key", "four_dp"] }
+sigalign_stable = { package = "sigalign", version = "0.2.0", features = ["short_key", "four_dp"] }
 lt-fm-index = "0.5.6"
 
 anyhow = "1.0.65"
@@ -16,9 +17,9 @@ bio = "0.42.0"
 faimm = "0.3.0"
 reqwest = { version = "0.11.9", features = ["blocking"] }
 flate2 = "1.0.22"
+env_logger = "0.9.1"
 
 [dev-dependencies]
-env_logger = "0.9.1"
 
 [features]
 print = []
