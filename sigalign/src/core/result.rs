@@ -1,12 +1,12 @@
 // Result of alignment
 use crate::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlignmentResult(
     pub Vec<RecordAlignmentResult>
 );
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "short_key", serde(rename = "RecAln"))]
 pub struct RecordAlignmentResult {
