@@ -1,8 +1,8 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+	Penalties, PRECISION_SCALE, Cutoff,
+    AlignmentOperation, AlignmentCase,
     Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+    ReferenceInterface,
     Reference, SequenceStorage,
 };
 

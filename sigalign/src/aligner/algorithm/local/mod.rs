@@ -288,14 +288,9 @@ fn local_alignment_query_to_record(
                     penalty,
                     length,
                     // About operation
-                    representative_symbol_index,
                     alignment_operations,
                     alignment_position,
-                    left_traversed_anchors,
-                    right_traversed_anchors,
                     // About Optimum
-                    leftmost_optimal_symbol_index,
-                    rightmost_optimal_symbol_index,
                     non_optimal_anchor_indices,
                 };
     
@@ -368,13 +363,8 @@ pub struct LocalAlignment {
     penalty: usize,
     length: usize,
     // About operation
-    representative_symbol_index: usize,
     alignment_operations: Vec<AlignmentOperation>,
     alignment_position: AlignmentPosition,
-    left_traversed_anchors: Vec<TraversedAnchor>,
-    right_traversed_anchors: Vec<TraversedAnchor>,
     // About Optimum
-    leftmost_optimal_symbol_index: usize,
-    rightmost_optimal_symbol_index: usize,
     non_optimal_anchor_indices: Vec<AnchorIndex>,
 }

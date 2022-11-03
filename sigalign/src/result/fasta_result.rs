@@ -1,5 +1,4 @@
 // Fasta alignment result
-use crate::{Result};
 use crate::{Serialize, Deserialize};
 use super::{
     AlignmentResult,

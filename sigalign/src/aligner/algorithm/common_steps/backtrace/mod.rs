@@ -4,7 +4,7 @@ use super::{
 };
 
 use super::{PosTable, AnchorPosition, AnchorIndex, Extension};
-use super::{WaveFront, WaveFrontScore, BackTraceMarker};
+use super::{WaveFront, BackTraceMarker};
 
 mod backtrace_wave_front;
 
@@ -137,11 +137,5 @@ impl AnchorPosition {
         pattern_position.binary_search_by_key(&record_position, |anchor_position| {
             anchor_position.record_position
         })
-    }
-}
-
-impl WaveFrontScore {
-    pub fn index_of_component(&self, k: i32) -> usize {
-        (self.max_k + k) as usize
     }
 }

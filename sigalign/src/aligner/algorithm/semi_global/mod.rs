@@ -215,11 +215,8 @@ fn semi_global_alignment_query_to_record(
                                 symbol, // sorted anchor indices
                                 penalty,
                                 length,
-                                representative_symbol_index,
                                 alignment_operations,
                                 alignment_position,
-                                leftmost_optimal_symbol_index,
-                                rightmost_optimal_symbol_index,
                                 non_optimal_anchor_indices,
                             });
                         },
@@ -665,12 +662,9 @@ pub struct SemiGlobalAlignment {
     penalty: usize,
     length: usize,
     // About operation
-    representative_symbol_index: usize,
     alignment_operations: Vec<AlignmentOperation>,
     alignment_position: AlignmentPosition,
     // About Optimum
-    leftmost_optimal_symbol_index: usize,
-    rightmost_optimal_symbol_index: usize,
     non_optimal_anchor_indices: Vec<AnchorIndex>,
 }
 

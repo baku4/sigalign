@@ -13,7 +13,7 @@ pub use crate::core::SequenceBuffer;
 pub use super::JoinedSequence;
 
 use super::{
-    Result, error_msg,
+    Result,
 };
 
 // Traits to implement
@@ -27,8 +27,6 @@ mod in_memory;
 pub use in_memory::{InMemoryStorage, InMemoryRcStorage};
 mod indexed_fasta;
 pub use indexed_fasta::{IndexedFastaStorage, IndexedFastaRcStorage};
-// Utils for sequence storage
-mod util;
 
 /**
 Storage for alignment target sequences
