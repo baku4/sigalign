@@ -79,13 +79,10 @@ impl WaveFrontScore {
     fn with_max_k(max_k: i32) -> Self {
         Self {
             max_k,
-            components_by_k: Vec::with_capacity(max_k as usize * 2 + 1),
+            components_by_k: vec![Components::default(); max_k as usize * 2 + 1],
         }
     }
     // Get
-    fn range_of_k(&self) -> Vec<i32> {
-        (-self.max_k..=self.max_k).collect()
-    }
     pub fn components_of_k(&self, k: i32) -> &Components {
         &self.components_by_k[(self.max_k + k) as usize]
     }
@@ -132,15 +129,16 @@ pub enum BackTraceMarker {
     FromI,
     FromD,
 }
-
-impl Components {
-    fn new_empty() -> Self {
+impl Default for Components {
+    fn default() -> Self {
         Self {
             m: Component::empty(),
             i: Component::empty(),
             d: Component::empty(),
         }
     }
+}
+impl Components {
     fn new_start_point(first_fr: i32) -> Self {
         Self {
             m: Component::start_point(first_fr),

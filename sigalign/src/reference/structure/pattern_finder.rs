@@ -65,8 +65,8 @@ impl PatternFinder {
     pub fn locate_in_record_search_range(&self, pattern: Sequence, target_record_index: &[u32]) -> Vec<PatternLocation> {
         let sorted_locations = self.sorted_locations_of_pattern(pattern);
 
-        // TODO: Test performance by CAP size
-        let mut positions_by_record: AHashMap<usize, Vec<usize>> = AHashMap::with_capacity(sorted_locations.len());
+        // TODO: Applying cap is valuable?
+        let mut positions_by_record: AHashMap<usize, Vec<usize>> = AHashMap::new();
 
         let pattern_size = pattern.len() as u64;
         let search_range_count = target_record_index.len();
