@@ -19,12 +19,13 @@ use super::{
     Aligner,
     FastaAlignmentResult,
     ReadAlignmentResult,
+    RecordAlignmentResult,
     AlignmentResult,
     AnchorAlignmentResult,
 };
 
 mod stable_answer;
-use log::info;
+use log::{info, error};
 use stable_answer::get_answer_or_generate;
 
 const ANSWER_ALIGNER_OPTION: (
@@ -78,15 +79,15 @@ fn test_current_algorithms_are_collect() {
     info!("Answers are loaded");
     let semi_global_result_of_current = semi_global_aligner.fasta_file_alignment(&reference, &qry_file).unwrap();
     info!("Alignment of semi-global mode is done");
-    compare_fasta_alignment_result(semi_global_result_of_current, semi_global_result_answer);
+    assert_eq_fasta_alignment_result(semi_global_result_of_current, semi_global_result_answer);
     info!("Comparison of semi-global mode is done");
     let local_result_of_current = local_aligner.fasta_file_alignment(&reference, &qry_file).unwrap();
     info!("Alignment of local mode is done");
-    compare_fasta_alignment_result(local_result_of_current, local_result_answer);
+    assert_eq_fasta_alignment_result(local_result_of_current, local_result_answer);
     info!("Comparison of local mode is done");
 }
 
-fn compare_fasta_alignment_result(mut a: FastaAlignmentResult, mut b: FastaAlignmentResult) {
+fn assert_eq_fasta_alignment_result(mut a: FastaAlignmentResult, mut b: FastaAlignmentResult) {
     // Sort by read
     let sort_by_read = |a: &ReadAlignmentResult, b: &ReadAlignmentResult| a.read.cmp(&b.read);
     a.0.sort_by(sort_by_read);
@@ -100,34 +101,103 @@ fn compare_fasta_alignment_result(mut a: FastaAlignmentResult, mut b: FastaAlign
         let res_a = read_res_a.result;
         let res_b = read_res_b.result;
 
-        // Record Result
-        let sorted_comp_res_a = change_alignment_result_to_sorted_results(res_a);
-        let sorted_comp_res_b = change_alignment_result_to_sorted_results(res_b);
-        assert_eq!(sorted_comp_res_a.len(), sorted_comp_res_b.len());
-
-        for (record_res_a, record_res_b) in sorted_comp_res_a.into_iter().zip(sorted_comp_res_b.into_iter()) {
-            assert_eq!(record_res_a.index, record_res_b.index);
-            assert_eq!(record_res_a.alignments_set, record_res_b.alignments_set);
+        let is_equal = is_equal_alignment_result(&res_a, &res_b);
+        if !is_equal {
+            error!("Unequal result in query {}.", &read_res_a.read);    
         }
+        assert!(is_equal);
     }
 }
 
-use ahash::AHashSet;
-struct CompRecordResult {
-    index: usize,
-    alignments_set: AHashSet<AnchorAlignmentResult>,
-}
-fn change_alignment_result_to_sorted_results(result: AlignmentResult) -> Vec<CompRecordResult> {
-    let record_alignment_results = result.0;
-    let mut results: Vec<CompRecordResult> = record_alignment_results.into_iter().map(|record_alignment_result| {
-        let index = record_alignment_result.index;
-        let alignments_set: AHashSet<AnchorAlignmentResult> = record_alignment_result.alignments.into_iter().collect();
-        CompRecordResult {
-            index,
-            alignments_set,
-        }
-    }).collect();
-    results.sort_by(|a, b| {a.index.cmp(&b.index)});
+use std::cmp::Ordering;
+fn is_equal_alignment_result(
+    a: &AlignmentResult,
+    b: &AlignmentResult,
+) -> bool {
+    let sorted_a = sort_record_alignment_results(&a.0);
+    let sorted_b = sort_record_alignment_results(&b.0);
 
-    results
+    if sorted_a.len() != sorted_b.len() {
+        error!("Unequal record alignment count. left: {}, right: {}", sorted_a.len(), sorted_b.len());
+        false
+    } else {
+        sorted_a.into_iter().zip(sorted_b.into_iter()).all(|(a,b)| {
+            if a.index == b.index {
+                if is_equal_anchor_alignment_results(&a.alignments, &b.alignments) {
+                    true
+                } else {
+                    error!("Unequal in record index {}", a.index);
+                    false
+                }
+            } else {
+                error!("Unequal record index. left: {}, right: {}", a.index, b.index);
+                false
+            }
+        })
+    }
+}
+fn sort_record_alignment_results(vec: &Vec<RecordAlignmentResult>) -> Vec<RecordAlignmentResult> {
+    let mut sorted = vec.clone();
+    sorted.sort_by_key(|v| v.index);
+    sorted
+}
+fn is_equal_anchor_alignment_results(
+    a: &Vec<AnchorAlignmentResult>,
+    b: &Vec<AnchorAlignmentResult>,
+) -> bool {
+    let sorted_a = sort_anchor_alignment_results(a);
+    let sorted_b = sort_anchor_alignment_results(b);
+
+    if sorted_a.len() != sorted_b.len() {
+        error!("Unequal anchor alignment count. left: {}, right: {}", sorted_a.len(), sorted_b.len());
+        false
+    } else {
+        let mut is_equal = true;
+        for (a, b) in sorted_a.iter().zip(sorted_b.iter()) {
+            let is_equal_anchor_alignment_result = {
+                a.penalty == b.penalty
+                && a.length == b.length
+                && a.position == b.position
+            };
+            if !is_equal_anchor_alignment_result {
+                error!("Unequal anchor alignment result. left: {:?}, right: {:?}", sorted_a, sorted_b);
+                is_equal = false;
+                break;
+            }
+        }
+        is_equal
+    }
+}
+fn sort_anchor_alignment_results(vec: &Vec<AnchorAlignmentResult>) -> Vec<AnchorAlignmentResult> {
+    let mut sorted = vec.clone();
+    sorted.sort_by(|a, b| cmp_anchor_alignment_result(a, b));
+    sorted
+}
+fn cmp_anchor_alignment_result(a: &AnchorAlignmentResult, b: &AnchorAlignmentResult) -> Ordering {
+    let order1 = a.penalty.cmp(&b.penalty);
+    if let Ordering::Equal = order1 {
+        let order2 = a.length.cmp(&b.length);
+        if let Ordering::Equal = order2 {
+            let order3 = a.position.query.0.cmp(&b.position.query.0);
+            if let Ordering::Equal = order3 {
+                let order4 = a.position.query.1.cmp(&b.position.query.1);
+                if let Ordering::Equal = order4 {
+                    let order5 = a.position.record.0.cmp(&b.position.record.0);
+                    if let Ordering::Equal = order5 {
+                        a.position.record.1.cmp(&b.position.record.1)
+                    } else {
+                        order5
+                    }
+                } else {
+                    order4
+                }
+            } else {
+                order3
+            }
+        } else {
+            order2
+        }
+    } else {
+        order1
+    }
 }

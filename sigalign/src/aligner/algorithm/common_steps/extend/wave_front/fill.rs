@@ -142,11 +142,13 @@ impl WaveFront {
                     if pre_i_component.bt != BackTraceMarker::Empty {
                         // Update I
                         unsafe {
-                            (*new_components_of_k).i = Component {
-                                fr: pre_i_component.fr + 1,
-                                deletion_count: pre_i_component.deletion_count,
-                                bt: BackTraceMarker::FromI,
-                            };
+                            if (*new_components_of_k).i.bt == BackTraceMarker::Empty || (*new_components_of_k).i.fr < pre_i_component.fr + 1 {
+                                (*new_components_of_k).i = Component {
+                                    fr: pre_i_component.fr + 1,
+                                    deletion_count: pre_i_component.deletion_count,
+                                    bt: BackTraceMarker::FromI,
+                                };
+                            }
                         };
                     }
                 }
