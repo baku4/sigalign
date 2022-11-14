@@ -1,8 +1,8 @@
+use crate::test_data::get_lf_fa_path;
 use super::{
     Reference,
     ReferenceBuilder,
     InMemoryStorage,
-    get_lf_fa_path,
 };
 use std::io::Cursor;
 

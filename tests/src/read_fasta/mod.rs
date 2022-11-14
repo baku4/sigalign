@@ -1,5 +1,5 @@
 use super::{Result, error_msg};
-use super::{
+use crate::test_data::{
     get_lf_fa_path,
     get_crlf_fa_path,
     get_two_line_fa_path,

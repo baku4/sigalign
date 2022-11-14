@@ -5,12 +5,10 @@ use std::fs;
 use std::path::PathBuf;
 use std::io::{Read, Write};
 
-use super::{
+use crate::{
     Result, error_msg,
     init_logger,
-    get_ref_for_val_path,
-    get_qry_for_val_path,
-    get_local_tmp_dir,
+    test_data::*,
 };
 use super::{
     ReferenceBuilder,

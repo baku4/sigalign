@@ -29,14 +29,7 @@ use dp_based_aligner::DpBasedAligner;
 
 // Data Path
 pub mod test_data;
-use test_data::{
-    get_lf_fa_path,
-    get_crlf_fa_path,
-    get_two_line_fa_path,
-    get_ref_for_val_path,
-    get_qry_for_val_path,
-    get_local_tmp_dir,
-};
+pub mod random_text;
 
 use log::{info, warn, error};
 pub fn init_logger() {
@@ -51,7 +44,7 @@ pub fn init_logger() {
 mod validate_result; 
 // Fasta reader can read various type of FASTA formatted file
 mod read_fasta;
-// Sequence storages provide same information
+// Test sequence storages
 mod sequence_storage;
 // Save and load reference
 mod reference_serialization;

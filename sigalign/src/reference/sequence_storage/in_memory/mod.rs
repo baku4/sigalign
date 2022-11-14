@@ -10,7 +10,7 @@ use super::{
     RcStorage,
 };
 
-use crate::util::FastaReader;
+use crate::util::{FastaReader, reverse_complement_of_nucleotide_sequence};
 
 use capwriter::{Saveable, Loadable};
 use serde::{Serialize, Deserialize};
@@ -66,6 +66,61 @@ impl InMemoryStorage {
         fasta_reader.for_each(|(label, sequence)| {
             self.add_record(&sequence, &label);
         });
+    }
+    pub fn to_reverse_complement(&self) -> Self {
+        let mut new_combined_sequence: Vec<u8> = Vec::with_capacity(self.combined_sequence.len());
+        (0..self.record_count).for_each(|idx| {
+            let start_idx = self.sequence_index[idx];
+            let end_idx = self.sequence_index[idx+1];
+            let org_seq = &self.combined_sequence[start_idx..end_idx];
+            let mut rc_seq = reverse_complement_of_nucleotide_sequence(org_seq);
+            new_combined_sequence.append(&mut rc_seq);
+        });
+
+        Self {
+            record_count: self.record_count,
+            combined_sequence: new_combined_sequence,
+            sequence_index: self.sequence_index.clone(),
+            combined_label: self.combined_label.clone(),
+            label_index: self.label_index.clone(),
+        }
+    }
+    pub fn merge(&mut self, other: Self) {
+        let Self {
+            record_count: other_record_count,
+            combined_sequence: mut other_combined_sequence,
+            sequence_index: other_sequence_index,
+            combined_label: other_combined_label,
+            label_index: other_label_index,
+        } = other;
+        // record_count
+        self.record_count += other_record_count;
+        // combined_sequence
+        self.combined_sequence.append(&mut other_combined_sequence);
+        // sequence_index
+        let last_seq_idx = *self.sequence_index.last().unwrap();
+        self.sequence_index.reserve(other_record_count);
+        other_sequence_index[1..].iter().for_each(|v| {
+            self.sequence_index.push(v+last_seq_idx);
+        });
+        // combined_label
+        self.combined_label.push_str(&other_combined_label);
+        // label_index
+        let last_label_idx = *self.label_index.last().unwrap();
+        self.label_index.reserve(other_record_count);
+        other_label_index[1..].iter().for_each(|v| {
+            self.label_index.push(v+last_label_idx);
+        });
+    }
+    pub fn get_sequence_safely(&self, record_index: usize) -> Option<Vec<u8>> {
+        if record_index >= self.record_count {
+            return None
+        }
+        
+        let mut buffer = self.get_buffer();
+        self.fill_sequence_buffer(record_index, &mut buffer);
+        let seq = buffer.request_sequence().to_vec();
+        Some(seq)
     }
 }
 
