@@ -122,6 +122,13 @@ impl InMemoryStorage {
         let seq = buffer.request_sequence().to_vec();
         Some(seq)
     }
+    pub fn get_label_safely(&self, record_index: usize) -> Option<String> {
+        if record_index >= self.record_count {
+            return None
+        }
+        
+        Some(self.label_of_record(record_index))
+    }
 }
 
 pub struct InMemoryBuffer {
