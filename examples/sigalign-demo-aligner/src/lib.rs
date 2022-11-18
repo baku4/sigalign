@@ -1,57 +1,55 @@
 use anyhow::{Result, format_err, bail as error_msg};
 
 use clap::{
-    App,
-    AppSettings,
+    Command,
+    ColorChoice,
 };
 
 mod reference;
-mod alignment;
-mod two_step_alignment;
-
 use reference::{
-    ReferenceConfig,
+    ReferenceApp,
+    Reference,
     ReferencePaths,
-    SelfDescReference,
+    InnerReference,
 };
-use alignment::AlignmentConfig;
-#[cfg(feature = "tsa")]
-use two_step_alignment::TSAlignmentConfig;
+
+#[cfg(not(any(feature = "tsv", feature = "thread")))]
+mod default_alignment;
+#[cfg(not(any(feature = "tsv", feature = "thread")))]
+use default_alignment::AlignmentApp;
+
+#[cfg(feature = "tsv")]
+mod tsv_alignment;
+#[cfg(feature = "tsv")]
+use tsv_alignment::AlignmentApp;
+
+#[cfg(feature = "thread")]
+mod pool_alignment;
+#[cfg(feature = "thread")]
+use pool_alignment::AlignmentApp;
 
 pub struct Application;
 
 impl Application {
     pub fn run() {
-        let app = App::new("sigalign-demo-aligner")
+        let app = Command::new("sigalign-demo-aligner")
             .version("0.1.0")
             .author("baku <bahkhun@gmail.com>")
             .about("Binary demo implementation")
-            .global_setting(AppSettings::DeriveDisplayOrder)
-            .global_setting(AppSettings::PropagateVersion)
-            .global_setting(AppSettings::ArgRequiredElseHelp)
-            .subcommand(
-                ReferenceConfig::add_args(
-                    App::new("reference")
-                )
-            )
-            .subcommand(
-                AlignmentConfig::add_args(
-                    App::new("alignment")
-                )
-            );
+            .arg_required_else_help(true)
+            .propagate_version(true)
+            .subcommand_required(true)
+            .subcommand(ReferenceApp::get_command().display_order(1))
+            .subcommand(AlignmentApp::get_command().display_order(2));
         
         let matches = app.get_matches();
         
         match matches.subcommand() {
             Some(("reference", sub_matches)) => {
-                ReferenceConfig::run_command(sub_matches)
+                ReferenceApp::run(sub_matches)
             },
             Some(("alignment", sub_matches)) => {
-                AlignmentConfig::run_command(sub_matches)
-            },
-            #[cfg(feature = "tsa")]
-            Some(("tsa", sub_matches)) => {
-                TSAlignmentConfig::run_command(sub_matches)
+                AlignmentApp::run(sub_matches)
             },
             _ => unreachable!(""),
         }
