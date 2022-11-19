@@ -16,5 +16,9 @@ env_logger = "0.9.0"
 
 [features]
 default = []
+# Change the alignment method
 tsv = [] # Print TSV formatted output to stdout.
-thread = [] # Align multiple query files using worker thread. Output is TSV to stdout.
+thread = [] # Align multiple query files using worker thread. Output is TSV to stdout
+rc_qry = [] # Reverse complementary is handled at the query level. Output is TSV to stdout.
+# Change the reference type
+idx_fa = [] # Use indexed fasta as sequence storage.

@@ -24,9 +24,6 @@ struct ReferenceConfig {
     // Path
     input_file_pathbuf: PathBuf,
     output_file_pathbuf: PathBuf,
-    // Sequence storage type
-    divide_size: Option<usize>,
-    use_rc: bool,
     // Pattern finder config
     use_128_bwt: bool,
     kmer: Option<usize>,
@@ -36,7 +33,7 @@ struct ReferenceConfig {
 impl ReferenceApp {
     pub fn get_command() -> Command {
         Command::new("reference")
-            .about("Generate reference file")
+            .about("Generate reference file (Sequence storage is indexed fasta (with .fai))")
             .arg_required_else_help(true)
             .arg(arg!(-i --input <FILE> "Input FASTA path").display_order(1)
                 .value_parser(value_parser!(PathBuf))
@@ -45,15 +42,11 @@ impl ReferenceApp {
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
             .arg(arg!(-w --overwrite  "Overwrite output reference file").display_order(3))
-            .arg(arg!(-r --reverse  "Use reverse complementary sequence (for nucleotide)").display_order(4))
             .arg(arg!(-c --cpb  "Use higher compressed (128) Bwt block").display_order(5))
             .arg(arg!(-s --ssr <INT>  "Suffix array sampling ratio").display_order(6)
                 .value_parser(value_parser!(u64))
                 .required(false))
             .arg(arg!(-k --klt <INT> "Kmer size for count array lookup table").display_order(7)
-                .value_parser(value_parser!(usize))
-                .required(false))
-            .arg(arg!(-d --divide <INT> "Split by sequence length").display_order(8)
                 .value_parser(value_parser!(usize))
                 .required(false))
     }
@@ -106,11 +99,7 @@ impl ReferenceConfig {
         }
 
         // (2) Sequence storage type
-        let divide_size = match matches.get_one::<usize>("divide") {
-            Some(v) => Some(*v),
-            None => None,
-        };
-        let use_rc = matches.contains_id("reverse");
+        // Unsupported
         
         // (3) Pattern finder config
         let use_128_bwt = matches.contains_id("cpb");
@@ -127,8 +116,6 @@ impl ReferenceConfig {
             Self {
                 input_file_pathbuf,
                 output_file_pathbuf,
-                divide_size,
-                use_rc,
                 use_128_bwt,
                 kmer,
                 sa_sampling_ratio,
@@ -138,8 +125,6 @@ impl ReferenceConfig {
     fn build_references(&self) -> Result<Vec<Reference>> {
         Reference::build(
             &self.input_file_pathbuf,
-            self.divide_size,
-            self.use_rc,
             self.use_128_bwt,
             self.kmer,
             self.sa_sampling_ratio,

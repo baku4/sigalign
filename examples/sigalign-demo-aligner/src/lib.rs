@@ -2,7 +2,6 @@ use anyhow::{Result, format_err, bail as error_msg};
 
 use clap::{
     Command,
-    ColorChoice,
 };
 
 mod reference;
@@ -13,20 +12,8 @@ use reference::{
     InnerReference,
 };
 
-#[cfg(not(any(feature = "tsv", feature = "thread")))]
-mod default_alignment;
-#[cfg(not(any(feature = "tsv", feature = "thread")))]
-use default_alignment::AlignmentApp;
-
-#[cfg(feature = "tsv")]
-mod tsv_alignment;
-#[cfg(feature = "tsv")]
-use tsv_alignment::AlignmentApp;
-
-#[cfg(feature = "thread")]
-mod pool_alignment;
-#[cfg(feature = "thread")]
-use pool_alignment::AlignmentApp;
+mod alignment;
+use alignment::AlignmentApp;
 
 pub struct Application;
 
