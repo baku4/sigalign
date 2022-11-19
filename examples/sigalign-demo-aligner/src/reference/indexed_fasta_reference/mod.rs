@@ -90,7 +90,7 @@ impl ReferenceConfig {
         let input_file_pathbuf = {
             matches.get_one::<PathBuf>("input").expect("Invalid input file").clone()
         };
-        let overwrite = matches.contains_id("overwrite");
+        let overwrite = matches.get_flag("overwrite");
         let output_file_pathbuf = {
             matches.get_one::<PathBuf>("output").expect("Invalid output file").clone()
         };
@@ -102,7 +102,7 @@ impl ReferenceConfig {
         // Unsupported
         
         // (3) Pattern finder config
-        let use_128_bwt = matches.contains_id("cpb");
+        let use_128_bwt = matches.get_flag("cpb");
         let kmer = match matches.get_one::<usize>("klt") {
             Some(v) => Some(*v),
             None => None,

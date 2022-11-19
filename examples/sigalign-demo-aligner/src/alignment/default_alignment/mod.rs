@@ -140,9 +140,9 @@ impl AlignmentConfig {
         };
         
         // (3) Algorithm
-        let use_local_alg = if matches.contains_id("semiglobal") {
+        let use_local_alg = if matches.get_flag("semiglobal") {
             false
-        } else if matches.contains_id("local") {
+        } else if matches.get_flag("local") {
             true
         } else {
             error_msg!("Unknown algorithm")
