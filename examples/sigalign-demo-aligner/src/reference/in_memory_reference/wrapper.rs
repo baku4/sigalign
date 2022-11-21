@@ -37,8 +37,7 @@ impl Reference {
         ss.add_fasta_file(input_file_pathbuf)?;
 
         if use_rc {
-            let rcss = ss.to_reverse_complement();
-            ss.merge(rcss);
+            ss.append_reverse_complement();
         }
 
         let divided_ss = match divide_size {

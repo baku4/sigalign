@@ -27,7 +27,7 @@ use sigalign::util::reverse_complement_of_nucleotide_sequence;
 use log::info;
 
 #[test]
-fn rc_from_in_memory_storage_is_collect() {
+fn converted_rc_is_collect() {
     init_logger();
 
     let record_count = 10;
@@ -67,7 +67,7 @@ fn rc_from_in_memory_storage_is_collect() {
 }
 
 #[test]
-fn merged_in_memory_storage_is_collect() {
+fn merged_storage_is_collect() {
     init_logger();
 
     let first_record_count = 12;
@@ -119,4 +119,48 @@ fn merged_in_memory_storage_is_collect() {
         assert_eq!(seq, &second_sequence_list[idx]);
         assert_eq!(&label, &second_label_list[idx]);
     }
+}
+
+#[test]
+fn appended_reverse_complement_is_collected() {
+    init_logger();
+
+    let first_record_count = 12;
+    let first_sequence_list: Vec<Vec<u8>> = (0..first_record_count).map(|_| {
+        rand_text_of_nn()
+    }).collect();
+    let first_label_list: Vec<String> = (0..first_record_count).map(|idx| {
+        format!("first_{}", idx)
+    }).collect();
+
+    let second_record_count = first_record_count;
+    let second_sequence_list: Vec<Vec<u8>> = first_sequence_list.iter().map(|v| {
+        reverse_complement_of_nucleotide_sequence(v)
+    }).collect();
+    let second_label_list: Vec<String> = first_label_list.iter().cloned().collect();
+
+    // Merged storage
+    let merged_storage = {
+        let mut first_ims = InMemoryStorage::new();
+        for idx in 0..first_record_count {
+            first_ims.add_record(&first_sequence_list[idx], &first_label_list[idx]);
+        }
+        let mut second_ims = InMemoryStorage::new();
+        for idx in 0..second_record_count {
+            second_ims.add_record(&second_sequence_list[idx], &second_label_list[idx]);
+        }
+        first_ims.merge(second_ims);
+        first_ims
+    };
+    // Appended storage
+    let appended_storage = {
+        let mut first_ims = InMemoryStorage::new();
+        for idx in 0..first_record_count {
+            first_ims.add_record(&first_sequence_list[idx], &first_label_list[idx]);
+        }
+        first_ims.append_reverse_complement();
+        first_ims
+    };
+
+    assert_eq!(merged_storage, appended_storage);
 }

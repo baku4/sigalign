@@ -1,4 +1,5 @@
 # *SigAlign* for python
+`Python` language binding of [*`SigAlign`*](https://github.com/baku4/sigalign).
 ## Requirements
 * python >=3.7
 ## Install

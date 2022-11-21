@@ -85,6 +85,39 @@ impl InMemoryStorage {
             label_index: self.label_index.clone(),
         }
     }
+    pub fn append_reverse_complement(&mut self) {
+        // combined_sequence
+        self.combined_sequence.reserve(self.combined_sequence.len());
+        (0..self.record_count).for_each(|idx| {
+            let start_idx = self.sequence_index[idx];
+            let end_idx = self.sequence_index[idx+1];
+            let org_seq = &self.combined_sequence[start_idx..end_idx];
+            let mut rc_seq = reverse_complement_of_nucleotide_sequence(org_seq);
+            self.combined_sequence.append(&mut rc_seq);
+        });
+        // sequence_index
+        {
+            self.sequence_index.reserve(self.record_count);
+            let last_seq_idx = *self.sequence_index.last().unwrap();
+            for idx in 1..=self.record_count {
+                let v = self.sequence_index[idx];
+                self.sequence_index.push(v+last_seq_idx);
+            };
+        }
+        // combined_label
+        self.combined_label.push_str(&self.combined_label.clone());
+        // label_index
+        {
+            self.label_index.reserve(self.record_count);
+            let last_label_idx = *self.label_index.last().unwrap();
+            for idx in 1..=self.record_count {
+                let v = self.label_index[idx];
+                self.label_index.push(v+last_label_idx);
+            };
+        }
+        // record_count
+        self.record_count <<= 1;
+    }
     pub fn merge(&mut self, other: Self) {
         let Self {
             record_count: other_record_count,

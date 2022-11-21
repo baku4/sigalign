@@ -27,9 +27,9 @@ use provide_same_information::{
     assert_both_provide_same_label
 };
 mod serialization;
-mod type_conversion;
 
-
+// For each storage
+mod in_memory;
 
 // Test divisible
 // TODO: To modify (C&P from original crate)
