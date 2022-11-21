@@ -69,22 +69,12 @@ impl ReferenceApp {
             config
         };
 
-        let references = {
-            eprintln!("# 2. Build reference");
-            let start = Instant::now();
-            let references =  config.build_references().unwrap();
-            eprintln!("  {} separated references are built.", references.len());
-            eprintln!(" - Time elapsed: {} s\n", start.elapsed().as_secs_f64());
-
-            references
-        };
-
         {
-            eprintln!("# 3. Save reference");
+            eprintln!("# 2. Build and save reference");
             let start = Instant::now();
-            config.save_references(references);
+            config.build_and_save_references().unwrap();
             eprintln!(" - Time elapsed: {} s\n", start.elapsed().as_secs_f64());
-        }
+        };
         
         eprintln!("# 4. All processes are completed");
         eprintln!(" - Total time elapsed: {} s", total_start.elapsed().as_secs_f64());
@@ -135,27 +125,33 @@ impl ReferenceConfig {
             }
         )
     }
-    fn build_references(&self) -> Result<Vec<Reference>> {
-        Reference::build(
-            &self.input_file_pathbuf,
-            self.divide_size,
-            self.use_rc,
-            self.use_128_bwt,
-            self.kmer,
-            self.sa_sampling_ratio,
-        )
-    }
-    fn save_references(&self, references: Vec<Reference>) {
-        let reference_count = references.len();
+    fn build_and_save_references(&self) -> Result<()> {
+        let divided_sequence_storages = {
+            let sss = Reference::get_divided_sequence_storages(
+                &self.input_file_pathbuf,
+                self.divide_size,
+                self.use_rc,
+            )?;
+            eprintln!(" Storage is divided into {}.", sss.len());
+            sss
+        };
+
         let reference_paths = ReferencePaths::new_to_save(
             &self.output_file_pathbuf,
-            reference_count,
+            divided_sequence_storages.len(),
         );
 
-        references.into_iter().enumerate().zip(reference_paths.0).for_each(|((idx, reference), file_path)| {
-            let estimated_size = reference.size_of();
-            eprintln!(" Ref idx {} was saved; about {} bytes", idx, estimated_size);
-            reference.save_to_file(&file_path).unwrap();
+        divided_sequence_storages.into_iter().enumerate().zip(reference_paths.0).for_each(|((idx, ss), file_path)| {
+            eprint!(" Ref idx {}; ", idx);
+            Reference::build_and_save(
+                ss,
+                self.use_128_bwt,
+                self.kmer,
+                self.sa_sampling_ratio,
+                &file_path,
+            ).unwrap();
         });
+
+        Ok(())
     }
 }
