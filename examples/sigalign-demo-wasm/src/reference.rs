@@ -3,7 +3,7 @@ use super::{SigReference, SigReferenceBuilder, InMemoryStorage};
 use super::{Deserialize, Serialize, serialize_to_string};
 
 // Reference
-pub struct Reference {
+pub struct ReferenceDep {
     pub sig_reference: Option<SigReference<InMemoryStorage>>,
     state: ReferenceState,
 }
@@ -20,7 +20,7 @@ struct ReferenceState {
     bwt_block_size: usize,
     lookup_table_kmer_size: usize,
 }
-impl Default for Reference {
+impl Default for ReferenceDep {
     fn default() -> Self {
         Self {
             sig_reference: None,
@@ -41,7 +41,7 @@ impl Default for ReferenceState {
         }
     }
 }
-impl Reference {
+impl ReferenceDep {
     pub fn generate_with_fasta_bytes(
         &mut self,
         fasta_bytes: &str,

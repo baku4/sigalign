@@ -1,9 +1,9 @@
 use crate::{Result, error_msg};
-use super::{SigAligner, SigReference, Reference};
+use super::{SigAligner, SigReference, ReferenceDep};
 use super::{Deserialize, Serialize, serialize_to_string};
 
 // Aligner
-pub struct Aligner {
+pub struct AlignerDep {
     pub sig_aligner: Option<SigAligner>,
     state: AlignerState,
 }
@@ -18,7 +18,7 @@ struct AlignerState {
     maximum_penalty_per_length: f32,
     pattern_size: usize,
 }
-impl Default for Aligner {
+impl Default for AlignerDep {
     fn default() -> Self {
         Self {
             sig_aligner: None,
@@ -41,7 +41,7 @@ impl Default for AlignerState {
     }
 }
 
-impl Aligner {
+impl AlignerDep {
     pub fn generate(
         &mut self,
         for_local: bool,
