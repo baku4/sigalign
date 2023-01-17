@@ -4,7 +4,6 @@
   line-height: 24px;
   font-weight: 400;
 
-  color-scheme: light dark;
   color: #213547;
   background-color: #ffffff;
 
@@ -14,6 +13,88 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
 }
+
+body {
+  margin: 0;
+}
+
+#title {
+  background: rgb(251,37,118);
+  background: linear-gradient(144deg, rgba(251,37,118,1) 0%, rgba(63,0,113,1) 50%, rgba(51,47,208,1) 100%);
+  color: aliceblue;
+}
+
+.title_content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+h2.header {
+  padding-top: 2rem;
+}
+
+span.highlight {
+  padding: 0.15rem 0.3rem;
+  background-color: #f2f1f1;
+  border-radius: 0.2rem;
+  color: #FB2576;
+  font-size: smaller;
+}
+
+a {
+  color: #FB2576;
+}
+
+.first_fc {
+  color: #3F0071;
+}
+.second_fc {
+  color: #FB2576;
+}
+.third_fc {
+  color: #332FD0;
+}
+
+.subtask {
+  margin: 0.5rem 0.5rem;
+  padding: 0.5rem 0.5rem;
+  border: 0.05rem solid #213547;
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+
+button.default {
+  display: inline-block;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  background-color: #007bff;
+  text-align: center;
+  font-size: 16px;
+  padding: 12px 24px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button.default:hover {
+  background-color: #0069d9;
+  transform: translateY(-2px);
+}
+
+button.default:active {
+  transform: translateY(2px);
+}
+
 /* 
 #app {
   max-width: 720px;
@@ -22,9 +103,7 @@
   text-align: center;
 }
 
-.title {
-  background-color: rgb(197, 170, 48);
-} */
+*/
 
 /* 
 a {
@@ -74,16 +153,3 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 } */
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: rgba(255, 255, 255, 0.87);
-    background-color: #242424;
-  }
-  /* a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  } */
-}

@@ -1,83 +1,129 @@
 use wasm_bindgen::prelude::*;
-use anyhow::{Result, bail as error_msg};
-use serde::{Deserialize, Serialize};
-use serde_json::to_string as serialize_to_string;
+// use anyhow::{Result, bail as error_msg};
+// use serde::{Deserialize, Serialize};
+// use serde_json::to_string as serialize_to_string;
 
 use sigalign::{
     Reference as SigReference,
     ReferenceBuilder as SigReferenceBuilder,
     Aligner as SigAligner,
+    sequence_storage::{
+        InMemoryStorage as SigInMemoryStorage,
+    },
+    result::{
+        AlignmentLabeledResult,
+        FastaAlignmentLabeledResult,
+    }
 };
-use sigalign::sequence_storage::InMemoryStorage;
 
 mod reference;
 mod aligner;
-use reference::ReferenceDep;
-use aligner::AlignerDep;
+mod result;
+use reference::Reference;
+use aligner::Aligner;
+use result::Result;
 
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
+struct SigAlignApp {
+    reference: Reference,
+    aligner: Aligner,
+    result: Result,
 }
 
-#[wasm_bindgen]
-pub fn say_hello() {
-    alert("Hello");
-}
-
-#[wasm_bindgen]
-pub struct Reference {
-    inner: SigReference<InMemoryStorage>,
-}
-#[wasm_bindgen]
-impl Reference {
-    pub fn new_test() -> Self {
-        let mut ss = InMemoryStorage::new();
-        ss.add_record(b"ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA", "record_1");
-        ss.add_record(b"TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC", "record_2");
-
-        let builder = SigReferenceBuilder::new();
-        let inner = builder.build(ss).unwrap();
-        Self { inner }
+impl SigAlignApp {
+    pub fn new() -> Self {
+        Self {
+            reference: Reference::default(),
+            aligner: Aligner::default(),
+            result: Result::default(),
+        }
     }
-}
-
-#[wasm_bindgen]
-pub struct Aligner {
-    inner: SigAligner,
-}
-#[wasm_bindgen]
-impl Aligner {
-    pub fn new_test() -> Self {
-        let inner = SigAligner::new_local(
-        4,
-        6,
-        2,
-        50,
-        0.2,
-        ).unwrap();
-        
-        Self { inner }
+    pub fn build_reference(
+        &mut self,
+        fasta_formatted_string: &str,
+        suffix_array_sampling_ratio: usize,
+        use_128_sized_bwt_block: usize,
+        lookup_table_kmer_size: usize,
+    ) {
+        //
     }
-    pub fn align(&mut self, reference: &Reference, query: &str) -> String {
-        let result = self.inner.query_alignment(&reference.inner, query.as_bytes()).unwrap();
-        result.to_json_pretty()
+    pub fn build_aligner(
+        &mut self,
+        for_local: bool,
+        mismatch_penalty: usize,
+        gap_open_penalty: usize,
+        gap_extend_penalty: usize,
+        minimum_aligned_length: usize,
+        maximum_penalty_per_length: f32,
+    ) {
+        //
     }
-}
-
-#[test]
-fn test_test() {
-    let reference = Reference::new_test();
-    let mut aligner = Aligner::new_test();
-
-    let result = aligner.align(&reference, "CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA");
-    println!("result: {}", result);
+    pub fn alignment_query(
+        &mut self,
+        query: &str,
+    ) {
+        //
+    }
+    pub fn alignment_fasta(
+        &mut self,
+        fasta_formatted_string: &str,
+    ) {
+        //
+    }
+    pub fn get_result_as_json(
+        &self,
+    ) {
+        //
+    }
+    pub fn get_result_as_tsv(
+        &self,
+    ) {
+        //
+    }
 }
 
 // #[wasm_bindgen]
-// pub struct SigAlignApp {
-//     reference: Reference,
-//     aligner: Aligner,
+// impl Reference {
+//     pub fn new_test() -> Self {
+//         let mut ss = InMemoryStorage::new();
+//         ss.add_record(b"ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA", "record_1");
+//         ss.add_record(b"TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC", "record_2");
+
+//         let builder = SigReferenceBuilder::new();
+//         let inner = builder.build(ss).unwrap();
+//         Self { inner }
+//     }
+// }
+
+// #[wasm_bindgen]
+// pub struct Aligner {
+//     inner: SigAligner,
+// }
+// #[wasm_bindgen]
+// impl Aligner {
+//     pub fn new_test() -> Self {
+//         let inner = SigAligner::new_local(
+//         4,
+//         6,
+//         2,
+//         50,
+//         0.2,
+//         ).unwrap();
+        
+//         Self { inner }
+//     }
+//     pub fn align(&mut self, reference: &Reference, query: &str) -> String {
+//         let result = self.inner.query_alignment(&reference.inner, query.as_bytes()).unwrap();
+//         result.to_json_pretty()
+//     }
+// }
+
+// #[test]
+// fn test_test() {
+//     let reference = Reference::new_test();
+//     let mut aligner = Aligner::new_test();
+
+//     let result = aligner.align(&reference, "CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA");
+//     println!("result: {}", result);
 // }
 
 // #[wasm_bindgen]

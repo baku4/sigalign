@@ -1,6 +1,5 @@
 <script lang="ts">
-  import svelteLogo from './assets/svelte.svg'
-  import Counter from './lib/Counter.svelte'
+  import Callout from './lib/Callout.svelte';
   import { onMount } from 'svelte'
   import init, { Reference, Aligner, say_hello } from './wasm/sigalign_demo_wasm'
 
@@ -19,6 +18,7 @@
   //     return new value.Reference();
   //   });
   
+  let sequence_storage = [];
 
   let aligner: Aligner;
   let reference: Reference;
@@ -46,123 +46,104 @@
 </script>
 
 <main>
-  <div class="title">
-    <h1>SigAlign Demo App</h1>
-    <p>
-      This web application uses SigAlign built with WebAssembly. No matter what device you access this page, the alignment proceeds on your own machine!
-    </p>
+  <div id="title">
+    <div class="title_content">
+      <h1>Tour🚀 of <i>SigAlign</i></h1>
+      with simple web app for pairwise alignment
+    </div>
   </div>
 
-  <div>
-    <h2>How it works?</h2>
+  <div class="content">
+    <h2>Welcome!</h2>
     <p>
-      You need two structures: <span>(1) Reference</span> and <span>(2) Aligner</span>.
+      This web application performs pairwise sequence alignment using <span class="highlight"><i>SigAlign</i></span> built to <span class="highlight"><i>WebAssembly</i></span>. No matter what device you access this page, <b>the alignment proceeds on your own machine.</b>
     </p>
-  </div>
-  <div>
-    <h2>Pepare Reference</h2>
+    <Callout>
+      <span slot="title">
+        What is "Alignment"?
+      </span>
+      <span slot="contents">
+        Alignment is to find optimal relationship between two sequences. This is core task for many bioinformatics processes. If you are new to biological sequence alignment, a quick scratch on <a href="https://en.wikipedia.org/wiki/Sequence_alignment" target="_blank" rel="noreferrer">Wikipedia</a> will be helpful.
+      </span>
+    </Callout>
     <p>
-      Reference is a database for multiple alignment target sequences and their index.
+      <span class="highlight"><i>SigAlign</i></span> supports nucleotide and amino acid sequence.
     </p>
-    <h3>Make Sequence Storage</h3>
+    
+    <h2 class="header">How it works?</h2>
     <p>
-      SigAlign's Reference is agnostic to storage of sequecnes. In this case, we will use InMemoryStorage.
+      First, prepare two structures:
     </p>
-    <h3>Pass Storage to ReferenceBuilder</h3>
+    <ul>
+      <li><span class="highlight">Reference</span> - Database for multiple alignment target sequences.</li>
+      <li><span class="highlight">Aligner</span> - Recipe and workspace for alignment.</li>
+    </ul>
+    Then, pass the (1) query sequence and (2) <span class="highlight">Reference</span> to the <span class="highlight">Aligner</span>.
+
+    <h2 class="header">Build <span class="highlight">Reference</span></h2>
     <p>
-      contents
+      The easiest way to build <span class="highlight">Reference</span> is pass the <span class="highlight">SequenceStorage</span> which is a set of target sequences to <span class="highlight">Reference</span> builder.
+      In this app, we can use <i>Fasta</i> formatted string to make  <span class="highlight">SequenceStorage</span>.
+      The builder can automatically generate <span class="highlight">Reference</span>, but additional options for compression level about the index of sequences can be defined. Compression level does not affect the alignment result, so can be changed fearlessly.
     </p>
+    <Callout>
+      <span slot="title">
+        Why need <span class="highlight">SequenceStorage</span>?
+      </span>
+      <span slot="contents">
+        In <span class="highlight"><i>SigAlign</i></span>, <span class="highlight">Reference</span> is agnostic to <span class="highlight">SequenceStorage</span>. In this app, we will use <span class="highlight">InMemoryStorage</span> that stores sequences to main memory.
+      </span>
+    </Callout>
+    <div class="subtask">
+      <h3>1. <span class="highlight">SequenceStorage</span></h3>
+      
+
+      <button class="default">load sample data</button><button>load from file (.fasta)</button>
+      <textarea>test</textarea>
+
+
+      <h3>2. Compression level</h3>
+      The compression level does not affect the results at all, only related to the speed of the algorithm.
+    </div>
+    
+    <h2 class="header">Make <span class="highlight">Aligner</span></h2>
+    <p>
+      Aligner has alignment condition and performs alignment on its internal working space.
+    </p>
+    <div class="subtask">
+      <h3>1. Select mode</h3>
+      Local mode, semi-global mode
+
+      <h3>2. Scoring function</h3>
+      Scoring function
+
+      <h3>3. Similarity cutoff</h3>
+      Similarity cutoff
+    </div>
+    
+    <h2 class="header">Start alignment!</h2>
+    <p>
+      Prerequisites:
+      1. reference: {have_reference}
+      2. aligner: {have_aligner}
+    </p>
+
+    <hr>
     <div>
       <button on:click={makeReference}>Make Reference</button>
       <button on:click={resetReference}>Reset Reference</button>
       have reference?: {have_reference}
     </div>
-  </div>
-  <div>
-    <h2>Pepare Aligner</h2>
-    <p>
-      Aligner has alignment condition and performs alignment on its internal working space.
-    </p>
-    <p>
-      Reference is a database for multiple alignment target sequences and their index.
-    </p>
-    <h3>Make Sequence Storage</h3>
-    <p>
-      SigAlign's Reference is agnostic to storage of sequecnes. In this case, we will use InMemoryStorage.
-    </p>
-    <h3>Pass Storage to ReferenceBuilder</h3>
-    <p>
-      contents
-    </p>
     <div>
       <button on:click={makeAligner}>Make Aligner</button>
       <button on:click={resetAligner}>Reset Aligner</button>
       have aligner?: {have_aligner}
     </div>
+    <div>
+      <button on:click={doAlignment}>Alignment</button>
+    </div>
+    <div>
+      Result: {result}
+    </div>
   </div>
-  <div>
-    
-  </div>
-  
-  <div>
-    <button on:click={doAlignment}>Alignment</button>
-  </div>
-  <div>
-    Result: {result}
-  </div>
-
-  
-  
-  <div>
-    <h2>Prepare Aligner</h2>
-    
-  </div>
-  <div>
-    <h2>Perform Alignment</h2>
-    <p>
-      Aligner has alignment condition and performs alignment on its internal working space.<br/>
-    </p>
-  </div>
-
-  <div>
-    <a href="https://vitejs.dev" target="_blank" rel="noreferrer"> 
-      <img src="/vite.svg" class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer"> 
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div>
-  <h1>Vite + Svelte</h1>
-
-  <div class="card">
-    <Counter />
-  </div>
-
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme" target="_blank" rel="noreferrer">SvelteKit</a>, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">
-    Click on the Vite and Svelte logos to learn more
-  </p>
 </main>
-
-<style>
-  span {
-    background-color: lightpink;
-  }
-  /* .logo {
-    height: 6em;
-    padding: 1.5em;
-    will-change: filter;
-  }
-  .logo:hover {
-    filter: drop-shadow(0 0 2em #646cffaa);
-  }
-  .logo.svelte:hover {
-    filter: drop-shadow(0 0 2em #ff3e00aa);
-  }
-  .read-the-docs {
-    color: #888;
-  } */
-</style>
