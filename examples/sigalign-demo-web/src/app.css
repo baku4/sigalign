@@ -37,8 +37,14 @@ body {
   padding: 2rem;
 }
 
-h2.header {
+h1.header {
   padding-top: 2rem;
+}
+h2.header {
+  padding-top: 0.5rem;
+}
+h3.header {
+  margin: 0.8rem 0.5rem;
 }
 
 span.highlight {
@@ -69,30 +75,6 @@ a {
   border: 0.05rem solid #213547;
   border-radius: 0.3rem;
   box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
-}
-
-
-button.default {
-  display: inline-block;
-  border: none;
-  border-radius: 4px;
-  color: white;
-  background-color: #007bff;
-  text-align: center;
-  font-size: 16px;
-  padding: 12px 24px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-button.default:hover {
-  background-color: #0069d9;
-  transform: translateY(-2px);
-}
-
-button.default:active {
-  transform: translateY(2px);
 }
 
 /* 

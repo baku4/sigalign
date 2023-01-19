@@ -40,6 +40,8 @@
     }
   }
   button.callout_toggle {
+    color: #213547;
+    font-family: inherit;
     font-size: medium;
     border: 0rem;
     background: none;
