@@ -26,11 +26,6 @@
   let aligner: Aligner;
   let reference: Reference;
   let alignmentResult: AlignmentResult;
-
-  // Reference Builder
-  // TODO: Random sample sequence can be generated.
-  const sample_ref_fasta: string = ">first_record\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG";
-  let ref_fasta: string = sample_ref_fasta;
 </script>
 
 <main>
@@ -99,7 +94,6 @@
     <div class="subtask">
       <BuildReference
         bind:reference={reference}
-        bind:fasta={ref_fasta}
         bind:buildRefFn={Reference.build}
       ></BuildReference>
     </div>
@@ -189,9 +183,8 @@
       ></ViewResult>
     </div>
 
-    <hr style="margin-top: 3rem;">
-    <p>
-      Copyright
+    <p style="font-size: 0.6;color: grey;margin-top: 3rem;">
+      <i>From the repository: <a href="https://github.com/baku4/sigalign" target="_blank" rel="noreferrer">GitHub</a></i>
     </p>
   </div>
 </main>

@@ -39,6 +39,7 @@ body {
 
 h1.header {
   padding-top: 2rem;
+  line-height: 2rem;
 }
 h2.header {
   padding-top: 0.5rem;
@@ -84,13 +85,6 @@ div.button-wrapper {
   align-items: center;
   justify-content: center;
 }
-/* @media screen and (max-width: 720px) {
-  div.button-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-} */
 button.default {
   padding: 0.4rem 0.7rem;
   width: 10rem;

@@ -4,15 +4,21 @@
 
   export let aligner: Aligner;
 
-  let px: number = 4;
-  let po: number = 6;
-  let pe: number = 2;
-  let ml: number = 50;
-  let mppl: number = 0.05;
+  const DEF_PX: number = 4;
+  const DEF_PO: number = 6;
+  const DEF_PE: number = 2;
+  const DEF_ML: number = 100;
+  const DEF_MPPL: number = 0.1;
+  const DEF_IS_LOCAL: boolean = true;
+
+  let px: number = DEF_PX;
+  let po: number = DEF_PO;
+  let pe: number = DEF_PE;
+  let ml: number = DEF_ML;
+  let mppl: number = DEF_MPPL;
+  let isLocal: boolean = DEF_IS_LOCAL;
 
   let isAdvancedOptionOpened: boolean = false;
-  let isLocal: boolean = true;
-
   let errorMsg: string = null;
 
   let alignerStatus: AlignerStatus = null;
@@ -27,12 +33,12 @@
     }
   }
   function resetValues() {
-    px = 4;
-    po = 6;
-    pe = 2;
-    ml = 50;
-    mppl = 0.05;
-    isLocal = true;
+    px = DEF_PX;
+    po = DEF_PO;
+    pe = DEF_PE;
+    ml = DEF_ML;
+    mppl = DEF_MPPL;
+    isLocal = DEF_IS_LOCAL;
   }
   function resetAligner() {
     aligner.drop();
@@ -80,23 +86,25 @@
     </div>
   {/if}
 {:else}
-  <div style="margin-top: 1rem;margin-left: 1rem;"><b><i>Aligner</i></b> is ready.</div>
+  <div style="margin-top: 1rem;margin-left: 1rem;">Your <span class="highlight">Aligner</span> is ready.</div>
   {#if alignerStatus !== null}
-    <ul>
-      <li>Penalty</li>
+    <div class="status">
       <ul>
-        <li>Mismatch: {alignerStatus.px}</li>
-        <li>Gap-open: {alignerStatus.po}</li>
-        <li>Gap-extend: {alignerStatus.pe}</li>
+        <li><b>Penalty</b></li>
+        <ul>
+          <li>Mismatch: {alignerStatus.px}</li>
+          <li>Gap-open: {alignerStatus.po}</li>
+          <li>Gap-extend: {alignerStatus.pe}</li>
+        </ul>
+        <li><b>Cutoff</b></li>
+        <ul>
+          <li>Min.length: {alignerStatus.ml}</li>
+          <li>Max. penalty per length: {alignerStatus.mppl.toFixed(4)}</li>
+        </ul>
+        <li><b>Mode:</b> {alignerStatus.is_local ? 'Local' : 'Semi-global'}</li>
+        <li><b>Pattern size:</b> {alignerStatus.pattern_size}</li>
       </ul>
-      <li>Cutoff</li>
-      <ul>
-        <li>Min.length: {alignerStatus.ml}</li>
-        <li>Max. penalty per length: {alignerStatus.mppl.toFixed(4)}</li>
-      </ul>
-      <li>Mode: {alignerStatus.is_local ? 'Local' : 'Semi-global'}</li>
-      <li>Pattern size: {alignerStatus.pattern_size}</li>
-    </ul>
+    </div>
   {/if}
 {/if}
 
@@ -142,6 +150,9 @@
     font-size: inherit;
     margin-left: 1rem;
     padding: 1rem 1rem;
+  }
+  div.status {
+    font-size: 0.9rem;
   }
   input {
     width: 100%;

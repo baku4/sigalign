@@ -18,4 +18,3 @@ pub mod utils;
 pub use reference::Reference;
 pub use result::AlignmentResult;
 pub use aligner::Aligner;
-pub use utils::get_sample_query;

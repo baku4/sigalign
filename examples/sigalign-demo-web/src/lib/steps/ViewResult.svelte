@@ -44,7 +44,6 @@
     </div>
   {:else if parsedType === ParsedType.Table}
     <div class="table">
-      <i>Operation: M(Match), S(Substitution), I(Insertion), and D(Deletion).</i>
       <table>
         <thead>
           <tr>
@@ -71,6 +70,7 @@
           {/each}
         </tbody>
       </table>
+      <i>Operation: M(Match), S(Substitution), I(Insertion), and D(Deletion).</i>
     </div>
   {/if}
 {/if}
