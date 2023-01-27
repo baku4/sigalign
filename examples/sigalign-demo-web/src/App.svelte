@@ -1,55 +1,36 @@
 <script lang="ts">
-  import Callout from './lib/Callout.svelte';
-  import TextArea from './lib/TextArea.svelte';
-  import { onMount } from 'svelte'
-  import init, { Reference, Aligner, say_hello } from './wasm/sigalign_demo_wasm'
-
-
-  const sample_input_fasta = ">first_record\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG";
-  let input_fasta = sample_input_fasta;
-
-  let input_query = "";
-
-  let result = "None";
-
-  // let reference;
-  // let aligner;
-  onMount(async () => {
-    init();
-  })
-
-  // const wasm = import('./wasm/sigalign_demo_wasm');
-  // const reference: Promise<Reference> = wasm
-  //   .then((value) => {
-  //     value.default
-  //     return new value.Reference();
-  //   });
+  // Components
+  import Callout from './lib/components/Callout.svelte';
+  // Steps
+  import BuildReference from './lib/steps/BuildReference.svelte';
+  import MakeAligner from './lib/steps/MakeAligner.svelte';
+  import PerformAlignment from './lib/steps/PerformAlignment.svelte';
+  import ViewResult from './lib/steps/ViewResult.svelte';
   
-  let sequence_storage = [];
+  import { onMount } from 'svelte';
+  import init, {
+    Reference,
+    Aligner,
+    AlignmentResult,
+  } from './wasm/sigalign_demo_wasm';
+
+  let wasm;
+  onMount(async () => {
+    wasm = await init();
+    aligner = null;
+    reference = null;
+    alignmentResult = null;
+    console.log('SigAlign WASM initialized');
+  })
 
   let aligner: Aligner;
   let reference: Reference;
-  // let res = aligner.align(reference, "CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA");
+  let alignmentResult: AlignmentResult;
 
-  $: have_aligner = !(aligner === undefined);
-  $: have_reference = !(reference === undefined);
-
-  function makeAligner() {
-    aligner = Aligner.new_test();
-  }
-  function resetAligner() {
-    aligner = undefined;
-  }
-  function makeReference() {
-    reference = Reference.new_test();
-  }
-  function resetReference() {
-    reference = undefined;
-  }
-  function doAlignment() {
-    let res = aligner.align(reference, "CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA");
-    result = res;
-  }
+  // Reference Builder
+  // TODO: Random sample sequence can be generated.
+  const sample_ref_fasta: string = ">first_record\nAGCGTTTTATTACCTTTTGAATCCCAAAACATACATGCAGCATTCATTTTGCCACCAGTTTTTTTCATGCTTGATTCATATATAGCCTTTCTATCAGGAGATACTGTTTCTCCATGCTGCATACACAATTTTCGATAAGCATCATCATCCCTTTTTCCAGTAGCAAACTCTTTTCTTGCAAGTTCTTTTATTGCTTCGTCAAATTCTTCCTCTGACATCGCTGGTTTATCTCGTTTTGTCATGATAGTATCCCAGTTTGGTTTGGTAAAATTAATGTCCACAGGCTTAAATCTTAATGAG";
+  let ref_fasta: string = sample_ref_fasta;
 </script>
 
 <main>
@@ -70,7 +51,7 @@
       <i>SigAlign</i> is designed to be:
     </p>
     <ul>
-      <li><b>💡 Explainable:</b> to escape from “*black box*⬛.”</li>
+      <li><b>💡 Explainable:</b> to escape from “black box⬛.”</li>
       <li><b>⚡️ Fast:</b> to solve real-world problems.</li>
       <li><b>🧱 Small and flexible:</b> to be a basic building block for other tools.</li>
     </ul>
@@ -116,16 +97,11 @@
       The easiest way to make <span class="highlight">Reference</span> is to use <span class="highlight">Builder</span> structure. When sequences are passed to the <span class="highlight">Builder</span>, it takes care of all other processes (indexing, inferring the type of sequences, etc.).
     </p>
     <div class="subtask">
-      <h3 class="header">🛠️ Reference Builder</h3>
-      <p>
-        In this tour, we will use <a href="https://en.wikipedia.org/wiki/FASTA_format" target="_blank" rel="noreferrer">FASTA</a> formatted string to define multiple sequences to use as a target. We give you sample sequences that you can modify.
-      </p>
-      <TextArea
-        bind:value={input_fasta}
-        height_rem={8}
-      />
-      <button>Advanced settings</button>
-      <button>Build Reference</button>
+      <BuildReference
+        bind:reference={reference}
+        bind:fasta={ref_fasta}
+        bind:buildRefFn={Reference.build}
+      ></BuildReference>
     </div>
 
     
@@ -160,7 +136,9 @@
       Basically, <i>SigAlign</i> has no default option. But for convenience, we preset the penalty to 4, 6, and 2. Throughput is very sensitive to cutoffs. For the expected length of input query <i>l</i>, using <i>5√l</i> and <i>0.5/√l</i> for ML and MPpl will show a reasonable speed.
     </p>
     <div class="subtask">
-      <h3 class="header">Regulators</h3>
+      <MakeAligner
+        bind:aligner={aligner}
+      ></MakeAligner>
     </div>
     
 
@@ -177,15 +155,11 @@
       <li>If the optimal alignment does not satisfy the cutoff, there is no result.</li>
     </ol>
     <div class="subtask">
-      <h3 class="header">🛠️ Pass the query</h3>
-      <p>
-      </p>
-      <TextArea
-        bind:value={input_query}
-        height_rem={4}
-      />
-      <button>Get sample query</button>
-      <button>Start Alignment</button>
+      <PerformAlignment
+        bind:reference={reference}
+        bind:aligner={aligner}
+        bind:alignmentResult={alignmentResult}
+      ></PerformAlignment>
     </div>
 
 
@@ -210,50 +184,14 @@
       The raw result returned is structured bytes data. You can transform the result to your desired format. In this tour, we prepared the format of JSON and Table.
     </p>
     <div class="subtask">
-      <h3 class="header">🛠️ Result Viewer</h3>
-      <button>as JSON</button>
-      <button>as Table</button>
+      <ViewResult
+       bind:alignmentResult={alignmentResult}
+      ></ViewResult>
     </div>
 
-
-
-
-
-    <br>
-    <br>
-    <hr>
+    <hr style="margin-top: 3rem;">
     <p>
-      Prerequisites:
-      1. reference: {have_reference}
-      2. aligner: {have_aligner}
-    </p>
-    <div>
-      <button on:click={makeReference}>Make Reference</button>
-      <button on:click={resetReference}>Reset Reference</button>
-      have reference?: {have_reference}
-    </div>
-    <div>
-      <button on:click={makeAligner}>Make Aligner</button>
-      <button on:click={resetAligner}>Reset Aligner</button>
-      have aligner?: {have_aligner}
-    </div>
-    <div>
-      <button on:click={doAlignment}>Alignment</button>
-    </div>
-    <div>
-      Result: {result}
-    </div>
-    <hr>
-    <Callout>
-      <span slot="title">
-        What is "Alignment"?
-      </span>
-      <span slot="contents">
-        Alignment is to find optimal relationship between two sequences. This is core task for many bioinformatics processes. If you are new to biological sequence alignment, a quick scratch on <a href="https://en.wikipedia.org/wiki/Sequence_alignment" target="_blank" rel="noreferrer">Wikipedia</a> will be helpful.
-      </span>
-    </Callout>
-    <p>
-      <span class="highlight"><i>SigAlign</i></span> supports nucleotide and amino acid sequence.
+      Copyright
     </p>
   </div>
 </main>

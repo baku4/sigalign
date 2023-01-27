@@ -77,61 +77,66 @@ a {
   box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
 }
 
-/* 
-#app {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-*/
-
-/* 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-} */
-
-/* 
-body {
-  margin: 0;
+/* BUTTONS */
+div.button-wrapper {
+  margin: 0.3rem 1rem;
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
 }
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-.card {
-  padding: 2em;
+/* @media screen and (max-width: 720px) {
+  div.button-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 } */
-
-
-/* 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+button.default {
+  padding: 0.4rem 0.7rem;
+  width: 10rem;
+  border-radius: 4px;
   cursor: pointer;
-  transition: border-color 0.25s;
+  font-size: 0.9rem;
 }
-button:hover {
-  border-color: #646cff;
+button.primary {
+  background-color: rgba(251,37,118,1);
+  color: aliceblue;
+  border: none;
+  transition: background-color 0.2s ease;
 }
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-} */
+button.primary:hover {
+  background-color: rgba(251,37,118,0.7);
+}
+button.primary:active {
+  background-color: rgba(251,37,118,0.3);
+}
+button.secondary {
+  background-color: #ffffff;
+  color: rgba(251,37,118,1);
+  border-width: 0.075rem;
+  border-color: rgba(251,37,118,1);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+button.secondary:hover {
+  color: rgba(251,37,118,0.7);
+  border-color: rgba(251,37,118,0.7);
+}
+button.secondary:active {
+  color: rgba(251,37,118,0.3);
+  border-color: rgba(251,37,118,0.3);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid black;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background-color: #f2f2f2;
+}
