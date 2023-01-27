@@ -1,0 +1,136 @@
+:root {
+  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color: #213547;
+  background-color: #ffffff;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+#title {
+  background: rgb(251,37,118);
+  background: linear-gradient(144deg, rgba(251,37,118,1) 0%, rgba(63,0,113,1) 50%, rgba(51,47,208,1) 100%);
+  color: aliceblue;
+}
+
+.title_content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+h1.header {
+  padding-top: 2rem;
+  line-height: 2rem;
+}
+h2.header {
+  padding-top: 0.5rem;
+}
+h3.header {
+  margin: 0.8rem 0.5rem;
+}
+
+span.highlight {
+  padding: 0.15rem 0.3rem;
+  background-color: #f2f1f1;
+  border-radius: 0.2rem;
+  color: #FB2576;
+  font-size: smaller;
+}
+
+a {
+  color: #FB2576;
+}
+
+.first_fc {
+  color: #3F0071;
+}
+.second_fc {
+  color: #FB2576;
+}
+.third_fc {
+  color: #332FD0;
+}
+
+.subtask {
+  margin: 0.5rem 0.5rem;
+  padding: 0.5rem 0.5rem;
+  border: 0.05rem solid #213547;
+  border-radius: 0.3rem;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+}
+
+/* BUTTONS */
+div.button-wrapper {
+  margin: 0.3rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+button.default {
+  padding: 0.4rem 0.7rem;
+  width: 10rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+button.primary {
+  background-color: rgba(251,37,118,1);
+  color: aliceblue;
+  border: none;
+  transition: background-color 0.2s ease;
+}
+button.primary:hover {
+  background-color: rgba(251,37,118,0.7);
+}
+button.primary:active {
+  background-color: rgba(251,37,118,0.3);
+}
+button.secondary {
+  background-color: #ffffff;
+  color: rgba(251,37,118,1);
+  border-width: 0.075rem;
+  border-color: rgba(251,37,118,1);
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+button.secondary:hover {
+  color: rgba(251,37,118,0.7);
+  border-color: rgba(251,37,118,0.7);
+}
+button.secondary:active {
+  color: rgba(251,37,118,0.3);
+  border-color: rgba(251,37,118,0.3);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid black;
+  padding: 8px;
+  text-align: left;
+}
+
+th {
+  background-color: #f2f2f2;
+}

@@ -25,3 +25,16 @@ The jupyter notebook (or lab) example of using python binding of *SigAlign*.
 
     result = aligner.align_query(reference, query)
     ```
+
+## `sigalign-demo-wasm` & `sigalign-demo-web`
+* build wasm
+    ```bash
+    # in the `sigalign-demo-wasm` directory
+    bash build.bash
+    ```
+* run web
+    ```bash
+    # in the `sigalign-demo-web` directory
+    npm install
+    npm run dev
+    ```

@@ -1,15 +1,8 @@
-import { createApp } from 'vue'
-import App from './App.vue'
+import './app.css'
+import App from './App.svelte'
 
-import { library } from '@fortawesome/fontawesome-svg-core'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faGithubAlt, faRust, faPython } from '@fortawesome/free-brands-svg-icons'
-library.add(faGithubAlt);
-library.add(faRust);
-library.add(faPython);
-import { dom } from "@fortawesome/fontawesome-svg-core";
-dom.watch();
+const app = new App({
+  target: document.getElementById('app')
+})
 
-const app = createApp(App);
-app.component("font-awesome-icon", FontAwesomeIcon);
-app.mount("#app");
+export default app

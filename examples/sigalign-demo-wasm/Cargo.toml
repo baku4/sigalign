@@ -2,7 +2,7 @@
 name = "sigalign-demo-wasm"
 version = "0.1.0"
 authors = ["baku4 <bahkhun@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,9 +10,11 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-sigalign = { path = "../../sigalign" }
-wasm-bindgen = "0.2.78"
+sigalign = { path = "../../sigalign", features = ["four_dp"] }
+wasm-bindgen = "0.2.83"
+wasm-bindgen-futures = "0.4.33"
 anyhow = "1.0.44"
+rand = "0.8.5"
 serde = "1.0.127"
 serde_json = "1.0.68"
 getrandom = { version = "0.2", features = ["js"] }
