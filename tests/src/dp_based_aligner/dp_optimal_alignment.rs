@@ -3,7 +3,7 @@ use crate::{
     AlignmentOperation,
     AlignmentCase,
     AnchorAlignmentResult,
-    PRECISION_SCALE,
+    PREC_SCALE,
 };
 
 use bio::alignment::pairwise::*;
@@ -73,7 +73,7 @@ pub fn optimal_semi_global_alignment(
     
     let penalty = ((left_alignment.score + right_alignment.score) * -1) as usize;
 
-    let penalty_per_scale_of_this_alignment = PRECISION_SCALE * penalty / length;
+    let penalty_per_scale_of_this_alignment = PREC_SCALE * penalty / length;
 
     if (length >= minimum_aligned_length) && (penalty_per_scale_of_this_alignment <= maximum_penalty_per_scale) {
         Some(AnchorAlignmentResult {
@@ -141,7 +141,7 @@ pub fn optimal_local_alignment(
 
         left_alignments_with_length_and_penalty.push((left_alignment, length, penalty));
 
-        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PRECISION_SCALE <= maximum_penalty_per_scale * length);
+        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PREC_SCALE <= maximum_penalty_per_scale * length);
         if satisfy_cutoff_alone {
             break
         }
@@ -161,7 +161,7 @@ pub fn optimal_local_alignment(
         let (length, penalty) = get_length_and_penalty_of_alignment(&right_alignment);
         right_alignments_with_length_and_penalty.push((right_alignment, length, penalty));
 
-        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PRECISION_SCALE <= maximum_penalty_per_scale * length);
+        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PREC_SCALE <= maximum_penalty_per_scale * length);
         if satisfy_cutoff_alone {
             break
         }
@@ -199,7 +199,7 @@ pub fn optimal_local_alignment(
     let optimal_index_of_alignment = {
         let mut optimal_index_of_alignment = None;
         for index_of_alignment in indices_of_alignment {
-            let satisfy_cutoff = (index_of_alignment.length >= minimum_aligned_length) && (index_of_alignment.penalty * PRECISION_SCALE <= maximum_penalty_per_scale * index_of_alignment.length);
+            let satisfy_cutoff = (index_of_alignment.length >= minimum_aligned_length) && (index_of_alignment.penalty * PREC_SCALE <= maximum_penalty_per_scale * index_of_alignment.length);
 
             if satisfy_cutoff {
                 optimal_index_of_alignment = Some(index_of_alignment);

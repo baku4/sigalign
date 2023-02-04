@@ -1,5 +1,5 @@
 use super::{
-	Penalties, 
+	Penalty, 
     Sequence,
 };
 use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
@@ -9,7 +9,7 @@ impl WaveFront {
         &mut self,
         ref_seq: Sequence,
         qry_seq: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         spare_penalty: usize,
     ) {
         self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward)
@@ -18,7 +18,7 @@ impl WaveFront {
         &mut self,
         ref_seq: Sequence,
         qry_seq: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         spare_penalty: usize,
     ) {
         self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
@@ -27,7 +27,7 @@ impl WaveFront {
         &mut self,
         ref_seq: Sequence,
         qry_seq: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         spare_penalty: usize,
         match_counter: MatchCounter,
     ) {
@@ -57,7 +57,7 @@ impl WaveFront {
         ref_seq: Sequence,
         qry_seq: Sequence,
         mut spare_penalty: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
         match_counter: MatchCounter,
     ) -> WaveEndPoint {
         if self.wave_front_scores.len() <= spare_penalty {
@@ -78,7 +78,7 @@ impl WaveFront {
     fn update_components_of_next_wave_front_score(
         &mut self,
         score: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
     ) {
         let mismatch_penalty = &penalties.x;
         let gap_open_penalty = &penalties.o;

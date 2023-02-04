@@ -5,7 +5,7 @@ use super::{
 use super::{
     SequenceStorage, JoinedSequence,
     // traits
-    Divisible, Serializable, SizeAware,
+    Divide, Serialize, EstimateSize,
     LabelStorage,
     RcStorage,
 };
@@ -214,7 +214,7 @@ use crate::{EndianType};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
 // Serializable
-impl Serializable for InMemoryStorage {
+impl Serialize for InMemoryStorage {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: std::io::Write
     {
@@ -261,7 +261,7 @@ impl Serializable for InMemoryStorage {
 }
 
 // SizeAware
-impl SizeAware for InMemoryStorage {
+impl EstimateSize for InMemoryStorage {
     fn size_of(&self) -> usize {
         8 // record_count
         + self.combined_sequence.size_of() // combined_sequence
@@ -272,7 +272,7 @@ impl SizeAware for InMemoryStorage {
 }
 
 // Divisible
-impl Divisible for InMemoryStorage {
+impl Divide for InMemoryStorage {
     fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
         // Get record index range list
         let record_index_range_list = self.record_index_range_list_of_max_length(max_seq_len);

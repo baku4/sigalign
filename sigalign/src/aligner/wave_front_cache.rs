@@ -1,5 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff,
+	Penalty, PREC_SCALE, Cutoff,
 };
 use super::WaveFront;
 use std::fmt;
@@ -7,18 +7,18 @@ use std::fmt;
 pub trait WaveFrontCache {
     const QUERY_LEN_INC_UNIT: usize = 200;
 
-    fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self;
+    fn new(penalties: &Penalty, cutoff: &Cutoff) -> Self;
     fn have_enough_space(&self, query_length: usize) -> bool;
     fn allocate_more_if_necessary(
         &mut self,
         query_length: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
     );
     fn upper_spacious_query_length(query_length: usize) -> usize {
         ((query_length / Self::QUERY_LEN_INC_UNIT) + 1) * Self::QUERY_LEN_INC_UNIT
     }
-    fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff);
+    fn clean_cache(&mut self, penalties: &Penalty, cutoff: &Cutoff);
 }
 
 const FIRST_ALLOCATED_QUERY_LENGTH: usize = 200;
@@ -29,7 +29,7 @@ pub struct SingleWaveFrontCache {
     pub wave_front: WaveFront,
 }
 impl WaveFrontCache for SingleWaveFrontCache {
-    fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self {
+    fn new(penalties: &Penalty, cutoff: &Cutoff) -> Self {
         Self {
             allocated_query_length: FIRST_ALLOCATED_QUERY_LENGTH,
             wave_front: WaveFront::new_with_query_length(FIRST_ALLOCATED_QUERY_LENGTH, penalties, cutoff),
@@ -39,7 +39,7 @@ impl WaveFrontCache for SingleWaveFrontCache {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
+    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalty, cutoff: &Cutoff) {
         if self.allocated_query_length < query_length {
             let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
             let allocated_wave_front = WaveFront::new_with_query_length(to_allocate_query_length, penalties, cutoff);
@@ -48,7 +48,7 @@ impl WaveFrontCache for SingleWaveFrontCache {
             self.wave_front = allocated_wave_front;
         }
     }
-    fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff) {
+    fn clean_cache(&mut self, penalties: &Penalty, cutoff: &Cutoff) {
         *self = Self::new(penalties, cutoff);
     }
 }
@@ -67,7 +67,7 @@ pub struct DoubleWaveFrontCache {
     pub secondary_wave_front: WaveFront,
 }
 impl WaveFrontCache for DoubleWaveFrontCache {
-    fn new(penalties: &Penalties, cutoff: &Cutoff) -> Self {
+    fn new(penalties: &Penalty, cutoff: &Cutoff) -> Self {
         let allocated_wave_front = WaveFront::new_with_query_length(FIRST_ALLOCATED_QUERY_LENGTH, penalties, cutoff);
 
         Self {
@@ -80,7 +80,7 @@ impl WaveFrontCache for DoubleWaveFrontCache {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalties, cutoff: &Cutoff) {
+    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalty, cutoff: &Cutoff) {
         if self.allocated_query_length < query_length {
             let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
             let allocated_wave_front = WaveFront::new_with_query_length(to_allocate_query_length, penalties, cutoff);
@@ -90,7 +90,7 @@ impl WaveFrontCache for DoubleWaveFrontCache {
             self.secondary_wave_front = allocated_wave_front;
         }
     }
-    fn clean_cache(&mut self, penalties: &Penalties, cutoff: &Cutoff) {
+    fn clean_cache(&mut self, penalties: &Penalty, cutoff: &Cutoff) {
         *self = Self::new(penalties, cutoff);
     }
 }
@@ -106,7 +106,7 @@ impl fmt::Debug for DoubleWaveFrontCache {
 impl WaveFront {
     fn new_with_query_length(
         query_length: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
     ) ->  Self {
         let max_score = Self::safe_max_score_from_length(query_length, penalties, cutoff);
@@ -115,7 +115,7 @@ impl WaveFront {
     }
     fn safe_max_score_from_length(
         query_length: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
     ) -> usize {
         let max_score = usize::max(
@@ -125,7 +125,7 @@ impl WaveFront {
                     penalties.e * query_length - penalties.o
                 )
             ) / (
-                PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
+                PREC_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
             ) + 1
         );
         max_score

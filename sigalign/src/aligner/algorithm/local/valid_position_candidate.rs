@@ -1,5 +1,5 @@
 use super::{
-	PRECISION_SCALE,
+	PREC_SCALE,
 };
 use super::{WaveFront, WaveFrontScore, BackTraceMarker};
 
@@ -57,7 +57,7 @@ impl WaveFront {
 
         self.wave_front_scores[..=last_score].iter().enumerate().for_each(|(penalty, wave_front_score)| {
             let (max_query_length, length, comp_index) = wave_front_score.point_of_maximum_query_length();
-            let scaled_penalty_margin = (length as usize * maximum_penalty_per_scale) as i64 - (penalty * PRECISION_SCALE) as i64;
+            let scaled_penalty_margin = (length as usize * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE) as i64;
 
             if minimum_scaled_penalty_margin <= scaled_penalty_margin {
                 let mut ql_index_to_insert: usize = 0;

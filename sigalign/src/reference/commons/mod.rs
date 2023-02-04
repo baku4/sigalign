@@ -5,7 +5,7 @@ use super::{
 };
 use super::{
     // Requirement for struct
-    Serializable, SizeAware,
+    Serialize, EstimateSize,
 };
 
 mod pattern_finder;

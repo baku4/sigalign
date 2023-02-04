@@ -4,7 +4,7 @@ use super::{
 use super::{
     Reference, SequenceStorage,
     // Traits implemented by structures
-    Serializable, SizeAware,
+    Serialize, EstimateSize,
     // Common data structures for Reference
     SequenceType, PatternFinder,
 };
@@ -16,7 +16,7 @@ use std::fs::File;
 use capwriter::{Saveable, Loadable};
 
 impl<S> Reference<S> where
-    S: SequenceStorage + Serializable,
+    S: SequenceStorage + Serialize,
 {
     pub fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
@@ -53,7 +53,7 @@ impl<S> Reference<S> where
 }
 
 impl<S> Reference<S> where
-    S: SequenceStorage + Serializable + SizeAware,
+    S: SequenceStorage + Serialize + EstimateSize,
 {
     /// Save to file
     pub fn save_to_file<P: AsRef<Path>>(&self, file_path: P) -> Result<()> {

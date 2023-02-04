@@ -1,5 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff,
+	Penalty, PREC_SCALE, Cutoff,
     Sequence,
 };
 
@@ -24,7 +24,7 @@ impl PosTable {
         pattern_size: usize,
         record_sequence: Sequence,
         query_sequence: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_left: i64,
         left_wave_front: &mut WaveFront,
@@ -136,7 +136,7 @@ impl PosTable {
         pattern_size: usize,
         record_sequence: Sequence,
         query_sequence: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_right: i64,
         left_wave_front: &mut WaveFront,
@@ -248,10 +248,10 @@ fn get_scaled_penalty_margins_of_vpc_vector(
     extension: &Extension,
     vpc_vector: &Vec<VPC>,
     cutoff: &Cutoff,
-    penalties: &Penalties,
+    penalties: &Penalty,
     traversed_anchors: &Vec<TraversedAnchor>,
 ) -> Vec<i64> {
-    let scaled_penalty_margin_of_extension = (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PRECISION_SCALE) as i64;
+    let scaled_penalty_margin_of_extension = (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64;
 
     let mut vpc_index_for_traversed_anchor = 0;
     let mut scaled_penalty_margins: Vec<i64> = traversed_anchors.iter().rev().map(|traversed_anchor| {
@@ -261,7 +261,7 @@ fn get_scaled_penalty_margins_of_vpc_vector(
         while min_query_length > vpc_vector[vpc_index_for_traversed_anchor].query_length {
             vpc_index_for_traversed_anchor += 1;
         }
-        let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64;
+        let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64;
         vpc_vector[vpc_index_for_traversed_anchor].scaled_penalty_margin + remained_scaled_penalty_margin - scaled_penalty_margin_of_extension
     }).collect();
     scaled_penalty_margins.reverse();

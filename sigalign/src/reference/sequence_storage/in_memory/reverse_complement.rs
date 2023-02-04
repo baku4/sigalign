@@ -4,7 +4,7 @@ use super::{
 use super::{
     SequenceStorage, JoinedSequence,
     // traits
-    Divisible, Serializable, SizeAware,
+    Divide, Serialize, EstimateSize,
     LabelStorage,
     RcStorage,
 };
@@ -80,7 +80,7 @@ impl LabelStorage for InMemoryRcStorage {
 }
 
 // Serializable
-impl Serializable for InMemoryRcStorage {
+impl Serialize for InMemoryRcStorage {
     fn save_to<W>(&self, writer: W) -> Result<()> where
         W: std::io::Write
     {
@@ -97,14 +97,14 @@ impl Serializable for InMemoryRcStorage {
 }
 
 // SizeAware
-impl SizeAware for InMemoryRcStorage {
+impl EstimateSize for InMemoryRcStorage {
     fn size_of(&self) -> usize {
         self.0.size_of()
     }
 }
 
 // Divisible
-impl Divisible for InMemoryRcStorage {
+impl Divide for InMemoryRcStorage {
     fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
         // Get record index range list
         let record_index_range_list = self.0.record_index_range_list_of_max_length(max_seq_len);

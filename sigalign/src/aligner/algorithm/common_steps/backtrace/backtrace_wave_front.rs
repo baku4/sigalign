@@ -1,5 +1,5 @@
 use super::{
-	Penalties,
+	Penalty,
     AlignmentOperation, AlignmentCase,
 };
 
@@ -11,7 +11,7 @@ impl WaveFront {
         &self,
         mut score: usize,
         index_of_component: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
         pattern_size: usize,
     ) -> (Extension, Vec<TraversedPosition>) {
         let penalty_from_start_point = score;
@@ -367,7 +367,7 @@ impl WaveFront {
         &self,
         mut score: usize,
         index_of_component: usize,
-        penalties: &Penalties,
+        penalties: &Penalty,
         pattern_size: usize,
     ) -> (Extension, Vec<TraversedPosition>) {
         let penalty_from_start_point = score;

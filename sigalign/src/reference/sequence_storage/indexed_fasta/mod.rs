@@ -5,7 +5,7 @@ use super::{
 use super::{
     SequenceStorage,
     // Trait
-    Serializable, SizeAware,
+    Serialize, EstimateSize,
     RcStorage,
 };
 
@@ -87,7 +87,7 @@ use crate::{EndianType};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
 // Serializable
-impl Serializable for IndexedFastaStorage {
+impl Serialize for IndexedFastaStorage {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where W: Write {
         // 1. Write total_record_count
         writer.write_u64::<EndianType>(self.total_record_count as u64)?;
@@ -112,7 +112,7 @@ impl Serializable for IndexedFastaStorage {
 }
 
 // SizeAware
-impl SizeAware for IndexedFastaStorage {
+impl EstimateSize for IndexedFastaStorage {
     fn size_of(&self) -> usize {
         let byte_of_path = self.fasta_file_path_buf.to_str().unwrap().as_bytes();
         8 + byte_of_path.size_of()

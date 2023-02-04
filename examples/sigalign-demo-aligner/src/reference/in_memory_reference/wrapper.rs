@@ -8,7 +8,7 @@ use sigalign::{
 };
 use sigalign::sequence_storage::{
     InMemoryStorage as SigInMemoryStorage,
-    Divisible,
+    Divide,
 };
 
 pub struct Reference {

@@ -3,8 +3,8 @@ use super::{
     Sequence,
 };
 
-use super::{Serializable, SizeAware};
-use std::io::{Write, Read};
+use super::{Serialize, EstimateSize};
+use std::io::{Write, Read, Error};
 use std::ops::ControlFlow;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,8 +89,8 @@ impl SequenceType {
 
 const SEQUENCE_TYPE_SIZE: usize = 2;
 
-impl Serializable for SequenceType {
-    fn save_to<W>(&self, mut writer: W) -> Result<()> where
+impl Serialize for SequenceType {
+    fn save_to<W>(&self, mut writer: W) -> Result<(), Error> where
         W: Write,
     {
         let written_size = match self {
@@ -107,13 +107,9 @@ impl Serializable for SequenceType {
                 writer.write(&[3, chr_list[20]])
             },
         }?;
-        if written_size == SEQUENCE_TYPE_SIZE {
-            Ok(())
-        } else {
-            error_msg!("Failed to write reference sequence type")
-        }
+        Ok(())
     }
-    fn load_from<R>(mut reader: R) -> Result<Self> where
+    fn load_from<R>(mut reader: R) -> Result<Self, Error> where
         R: Read,
         Self: Sized,
     {
@@ -141,7 +137,7 @@ impl Serializable for SequenceType {
     }
 }
 
-impl SizeAware for SequenceType {
+impl EstimateSize for SequenceType {
     fn size_of(&self) -> usize {
         SEQUENCE_TYPE_SIZE
     }

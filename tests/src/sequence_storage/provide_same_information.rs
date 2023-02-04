@@ -10,9 +10,9 @@ use super::{
     SequenceBuffer,
     SequenceStorage,
     LabelStorage,
-    Serializable,
+    Serialize,
     RcStorage,
-    Divisible,
+    Divide,
 
     InMemoryStorage,
     InMemoryRcStorage,

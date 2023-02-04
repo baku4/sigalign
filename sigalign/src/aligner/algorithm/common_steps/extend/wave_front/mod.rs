@@ -1,5 +1,5 @@
 use super::{
-	Penalties,
+	Penalty,
     Sequence,
 };
 
@@ -29,7 +29,7 @@ pub struct WaveFrontScore {
 
 impl WaveFront {
     pub fn new_allocated(
-        penalties: &Penalties,
+        penalties: &Penalty,
         max_score: usize,
     ) -> Self {
         let wave_front_score_count = max_score + 1;

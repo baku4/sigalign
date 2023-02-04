@@ -1,5 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer,
@@ -14,7 +14,7 @@ pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
     sequence_buffer: &mut S::Buffer,
     query: Sequence,
     pattern_size: usize,
-    penalties: &Penalties,
+    penalties: &Penalty,
     min_penalty_for_pattern: &MinPenaltyForPattern,
     cutoff: &Cutoff,
     wave_front: &mut WaveFront,
@@ -24,7 +24,7 @@ pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
     let left_penalty_margins = left_penalty_margin_for_new_pattern(pattern_count, pattern_size, min_penalty_for_pattern, cutoff);
 
     let record_alignment_results: Vec<RecordAlignmentResult> = pos_table_map.into_iter().filter_map(|(record_index, pos_table)| {
-        reference.fill_sequence_buffer(record_index, sequence_buffer);
+        reference.fill_buffer(record_index, sequence_buffer);
         let record_sequence = sequence_buffer.request_sequence();
         let anchor_alignment_results = semi_global_alignment_query_to_record(
             &pos_table,
@@ -56,7 +56,7 @@ fn semi_global_alignment_query_to_record(
     pattern_size: usize,
     record_sequence: Sequence,
     query_sequence: Sequence,
-    penalties: &Penalties,
+    penalties: &Penalty,
     cutoff: &Cutoff,
     wave_front: &mut WaveFront,
 ) -> Vec<AnchorAlignmentResult> {
@@ -292,7 +292,7 @@ impl AnchorTable {
         pattern_size: usize,
         record_sequence: Sequence,
         query_sequence: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
         wave_front: &mut WaveFront,
     ) -> bool {
@@ -318,7 +318,7 @@ impl AnchorTable {
                     };
                     let then_right_maximum_length = then_right_minimum_length + max_gap;
 
-                    (then_right_maximum_length * cutoff.maximum_penalty_per_scale) as i64 - (right_minimum_penalty * PRECISION_SCALE) as i64
+                    (then_right_maximum_length * cutoff.maximum_penalty_per_scale) as i64 - (right_minimum_penalty * PREC_SCALE) as i64
                 };
 
                 let (optional_left_extension, left_traversed_anchors) = pos_table.extend_left(
@@ -351,11 +351,11 @@ impl AnchorTable {
             let scaled_penalty_margin_of_left = match self.0[current_anchor_index.0][current_anchor_index.1].left_extension_index {
                 Some(SemiGlobalExtensionIndex::Owned(extension_index)) => {
                     let extension = &extension_cache[extension_index].0;
-                    (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PRECISION_SCALE) as i64
+                    (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
                 },
                 Some(SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index)) => {
                     let traversed_anchor = &extension_cache[extension_index].1[traversed_anchor_index];
-                    (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64
+                    (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
                 None => {
                     left_penalty_margin_for_new_pattern[current_anchor_index.0]
@@ -409,7 +409,7 @@ impl AnchorTable {
         pattern_size: usize,
         record_sequence: Sequence,
         query_sequence: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
         wave_front: &mut WaveFront,
     ) -> bool {
@@ -422,11 +422,11 @@ impl AnchorTable {
             let scaled_penalty_margin_of_right = match self.0[current_anchor_index.0][current_anchor_index.1].right_extension_index.as_ref().unwrap() {
                 SemiGlobalExtensionIndex::Owned(extension_index) => {
                     let extension = &extension_cache[*extension_index].0;
-                    (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PRECISION_SCALE) as i64
+                    (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
                 },
                 SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
                     let traversed_anchor = &extension_cache[*extension_index].1[*traversed_anchor_index];
-                    (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PRECISION_SCALE) as i64
+                    (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
             };
             // Generate right extension
@@ -550,7 +550,7 @@ impl SemiGlobalExtensionIndex {
         if (
             length >= cutoff.minimum_aligned_length
         ) && (
-            (cutoff.maximum_penalty_per_scale * length) >= (penalty * PRECISION_SCALE)
+            (cutoff.maximum_penalty_per_scale * length) >= (penalty * PREC_SCALE)
         ) {
             let anchor_query_position = anchor_index.0 * pattern_size;
             let anchor_record_position = anchor_position.record_position;
@@ -675,7 +675,7 @@ impl PosTable {
         pattern_size: usize,
         record_sequence: Sequence,
         query_sequence: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_left: i64,
         wave_front: &mut WaveFront,
@@ -743,7 +743,7 @@ impl PosTable {
         pattern_size: usize,
         record_sequence: Sequence,
         query_sequence: Sequence,
-        penalties: &Penalties,
+        penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_right: i64,
         wave_front: &mut WaveFront,

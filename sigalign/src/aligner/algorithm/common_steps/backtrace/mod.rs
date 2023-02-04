@@ -1,5 +1,5 @@
 use super::{
-	Penalties,
+	Penalty,
     AlignmentOperation, AlignmentCase,
 };
 

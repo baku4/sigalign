@@ -6,7 +6,7 @@ use super::{
 use super::{
     Reference, SequenceStorage,
     // Requirement for struct
-    Serializable, SizeAware,
+    Serialize, EstimateSize,
     // Basic struct
     SequenceType, PatternFinder,
 };

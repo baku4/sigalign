@@ -1,6 +1,6 @@
 use super::{Result, error_msg};
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, AnchorAlignmentResult,
 };
 use num::integer;
@@ -15,7 +15,7 @@ pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &Min
         let max_penalty = (
             (
                 (
-                    (PRECISION_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                    (PREC_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
                 )
                 + 4 * cutoff.maximum_penalty_per_scale
             ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
@@ -32,7 +32,7 @@ pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &Min
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlignmentCondition {
-    pub penalties: Penalties,
+    pub penalties: Penalty,
     pub cutoff: Cutoff,
     pub min_penalty_for_pattern: MinPenaltyForPattern,
     pub gcd_for_compression: usize,
@@ -54,7 +54,7 @@ impl AlignmentCondition {
             error_msg!("Maximum penalty per length only allow positive value.");
         }
 
-        let penalties = Penalties::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
+        let penalties = Penalty::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
         let cutoff = Cutoff::new(minimum_aligned_length, maximum_penalty_per_length);
 
         let aligner = Self::new_with_penalties_and_cutoff(penalties, cutoff);
@@ -66,7 +66,7 @@ impl AlignmentCondition {
 
         Ok(aligner)
     }
-    fn new_with_penalties_and_cutoff(mut penalties: Penalties, mut cutoff: Cutoff) -> Self {
+    fn new_with_penalties_and_cutoff(mut penalties: Penalty, mut cutoff: Cutoff) -> Self {
         let gcd = penalties.gcd_of_penalties();
         penalties.divide_by_gcd(gcd);
         cutoff.divide_by_gcd(gcd);
@@ -101,7 +101,7 @@ impl AlignmentCondition {
     pub fn get_similarity_cutoff(&self) -> (usize, f32) {
         (
             self.cutoff.minimum_aligned_length,
-            (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PRECISION_SCALE as f32,
+            (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PREC_SCALE as f32,
         )
     }
     /// Get size of pattern
@@ -126,7 +126,7 @@ impl AnchorAlignmentResult {
     }
 }
 
-impl Penalties {
+impl Penalty {
     fn new(mismatch: usize, gap_open: usize, gap_extend: usize) -> Self {
         Self {
             x: mismatch,
@@ -146,7 +146,7 @@ impl Penalties {
 
 impl Cutoff {
     fn new(minimum_aligned_length: usize, maximum_penalty_per_length: f32) -> Self {
-        let maximum_penalty_per_scale = (maximum_penalty_per_length * PRECISION_SCALE as f32) as usize;
+        let maximum_penalty_per_scale = (maximum_penalty_per_length * PREC_SCALE as f32) as usize;
         Self::new_with_scaled_max_ppl(minimum_aligned_length, maximum_penalty_per_scale)
     }
     fn new_with_scaled_max_ppl(minimum_aligned_length: usize, maximum_penalty_per_scale: usize) -> Self {
@@ -161,7 +161,7 @@ impl Cutoff {
 }
 
 impl MinPenaltyForPattern {
-    fn new(penalties: &Penalties) -> Self {
+    fn new(penalties: &Penalty) -> Self {
         let odd: usize;
         let even: usize;
         if penalties.x <= penalties.o + penalties.e {
@@ -188,22 +188,22 @@ mod tests {
 
     #[test]
     fn test_gcd_calculation_for_penalties() {
-        let mut penalties = Penalties::new(4, 6, 2);
+        let mut penalties = Penalty::new(4, 6, 2);
         let gcd = penalties.gcd_of_penalties();
         assert_eq!(gcd, 2);
         penalties.divide_by_gcd(gcd);
-        assert_eq!(penalties, Penalties::new(2, 3, 1));
+        assert_eq!(penalties, Penalty::new(2, 3, 1));
 
-        let mut penalties = Penalties::new(4, 5, 3);
+        let mut penalties = Penalty::new(4, 5, 3);
         let gcd = penalties.gcd_of_penalties();
         assert_eq!(gcd, 1);
         penalties.divide_by_gcd(gcd);
-        assert_eq!(penalties, Penalties::new(4, 5, 3));
+        assert_eq!(penalties, Penalty::new(4, 5, 3));
     }
 
     #[allow(dead_code)]
     fn print_calculate_maximum_kmer() {
-        let penalties = Penalties::new(4, 6, 2);
+        let penalties = Penalty::new(4, 6, 2);
         let cutoff = Cutoff::new(50, 0.15);
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let pattern_size = calculate_max_pattern_size(&cutoff, &min_penalty_for_pattern);

@@ -1,5 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff,
+	Penalty, PREC_SCALE, Cutoff,
 };
 
 pub fn calculate_spare_penalty(
@@ -7,7 +7,7 @@ pub fn calculate_spare_penalty(
     anchor_size: usize,
     query_length_this_side: usize,
     record_length_this_side: usize,
-    penalties: &Penalties,
+    penalties: &Penalty,
     cutoff: &Cutoff,
 ) -> usize {
     i64::max(
@@ -22,7 +22,7 @@ pub fn calculate_spare_penalty(
                 ) as i64 - penalties.o as i64
             )
         ) / (
-            PRECISION_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
+            PREC_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
         ) as i64 + 1
     ) as usize
 }

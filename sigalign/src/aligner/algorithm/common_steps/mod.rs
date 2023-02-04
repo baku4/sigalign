@@ -1,5 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff,
+	Penalty, PREC_SCALE, Cutoff,
     AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface,

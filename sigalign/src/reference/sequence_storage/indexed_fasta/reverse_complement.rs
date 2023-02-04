@@ -4,7 +4,7 @@ use super::{
 use super::{
     SequenceStorage,
     // Trait
-    Serializable, SizeAware,
+    Serialize, EstimateSize,
     RcStorage,
 };
 use super::{
@@ -67,7 +67,7 @@ impl RcStorage for IndexedFastaRcStorage {
 }
 
 // Serializable
-impl Serializable for IndexedFastaRcStorage {
+impl Serialize for IndexedFastaRcStorage {
     fn save_to<W>(&self, writer: W) -> Result<()> where W: Write {
         self.0.save_to(writer)
     }
@@ -78,7 +78,7 @@ impl Serializable for IndexedFastaRcStorage {
 }
 
 // SizeAware
-impl SizeAware for IndexedFastaRcStorage {
+impl EstimateSize for IndexedFastaRcStorage {
     fn size_of(&self) -> usize {
         self.0.size_of()
     }

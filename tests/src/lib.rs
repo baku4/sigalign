@@ -9,11 +9,11 @@ use sigalign::result::*;
 use sigalign::sequence_storage::{
     // Trait
     SequenceStorage,
-    Divisible,
+    Divide,
     LabelStorage,
     RcStorage,
-    Serializable,
-    SizeAware,
+    Serialize,
+    EstimateSize,
     // Storage
     InMemoryStorage,
     InMemoryRcStorage,

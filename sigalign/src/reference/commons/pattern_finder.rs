@@ -5,7 +5,7 @@ use super::{
 };
 
 use super::{
-    Serializable, SizeAware,
+    Serialize, EstimateSize,
 };
 
 use capwriter::{Saveable, Loadable};
@@ -138,7 +138,7 @@ impl Debug for PatternFinder {
     }
 }
 
-impl Serializable for PatternFinder {
+impl Serialize for PatternFinder {
     fn save_to<W>(&self, mut writer: W) -> Result<()> where
         W: Write,
     {
@@ -167,7 +167,7 @@ impl Serializable for PatternFinder {
     }
 }
 
-impl SizeAware for PatternFinder {
+impl EstimateSize for PatternFinder {
     fn size_of(&self) -> usize {
         self.lt_fm_index.size_of() + self.record_boundary_positions.size_of()
     }

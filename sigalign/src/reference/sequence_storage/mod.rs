@@ -18,7 +18,7 @@ use super::{
 
 // Traits to implement
 pub use super::{
-    Serializable, SizeAware, Divisible,
+    Serialize, EstimateSize, Divide,
     LabelStorage, RcStorage,
 };
 

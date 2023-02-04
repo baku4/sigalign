@@ -18,7 +18,7 @@ impl<S> ReferenceInterface for Reference<S> where
     fn get_buffer(&self) -> Self::Buffer {
         self.sequence_storage.get_buffer()
     }
-    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
+    fn fill_buffer(&self, record_index: usize, buffer: &mut Self::Buffer) {
         self.sequence_storage.fill_sequence_buffer(record_index, buffer)
     }
     fn searchable(&self, pattern: Sequence) -> bool {

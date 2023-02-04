@@ -1,5 +1,5 @@
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff,
+	Penalty, PREC_SCALE, Cutoff,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation,
     Sequence,
     ReferenceInterface, SequenceBuffer,
@@ -21,7 +21,7 @@ pub fn local_alignment_algorithm<S: SequenceStorage>(
     sequence_buffer: &mut S::Buffer,
     query: Sequence,
     pattern_size: usize,
-    penalties: &Penalties,
+    penalties: &Penalty,
     cutoff: &Cutoff,
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
@@ -29,7 +29,7 @@ pub fn local_alignment_algorithm<S: SequenceStorage>(
     let pos_table_map = PosTable::new_by_record(&reference, &query, pattern_size);
 
     let record_alignment_results: Vec<RecordAlignmentResult> = pos_table_map.into_iter().filter_map(|(record_index, pos_table)| {
-        reference.fill_sequence_buffer(record_index, sequence_buffer);
+        reference.fill_buffer(record_index, sequence_buffer);
         let record_sequence = sequence_buffer.request_sequence();
         let anchor_alignment_results = local_alignment_query_to_record(
             &pos_table,
@@ -60,7 +60,7 @@ fn local_alignment_query_to_record(
     pattern_size: usize,
     record_sequence: Sequence,
     query_sequence: Sequence,
-    penalties: &Penalties,
+    penalties: &Penalty,
     cutoff: &Cutoff,
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,

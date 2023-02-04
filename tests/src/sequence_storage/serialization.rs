@@ -10,9 +10,9 @@ use super::{
     SequenceBuffer,
     SequenceStorage,
     LabelStorage,
-    Serializable,
+    Serialize,
     RcStorage,
-    Divisible,
+    Divide,
 
     InMemoryStorage,
     InMemoryRcStorage,
@@ -54,7 +54,7 @@ fn sequence_storages_serialization() {
 fn assert_storage_serialization<S>(
     sequence_storage_to_save: &S,
 ) where
-    S: SequenceStorage + Serializable,
+    S: SequenceStorage + Serialize,
 {
     // Save
     let mut buffer = Vec::new();

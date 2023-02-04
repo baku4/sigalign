@@ -2,50 +2,54 @@ use crate::{Result, error_msg};
 // TODO: Delete unused_imports
 #[allow(unused_imports)]
 use crate::core::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, PatternLocation,
 };
 
-// Traits implemented by structures
-mod requirement;
-pub use requirement::{
-    Serializable, SizeAware,
-    Divisible,
+// Requirements for inner structures
+mod requirements;
+pub use requirements::{ // TODO: `pub` can be deleted?
+    // Traits
+    Serialize,
+    EstimateSize,
+    Divide,
+};
+// Common data structures
+mod commons;
+pub use commons::{
+    SequenceType,
+    JoinedSequence,
+    PatternFinder,
+};
+// Storage of sequences
+pub mod sequence_storage;
+pub use sequence_storage::{
+    SequenceStorage,
 };
 
-// Common data structures for Reference
-mod structure;
-pub use structure::{
-    SequenceType, JoinedSequence, PatternFinder,
-};
-
-// Features for Reference
+// Default features of Reference
 mod feature;
 pub use feature::{
     // For sequence storage
-    LabelStorage, RcStorage,
+    LabelStorage,
+    RcStorage,
 };
 
-// Storage of sequences
-pub mod sequence_storage;
-pub use sequence_storage::SequenceStorage;
-
-
-// For Documentation
+// To display the hyperlink in Documentation
 #[allow(unused_imports)]
 use super::{ReferenceBuilder, Aligner};
 /**
-The target of alignment
-
-- `Reference` is **immutable** that can be safely shared by multiple threads.
+The database for multiple targeted sequences.
 
 - `Reference` contains:
     1. Supported type of sequence
     2. Index of sequences
     3. Range to search
     4. [SequenceStorage]
+
+- `Reference` is **immutable** that can be safely shared by multiple threads.
 
 - Basic usage
     1. Built from (1) [ReferenceBuilder] with (2) [SequenceStorage].
@@ -70,7 +74,10 @@ pub struct Reference<S> where
 impl<S> Reference<S> where
     S: SequenceStorage,
 {
-    pub(crate) fn new(
+    /// CAVEAT.
+    /// This is raw implementation for specific scenarios for performance optimization.
+    /// The safe method to build Reference is to use [ReferenceBuilder].
+    pub fn new(
         sequence_type: SequenceType,
         pattern_finder: PatternFinder,
         target_record_index: Vec<u32>,

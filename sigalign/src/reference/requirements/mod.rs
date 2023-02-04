@@ -4,11 +4,11 @@ use super::{
 
 mod io;
 pub use io::{
-    Serializable,
-    SizeAware,
+    Serialize,
+    EstimateSize,
 };
 
 mod divide;
 pub use divide::{
-    Divisible
+    Divide
 };

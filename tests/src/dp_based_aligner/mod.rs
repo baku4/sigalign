@@ -29,7 +29,7 @@ impl DpBasedAligner {
         let aligner = Aligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length).unwrap();
         let pattern_size = aligner.get_pattern_size();
 
-        let maximum_penalty_per_scale = (PRECISION_SCALE as f32 * maximum_penalty_per_length) as usize;
+        let maximum_penalty_per_scale = (PREC_SCALE as f32 * maximum_penalty_per_length) as usize;
 
         Self {
             mismatch_penalty,
@@ -77,7 +77,7 @@ impl DpBasedAligner {
         let mut record_alignment_results = Vec::new();
 
         for (record_index, alignment_start_positions) in alignment_start_positions_by_record {
-            reference.fill_sequence_buffer(record_index, &mut sequence_buffer);
+            reference.fill_buffer(record_index, &mut sequence_buffer);
             let record = sequence_buffer.request_sequence();
 
             let anchor_alignment_results: Vec<AnchorAlignmentResult> = alignment_start_positions.into_iter().filter_map(|alignment_start_position| {

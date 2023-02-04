@@ -1,6 +1,6 @@
 // Alignment algorithms
 use super::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
+	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
 	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
     Sequence,
     ReferenceInterface, SequenceBuffer,
