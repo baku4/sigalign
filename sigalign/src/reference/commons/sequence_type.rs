@@ -1,9 +1,7 @@
-use super::{
-    Result, error_msg,
+use super::{Serialize, EstimateSize};
+use crate::core::{
     Sequence,
 };
-
-use super::{Serialize, EstimateSize};
 use std::io::{Write, Read, Error};
 use std::ops::ControlFlow;
 

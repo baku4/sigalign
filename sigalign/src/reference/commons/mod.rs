@@ -1,10 +1,9 @@
-use super::{
-    Result, error_msg,
+use crate::core::{
     Sequence,
     PatternLocation,
 };
 use super::{
-    // Requirement for struct
+    // Requirements
     Serialize, EstimateSize,
 };
 

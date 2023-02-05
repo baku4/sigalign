@@ -1,20 +1,8 @@
-use crate::{Result, error_msg};
-// TODO: Delete unused_imports
-#[allow(unused_imports)]
-use crate::core::{
-	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, PatternLocation,
-};
-
 // Requirements for inner structures
 mod requirements;
-pub use requirements::{ // TODO: `pub` can be deleted?
-    // Traits
+use requirements::{ // TODO: `pub` can be deleted?
     Serialize,
     EstimateSize,
-    Divide,
 };
 // Common data structures
 mod commons;
@@ -38,8 +26,8 @@ pub use feature::{
 };
 
 // To display the hyperlink in Documentation
-#[allow(unused_imports)]
-use super::{ReferenceBuilder, Aligner};
+// #[allow(unused_imports)]
+// use super::{ReferenceBuilder, Aligner};
 /**
 The database for multiple targeted sequences.
 

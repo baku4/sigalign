@@ -1,7 +1,3 @@
-use anyhow::{Result, bail as error_msg};
-use serde::{Serialize, Deserialize};
-use ahash::AHashMap;
-
 #[cfg(target_endian = "little")]
 type EndianType = byteorder::LittleEndian;
 #[cfg(target_endian = "big")]
@@ -16,18 +12,24 @@ pub mod core;
 //  - Reference
 mod reference;
 //  - Aligner
-mod aligner;
-/// Structure of alignment result
-pub mod result;
+// mod aligner;
+// Structure of alignment result
+// pub mod result;
 // (4) Public APIs
-mod alignment; // Alignment functions
-mod builder; // Struct builders
-/// Utilities
-pub mod util;
+// mod alignment; // Alignment functions
+// mod builder; // Struct builders
+// Utilities
+// pub mod util;
 
 /*
 Re-export publics
 */
+
+
+/* FIXME: Remove silencing
+
+
+
 pub use reference::{Reference, sequence_storage};
 pub use aligner::Aligner;
 pub use builder::ReferenceBuilder;
@@ -107,3 +109,8 @@ mod example {
         println!("{}", result.to_json());
     }
 }
+
+
+
+
+ */

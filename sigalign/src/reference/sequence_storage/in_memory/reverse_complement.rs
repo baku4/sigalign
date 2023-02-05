@@ -105,7 +105,7 @@ impl EstimateSize for InMemoryRcStorage {
 
 // Divisible
 impl Divide for InMemoryRcStorage {
-    fn split_by_max_length(self, max_seq_len: usize) -> Result<Vec<Self>> {
+    fn divide_into(self, max_seq_len: usize) -> Result<Vec<Self>> {
         // Get record index range list
         let record_index_range_list = self.0.record_index_range_list_of_max_length(max_seq_len);
 
