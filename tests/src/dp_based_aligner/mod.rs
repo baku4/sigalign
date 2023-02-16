@@ -127,14 +127,14 @@ impl DpBasedAligner {
             let pattern_locations = reference.locate(pattern);
 
             for pattern_location in pattern_locations {
-                let record_index = pattern_location.record_index;
+                let record_index = pattern_location.target_index;
                 if let None = alignment_start_positions_by_record.get(&record_index) {
                     alignment_start_positions_by_record.insert(record_index, Vec::new());
                 };
 
                 let alignment_start_positions = alignment_start_positions_by_record.get_mut(&record_index).unwrap();
 
-                for record_position in pattern_location.positions{
+                for record_position in pattern_location.locations{
                     let new_alignment_start_position = AlignmentStartPosition {
                         record_start_position: record_position,
                         query_start_position: qry_pos,

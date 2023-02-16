@@ -10,7 +10,7 @@ type EndianType = byteorder::BigEndian;
 pub mod core;
 // (2) Implementations
 //  - Reference
-mod reference;
+pub mod reference;
 //  - Aligner
 // mod aligner;
 // Structure of alignment result

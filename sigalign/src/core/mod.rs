@@ -1,5 +1,5 @@
 mod regulators;
-mod result;
+mod results;
 
 // Regulators
 pub use regulators::{
@@ -9,8 +9,8 @@ pub use regulators::{
     MinPenaltyForPattern,
 };
 
-// Result
-pub use result::{
+// Results
+pub use results::{
     AlignmentResult,
     RecordAlignmentResult,
     AnchorAlignmentResult,
@@ -19,23 +19,20 @@ pub use result::{
     AlignmentCase,
 };
 
-// Sequence
-pub type Sequence<'a> = &'a [u8];
-
 // Reference
 pub trait ReferenceInterface {
     type Buffer: SequenceBuffer;
 
-    fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
+    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;
     fn get_buffer(&self) -> Self::Buffer;
-    fn fill_buffer(&self, record_index: usize, buffer: &mut Self::Buffer);
-    fn searchable(&self, query: Sequence) -> bool;
+    fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer);
+    fn is_indexed(&self, query: &[u8]) -> bool;
 }
 pub trait SequenceBuffer {
     fn request_sequence(&self) -> &[u8];
 }
 #[derive(Debug)]
 pub struct PatternLocation {
-    pub record_index: usize,
-    pub positions: Vec<usize>,
+    pub target_index: usize,
+    pub locations: Vec<usize>,
 }

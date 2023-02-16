@@ -117,7 +117,7 @@ impl PatternFinder {
     
         positions_by_record.into_iter().map(|(record_index, positions)| {
             PatternLocation {
-                record_index: record_index,
+                target_index: record_index,
                 positions: positions,
             }
         }).collect()

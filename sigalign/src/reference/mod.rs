@@ -1,81 +1,121 @@
-// Requirements for inner structures
-mod requirements;
-use requirements::{ // TODO: `pub` can be deleted?
-    Serialize,
-    EstimateSize,
-};
-// Common data structures
-mod commons;
-pub use commons::{
-    SequenceType,
-    JoinedSequence,
-    PatternFinder,
-};
-// Storage of sequences
-pub mod sequence_storage;
-pub use sequence_storage::{
-    SequenceStorage,
-};
-
-// Default features of Reference
-mod feature;
-pub use feature::{
-    // For sequence storage
-    LabelStorage,
-    RcStorage,
-};
-
-// To display the hyperlink in Documentation
-// #[allow(unused_imports)]
-// use super::{ReferenceBuilder, Aligner};
-/**
-The database for multiple targeted sequences.
-
-- `Reference` contains:
-    1. Supported type of sequence
-    2. Index of sequences
-    3. Range to search
-    4. [SequenceStorage]
-
-- `Reference` is **immutable** that can be safely shared by multiple threads.
-
-- Basic usage
-    1. Built from (1) [ReferenceBuilder] with (2) [SequenceStorage].
-    2. Pass to [Aligner] to perform alignment.
-
-- Advanced usage
-    - Change range of reference searching
-        - The `search range` is a `Vec` of indexes of records to be searched.
-            - Right after the reference built, it is set for the entire record (0..the number of records).
-    - 
+/*!
+# Reference
+Reference is the database for multiple targeted sequences.
+## Features
+Reference has two main features:
+  1. Get the sequence of the target by index
+  2. Locate the exactly matched pattern in all target.
+### 1. Getting the sequence
+Reference is immutable to be safely shared between multiple threads. To accomplish immutability, getting the sequence is processed outside of the reference by following steps:
+  1. Get the buffer of sequence (In most case, Aligner gets the buffer).
+  2. Fill the sequence to buffer.
+  3. Request the sequence to buffer.
+The implementation of how to get, fill and request sequence can differ by use cases. Therefore, the SequenceStorage that deals with the sequences is `trait`, not a `struct`.
+### 2. Getting the sequence
+Locating the pattern is necessary to algorithm. In algorithm, the sequence is divided into several patterns and each patterns locate in the all target. Locating is getting the index of target sequence which is exactly matched with the pattern. PatternIndex takes this job using FmIndex.
+## Fields
+Reference has four fields:
+  1. SequenceType
+  2. PatternIndex
+  3. SearchRange
+  4. SequenceStorage
+### 1. SequenceType
+SequenceType is the definition for the valid sequences. To compress the index and accelerate the speed of locating pattern, Reference makes index only with the input characters set. SequenceType remembers the input characters, and can check whether the sequence is indexed or not.
+### 2. PatternIndex
+PatternIndex can locate the exactly matched pattern in all sequence. This is defined as trait. In early version of SigAlign, PatternIndex is solid struct, but some issues are here:
+  1. The performance of PatternIndex takes the large amount of the overall performance, especially for the short query.
+  2. Inner structure of PatternIndex is frequently changed. The LtFmIndex, Rust crate for pattern matching, is used in SigAlign and this crate is actively developing.
+### 3. SearchRange
+SearchRange is the **sorted** index of targets. This can be modified after building the reference. Adjusting the search range is useful when large reference is built and used in case that only needs the subset of reference without re-building the subset of reference.
+### 4. SequenceStorage
+SequenceStorage is the storage of all targets sequences. SequenceStorage is defined as trait. The implementation detail of storing and parsing the sequence can be optimize for various scenarios. SigAlign has the default implementations of SequenceStorage. InMemoryStorage is one of them to store all sequence into the memory.
 */
+
 #[derive(Debug)]
-pub struct Reference<S> where
+pub struct Reference<I, S> where
+    I: PatternIndex,
     S: SequenceStorage,
 {
-    pub sequence_type: SequenceType,
-    pub pattern_finder: PatternFinder,
-    pub target_record_index: Vec<u32>,
-    pub sequence_storage: S,
+    sequence_type: SequenceType,
+    search_range: Vec<u32>,
+    pattern_index: I,
+    sequence_storage: S,
 }
 
-impl<S> Reference<S> where
+mod sequence_type;
+use sequence_type::SequenceType;
+mod pattern_index;
+use pattern_index::{PatternIndex, ConcatenatedSequenceWithBoundaries};
+mod sequence_storage;
+use sequence_storage::SequenceStorage;
+
+use crate::core::{ReferenceInterface, SequenceBuffer, PatternLocation};
+impl<I, S> ReferenceInterface for Reference<I, S> where
+    I: PatternIndex,
     S: SequenceStorage,
 {
-    /// CAVEAT.
-    /// This is raw implementation for specific scenarios for performance optimization.
-    /// The safe method to build Reference is to use [ReferenceBuilder].
+    type Buffer = S::Buffer;
+
+    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation> {
+        self.pattern_index.locate(pattern)
+    }
+    fn get_buffer(&self) -> Self::Buffer {
+        self.sequence_storage.get_buffer()
+    }
+    fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer) {
+        self.sequence_storage.fill_buffer(target_index, buffer)
+    }
+    fn is_indexed(&self, query: &[u8]) -> bool {
+        self.sequence_type.is_indexed(query)
+    }
+}
+
+impl<I, S> Reference<I, S> where
+    I: PatternIndex,
+    S: SequenceStorage,
+{
     pub fn new(
-        sequence_type: SequenceType,
-        pattern_finder: PatternFinder,
-        target_record_index: Vec<u32>,
-        sequence_storage: S
+        sequence_storage: S,
+        pattern_index_option: I::Option,
     ) -> Self {
+        let concatenated_sequence_with_boundaries = sequence_storage.get_concatenated_sequence_with_boundaries();
+        let sequence_type = SequenceType::new(&concatenated_sequence_with_boundaries.concatenated_sequence);
+        let pattern_index = I::new(concatenated_sequence_with_boundaries, &sequence_type, pattern_index_option);
+        let num_targets = sequence_storage.num_targets();
+        let search_range: Vec<u32> = (0..num_targets).collect();
+
         Self {
             sequence_type,
-            pattern_finder,
-            target_record_index,
-            sequence_storage: sequence_storage,
+            search_range,
+            pattern_index,
+            sequence_storage,
         }
     }
 }
+
+// // Requirements for inner structures
+// mod requirements;
+// use requirements::{
+//     Serialize,
+//     EstimateSize,
+// };
+// // Common data structures
+// mod commons;
+// pub use commons::{
+//     SequenceType,
+//     JoinedSequence,
+//     PatternFinder,
+// };
+// // Storage of sequences
+// pub mod sequence_storage;
+// pub use sequence_storage::{
+//     SequenceStorage,
+// };
+
+// // Default features of Reference
+// mod feature;
+// pub use feature::{
+//     // For sequence storage
+//     LabelStorage,
+//     RcStorage,
+// };
