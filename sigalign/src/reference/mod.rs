@@ -30,34 +30,39 @@ SearchRange is the **sorted** index of targets. This can be modified after build
 ### 4. SequenceStorage
 SequenceStorage is the storage of all targets sequences. SequenceStorage is defined as trait. The implementation detail of storing and parsing the sequence can be optimize for various scenarios. SigAlign has the default implementations of SequenceStorage. InMemoryStorage is one of them to store all sequence into the memory.
 */
+use std::marker::PhantomData;
+
+use crate::core::{SeqLen, ReferenceInterface, PatternLocation};
 
 #[derive(Debug)]
-pub struct Reference<I, S> where
-    I: PatternIndex,
+pub struct Reference<L, I, S> where
+    L: SeqLen,
+    I: PatternIndex<L>,
     S: SequenceStorage,
 {
     sequence_type: SequenceType,
     search_range: Vec<u32>,
     pattern_index: I,
     sequence_storage: S,
+    phantom_data: PhantomData<L>,
 }
 
 mod sequence_type;
 use sequence_type::SequenceType;
-mod pattern_index;
+pub mod pattern_index;
 use pattern_index::{PatternIndex, ConcatenatedSequenceWithBoundaries};
-mod sequence_storage;
+pub mod sequence_storage;
 use sequence_storage::SequenceStorage;
 
-use crate::core::{ReferenceInterface, SequenceBuffer, PatternLocation};
-impl<I, S> ReferenceInterface for Reference<I, S> where
-    I: PatternIndex,
+impl<L, I, S> ReferenceInterface<L> for Reference<L, I, S> where
+    L: SeqLen,
+    I: PatternIndex<L>,
     S: SequenceStorage,
 {
     type Buffer = S::Buffer;
 
-    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation> {
-        self.pattern_index.locate(pattern)
+    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation<L>> {
+        self.pattern_index.locate(pattern, &self.search_range)
     }
     fn get_buffer(&self) -> Self::Buffer {
         self.sequence_storage.get_buffer()
@@ -70,8 +75,9 @@ impl<I, S> ReferenceInterface for Reference<I, S> where
     }
 }
 
-impl<I, S> Reference<I, S> where
-    I: PatternIndex,
+impl<L, I, S> Reference<L, I, S> where
+    L: SeqLen,
+    I: PatternIndex<L>,
     S: SequenceStorage,
 {
     pub fn new(
@@ -89,6 +95,7 @@ impl<I, S> Reference<I, S> where
             search_range,
             pattern_index,
             sequence_storage,
+            phantom_data: PhantomData,
         }
     }
 }

@@ -1,12 +1,16 @@
-use crate::{Result, error_msg};
 use crate::core::{
-	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
+    regulators::{
+        Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
+    },
+    results::{
+        AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
+    },
     ReferenceInterface, SequenceBuffer, PatternLocation,
 };
 pub use crate::reference::{
-    Reference, SequenceStorage, LabelStorage,
+    Reference,
+    pattern_index::PatternIndex,
+    sequence_storage::SequenceStorage,
 };
 
 // Core algorithms

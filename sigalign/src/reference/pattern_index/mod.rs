@@ -1,8 +1,8 @@
 
-use crate::core::PatternLocation;
+use crate::core::{SeqLen, PatternLocation};
 use super::{SequenceType};
 
-pub trait PatternIndex {
+pub trait PatternIndex<L: SeqLen> {
     type Option;
 
     fn new(
@@ -10,7 +10,7 @@ pub trait PatternIndex {
         sequence_type: &SequenceType,
         option: Self::Option,
     ) -> Self;
-    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;
+    fn locate(&self, pattern: &[u8], search_range: &Vec<u32>) -> Vec<PatternLocation<L>>;
 }
 
 /// If there are three targets with "ATT", "CC", "GGGG", the "concatenated_sequence" is "ATTCCGGGG" and the "boundaries" is [0, 3, 5, 9].
@@ -19,8 +19,6 @@ pub struct ConcatenatedSequenceWithBoundaries {
     pub boundaries: Vec<u64>,
 }
 
-// Implementations
-mod default;
 
 // use crate::AHashMap;
 
