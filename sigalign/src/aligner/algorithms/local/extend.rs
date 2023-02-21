@@ -1,6 +1,8 @@
-use super::{
-	Penalty, PREC_SCALE, Cutoff,
-    Sequence,
+use crate::core::{
+    SeqLen,
+    regulators::{
+	    Penalty, PREC_SCALE, Cutoff,
+    },
 };
 
 use super::{PosTable, AnchorIndex, TraversedAnchor};
@@ -21,37 +23,37 @@ impl PosTable {
     pub fn extend_right_first_for_local(
         &self,
         anchor_index: &AnchorIndex,
-        pattern_size: usize,
-        record_sequence: Sequence,
-        query_sequence: Sequence,
+        pattern_size: u32,
+        target_sequence: &[u8],
+        query_sequence: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_left: i64,
         left_wave_front: &mut WaveFront,
         right_wave_front: &mut WaveFront,
     ) -> LocalExtension {
-        let anchor_position = &self.0[anchor_index.0][anchor_index.1];
+        let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
 
         //
         // (1) Calculate index
         //
-        let left_record_last_index = anchor_position.record_position;
+        let left_record_last_index = anchor_position.position_in_target;
         let right_record_start_index = left_record_last_index + anchor_size;
 
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_margin = (anchor_size * cutoff.maximum_penalty_per_scale) as i64;
+        let anchor_scaled_penalty_margin = anchor_size.as_i64() * cutoff.maximum_penalty_per_scale as i64;
 
         // 
         // (2) Get right extension & VPC vector
         //
-        let right_record_slice = &record_sequence[right_record_start_index..];
-        let right_query_slice = &query_sequence[right_query_start_index..];
+        let right_record_slice = &target_sequence[right_record_start_index as usize..];
+        let right_query_slice = &query_sequence[right_query_start_index as usize..];
 
-        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_left, anchor_size, right_query_slice.len(), right_record_slice.len(), penalties, cutoff);
+        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_left, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_minimum_scaled_penalty_margin = - anchor_scaled_penalty_margin - scaled_penalty_margin_of_left;
@@ -60,11 +62,11 @@ impl PosTable {
         // 
         // (3) Get left extension & VPC vector
         //
-        let left_record_slice = &record_sequence[..left_record_last_index];
-        let left_query_slice = &query_sequence[..left_query_last_index];
+        let left_record_slice = &target_sequence[..left_record_last_index as usize];
+        let left_query_slice = &query_sequence[..left_query_last_index as usize];
 
         let right_max_scaled_penalty_margin = right_vpc_vector[0].scaled_penalty_margin as i64;
-        let left_spare_penalty = calculate_spare_penalty(right_max_scaled_penalty_margin, anchor_size, left_query_slice.len(), left_record_slice.len(), penalties, cutoff);
+        let left_spare_penalty = calculate_spare_penalty(right_max_scaled_penalty_margin, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_minimum_scaled_penalty_margin = -anchor_scaled_penalty_margin - right_max_scaled_penalty_margin;
@@ -133,23 +135,23 @@ impl PosTable {
     pub fn extend_left_first_for_local(
         &self,
         anchor_index: &AnchorIndex,
-        pattern_size: usize,
-        record_sequence: Sequence,
-        query_sequence: Sequence,
+        pattern_size: u32,
+        target: &[u8],
+        query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_right: i64,
         left_wave_front: &mut WaveFront,
         right_wave_front: &mut WaveFront,
     ) -> LocalExtension {
-        let anchor_position = &self.0[anchor_index.0][anchor_index.1];
+        let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
 
         //
         // (1) Calculate index
         //
-        let left_record_last_index = anchor_position.record_position;
+        let left_record_last_index = anchor_position.position_in_target;
         let right_record_start_index = left_record_last_index + anchor_size;
 
         let left_query_last_index = anchor_index.0 * pattern_size;
@@ -160,10 +162,10 @@ impl PosTable {
         // 
         // (2) Get left extension & VPC vector
         //
-        let left_record_slice = &record_sequence[..left_record_last_index];
-        let left_query_slice = &query_sequence[..left_query_last_index];
+        let left_record_slice = &target[..left_record_last_index as usize];
+        let left_query_slice = &query[..left_query_last_index as usize];
 
-        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_right, anchor_size, left_query_slice.len(), left_record_slice.len(), penalties, cutoff);
+        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_right, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_minimum_scaled_penalty_margin = - anchor_scaled_penalty_margin - scaled_penalty_margin_of_right;
@@ -172,11 +174,11 @@ impl PosTable {
         // 
         // (3) Get right extension & VPC vector
         //
-        let right_record_slice = &record_sequence[right_record_start_index..];
-        let right_query_slice = &query_sequence[right_query_start_index..];
+        let right_record_slice = &target[right_record_start_index as usize..];
+        let right_query_slice = &query[right_query_start_index as usize..];
 
         let left_max_scaled_penalty_margin = left_vpc_vector[0].scaled_penalty_margin as i64;
-        let right_spare_penalty = calculate_spare_penalty(left_max_scaled_penalty_margin, anchor_size, right_query_slice.len(), right_record_slice.len(), penalties, cutoff);
+        let right_spare_penalty = calculate_spare_penalty(left_max_scaled_penalty_margin, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_minimum_scaled_penalty_margin = - anchor_scaled_penalty_margin - left_max_scaled_penalty_margin;

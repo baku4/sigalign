@@ -1,19 +1,18 @@
-use super::{
-	Penalty,
-    AlignmentOperation,
-    Sequence,
+use crate::core::{
+    SeqLen,
+    results::AlignmentOperations,
 };
 
-// Wavefront structure for alignment
+/// Wavefront structure
 mod wave_front;
 pub use wave_front::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker};
 
-// Extension
+/// Extension
 #[derive(Debug, Clone)]
 pub struct Extension {
-    pub penalty: usize,
-    pub length: usize,
+    pub penalty: u32,
+    pub length: u32,
     pub insertion_count: u32,
     pub deletion_count: u32,
-    pub operations: Vec<AlignmentOperation>,
+    pub operations: Vec<AlignmentOperations>,
 }

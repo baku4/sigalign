@@ -1,14 +1,13 @@
-use super::{
+use crate::core::regulators::{
 	Penalty, 
-    Sequence,
 };
 use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
 
 impl WaveFront {
     pub fn align_right_to_end_point(
         &mut self,
-        ref_seq: Sequence,
-        qry_seq: Sequence,
+        ref_seq: &[u8],
+        qry_seq: &[u8],
         penalties: &Penalty,
         spare_penalty: usize,
     ) {
@@ -16,17 +15,18 @@ impl WaveFront {
     }
     pub fn align_left_to_end_point(
         &mut self,
-        ref_seq: Sequence,
-        qry_seq: Sequence,
+        ref_seq: &[u8],
+        qry_seq: &[u8],
         penalties: &Penalty,
         spare_penalty: usize,
     ) {
         self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
     }
+    #[inline]
     fn align_to_end_point(
         &mut self,
-        ref_seq: Sequence,
-        qry_seq: Sequence,
+        ref_seq: &[u8],
+        qry_seq: &[u8],
         penalties: &Penalty,
         spare_penalty: usize,
         match_counter: MatchCounter,
@@ -54,8 +54,8 @@ impl WaveFront {
     }
     fn fill_wave_front_scores_until_end(
         &mut self,
-        ref_seq: Sequence,
-        qry_seq: Sequence,
+        ref_seq: &[u8],
+        qry_seq: &[u8],
         mut spare_penalty: usize,
         penalties: &Penalty,
         match_counter: MatchCounter,
@@ -94,7 +94,7 @@ impl WaveFront {
         }
 
         // (1) From score: s-o-e
-        if let Some(pre_score) = score.checked_sub(gap_open_penalty + gap_extend_penalty) {
+        if let Some(pre_score) = score.checked_sub((gap_open_penalty + gap_extend_penalty) as usize) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score];
             new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
                 let k = index_of_k as i32 - max_k;
@@ -130,7 +130,7 @@ impl WaveFront {
             });
         }
         // (2) From score: s-e
-        if let Some(pre_score) = score.checked_sub(*gap_extend_penalty) {
+        if let Some(pre_score) = score.checked_sub(*gap_extend_penalty as usize) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score];
             new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
                 let k = index_of_k as i32 - max_k;
@@ -171,7 +171,7 @@ impl WaveFront {
             });
         }
         // (3) From score: s-x
-        if let Some(pre_score) = score.checked_sub(*mismatch_penalty) {
+        if let Some(pre_score) = score.checked_sub(*mismatch_penalty as usize) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score];
             new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
                 let k = index_of_k as i32 - max_k;
@@ -223,8 +223,8 @@ impl WaveFrontScore {
     }
     fn extend_components_until_end(
         &mut self,
-        ref_seq: Sequence,
-        qry_seq: Sequence,
+        ref_seq: &[u8],
+        qry_seq: &[u8],
         match_counter: MatchCounter,
     ) -> Option<i32> {
         for (components, k) in self.components_by_k.iter_mut().zip(-self.max_k..=self.max_k) {
@@ -249,6 +249,7 @@ impl WaveFrontScore {
 }
 
 //TODO: Apply SIMD
+//TODO: Make inlined
 fn consecutive_match_forward(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
     let mut fr_to_add: i32 = 0;
     for (v1, v2) in qry_seq[v..].iter().zip(ref_seq[h..].iter()) {

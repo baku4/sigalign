@@ -1,10 +1,7 @@
-use super::{
-	Penalty,
-    Sequence,
-};
+use crate::core::regulators::Penalty;
+use bytemuck::{Pod, Zeroable};
 
-type MatchCounter<'a> = &'a dyn Fn(Sequence, Sequence, usize, usize) -> i32;
-
+type MatchCounter<'a> = &'a dyn Fn(&[u8], &[u8], usize, usize) -> i32;
 mod fill;
 
 // Wave Front
@@ -37,10 +34,9 @@ impl WaveFront {
         let gap_extend_penalty = penalties.e;
 
         let mut wave_front_scores: Vec<WaveFrontScore> = Vec::with_capacity(wave_front_score_count);
-
         let first_wave_front_score = WaveFrontScore::with_max_k(0);
 
-        let optional_penalty_from_one_gap = max_score.checked_sub(gap_open_penalty + gap_extend_penalty);
+        let optional_penalty_from_one_gap = max_score.checked_sub((gap_open_penalty + gap_extend_penalty) as usize);
 
         match optional_penalty_from_one_gap {
             Some(penalty_from_one_gap) => {
@@ -48,8 +44,8 @@ impl WaveFront {
                     wave_front_scores.push(first_wave_front_score.clone());
                 });
     
-                let quot = (penalty_from_one_gap / gap_extend_penalty) as i32;
-                let rem = penalty_from_one_gap % gap_extend_penalty;
+                let quot = (penalty_from_one_gap as u32 / gap_extend_penalty) as i32;
+                let rem = penalty_from_one_gap as u32 % gap_extend_penalty;
                 for max_k in 1..quot+1 {
                     (0..gap_extend_penalty).for_each(|_| {
                         wave_front_scores.push(WaveFrontScore::with_max_k(max_k));
@@ -79,7 +75,7 @@ impl WaveFrontScore {
     fn with_max_k(max_k: i32) -> Self {
         Self {
             max_k,
-            components_by_k: vec![Components::default(); max_k as usize * 2 + 1],
+            components_by_k: vec![Components::default(); max_k as usize * 2 + 1], //FIXME: use zeroed
         }
     }
     // Get
@@ -95,18 +91,14 @@ impl WaveFrontScore {
     pub fn d_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).d
     }
-    fn components_of_k_checked(&self, k: i32) -> Option<&Components> {
+    pub fn components_of_k_checked(&self, k: i32) -> Option<&Components> {
         self.components_by_k.get((self.max_k + k) as usize)
     }
 }
 
-
-
 // Components
-
-
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct Components {
     pub m: Component,
     pub i: Component,
@@ -114,20 +106,22 @@ pub struct Components {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Component {
     pub fr: i32,
     pub deletion_count: u16,
     pub bt: BackTraceMarker,
 }
+unsafe impl Pod for Component {}
+unsafe impl Zeroable for Component {}
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BackTraceMarker {
     Empty = 0,
-    Start,
-    FromM,
-    FromI,
-    FromD,
+    Start = 1,
+    FromM = 2,
+    FromI = 3,
+    FromD = 4,
 }
 impl Default for Components {
     fn default() -> Self {
@@ -149,6 +143,7 @@ impl Components {
 }
 
 impl Component {
+    #[inline(always)]
     fn empty() -> Self {
         Self {
             fr: 0,
@@ -156,6 +151,7 @@ impl Component {
             bt: BackTraceMarker::Empty,
         }
     }
+    #[inline(always)]
     fn start_point(first_fr: i32) -> Self {
         Self {
             fr: first_fr,

@@ -1,32 +1,36 @@
-use super::{
-	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer,
-    Reference, SequenceStorage,
+use crate::core::{
+    SeqLen, ReferenceInterface, SequenceBuffer,
+    regulators::{
+        Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
+    },
+    results::{
+        AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations, AlignmentOperation,
+    },
 };
 
-use super::{PosTable, AnchorIndex, TraversedAnchor};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
+use super::common_steps::{
+    PosTable, AnchorIndex, TraversedAnchor,
+    Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
+};
 
-pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
-    reference: &Reference<S>,
-    sequence_buffer: &mut S::Buffer,
-    query: Sequence,
-    pattern_size: usize,
+pub fn semi_global_alignment_algorithm<L: SeqLen, R: ReferenceInterface<L>>(
+    reference: &R,
+    sequence_buffer: &mut R::Buffer,
+    query: &[u8],
+    pattern_size: u32,
     penalties: &Penalty,
     min_penalty_for_pattern: &MinPenaltyForPattern,
     cutoff: &Cutoff,
     wave_front: &mut WaveFront,
 ) -> AlignmentResult {
-    let pos_table_map = PosTable::new_by_record(&reference, &query, pattern_size);
-    let pattern_count = query.len() / pattern_size;
+    let pos_table_map = PosTable::new_by_target_index(reference, &query, pattern_size);
+    let pattern_count = query.len() as u32 / pattern_size;
     let left_penalty_margins = left_penalty_margin_for_new_pattern(pattern_count, pattern_size, min_penalty_for_pattern, cutoff);
 
-    let record_alignment_results: Vec<RecordAlignmentResult> = pos_table_map.into_iter().filter_map(|(record_index, pos_table)| {
+    let record_alignment_results: Vec<TargetAlignmentResult> = pos_table_map.into_iter().filter_map(|(record_index, pos_table)| {
         reference.fill_buffer(record_index, sequence_buffer);
         let record_sequence = sequence_buffer.request_sequence();
-        let anchor_alignment_results = semi_global_alignment_query_to_record(
+        let anchor_alignment_results = semi_global_alignment_query_to_target(
             &pos_table,
             &left_penalty_margins,
             pattern_size,
@@ -40,7 +44,7 @@ pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
         if anchor_alignment_results.len() == 0 {
             None
         } else {
-            Some(RecordAlignmentResult {
+            Some(TargetAlignmentResult {
                 index: record_index,
                 alignments: anchor_alignment_results,
             })
@@ -50,19 +54,19 @@ pub fn semi_global_alignment_algorithm<S: SequenceStorage>(
     AlignmentResult(record_alignment_results)
 }
 
-fn semi_global_alignment_query_to_record(
+fn semi_global_alignment_query_to_target(
     pos_table: &PosTable,
     left_penalty_margin_for_new_pattern: &Vec<i64>,
-    pattern_size: usize,
-    record_sequence: Sequence,
-    query_sequence: Sequence,
+    pattern_size: u32,
+    target: &[u8],
+    query: &[u8],
     penalties: &Penalty,
     cutoff: &Cutoff,
     wave_front: &mut WaveFront,
 ) -> Vec<AnchorAlignmentResult> {
     let sorted_anchor_indices: Vec<AnchorIndex> = pos_table.0.iter().enumerate().map(|(pattern_index, pattern_position)| {
         (0..pattern_position.len()).map(move |anchor_index| {
-            (pattern_index, anchor_index)
+            (pattern_index as u32, anchor_index as u32)
         })
     }).flatten().collect();
     
@@ -76,7 +80,7 @@ fn semi_global_alignment_query_to_record(
     let mut semi_global_alignments = Vec::new();
 
     sorted_anchor_indices.into_iter().for_each(|current_anchor_index| {
-        let current_anchor_is_registered = anchor_table.0[current_anchor_index.0][current_anchor_index.1].registered;
+        let current_anchor_is_registered = anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].registered;
         if !current_anchor_is_registered {
             // 
             // (1) Get right extension index
@@ -87,14 +91,14 @@ fn semi_global_alignment_query_to_record(
                 &current_anchor_index,
                 &mut extension_cache,
                 pattern_size,
-                record_sequence,
-                query_sequence,
+                target,
+                query,
                 penalties,
                 cutoff,
                 wave_front,
             );
             if have_valid_right_extension {
-                let right_extension_index = anchor_table.0[current_anchor_index.0][current_anchor_index.1].right_extension_index.clone().unwrap();
+                let right_extension_index = anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_extension_index.clone().unwrap();
                 //
                 // (2) Find rightmost symbol index
                 //  While
@@ -118,31 +122,31 @@ fn semi_global_alignment_query_to_record(
                             anchor_index,
                             &mut extension_cache,
                             pattern_size,
-                            record_sequence,
-                            query_sequence,
+                            target,
+                            query,
                             penalties,
                             cutoff,
                             wave_front,
                         );
                         if have_valid_left_extension { // Success
-                            let left_extension_index_of_traversed_anchor = anchor_table.0[anchor_index.0][anchor_index.1].left_extension_index.as_ref().unwrap();
+                            let left_extension_index_of_traversed_anchor = anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize].left_extension_index.as_ref().unwrap();
                             let left_traversed_anchors_of_traversed_anchor = left_extension_index_of_traversed_anchor.side_traversed_anchors(&extension_cache);
                             for traversed_anchor in left_traversed_anchors_of_traversed_anchor {
                                 if traversed_anchor.anchor_index == current_anchor_index {
-                                    anchor_table.0[anchor_index.0][anchor_index.1].registered = true;
+                                    anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize].registered = true;
                                     rightmost_optimal_symbol_index = symbol_index + 1;
                                     break;
                                 }
                             }
                         } else { // Fail
-                            let anchor = &mut anchor_table.0[anchor_index.0][anchor_index.1];
+                            let anchor = &mut anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
                             anchor.registered = true;
                             anchor.checked_to_invalid = true;
                             rightmost_optimal_symbol_index = symbol_index + 1; // Add current anchor to index 0 in right symbol later.
                             rightmost_optimal_is_invalid = true;
                         }
                     } else { // Rightmost is known
-                        let anchor = &mut anchor_table.0[anchor_index.0][anchor_index.1];
+                        let anchor = &mut anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
                         anchor.registered = true;
                         if rightmost_optimal_is_invalid {
                             anchor.checked_to_invalid = true;
@@ -154,13 +158,13 @@ fn semi_global_alignment_query_to_record(
                 // (3) Get left extension index
                 //
                 let have_valid_left_extension = if rightmost_optimal_is_invalid {
-                    let current_anchor = &mut anchor_table.0[current_anchor_index.0][current_anchor_index.1];
+                    let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
                     current_anchor.registered = true;
                     current_anchor.checked_to_invalid = true;
                     false
                 } else {
                     if rightmost_optimal_symbol_index == 0 {
-                        let left_extension_success = anchor_table.fill_left_extension_index(pos_table, &current_anchor_index, &mut extension_cache, pattern_size, record_sequence, query_sequence, penalties, cutoff, wave_front);
+                        let left_extension_success = anchor_table.fill_left_extension_index(pos_table, &current_anchor_index, &mut extension_cache, pattern_size, target, query, penalties, cutoff, wave_front);
                         left_extension_success
                     } else {
                         true
@@ -171,7 +175,7 @@ fn semi_global_alignment_query_to_record(
                     // 
                     // (4) Get semi-global alignment
                     //
-                    let left_extension_index = anchor_table.0[current_anchor_index.0][current_anchor_index.1].left_extension_index.clone().unwrap();
+                    let left_extension_index = anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index.clone().unwrap();
 
                     let mut symbol: Vec<AnchorIndex> = {
                         let left_traversed_anchors = left_extension_index.side_traversed_anchors(&extension_cache);
@@ -199,7 +203,7 @@ fn semi_global_alignment_query_to_record(
                     match valid_anchor_alignment_operations_and_position {
                         Some((penalty, length, alignment_operations, alignment_position)) => {
                             symbol[leftmost_optimal_symbol_index..=rightmost_optimal_symbol_index].iter().for_each(|&anchor_index| {
-                                let anchor = &mut anchor_table.0[anchor_index.0][anchor_index.1];
+                                let anchor = &mut anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
                                 anchor.registered = true;
                             });
 
@@ -222,7 +226,7 @@ fn semi_global_alignment_query_to_record(
                         },
                         None => {
                             symbol[leftmost_optimal_symbol_index..=rightmost_optimal_symbol_index].iter().for_each(|&anchor_index| {
-                                let anchor = &mut anchor_table.0[anchor_index.0][anchor_index.1];
+                                let anchor = &mut anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
                                 anchor.registered = true;
                                 anchor.checked_to_invalid = true;
                             });
@@ -242,14 +246,14 @@ fn semi_global_alignment_query_to_record(
     semi_global_alignments.into_iter().filter_map(|semi_global_alignment| {
         let mut is_unique_position = true;
         for non_optimal_anchor_index in semi_global_alignment.non_optimal_anchor_indices.into_iter() {
-            if anchor_table.0[non_optimal_anchor_index.0][non_optimal_anchor_index.1].included {
+            if anchor_table.0[non_optimal_anchor_index.0 as usize][non_optimal_anchor_index.1 as usize].included {
                 is_unique_position = false;
                 break;
             }
         }
         if is_unique_position {
             semi_global_alignment.symbol.into_iter().for_each(|anchor_index| {
-                anchor_table.0[anchor_index.0][anchor_index.1].included = true;
+                anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize].included = true;
             });
             let anchor_alignment_result = AnchorAlignmentResult {
                 penalty: semi_global_alignment.penalty,
@@ -265,8 +269,8 @@ fn semi_global_alignment_query_to_record(
 }
 
 fn left_penalty_margin_for_new_pattern(
-    pattern_count: usize,
-    pattern_size: usize,
+    pattern_count: u32,
+    pattern_size: u32,
     min_penalty_for_pattern: &MinPenaltyForPattern,
     cutoff: &Cutoff,
 ) -> Vec<i64> {
@@ -289,27 +293,27 @@ impl AnchorTable {
         left_penalty_margin_for_new_pattern: &Vec<i64>,
         current_anchor_index: &AnchorIndex,
         extension_cache: &mut Vec<SemiGlobalExtension>,
-        pattern_size: usize,
-        record_sequence: Sequence,
-        query_sequence: Sequence,
+        pattern_size: u32,
+        target: &[u8],
+        query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
         wave_front: &mut WaveFront,
     ) -> bool {
-        if self.0[current_anchor_index.0][current_anchor_index.1].right_extension_index.is_none() {
+        if self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_extension_index.is_none() {
             // If have right minimum penalty
             // : Extend left first
-            if let Some(right_minimum_penalty) = self.0[current_anchor_index.0][current_anchor_index.1].right_minimum_penalty.clone() {
+            if let Some(right_minimum_penalty) = self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_minimum_penalty.clone() {
                 let right_scaled_penalty_margin = {
-                    let anchor_position = &pos_table.0[current_anchor_index.0][current_anchor_index.1];
+                    let anchor_position = &pos_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
                     let pattern_count = anchor_position.pattern_count;
                     let anchor_size = pattern_count * pattern_size;
 
-                    let left_record_end_index = anchor_position.record_position;
+                    let left_record_end_index = anchor_position.position_in_target;
                     let left_query_end_index = current_anchor_index.0 * pattern_size;
 
-                    let then_right_minimum_length = (record_sequence.len() - left_record_end_index).min(
-                        query_sequence.len() - left_query_end_index
+                    let then_right_minimum_length = (target.len() as u32 - left_record_end_index).min(
+                        query.len() as u32 - left_query_end_index
                     ) - anchor_size;
 
                     let max_gap = match right_minimum_penalty.checked_sub(penalties.o) {
@@ -324,8 +328,8 @@ impl AnchorTable {
                 let (optional_left_extension, left_traversed_anchors) = pos_table.extend_left(
                     &current_anchor_index,
                     pattern_size,
-                    record_sequence,
-                    query_sequence,
+                    target,
+                    query,
                     penalties,
                     cutoff,
                     right_scaled_penalty_margin,
@@ -334,12 +338,12 @@ impl AnchorTable {
 
                 match optional_left_extension {
                     Some(left_extension) => {
-                        let current_anchor = &mut self.0[current_anchor_index.0][current_anchor_index.1];
-                        current_anchor.left_extension_index = Some(SemiGlobalExtensionIndex::Owned(extension_cache.len()));
+                        let current_anchor = &mut self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+                        current_anchor.left_extension_index = Some(SemiGlobalExtensionIndex::Owned(extension_cache.len() as u32));
                         extension_cache.push(SemiGlobalExtension(left_extension, left_traversed_anchors));
                     },
                     None => {
-                        let current_anchor = &mut self.0[current_anchor_index.0][current_anchor_index.1];
+                        let current_anchor = &mut self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
                         current_anchor.registered = true;
                         current_anchor.checked_to_invalid = true;
                         return false
@@ -348,25 +352,25 @@ impl AnchorTable {
             };
 
             // Scaled penalty margin of left
-            let scaled_penalty_margin_of_left = match self.0[current_anchor_index.0][current_anchor_index.1].left_extension_index {
+            let scaled_penalty_margin_of_left = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index {
                 Some(SemiGlobalExtensionIndex::Owned(extension_index)) => {
-                    let extension = &extension_cache[extension_index].0;
+                    let extension = &extension_cache[extension_index as usize].0;
                     (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
                 },
                 Some(SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index)) => {
-                    let traversed_anchor = &extension_cache[extension_index].1[traversed_anchor_index];
+                    let traversed_anchor = &extension_cache[extension_index as usize].1[traversed_anchor_index as usize];
                     (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
                 None => {
-                    left_penalty_margin_for_new_pattern[current_anchor_index.0]
+                    left_penalty_margin_for_new_pattern[current_anchor_index.0 as usize]
                 },
             };
             // Generate right extension
             let (optional_right_extension, right_traversed_anchor) = pos_table.extend_right(
                 &current_anchor_index,
                 pattern_size,
-                record_sequence,
-                query_sequence,
+                target,
+                query,
                 penalties,
                 cutoff,
                 scaled_penalty_margin_of_left,
@@ -379,20 +383,20 @@ impl AnchorTable {
                     let extension_index = extension_cache.len();
                     right_traversed_anchor.iter().enumerate().for_each(|(traversed_anchor_index, traversed_anchor)| {
                         let anchor_index = &traversed_anchor.anchor_index;
-                        let mut anchor = &mut self.0[anchor_index.0][anchor_index.1];
-                        anchor.right_extension_index = Some(SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index));
+                        let mut anchor = &mut self.0[anchor_index.0 as usize][anchor_index.1 as usize];
+                        anchor.right_extension_index = Some(SemiGlobalExtensionIndex::Traversed(extension_index as u32, traversed_anchor_index as u32));
                     });
                     extension_cache.push(SemiGlobalExtension(right_extension, right_traversed_anchor));
-                    let current_anchor = &mut self.0[current_anchor_index.0][current_anchor_index.1];
-                    current_anchor.right_extension_index = Some(SemiGlobalExtensionIndex::Owned(extension_index));
+                    let current_anchor = &mut self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+                    current_anchor.right_extension_index = Some(SemiGlobalExtensionIndex::Owned(extension_index as u32));
                 },
                 // If right extension is failed
                 None => {
                     right_traversed_anchor.iter().for_each(|traversed_anchor| {
                         let anchor_index = &traversed_anchor.anchor_index;
-                        self.0[anchor_index.0][anchor_index.1].right_minimum_penalty = Some(traversed_anchor.remained_penalty);
+                        self.0[anchor_index.0 as usize][anchor_index.1 as usize].right_minimum_penalty = Some(traversed_anchor.remained_penalty);
                     });
-                    let current_anchor = &mut self.0[current_anchor_index.0][current_anchor_index.1];
+                    let current_anchor = &mut self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
                     current_anchor.registered = true;
                     current_anchor.checked_to_invalid = true;
                     return false
@@ -406,26 +410,26 @@ impl AnchorTable {
         pos_table: &PosTable,
         current_anchor_index: &AnchorIndex,
         extension_cache: &mut Vec<SemiGlobalExtension>,
-        pattern_size: usize,
-        record_sequence: Sequence,
-        query_sequence: Sequence,
+        pattern_size: u32,
+        target: &[u8],
+        query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
         wave_front: &mut WaveFront,
     ) -> bool {
-        if self.0[current_anchor_index.0][current_anchor_index.1].checked_to_invalid {
+        if self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].checked_to_invalid {
             return false
         }
-        if self.0[current_anchor_index.0][current_anchor_index.1].left_extension_index.is_none() {
+        if self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index.is_none() {
             // Scaled penalty margin of right
             // Always have right extension
-            let scaled_penalty_margin_of_right = match self.0[current_anchor_index.0][current_anchor_index.1].right_extension_index.as_ref().unwrap() {
+            let scaled_penalty_margin_of_right = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_extension_index.as_ref().unwrap() {
                 SemiGlobalExtensionIndex::Owned(extension_index) => {
-                    let extension = &extension_cache[*extension_index].0;
+                    let extension = &extension_cache[*extension_index as usize].0;
                     (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
                 },
                 SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
-                    let traversed_anchor = &extension_cache[*extension_index].1[*traversed_anchor_index];
+                    let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
                     (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
             };
@@ -433,8 +437,8 @@ impl AnchorTable {
             let (optional_left_extension, left_traversed_anchor) = pos_table.extend_left(
                 &current_anchor_index,
                 pattern_size,
-                record_sequence,
-                query_sequence,
+                target,
+                query,
                 penalties,
                 cutoff,
                 scaled_penalty_margin_of_right,
@@ -447,16 +451,16 @@ impl AnchorTable {
                     let extension_index = extension_cache.len();
                     left_traversed_anchor.iter().enumerate().for_each(|(traversed_anchor_index, traversed_anchor)| {
                         let anchor_index = &traversed_anchor.anchor_index;
-                        let mut anchor = &mut self.0[anchor_index.0][anchor_index.1];
-                        anchor.left_extension_index = Some(SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index));
+                        let mut anchor = &mut self.0[anchor_index.0 as usize][anchor_index.1 as usize];
+                        anchor.left_extension_index = Some(SemiGlobalExtensionIndex::Traversed(extension_index as u32, traversed_anchor_index as u32));
                     });
                     extension_cache.push(SemiGlobalExtension(left_extension, left_traversed_anchor));
-                    let current_anchor = &mut self.0[current_anchor_index.0][current_anchor_index.1];
-                    current_anchor.left_extension_index = Some(SemiGlobalExtensionIndex::Owned(extension_index));
+                    let current_anchor = &mut self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+                    current_anchor.left_extension_index = Some(SemiGlobalExtensionIndex::Owned(extension_index as u32));
                 },
                 // If left extension is failed
                 None => {
-                    let current_anchor = &mut self.0[current_anchor_index.0][current_anchor_index.1];
+                    let current_anchor = &mut self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
                     current_anchor.registered = true;
                     current_anchor.checked_to_invalid = true;
                     return false
@@ -473,7 +477,7 @@ struct Anchor {
     left_extension_index: Option<SemiGlobalExtensionIndex>,
     right_extension_index: Option<SemiGlobalExtensionIndex>,
     // Failed traversed
-    right_minimum_penalty: Option<usize>,
+    right_minimum_penalty: Option<u32>,
     // Fields for registration
     registered: bool, // If registered in semi-global alignment
     checked_to_invalid: bool, // If it's certain that the alignment cannot satisfy the cutoff
@@ -498,28 +502,28 @@ struct SemiGlobalExtension(Extension, Vec<TraversedAnchor>);
 
 #[derive(Debug, Clone)]
 enum SemiGlobalExtensionIndex {
-    Owned(usize), // Extension index
-    Traversed(usize, usize), // Extension index, Traversed anchor index
+    Owned(u32), // Extension index
+    Traversed(u32, u32), // Extension index, Traversed anchor index
 }
 impl SemiGlobalExtensionIndex {
     fn side_traversed_anchors<'a>(&self, extension_cache: &'a Vec<SemiGlobalExtension>) -> &'a [TraversedAnchor] {
         match self {
             Self::Owned(extension_index) => {
-                &extension_cache[*extension_index].1[..]
+                &extension_cache[*extension_index as usize].1[..]
             },
             Self::Traversed(extension_index, traversed_anchor_index) => {
-                &extension_cache[*extension_index].1[..*traversed_anchor_index]
+                &extension_cache[*extension_index as usize].1[..*traversed_anchor_index as usize]
             },
         }
     }
-    fn penalty_and_length(&self, extension_cache: &Vec<SemiGlobalExtension>) -> (usize, usize) {
+    fn penalty_and_length(&self, extension_cache: &Vec<SemiGlobalExtension>) -> (u32, u32) {
         match self {
             Self::Owned(extension_index) => {
-                let extension = &extension_cache[*extension_index].0;
+                let extension = &extension_cache[*extension_index as usize].0;
                 (extension.penalty, extension.length)
             },
             Self::Traversed(extension_index, traversed_anchor_index) => {
-                let traversed_anchor = &extension_cache[*extension_index].1[*traversed_anchor_index];
+                let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
                 (traversed_anchor.remained_penalty, traversed_anchor.remained_length)
             },
         }
@@ -529,16 +533,16 @@ impl SemiGlobalExtensionIndex {
         right: Self,
         pos_table: &PosTable,
         anchor_index: &AnchorIndex,
-        pattern_size: usize,
+        pattern_size: u32,
         extension_cache: &Vec<SemiGlobalExtension>,
         cutoff: &Cutoff,
     ) -> Option<(
-        usize, // penalty
-        usize, // length
-        Vec<AlignmentOperation>, // operations
+        u32, // penalty
+        u32, // length
+        Vec<AlignmentOperations>, // operations
         AlignmentPosition, // position
     )> {
-        let anchor_position = &pos_table.0[anchor_index.0][anchor_index.1];
+        let anchor_position = &pos_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let anchor_size = anchor_position.pattern_count * pattern_size;
 
         let (left_penalty, left_length) = left.penalty_and_length(&extension_cache);
@@ -553,22 +557,22 @@ impl SemiGlobalExtensionIndex {
             (cutoff.maximum_penalty_per_scale * length) >= (penalty * PREC_SCALE)
         ) {
             let anchor_query_position = anchor_index.0 * pattern_size;
-            let anchor_record_position = anchor_position.record_position;
+            let anchor_record_position = anchor_position.position_in_target;
 
             let (left_alignment_operations, left_insertion_count, left_deletion_count) = left.left_operations_and_indel_count(extension_cache);
             let (right_alignment_operations, right_insertion_count, right_deletion_count) = right.right_operations_and_indel_count(extension_cache);
 
             let alignment_position = AlignmentPosition {
-                record: (
-                    anchor_record_position + left_deletion_count as usize - left_length,
-                    anchor_record_position + anchor_size + right_length - right_deletion_count as usize,
+                target: (
+                    anchor_record_position + left_deletion_count - left_length,
+                    anchor_record_position + anchor_size + right_length - right_deletion_count,
                 ),
                 query: (
-                    anchor_query_position + left_insertion_count as usize - left_length,
-                    anchor_query_position + anchor_size + right_length - right_insertion_count as usize,
+                    anchor_query_position + left_insertion_count - left_length,
+                    anchor_query_position + anchor_size + right_length - right_insertion_count,
                 ),
             };
-            let alignment_operations = AlignmentOperation::concatenate_operations(
+            let alignment_operations = AlignmentOperations::concatenate_operations(
             left_alignment_operations,
             right_alignment_operations,
             anchor_size as u32,
@@ -584,28 +588,28 @@ impl SemiGlobalExtensionIndex {
             None
         }
     }
-    fn right_operations_and_indel_count(&self, extension_cache: &Vec<SemiGlobalExtension>) -> (Vec<AlignmentOperation>, u32, u32) {
+    fn right_operations_and_indel_count(&self, extension_cache: &Vec<SemiGlobalExtension>) -> (Vec<AlignmentOperations>, u32, u32) {
         match self {
             SemiGlobalExtensionIndex::Owned(extension_index) => {
-                let extension = &extension_cache[*extension_index].0;
+                let extension = &extension_cache[*extension_index as usize].0;
                 (extension.operations.clone(), extension.insertion_count, extension.deletion_count)
             },
             SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
-                let original_extension = &extension_cache[*extension_index].0;
-                let traversed_anchor = &extension_cache[*extension_index].1[*traversed_anchor_index];
+                let original_extension = &extension_cache[*extension_index as usize].0;
+                let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
 
-                let mut operations = original_extension.operations[traversed_anchor.index_of_operation..].to_vec();
+                let mut operations = original_extension.operations[traversed_anchor.index_of_operation as usize..].to_vec();
                 operations[0].count = traversed_anchor.alternative_match_count;
 
                 let mut insertion_count = 0;
                 let mut deletion_count = 0;
 
                 operations.iter().for_each(|alignment_operation| {
-                    match alignment_operation.case {
-                        AlignmentCase::Insertion => {
+                    match alignment_operation.operation {
+                        AlignmentOperation::Insertion => {
                             insertion_count += alignment_operation.count;
                         },
-                        AlignmentCase::Deletion => {
+                        AlignmentOperation::Deletion => {
                             deletion_count += alignment_operation.count;
                         },
                         _ => {
@@ -618,28 +622,28 @@ impl SemiGlobalExtensionIndex {
             },
         }
     }
-    fn left_operations_and_indel_count(&self, extension_cache: &Vec<SemiGlobalExtension>) -> (Vec<AlignmentOperation>, u32, u32) {
+    fn left_operations_and_indel_count(&self, extension_cache: &Vec<SemiGlobalExtension>) -> (Vec<AlignmentOperations>, u32, u32) {
         match self {
             SemiGlobalExtensionIndex::Owned(extension_index) => {
-                let extension = &extension_cache[*extension_index].0;
+                let extension = &extension_cache[*extension_index as usize].0;
                 (extension.operations.clone(), extension.insertion_count, extension.deletion_count)
             },
             SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
-                let original_extension = &extension_cache[*extension_index].0;
-                let traversed_anchor = &extension_cache[*extension_index].1[*traversed_anchor_index];
+                let original_extension = &extension_cache[*extension_index as usize].0;
+                let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
 
-                let mut operations = original_extension.operations[..=traversed_anchor.index_of_operation].to_vec();
+                let mut operations = original_extension.operations[..=traversed_anchor.index_of_operation as usize].to_vec();
                 operations.last_mut().unwrap().count = traversed_anchor.alternative_match_count;
 
                 let mut insertion_count = 0;
                 let mut deletion_count = 0;
 
                 operations.iter().for_each(|alignment_operation| {
-                    match alignment_operation.case {
-                        AlignmentCase::Insertion => {
+                    match alignment_operation.operation {
+                        AlignmentOperation::Insertion => {
                             insertion_count += alignment_operation.count;
                         },
-                        AlignmentCase::Deletion => {
+                        AlignmentOperation::Deletion => {
                             deletion_count += alignment_operation.count;
                         },
                         _ => {
@@ -659,10 +663,10 @@ pub struct SemiGlobalAlignment {
     // Symbol
     symbol: Vec<AnchorIndex>, // sorted anchor indices
     // Length and penalty
-    penalty: usize,
-    length: usize,
+    penalty: u32,
+    length: u32,
     // About operation
-    alignment_operations: Vec<AlignmentOperation>,
+    alignment_operations: Vec<AlignmentOperations>,
     alignment_position: AlignmentPosition,
     // About Optimum
     non_optimal_anchor_indices: Vec<AnchorIndex>,
@@ -672,31 +676,31 @@ impl PosTable {
     pub fn extend_right(
         &self,
         anchor_index: &AnchorIndex,
-        pattern_size: usize,
-        record_sequence: Sequence,
-        query_sequence: Sequence,
+        pattern_size: u32,
+        target: &[u8],
+        query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_left: i64,
         wave_front: &mut WaveFront,
     ) -> (Option<Extension>, Vec<TraversedAnchor>) {
-        let anchor_position = &self.0[anchor_index.0][anchor_index.1];
+        let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
 
         //
         // (1) Calculate index
         //
-        let right_record_start_index = anchor_position.record_position + anchor_size;
+        let right_record_start_index = anchor_position.position_in_target + anchor_size;
         let right_query_start_index = anchor_index.0 * pattern_size + anchor_size;
 
         // 
         // (2) Get right extension
         //
-        let right_record_slice = &record_sequence[right_record_start_index..];
-        let right_query_slice = &query_sequence[right_query_start_index..];
+        let right_record_slice = &target[right_record_start_index as usize..];
+        let right_query_slice = &query[right_query_start_index as usize..];
 
-        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_left, anchor_size, right_query_slice.len(), right_record_slice.len(), penalties, cutoff);
+        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_left, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
 
         wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         
@@ -705,7 +709,7 @@ impl PosTable {
                 let last_penalty = wave_front.end_point.score;
                 let comp_index = (wave_front.wave_front_scores[last_penalty].max_k + last_k) as usize;
 
-                let (right_extension, right_traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(last_penalty, comp_index, penalties, pattern_size);
+                let (right_extension, right_traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
                 let right_traversed_anchors = self.right_traversed_anchors(
                     right_traversed_positions,
                     anchor_index.0,
@@ -722,7 +726,7 @@ impl PosTable {
                 let last_penalty = wave_front.end_point.score;
                 let comp_index = wave_front.wave_front_scores[last_penalty].component_index_of_max_length();
 
-                let (right_extension, right_traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(last_penalty, comp_index, penalties, pattern_size);
+                let (right_extension, right_traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
                 let right_traversed_anchors = self.right_traversed_anchors(
                     right_traversed_positions,
                     anchor_index.0,
@@ -740,31 +744,31 @@ impl PosTable {
     pub fn extend_left(
         &self,
         anchor_index: &AnchorIndex,
-        pattern_size: usize,
-        record_sequence: Sequence,
-        query_sequence: Sequence,
+        pattern_size: u32,
+        target: &[u8],
+        query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
         scaled_penalty_margin_of_right: i64,
         wave_front: &mut WaveFront,
     ) -> (Option<Extension>, Vec<TraversedAnchor>) {
-        let anchor_position = &self.0[anchor_index.0][anchor_index.1];
+        let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
 
         //
         // (1) Calculate index
         //
-        let left_record_last_index = anchor_position.record_position;
+        let left_record_last_index = anchor_position.position_in_target;
         let left_query_last_index = anchor_index.0 * pattern_size;
 
         // 
         // (2) Get left extension
         //
-        let left_record_slice = &record_sequence[..left_record_last_index];
-        let left_query_slice = &query_sequence[..left_query_last_index];
+        let left_record_slice = &target[..left_record_last_index as usize];
+        let left_query_slice = &query[..left_query_last_index as usize];
 
-        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_right, anchor_size, left_query_slice.len(), left_record_slice.len(), penalties, cutoff);
+        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_right, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
 
         wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         
@@ -773,7 +777,7 @@ impl PosTable {
                 let last_penalty = wave_front.end_point.score;
                 let comp_index = (wave_front.wave_front_scores[last_penalty].max_k + last_k) as usize;
 
-                let (left_extension, left_traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(last_penalty, comp_index, penalties, pattern_size);
+                let (left_extension, left_traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
                 let left_traversed_anchors = self.left_traversed_anchors(
                     left_traversed_positions,
                     anchor_index.0,
@@ -789,7 +793,7 @@ impl PosTable {
                 let last_penalty = wave_front.end_point.score;
                 let comp_index = wave_front.wave_front_scores[last_penalty].component_index_of_max_length();
 
-                let (left_extension, left_traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(last_penalty, comp_index, penalties, pattern_size);
+                let (left_extension, left_traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
                 let left_traversed_anchors = self.left_traversed_anchors(
                     left_traversed_positions,
                     anchor_index.0,

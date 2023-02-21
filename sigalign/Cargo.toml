@@ -13,18 +13,18 @@ categories = ["science"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.44"
 num = "0.4.0"
+num-traits = "0.2.15"
+thiserror = "1.0.38"
+ahash = "0.8.0"
 byteorder = "1.4.3"
-lt-fm-index = "0.5.6"
+bytemuck = "1.13.0"
 capwriter = "0.1.1"
-fm-index = "0.1.2"
+lt-fm-index = "0.5.6"
 faimm = "0.3.0"
 serde = "1.0.152"
 serde_json = "1.0.93"
 seq_io = "0.3.1"
-bytemuck = "1.12.1"
-ahash = "0.8.0"
 
 [dev-dependencies]
 criterion = "0.3.5"

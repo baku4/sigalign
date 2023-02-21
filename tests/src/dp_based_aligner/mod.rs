@@ -134,7 +134,7 @@ impl DpBasedAligner {
 
                 let alignment_start_positions = alignment_start_positions_by_record.get_mut(&record_index).unwrap();
 
-                for record_position in pattern_location.locations{
+                for record_position in pattern_location.sorted_positions{
                     let new_alignment_start_position = AlignmentStartPosition {
                         record_start_position: record_position,
                         query_start_position: qry_pos,

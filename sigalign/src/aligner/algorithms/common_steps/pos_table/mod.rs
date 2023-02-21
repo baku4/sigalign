@@ -1,73 +1,85 @@
-use super::{
-    Sequence,
+use crate::core::{
     ReferenceInterface,
-    Reference, SequenceStorage,
+    SeqLen,
 };
-use crate::AHashMap;
+use ahash::AHashMap;
 
-pub type AnchorIndex = (usize, usize);
-
-// Sorted record positions by pattern
+/**
+Position Table: Sorted target positions by pattern
+  - 1st index: target index
+  - 2nd index: pattern index
+If the locations of consecutive patterns are ungapped -> merge to one AnchorPosition
+*/
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PosTable(pub Vec<Vec<AnchorPosition>>);
+pub struct PosTable(
+    pub Vec<Vec<AnchorPosition>>
+);
+pub type AnchorIndex = (u32, u32);
 
+/**
+Position of anchor in target 
+  - Restrict to u32
+*/
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorPosition {
-    pub record_position: usize,
-    pub pattern_count: usize,
+    pub position_in_target: u32,
+    pub pattern_count: u32,
 }
 
 impl PosTable {
-    pub fn new_by_record<S: SequenceStorage>(
-        reference: &Reference<S>,
-        query: Sequence,
-        pattern_size: usize,
-    ) -> AHashMap<usize, Self> {
+    pub fn new_by_target_index<L: SeqLen, R: ReferenceInterface<L>>(
+        reference: &R,
+        query: &[u8],
+        pattern_size: u32,
+    ) -> AHashMap<u32, Self> {
         let qry_len = query.len();
-        let pattern_count = qry_len / pattern_size;
+        let pattern_count = qry_len / pattern_size as usize;
 
-        let mut pos_table_by_record: AHashMap<usize, Self> = AHashMap::new();
+        let mut pos_table_by_target_index: AHashMap<u32, Self> = AHashMap::new();
 
-        for pattern_index in 0..pattern_count {
-            let qry_pos = pattern_index * pattern_size;
-            let pattern = &query[qry_pos..qry_pos+pattern_size];
+        (0..pattern_count).for_each(|pattern_index| {
+            let qry_pos = pattern_index * pattern_size as usize;
+            let pattern = &query[qry_pos..qry_pos+pattern_size as usize];
             
-            let reference_location = reference.locate(pattern);
+            let pattern_locations = reference.locate(pattern);
 
-            for record_location in reference_location {
-                match pos_table_by_record.get_mut(&record_location.record_index) {
+            pattern_locations.into_iter().for_each(|pattern_location| {
+                match pos_table_by_target_index.get_mut(&pattern_location.target_index) {
                     Some(pos_table) => {
-                        pos_table.add_new_positions(pattern_index, record_location.positions)
+                        pos_table.add_new_positions(
+                            pattern_index,
+                            pattern_location.sorted_positions,
+                        )
                     },
                     None => {
                         let mut new_pos_table = Self::new_empty(pattern_count);
-                        new_pos_table.add_new_positions(pattern_index, record_location.positions);
-                        pos_table_by_record.insert(record_location.record_index, new_pos_table);
+                        new_pos_table.add_new_positions(
+                            pattern_index,
+                            pattern_location.sorted_positions,
+                        );
+                        pos_table_by_target_index.insert(pattern_location.target_index, new_pos_table);
                     }
                 }
-            }
-        }
+            });
+        });
 
-        pos_table_by_record.iter_mut().for_each(|(_, pos_table)| {
+        pos_table_by_target_index.iter_mut().for_each(|(_, pos_table)| {
             pos_table.merge_ungapped_anchors(pattern_size);
         });
 
-        pos_table_by_record
-    }
-
-    // For New
-    fn new_empty(pattern_count: usize) -> Self {
-        Self(vec![Vec::new(); pattern_count])
+        pos_table_by_target_index
     }
     fn add_new_positions(
         &mut self,
         pattern_index: usize,
-        sorted_record_positions: Vec<usize>,
+        sorted_target_positions: Vec<u32>,
     ) {
-        self.0[pattern_index] = AnchorPosition::new_of_vector(sorted_record_positions);
+        self.0[pattern_index] = AnchorPosition::new_vec(sorted_target_positions);
     }
-    // For Merge
-    fn merge_ungapped_anchors(&mut self, pattern_size: usize) {
+    fn new_empty(pattern_count: usize) -> Self {
+        Self(vec![Vec::new(); pattern_count])
+    }
+    fn merge_ungapped_anchors(&mut self, pattern_size: u32) {
         let pattern_count = self.0.len();
 
         for right_index in (1..pattern_count).rev() {
@@ -82,17 +94,17 @@ impl PosTable {
 }
 
 impl AnchorPosition {
-    fn new_of_vector(sorted_record_positions: Vec<usize>) -> Vec<Self> {
-        sorted_record_positions.into_iter().map(|pos| {
+    fn new_vec(sorted_target_positions: Vec<u32>) -> Vec<Self> {
+        sorted_target_positions.into_iter().map(|pos| {
             Self {
-                record_position: pos,
+                position_in_target: pos,
                 pattern_count: 1,
             }
         }).collect()
     }
-    fn merge_right_to_left(left_anchor_positions: &mut Vec<Self>, right_anchor_positions: &mut Vec<Self>, pattern_size: usize) {
-        let left_count = left_anchor_positions.len();
-        let mut right_count = right_anchor_positions.len();
+    fn merge_right_to_left(left: &mut Vec<Self>, right: &mut Vec<Self>, pattern_size: u32) {
+        let left_count = left.len();
+        let mut right_count = right.len();
 
         if (left_count == 0) || (right_count == 0) {
             return
@@ -102,17 +114,17 @@ impl AnchorPosition {
         let mut right_index = 0;
 
         while (left_index < left_count) && (right_index < right_count) {
-            let left_anchor_position = &mut left_anchor_positions[left_index];
-            let right_anchor_position = &right_anchor_positions[right_index];
-            let right_record_position = right_anchor_position.record_position;
+            let left_anchor_position = &mut left[left_index];
+            let right_anchor_position = &right[right_index];
+            let right_target_position = right_anchor_position.position_in_target;
 
-            match (left_anchor_position.record_position + pattern_size).checked_sub(right_record_position) {
+            match (left_anchor_position.position_in_target + pattern_size).checked_sub(right_target_position) {
                 Some(record_position_gap) => {
                     if record_position_gap == 0 {
                         let right_pattern_count = right_anchor_position.pattern_count;
                         left_anchor_position.pattern_count += right_pattern_count;
 
-                        right_anchor_positions.remove(right_index);
+                        right.remove(right_index);
 
                         left_index += 1;
                         right_count -= 1;
@@ -127,7 +139,6 @@ impl AnchorPosition {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -149,35 +160,35 @@ mod tests {
             vec![
                 vec![
                     AnchorPosition {
-                        record_position: 20,
+                        position_in_target: 20,
                         pattern_count: 2,
                     },
                     AnchorPosition {
-                        record_position: 50,
+                        position_in_target: 50,
                         pattern_count: 1,
                     },
                     AnchorPosition {
-                        record_position: 80,
+                        position_in_target: 80,
                         pattern_count: 3,
                     },
                 ],
                 vec![
                     AnchorPosition {
-                        record_position: 10,
+                        position_in_target: 10,
                         pattern_count: 1,
                     },
                     AnchorPosition {
-                        record_position: 70,
+                        position_in_target: 70,
                         pattern_count: 2,
                     },
                 ],
                 vec![
                     AnchorPosition {
-                        record_position: 0,
+                        position_in_target: 0,
                         pattern_count: 1,
                     },
                     AnchorPosition {
-                        record_position: 150,
+                        position_in_target: 150,
                         pattern_count: 1,
                     },
                 ],

@@ -10,7 +10,7 @@ pub trait PatternIndex<L: SeqLen> {
         sequence_type: &SequenceType,
         option: Self::Option,
     ) -> Self;
-    fn locate(&self, pattern: &[u8], search_range: &Vec<u32>) -> Vec<PatternLocation<L>>;
+    fn locate(&self, pattern: &[u8], search_range: &Vec<u32>) -> Vec<PatternLocation>;
 }
 
 /// If there are three targets with "ATT", "CC", "GGGG", the "concatenated_sequence" is "ATTCCGGGG" and the "boundaries" is [0, 3, 5, 9].

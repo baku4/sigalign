@@ -1,13 +1,30 @@
-use super::{Result, error_msg};
-use super::{
-	Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, AnchorAlignmentResult,
+use crate::core::{
+    regulators::{
+        Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
+    },
+    results::{
+        AlignmentResult, AnchorAlignmentResult,
+    },
 };
 use num::integer;
 
-const MINIMUM_PATTERN_SIZE: usize = 4;
 
-pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> usize {
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum RegulatorError {
+    #[error("Cutoff is too low to detect the pattern.")]
+    LowCutoff,
+    #[error("Gap extend penalty only allow positive integer.")]
+    GapExtendPenalty,
+    #[error("Maximum penalty per length only allow positive value.")]
+    NegativeMPpL,
+
+}
+
+const MINIMUM_PATTERN_SIZE: u32 = 4;
+
+pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> u32 {
     let mut n = 1;
     loop { // TODO: Optimize
         let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
@@ -24,34 +41,34 @@ pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &Min
         let pattern_size = max_penalty.min(upper_bound);
 
         if pattern_size >= lower_bound {
-            return pattern_size as usize
+            return pattern_size as u32
         }
         n += 1;
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct AlignmentCondition {
+pub struct AlignmentRegulator {
     pub penalties: Penalty,
     pub cutoff: Cutoff,
     pub min_penalty_for_pattern: MinPenaltyForPattern,
-    pub gcd_for_compression: usize,
-    pub pattern_size: usize,
+    pub gcd_for_compression: u32,
+    pub pattern_size: u32,
 }
 
-impl AlignmentCondition {
+impl AlignmentRegulator {
     /// Generate new aligner.
     pub fn new(
-        mismatch_penalty: usize,
-        gap_open_penalty: usize,
-        gap_extend_penalty: usize,
-        minimum_aligned_length: usize,
+        mismatch_penalty: u32,
+        gap_open_penalty: u32,
+        gap_extend_penalty: u32,
+        minimum_aligned_length: u32,
         maximum_penalty_per_length: f32,
-    ) -> Result<Self> {
+    ) -> Result<Self, RegulatorError> {
         if gap_extend_penalty == 0 {
-            error_msg!("Gap extend penalty only allow positive integer.");
+            return Err(RegulatorError::GapExtendPenalty);
         } else if maximum_penalty_per_length <= 0.0 {
-            error_msg!("Maximum penalty per length only allow positive value.");
+            return Err(RegulatorError::NegativeMPpL);
         }
 
         let penalties = Penalty::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
@@ -61,7 +78,8 @@ impl AlignmentCondition {
 
         let pattern_size = &aligner.pattern_size;
         if *pattern_size < MINIMUM_PATTERN_SIZE {
-            error_msg!("Auto calculated pattern size({}) should reach at least {}", pattern_size, MINIMUM_PATTERN_SIZE);
+            return Err(RegulatorError::LowCutoff);
+            // error_msg!("Auto calculated pattern size({}) should reach at least {}", pattern_size, MINIMUM_PATTERN_SIZE);
         }
 
         Ok(aligner)
@@ -90,7 +108,7 @@ impl AlignmentCondition {
         reference_alignment_result
     }
     /// Get penalties
-    pub fn get_penalties(&self) -> [usize; 3] {
+    pub fn get_penalties(&self) -> [u32; 3] {
         [
             self.penalties.x * self.gcd_for_compression,
             self.penalties.o * self.gcd_for_compression,
@@ -98,20 +116,20 @@ impl AlignmentCondition {
         ]
     }
     /// Get similarity cutoff
-    pub fn get_similarity_cutoff(&self) -> (usize, f32) {
+    pub fn get_similarity_cutoff(&self) -> (u32, f32) {
         (
             self.cutoff.minimum_aligned_length,
             (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PREC_SCALE as f32,
         )
     }
     /// Get size of pattern
-    pub fn get_pattern_size(&self) -> usize {
+    pub fn get_pattern_size(&self) -> u32 {
         self.pattern_size
     }
 }
 
 impl AlignmentResult {
-    fn multiply_gcd(&mut self, gcd: usize) {
+    fn multiply_gcd(&mut self, gcd: u32) {
         self.0.iter_mut().for_each(|record_alignment_result| {
             record_alignment_result.alignments.iter_mut().for_each(|alignment_result| {
                 alignment_result.multiply_gcd(gcd);
@@ -121,23 +139,23 @@ impl AlignmentResult {
 }
 
 impl AnchorAlignmentResult {
-    fn multiply_gcd(&mut self, gcd: usize) {
+    fn multiply_gcd(&mut self, gcd: u32) {
         self.penalty *= gcd;
     }
 }
 
 impl Penalty {
-    fn new(mismatch: usize, gap_open: usize, gap_extend: usize) -> Self {
+    fn new(mismatch: u32, gap_open: u32, gap_extend: u32) -> Self {
         Self {
             x: mismatch,
             o: gap_open,
             e: gap_extend,
         }
     }
-    fn gcd_of_penalties(&self) -> usize {
+    fn gcd_of_penalties(&self) -> u32 {
         integer::gcd(integer::gcd(self.x, self.o), self.e)
     }
-    fn divide_by_gcd(&mut self, gcd: usize) {
+    fn divide_by_gcd(&mut self, gcd: u32) {
         self.x /= gcd;
         self.o /= gcd;
         self.e /= gcd;
@@ -145,25 +163,25 @@ impl Penalty {
 }
 
 impl Cutoff {
-    fn new(minimum_aligned_length: usize, maximum_penalty_per_length: f32) -> Self {
-        let maximum_penalty_per_scale = (maximum_penalty_per_length * PREC_SCALE as f32) as usize;
+    fn new(minimum_aligned_length: u32, maximum_penalty_per_length: f32) -> Self {
+        let maximum_penalty_per_scale = (maximum_penalty_per_length * PREC_SCALE as f32) as u32;
         Self::new_with_scaled_max_ppl(minimum_aligned_length, maximum_penalty_per_scale)
     }
-    fn new_with_scaled_max_ppl(minimum_aligned_length: usize, maximum_penalty_per_scale: usize) -> Self {
+    fn new_with_scaled_max_ppl(minimum_aligned_length: u32, maximum_penalty_per_scale: u32) -> Self {
         Self {
             minimum_aligned_length,
             maximum_penalty_per_scale,
         }
     }
-    fn divide_by_gcd(&mut self, gcd: usize) {
+    fn divide_by_gcd(&mut self, gcd: u32) {
         self.maximum_penalty_per_scale /= gcd;
     }
 }
 
 impl MinPenaltyForPattern {
     fn new(penalties: &Penalty) -> Self {
-        let odd: usize;
-        let even: usize;
+        let odd: u32;
+        let even: u32;
         if penalties.x <= penalties.o + penalties.e {
             odd = penalties.x;
             if penalties.x * 2 <= penalties.o + (penalties.e * 2) {

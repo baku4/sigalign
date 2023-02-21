@@ -8,7 +8,7 @@ pub use sequence_length::SeqLen;
 pub trait ReferenceInterface<L: SeqLen> {
     type Buffer: SequenceBuffer;
 
-    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation<L>>;
+    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;
     fn get_buffer(&self) -> Self::Buffer;
     fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer);
     fn is_indexed(&self, query: &[u8]) -> bool;
@@ -16,8 +16,13 @@ pub trait ReferenceInterface<L: SeqLen> {
 pub trait SequenceBuffer {
     fn request_sequence(&self) -> &[u8];
 }
+
+/// Positions are should be sorted in ascending order.
+///   - In general, positions are automatically sorted when searching for an index of a target.
+///   - Reordering is not performed in algorithm.
+/// The range of position in one target is restricted to the bound of u32
 #[derive(Debug)]
-pub struct PatternLocation<L: SeqLen> {
+pub struct PatternLocation {
     pub target_index: u32,
-    pub locations: Vec<L>,
+    pub sorted_positions: Vec<u32>,
 }

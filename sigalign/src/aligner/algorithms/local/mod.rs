@@ -1,13 +1,16 @@
-use super::{
-	Penalty, PREC_SCALE, Cutoff,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation,
-    Sequence,
-    ReferenceInterface, SequenceBuffer,
-    Reference, SequenceStorage,
+use crate::core::{
+    SeqLen, ReferenceInterface, SequenceBuffer,
+    regulators::{
+        Penalty, PREC_SCALE, Cutoff,
+    },
+    results::{
+        AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
+    },
 };
-use super::{PosTable, AnchorIndex, TraversedAnchor};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
-
+use super::common_steps::{
+    PosTable, AnchorIndex, TraversedAnchor,
+    Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
+};
 use std::cmp::Ordering;
 
 mod valid_position_candidate;
@@ -16,25 +19,25 @@ mod extend;
 use extend::LocalExtension;
 mod backtrace;
 
-pub fn local_alignment_algorithm<S: SequenceStorage>(
-    reference: &Reference<S>,
-    sequence_buffer: &mut S::Buffer,
-    query: Sequence,
-    pattern_size: usize,
+pub fn local_alignment_algorithm<L: SeqLen, R: ReferenceInterface<L>>(
+    reference: &R,
+    sequence_buffer: &mut R::Buffer,
+    query: &[u8],
+    pattern_size: u32,
     penalties: &Penalty,
     cutoff: &Cutoff,
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
 ) -> AlignmentResult {
-    let pos_table_map = PosTable::new_by_record(&reference, &query, pattern_size);
+    let pos_table_map = PosTable::new_by_target_index(reference, &query, pattern_size);
 
-    let record_alignment_results: Vec<RecordAlignmentResult> = pos_table_map.into_iter().filter_map(|(record_index, pos_table)| {
-        reference.fill_buffer(record_index, sequence_buffer);
-        let record_sequence = sequence_buffer.request_sequence();
-        let anchor_alignment_results = local_alignment_query_to_record(
+    let target_alignment_results: Vec<TargetAlignmentResult> = pos_table_map.into_iter().filter_map(|(target_index, pos_table)| {
+        reference.fill_buffer(target_index, sequence_buffer);
+        let target = sequence_buffer.request_sequence();
+        let anchor_alignment_results = local_alignment_query_to_target(
             &pos_table,
             pattern_size,
-            record_sequence,
+            target,
             &query,
             &penalties,
             &cutoff,
@@ -45,21 +48,21 @@ pub fn local_alignment_algorithm<S: SequenceStorage>(
         if anchor_alignment_results.len() == 0 {
             None
         } else {
-            Some(RecordAlignmentResult {
-                index: record_index,
+            Some(TargetAlignmentResult {
+                index: target_index,
                 alignments: anchor_alignment_results,
             })
         }
     }).collect();
 
-    AlignmentResult(record_alignment_results)
+    AlignmentResult(target_alignment_results)
 }
 
-fn local_alignment_query_to_record(
+fn local_alignment_query_to_target(
     pos_table: &PosTable,
-    pattern_size: usize,
-    record_sequence: Sequence,
-    query_sequence: Sequence,
+    pattern_size: u32,
+    target: &[u8],
+    query: &[u8],
     penalties: &Penalty,
     cutoff: &Cutoff,
     left_wave_front: &mut WaveFront,
@@ -67,7 +70,7 @@ fn local_alignment_query_to_record(
 ) -> Vec<AnchorAlignmentResult> {
     let sorted_anchor_indices: Vec<AnchorIndex> = pos_table.0.iter().enumerate().map(|(pattern_index, pattern_position)| {
         (0..pattern_position.len()).map(move |anchor_index| {
-            (pattern_index, anchor_index)
+            (pattern_index as u32, anchor_index as u32)
         })
     }).flatten().collect();
 
@@ -77,7 +80,7 @@ fn local_alignment_query_to_record(
 
     let mut local_alignments: Vec<LocalAlignment> = Vec::new();
     sorted_anchor_indices.into_iter().for_each(|current_anchor_index| {
-        let current_anchor = &mut anchor_table[current_anchor_index.0][current_anchor_index.1];
+        let current_anchor = &mut anchor_table[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
     
         if !current_anchor.registered {
             //
@@ -107,8 +110,8 @@ fn local_alignment_query_to_record(
                     let local_extension = pos_table.extend_right_first_for_local(
                         &current_anchor_index,
                         pattern_size,
-                        record_sequence,
-                        query_sequence,
+                        target,
+                        query,
                         penalties,
                         cutoff,
                         scaled_penalty_margin_of_left,
@@ -143,28 +146,28 @@ fn local_alignment_query_to_record(
             //
             // (3) Make Local Alignment
             //
-            let anchor_position = &pos_table.0[current_anchor_index.0][current_anchor_index.1];
+            let anchor_position = &pos_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
             let pattern_count = anchor_position.pattern_count;
             let anchor_size = pattern_count * pattern_size;
 
             let length = left_extension.length + right_extension.length + anchor_size;
-            let query_length = length - left_extension.insertion_count as usize - right_extension.insertion_count as usize;
+            let query_length = length - left_extension.insertion_count - right_extension.insertion_count;
             let penalty = left_extension.penalty + right_extension.penalty;
             let valid_anchor_alignment_operations_and_position = if length >= cutoff.minimum_aligned_length {
                 let anchor_query_position = current_anchor_index.0 * pattern_size;
-                let anchor_record_position = anchor_position.record_position;
+                let anchor_record_position = anchor_position.position_in_target;
                 let alignment_position = AlignmentPosition {
-                    record: (
-                        anchor_record_position + left_extension.deletion_count as usize - left_extension.length,
-                        anchor_record_position + anchor_size + right_extension.length - right_extension.deletion_count as usize,
+                    target: (
+                        anchor_record_position + left_extension.deletion_count - left_extension.length,
+                        anchor_record_position + anchor_size + right_extension.length - right_extension.deletion_count,
                     ),
                     query: (
-                        anchor_query_position + left_extension.insertion_count as usize - left_extension.length,
-                        anchor_query_position + anchor_size + right_extension.length - right_extension.insertion_count as usize,
+                        anchor_query_position + left_extension.insertion_count - left_extension.length,
+                        anchor_query_position + anchor_size + right_extension.length - right_extension.insertion_count,
                     ),
                 };
 
-                let alignment_operations = AlignmentOperation::concatenate_operations(
+                let alignment_operations = AlignmentOperations::concatenate_operations(
                    left_extension.operations,
                    right_extension.operations,
                    anchor_size as u32,
@@ -185,7 +188,7 @@ fn local_alignment_query_to_record(
                 let left_traversed_anchor = &left_traversed_anchors[index];
                 let left_traversed_anchor_index = left_traversed_anchor.anchor_index;
 
-                let left_anchor = &mut anchor_table[left_traversed_anchor_index.0][left_traversed_anchor_index.1];
+                let left_anchor = &mut anchor_table[left_traversed_anchor_index.0 as usize][left_traversed_anchor_index.1 as usize];
 
                 if left_anchor.registered {
                     // Left anchor's optimal alignment is other
@@ -197,8 +200,8 @@ fn local_alignment_query_to_record(
                         let local_alignment_of_traversed = pos_table.extend_right_first_for_local(
                             &left_traversed_anchor_index,
                             pattern_size,
-                            record_sequence,
-                            query_sequence,
+                            target,
+                            query,
                             penalties,
                             cutoff,
                             left_scaled_penalty_margin,
@@ -223,7 +226,7 @@ fn local_alignment_query_to_record(
                 let right_traversed_anchor = &right_traversed_anchors[index];
                 let right_traversed_anchor_index = right_traversed_anchor.anchor_index;
 
-                let right_anchor = &mut anchor_table[right_traversed_anchor_index.0][right_traversed_anchor_index.1];
+                let right_anchor = &mut anchor_table[right_traversed_anchor_index.0 as usize][right_traversed_anchor_index.1 as usize];
 
                 if right_anchor.registered {
                     // Left anchor's optimal alignment is other
@@ -235,8 +238,8 @@ fn local_alignment_query_to_record(
                         let local_alignment_of_traversed = pos_table.extend_left_first_for_local(
                             &right_traversed_anchor_index,
                             pattern_size,
-                            record_sequence,
-                            query_sequence,
+                            target,
+                            query,
                             penalties,
                             cutoff,
                             right_scaled_penalty_margin,
@@ -276,7 +279,7 @@ fn local_alignment_query_to_record(
             });
             // Register anchors
             symbol[leftmost_optimal_symbol_index..=rightmost_optimal_symbol_index].iter().for_each(|&anchor_index| {
-                anchor_table[anchor_index.0][anchor_index.1].registered = true;
+                anchor_table[anchor_index.0 as usize][anchor_index.1 as usize].registered = true;
             });
 
             if let Some((alignment_operations, alignment_position)) = valid_anchor_alignment_operations_and_position {
@@ -316,14 +319,14 @@ fn local_alignment_query_to_record(
     local_alignments.into_iter().filter_map(|local_alignment| {
         let mut is_unique_position = true;
         for non_optimal_anchor_index in local_alignment.non_optimal_anchor_indices.into_iter() {
-            if anchor_table[non_optimal_anchor_index.0][non_optimal_anchor_index.1].included {
+            if anchor_table[non_optimal_anchor_index.0 as usize][non_optimal_anchor_index.1 as usize].included {
                 is_unique_position = false;
                 break;
             }
         }
         if is_unique_position {
             local_alignment.symbol.into_iter().for_each(|anchor_index| {
-                anchor_table[anchor_index.0][anchor_index.1].included = true;
+                anchor_table[anchor_index.0 as usize][anchor_index.1 as usize].included = true;
             });
             let anchor_alignment_result = AnchorAlignmentResult {
                 penalty: local_alignment.penalty,
@@ -359,11 +362,11 @@ pub struct LocalAlignment {
     // Symbol
     symbol: Vec<AnchorIndex>, // sorted anchor indices
     // Length and penalty
-    query_length: usize,
-    penalty: usize,
-    length: usize,
+    query_length: u32,
+    penalty: u32,
+    length: u32,
     // About operation
-    alignment_operations: Vec<AlignmentOperation>,
+    alignment_operations: Vec<AlignmentOperations>,
     alignment_position: AlignmentPosition,
     // About Optimum
     non_optimal_anchor_indices: Vec<AnchorIndex>,

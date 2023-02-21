@@ -1,15 +1,13 @@
-use super::{
-	PREC_SCALE,
-};
+use crate::core::regulators::PREC_SCALE;
 use super::{WaveFront, WaveFrontScore, BackTraceMarker};
 
 // Validate Position Candidate
 #[derive(Debug, Clone)]
 pub struct VPC {
-    pub query_length: usize,
-    pub penalty: usize,
-    pub component_index: usize,
     pub scaled_penalty_margin: i64,
+    pub query_length: u32,
+    pub penalty: u32,
+    pub component_index: u32,
 }
 
 impl VPC {
@@ -18,7 +16,7 @@ impl VPC {
         left_vpc_vector: &Vec<Self>,
         right_vpc_vector: &Vec<Self>,
         anchor_scaled_penalty_margin: i64,
-        anchor_size: usize,
+        anchor_size: u32,
     ) -> (usize, usize) {
         let mut optimal_left_vpc_index = 0;
         let mut optimal_right_vpc_index = 0;
@@ -50,14 +48,14 @@ impl WaveFront {
     // | QL |<QL |<QL |<QL | ... |<QL |
     // | PM>| PM>| PM>| PM>| ... | PM |
     // --------------------------------
-    pub fn get_sorted_vpc_vector(&self, maximum_penalty_per_scale: usize, minimum_scaled_penalty_margin: i64) -> Vec<VPC> {
+    pub fn get_sorted_vpc_vector(&self, maximum_penalty_per_scale: u32, minimum_scaled_penalty_margin: i64) -> Vec<VPC> {
         let last_score = self.end_point.score;
 
         let mut sorted_vpc_vector: Vec<VPC> = Vec::new();
 
         self.wave_front_scores[..=last_score].iter().enumerate().for_each(|(penalty, wave_front_score)| {
             let (max_query_length, length, comp_index) = wave_front_score.point_of_maximum_query_length();
-            let scaled_penalty_margin = (length as usize * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE) as i64;
+            let scaled_penalty_margin = (length as u32 * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE as usize) as i64;
 
             if minimum_scaled_penalty_margin <= scaled_penalty_margin {
                 let mut ql_index_to_insert: usize = 0;
@@ -68,7 +66,7 @@ impl WaveFront {
                 for (index, vpc_in_vector) in sorted_vpc_vector.iter().enumerate().rev() {
                     // QL
                     if ql_index_to_insert == 0 {
-                        let checked_sub = max_query_length.checked_sub(vpc_in_vector.query_length as usize);
+                        let checked_sub = max_query_length.checked_sub(vpc_in_vector.query_length);
                         if let Some(gap) = checked_sub {
                             if gap == 0 {
                                 ql_is_same_as_pre = true;
@@ -97,7 +95,7 @@ impl WaveFront {
                         VPC {
                             query_length: max_query_length,
                             scaled_penalty_margin,
-                            penalty: penalty,
+                            penalty: penalty as u32,
                             component_index: comp_index,
                         },
                     );
@@ -109,7 +107,7 @@ impl WaveFront {
                                 VPC {
                                     query_length: max_query_length,
                                     scaled_penalty_margin,
-                                    penalty: penalty,
+                                    penalty: penalty as u32,
                                     component_index: comp_index,
                                 },
                             );
@@ -120,7 +118,7 @@ impl WaveFront {
                                     VPC {
                                         query_length: max_query_length,
                                         scaled_penalty_margin,
-                                        penalty: penalty,
+                                        penalty: penalty as u32,
                                         component_index: comp_index,
                                     },
                                 );
@@ -136,7 +134,7 @@ impl WaveFront {
 }
 
 impl WaveFrontScore {
-    fn point_of_maximum_query_length(&self) -> (usize, i32, usize) { // (Maximum query index, Length of that, Component index of that)
+    fn point_of_maximum_query_length(&self) -> (u32, i32, u32) { // (Maximum query index, Length of that, Component index of that)
         let mut max_query_length = 0;
         let mut length_cache = 0;
         let mut comp_index_cache = 0;
@@ -152,7 +150,7 @@ impl WaveFrontScore {
             }
         });
 
-        (max_query_length as usize, length_cache, comp_index_cache)
+        (max_query_length as u32, length_cache, comp_index_cache as u32)
     }
 }
 

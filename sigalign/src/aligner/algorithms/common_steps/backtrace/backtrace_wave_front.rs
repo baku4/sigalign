@@ -1,6 +1,9 @@
-use super::{
-	Penalty,
-    AlignmentOperation, AlignmentCase,
+use crate::core::{
+    SeqLen,
+    regulators::Penalty,
+    results::{
+        AlignmentOperations, AlignmentOperation,
+    },
 };
 
 use super::{Extension, WaveFront, BackTraceMarker};
@@ -9,26 +12,26 @@ use super::{TraversedPosition};
 impl WaveFront {
     pub fn backtrace_from_point_checking_right_traversed(
         &self,
-        mut score: usize,
-        index_of_component: usize,
+        mut score: u32,
+        index_of_component: u32,
         penalties: &Penalty,
-        pattern_size: usize,
+        pattern_size: u32,
     ) -> (Extension, Vec<TraversedPosition>) {
         let penalty_from_start_point = score;
 
         let wave_front_scores = &self.wave_front_scores;
-        let mut operations: Vec<AlignmentOperation> = Vec::new(); // TODO: Capacity can be applied?
+        let mut operations: Vec<AlignmentOperations> = Vec::new(); // TODO: Capacity can be applied?
         
-        let mut wave_front_score = &wave_front_scores[score];
+        let mut wave_front_score = &wave_front_scores[score as usize];
 
         // Init
         let mut component_type = ComponentType::M;
-        let mut component = &wave_front_score.components_by_k[index_of_component].m;
+        let mut component = &wave_front_score.components_by_k[index_of_component as usize].m;
 
         let mut k = -wave_front_score.max_k + index_of_component as i32;
         let mut fr = component.fr;
 
-        let operation_length = fr as usize + component.deletion_count as usize;
+        let operation_length = fr as u32 + component.deletion_count as u32;
         let deletion_count: u32 = component.deletion_count as u32;
         let insertion_count: u32 = (deletion_count as i32 + k) as u32;
 
@@ -46,7 +49,7 @@ impl WaveFront {
                             // (2) Next k
                             // not change
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -66,11 +69,11 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
-                                    pattern_count_from_start_point: pattern_count_to_next_pattern as usize,
-                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as usize,
-                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
-                                    traversed_penalty_to_anchor_end: score + penalties.x,
-                                    index_of_operation: operations.len(),
+                                    pattern_count_from_start_point: pattern_count_to_next_pattern as u32,
+                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
+                                    traversed_penalty_to_anchor_end: score as u32 + penalties.x,
+                                    index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
@@ -78,29 +81,29 @@ impl WaveFront {
                             // (8) Add operation
                             if match_count == 0 {
                                 if let Some(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Subst,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Subst,
                                         count: last_fr
                                     }) = operations.last_mut() {
                                     *last_fr += 1;
                                 } else {
                                     operations.push(
-                                        AlignmentOperation {
-                                            case: AlignmentCase::Subst,
+                                        AlignmentOperations {
+                                            operation: AlignmentOperation::Subst,
                                             count: 1
                                         }
                                     );
                                 }
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: match_count
                                     }
                                 );
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Subst,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Subst,
                                         count: 1
                                     }
                                 );
@@ -134,11 +137,11 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
-                                    pattern_count_from_start_point: pattern_count_to_next_pattern as usize,
-                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as usize,
-                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
-                                    traversed_penalty_to_anchor_end: score,
-                                    index_of_operation: operations.len(),
+                                    pattern_count_from_start_point: pattern_count_to_next_pattern as u32,
+                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
+                                    traversed_penalty_to_anchor_end: score as u32,
+                                    index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
@@ -146,8 +149,8 @@ impl WaveFront {
                             // (8) Add operation
                             if match_count != 0 {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: match_count
                                     }
                                 );
@@ -181,11 +184,11 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
-                                    pattern_count_from_start_point: pattern_count_to_next_pattern as usize,
-                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as usize,
-                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
-                                    traversed_penalty_to_anchor_end: score,
-                                    index_of_operation: operations.len(),
+                                    pattern_count_from_start_point: pattern_count_to_next_pattern as u32,
+                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
+                                    traversed_penalty_to_anchor_end: score as u32,
+                                    index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
@@ -193,8 +196,8 @@ impl WaveFront {
                             // (8) Add operation
                             if match_count != 0 {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: match_count
                                     }
                                 );
@@ -206,8 +209,8 @@ impl WaveFront {
                             // Add operation
                             if fr != 0 {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: fr as u32,
                                     }
                                 );
@@ -235,7 +238,7 @@ impl WaveFront {
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -244,15 +247,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Insertion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Insertion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
                                         count: 1,
                                     }
                                 )
@@ -266,7 +269,7 @@ impl WaveFront {
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -275,15 +278,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Insertion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Insertion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
                                         count: 1,
                                     }
                                 )
@@ -302,7 +305,7 @@ impl WaveFront {
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -311,15 +314,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Deletion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Deletion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Deletion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Deletion,
                                         count: 1,
                                     }
                                 )
@@ -333,7 +336,7 @@ impl WaveFront {
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -342,15 +345,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Deletion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Deletion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Deletion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Deletion,
                                         count: 1,
                                     }
                                 )
@@ -365,26 +368,26 @@ impl WaveFront {
     }
     pub fn backtrace_from_point_checking_left_traversed(
         &self,
-        mut score: usize,
-        index_of_component: usize,
+        mut score: u32,
+        index_of_component: u32,
         penalties: &Penalty,
-        pattern_size: usize,
+        pattern_size: u32,
     ) -> (Extension, Vec<TraversedPosition>) {
         let penalty_from_start_point = score;
 
         let wave_front_scores = &self.wave_front_scores;
-        let mut operations: Vec<AlignmentOperation> = Vec::new(); // TODO: Capacity can be applied?
+        let mut operations: Vec<AlignmentOperations> = Vec::new(); // TODO: Capacity can be applied?
         
-        let mut wave_front_score = &wave_front_scores[score];
+        let mut wave_front_score = &wave_front_scores[score as usize];
 
         // Init
         let mut component_type = ComponentType::M;
-        let mut component = &wave_front_score.components_by_k[index_of_component].m;
+        let mut component = &wave_front_score.components_by_k[index_of_component as usize].m;
 
         let mut k = -wave_front_score.max_k + index_of_component as i32;
         let mut fr = component.fr;
 
-        let operation_length = fr as usize + component.deletion_count as usize;
+        let operation_length = fr as u32 + component.deletion_count as u32;
         let deletion_count: u32 = component.deletion_count as u32;
         let insertion_count: u32 = (deletion_count as i32 + k) as u32;
 
@@ -402,7 +405,7 @@ impl WaveFront {
                             // (2) Next k
                             // not change
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -422,11 +425,11 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
-                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as usize,
-                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as usize,
-                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
+                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
+                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
                                     traversed_penalty_to_anchor_end: score + penalties.x,
-                                    index_of_operation: operations.len(),
+                                    index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
@@ -434,29 +437,29 @@ impl WaveFront {
                             // (8) Add operation
                             if match_count == 0 {
                                 if let Some(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Subst,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Subst,
                                         count: last_fr
                                     }) = operations.last_mut() {
                                     *last_fr += 1;
                                 } else {
                                     operations.push(
-                                        AlignmentOperation {
-                                            case: AlignmentCase::Subst,
+                                        AlignmentOperations {
+                                            operation: AlignmentOperation::Subst,
                                             count: 1
                                         }
                                     );
                                 }
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: match_count
                                     }
                                 );
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Subst,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Subst,
                                         count: 1
                                     }
                                 );
@@ -490,11 +493,11 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
-                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as usize,
-                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as usize,
-                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
+                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
+                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
                                     traversed_penalty_to_anchor_end: score,
-                                    index_of_operation: operations.len(),
+                                    index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
@@ -502,8 +505,8 @@ impl WaveFront {
                             // (8) Add operation
                             if match_count != 0 {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: match_count
                                     }
                                 );
@@ -537,11 +540,11 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
-                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as usize,
-                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as usize,
-                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as usize + component.deletion_count as usize,
+                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
+                                    traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
                                     traversed_penalty_to_anchor_end: score,
-                                    index_of_operation: operations.len(),
+                                    index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
                                 traversed_positions.push(traversed_position);
@@ -549,8 +552,8 @@ impl WaveFront {
                             // (8) Add operation
                             if match_count != 0 {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: match_count
                                     }
                                 );
@@ -562,8 +565,8 @@ impl WaveFront {
                             // Add operation
                             if fr != 0 {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Match,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Match,
                                         count: fr as u32,
                                     }
                                 );
@@ -591,7 +594,7 @@ impl WaveFront {
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -600,15 +603,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Insertion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Insertion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
                                         count: 1,
                                     }
                                 )
@@ -622,7 +625,7 @@ impl WaveFront {
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -631,15 +634,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Insertion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Insertion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
                                         count: 1,
                                     }
                                 )
@@ -658,7 +661,7 @@ impl WaveFront {
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -667,15 +670,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Deletion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Deletion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Deletion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Deletion,
                                         count: 1,
                                     }
                                 )
@@ -689,7 +692,7 @@ impl WaveFront {
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score];
+                            wave_front_score = &wave_front_scores[score as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -698,15 +701,15 @@ impl WaveFront {
                             let next_fr = component.fr;
                             // (7) Add operation
                             if let Some(
-                                AlignmentOperation {
-                                    case: AlignmentCase::Deletion,
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Deletion,
                                     count: last_fr
                                 }) = operations.last_mut() {
                                 *last_fr += 1;
                             } else {
                                 operations.push(
-                                    AlignmentOperation {
-                                        case: AlignmentCase::Deletion,
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Deletion,
                                         count: 1,
                                     }
                                 )

@@ -61,7 +61,7 @@ impl<L, I, S> ReferenceInterface<L> for Reference<L, I, S> where
 {
     type Buffer = S::Buffer;
 
-    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation<L>> {
+    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation> {
         self.pattern_index.locate(pattern, &self.search_range)
     }
     fn get_buffer(&self) -> Self::Buffer {

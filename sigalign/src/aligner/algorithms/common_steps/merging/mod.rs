@@ -1,8 +1,8 @@
-use super::{
-    AlignmentOperation, AlignmentCase,
+use crate::core::results::{
+    AlignmentOperations, AlignmentOperation,
 };
 
-impl AlignmentOperation {
+impl AlignmentOperations {
     pub fn concatenate_operations(
         mut left_operations: Vec<Self>,
         mut right_operations: Vec<Self>,
@@ -12,16 +12,16 @@ impl AlignmentOperation {
 
         // Add anchor sized Match operation to left operations
         if let Some(
-            AlignmentOperation {
-                case: AlignmentCase::Match,
+            AlignmentOperations {
+                operation: AlignmentOperation::Match,
                 count,
             }
         ) = left_operations.last_mut() {
             *count += anchor_size;
         } else {
             left_operations.push(
-                AlignmentOperation {
-                    case: AlignmentCase::Match,
+                AlignmentOperations {
+                    operation: AlignmentOperation::Match,
                     count: anchor_size,
                 }
             );
@@ -29,13 +29,13 @@ impl AlignmentOperation {
 
         // Add right operations to left operations
         if let Some(
-            AlignmentOperation {
-                case: AlignmentCase::Match,
+            AlignmentOperations {
+                operation: AlignmentOperation::Match,
                 count: right_count,
             }
         ) = right_operations.first_mut() {
-            if let AlignmentOperation {
-                case: AlignmentCase::Match,
+            if let AlignmentOperations {
+                operation: AlignmentOperation::Match,
                 count: left_count,
             } = left_operations.last_mut().unwrap() {
                 *left_count += *right_count;

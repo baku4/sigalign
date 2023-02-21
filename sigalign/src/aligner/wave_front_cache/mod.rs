@@ -1,31 +1,31 @@
-use super::{
-	Penalty, PREC_SCALE, Cutoff,
-};
+use crate::core::{regulators::{
+    Penalty, PREC_SCALE, Cutoff,
+}};
 use super::WaveFront;
 use std::fmt;
 
 pub trait WaveFrontCache {
-    const QUERY_LEN_INC_UNIT: usize = 200;
+    const QUERY_LEN_INC_UNIT: u32 = 200;
 
     fn new(penalties: &Penalty, cutoff: &Cutoff) -> Self;
-    fn have_enough_space(&self, query_length: usize) -> bool;
+    fn have_enough_space(&self, query_length: u32) -> bool;
     fn allocate_more_if_necessary(
         &mut self,
-        query_length: usize,
+        query_length: u32,
         penalties: &Penalty,
         cutoff: &Cutoff,
     );
-    fn upper_spacious_query_length(query_length: usize) -> usize {
+    fn upper_spacious_query_length(query_length: u32) -> u32 {
         ((query_length / Self::QUERY_LEN_INC_UNIT) + 1) * Self::QUERY_LEN_INC_UNIT
     }
     fn clean_cache(&mut self, penalties: &Penalty, cutoff: &Cutoff);
 }
 
-const FIRST_ALLOCATED_QUERY_LENGTH: usize = 200;
+const FIRST_ALLOCATED_QUERY_LENGTH: u32 = 200;
 
 #[derive(Clone)]
 pub struct SingleWaveFrontCache {
-    pub allocated_query_length: usize,
+    pub allocated_query_length: u32,
     pub wave_front: WaveFront,
 }
 impl WaveFrontCache for SingleWaveFrontCache {
@@ -35,11 +35,11 @@ impl WaveFrontCache for SingleWaveFrontCache {
             wave_front: WaveFront::new_with_query_length(FIRST_ALLOCATED_QUERY_LENGTH, penalties, cutoff),
         }
     }
-    fn have_enough_space(&self, query_length: usize) -> bool {
+    fn have_enough_space(&self, query_length: u32) -> bool {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalty, cutoff: &Cutoff) {
+    fn allocate_more_if_necessary(&mut self, query_length: u32, penalties: &Penalty, cutoff: &Cutoff) {
         if self.allocated_query_length < query_length {
             let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
             let allocated_wave_front = WaveFront::new_with_query_length(to_allocate_query_length, penalties, cutoff);
@@ -62,7 +62,7 @@ impl fmt::Debug for SingleWaveFrontCache {
 
 #[derive(Clone)]
 pub struct DoubleWaveFrontCache {
-    pub allocated_query_length: usize,
+    pub allocated_query_length: u32,
     pub primary_wave_front: WaveFront,
     pub secondary_wave_front: WaveFront,
 }
@@ -76,11 +76,11 @@ impl WaveFrontCache for DoubleWaveFrontCache {
             secondary_wave_front: allocated_wave_front,
         }
     }
-    fn have_enough_space(&self, query_length: usize) -> bool {
+    fn have_enough_space(&self, query_length: u32) -> bool {
         self.allocated_query_length < query_length
     }
     // TODO: Not to make new wavefront
-    fn allocate_more_if_necessary(&mut self, query_length: usize, penalties: &Penalty, cutoff: &Cutoff) {
+    fn allocate_more_if_necessary(&mut self, query_length: u32, penalties: &Penalty, cutoff: &Cutoff) {
         if self.allocated_query_length < query_length {
             let to_allocate_query_length = Self::upper_spacious_query_length(query_length);
             let allocated_wave_front = WaveFront::new_with_query_length(to_allocate_query_length, penalties, cutoff);
@@ -105,20 +105,20 @@ impl fmt::Debug for DoubleWaveFrontCache {
 // Safely WaveFront Allocation
 impl WaveFront {
     fn new_with_query_length(
-        query_length: usize,
+        query_length: u32,
         penalties: &Penalty,
         cutoff: &Cutoff,
     ) ->  Self {
         let max_score = Self::safe_max_score_from_length(query_length, penalties, cutoff);
 
-        WaveFront::new_allocated(penalties, max_score)
+        WaveFront::new_allocated(penalties, max_score as usize)
     }
     fn safe_max_score_from_length(
-        query_length: usize,
+        query_length: u32,
         penalties: &Penalty,
         cutoff: &Cutoff,
-    ) -> usize {
-        let max_score = usize::max(
+    ) -> u32 {
+        let max_score = u32::max(
             penalties.o,
             (
                 cutoff.maximum_penalty_per_scale * (

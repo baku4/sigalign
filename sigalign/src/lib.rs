@@ -6,13 +6,13 @@ type EndianType = byteorder::BigEndian;
 #[doc(hidden)]
 // (1) Core
 //  - Widely used structures and policy
-//  - Can be used by well known users
+//  - For advanced users
 pub mod core;
 // (2) Implementations
 //  - Reference
 pub mod reference;
 //  - Aligner
-// mod aligner;
+mod aligner;
 // Structure of alignment result
 // pub mod result;
 // (4) Public APIs
