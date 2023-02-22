@@ -22,31 +22,6 @@ pub enum RegulatorError {
 
 }
 
-const MINIMUM_PATTERN_SIZE: u32 = 4;
-
-pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> u32 {
-    let mut n = 1;
-    loop { // TODO: Optimize
-        let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
-        let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
-        let max_penalty = (
-            (
-                (
-                    (PREC_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
-                )
-                + 4 * cutoff.maximum_penalty_per_scale
-            ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
-        ).ceil() - 2_f32;
-
-        let pattern_size = max_penalty.min(upper_bound);
-
-        if pattern_size >= lower_bound {
-            return pattern_size as u32
-        }
-        n += 1;
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlignmentRegulator {
     pub penalties: Penalty,
@@ -56,6 +31,7 @@ pub struct AlignmentRegulator {
     pub pattern_size: u32,
 }
 
+const MINIMUM_PATTERN_SIZE: u32 = 4;
 impl AlignmentRegulator {
     /// Generate new aligner.
     pub fn new(
@@ -125,6 +101,28 @@ impl AlignmentRegulator {
     /// Get size of pattern
     pub fn get_pattern_size(&self) -> u32 {
         self.pattern_size
+    }
+}
+pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> u32 {
+    let mut n = 1;
+    loop { // TODO: Optimize
+        let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
+        let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
+        let max_penalty = (
+            (
+                (
+                    (PREC_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
+                )
+                + 4 * cutoff.maximum_penalty_per_scale
+            ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
+        ).ceil() - 2_f32;
+
+        let pattern_size = max_penalty.min(upper_bound);
+
+        if pattern_size >= lower_bound {
+            return pattern_size as u32
+        }
+        n += 1;
     }
 }
 

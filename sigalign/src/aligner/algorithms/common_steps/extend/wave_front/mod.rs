@@ -1,20 +1,21 @@
 use crate::core::regulators::Penalty;
 use bytemuck::{Pod, Zeroable};
 
-type MatchCounter<'a> = &'a dyn Fn(&[u8], &[u8], usize, usize) -> i32;
+mod match_counter;
+use match_counter::{MatchCounter, ForwardMatchCounter, ReverseMatchCounter};
 mod fill;
 
 // Wave Front
 #[derive(Debug, Clone)]
 pub struct WaveFront {
-    pub max_score: usize,
+    pub max_penalty: usize,
     pub end_point: WaveEndPoint,
     pub wave_front_scores: Vec<WaveFrontScore>,
 }
 
 #[derive(Debug, Clone)]
 pub struct WaveEndPoint {
-    pub score: usize,
+    pub penalty: usize,
     pub k: Option<i32>,
 }
 
@@ -27,16 +28,16 @@ pub struct WaveFrontScore {
 impl WaveFront {
     pub fn new_allocated(
         penalties: &Penalty,
-        max_score: usize,
+        max_penalty: usize,
     ) -> Self {
-        let wave_front_score_count = max_score + 1;
+        let wave_front_score_count = max_penalty + 1;
         let gap_open_penalty = penalties.o;
         let gap_extend_penalty = penalties.e;
 
         let mut wave_front_scores: Vec<WaveFrontScore> = Vec::with_capacity(wave_front_score_count);
         let first_wave_front_score = WaveFrontScore::with_max_k(0);
 
-        let optional_penalty_from_one_gap = max_score.checked_sub((gap_open_penalty + gap_extend_penalty) as usize);
+        let optional_penalty_from_one_gap = max_penalty.checked_sub((gap_open_penalty + gap_extend_penalty) as usize);
 
         match optional_penalty_from_one_gap {
             Some(penalty_from_one_gap) => {
@@ -56,15 +57,15 @@ impl WaveFront {
                 });
             },
             None => {
-                (0..max_score+1).for_each(|_| {
+                (0..max_penalty+1).for_each(|_| {
                     wave_front_scores.push(first_wave_front_score.clone());
                 });
             },
         }
 
         Self {
-            max_score: max_score,
-            end_point: WaveEndPoint { score: 0, k: None },
+            max_penalty,
+            end_point: WaveEndPoint { penalty: 0, k: None },
             wave_front_scores,
         }
     }

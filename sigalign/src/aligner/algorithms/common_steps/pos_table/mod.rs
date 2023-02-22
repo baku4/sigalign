@@ -27,7 +27,7 @@ pub struct AnchorPosition {
 }
 
 impl PosTable {
-    pub fn new_by_target_index<L: SeqLen, R: ReferenceInterface<L>>(
+    pub fn new_by_target_index<R: ReferenceInterface>(
         reference: &R,
         query: &[u8],
         pattern_size: u32,

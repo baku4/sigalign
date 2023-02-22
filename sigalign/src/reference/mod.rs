@@ -1,4 +1,5 @@
 /*!
+The database for multiple targeted sequences.
 # Reference
 Reference is the database for multiple targeted sequences.
 ## Features
@@ -35,16 +36,14 @@ use std::marker::PhantomData;
 use crate::core::{SeqLen, ReferenceInterface, PatternLocation};
 
 #[derive(Debug)]
-pub struct Reference<L, I, S> where
-    L: SeqLen,
-    I: PatternIndex<L>,
+pub struct Reference<I, S> where
+    I: PatternIndex,
     S: SequenceStorage,
 {
     sequence_type: SequenceType,
     search_range: Vec<u32>,
     pattern_index: I,
     sequence_storage: S,
-    phantom_data: PhantomData<L>,
 }
 
 mod sequence_type;
@@ -54,9 +53,8 @@ use pattern_index::{PatternIndex, ConcatenatedSequenceWithBoundaries};
 pub mod sequence_storage;
 use sequence_storage::SequenceStorage;
 
-impl<L, I, S> ReferenceInterface<L> for Reference<L, I, S> where
-    L: SeqLen,
-    I: PatternIndex<L>,
+impl<I, S> ReferenceInterface for Reference<I, S> where
+    I: PatternIndex,
     S: SequenceStorage,
 {
     type Buffer = S::Buffer;
@@ -75,9 +73,8 @@ impl<L, I, S> ReferenceInterface<L> for Reference<L, I, S> where
     }
 }
 
-impl<L, I, S> Reference<L, I, S> where
-    L: SeqLen,
-    I: PatternIndex<L>,
+impl<I, S> Reference<I, S> where
+    I: PatternIndex,
     S: SequenceStorage,
 {
     pub fn new(
@@ -95,7 +92,6 @@ impl<L, I, S> Reference<L, I, S> where
             search_range,
             pattern_index,
             sequence_storage,
-            phantom_data: PhantomData,
         }
     }
 }

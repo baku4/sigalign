@@ -1,18 +1,18 @@
 use crate::core::{
-    SeqLen,
     regulators::{
 	    Penalty, PREC_SCALE, Cutoff,
     },
 };
 
-pub fn calculate_spare_penalty<L: SeqLen>(
+// TODO: Remove the unnecessary casting (as) 
+pub fn calculate_spare_penalty(
     scaled_penalty_margin_of_other_side: i64,
-    anchor_size: L,
-    query_length_this_side: L,
-    record_length_this_side: L,
+    anchor_size: u32,
+    query_length_this_side: u32,
+    record_length_this_side: u32,
     penalties: &Penalty,
     cutoff: &Cutoff,
-) -> usize {
+) -> u32 {
     i64::max(
         penalties.o as i64,
         (
@@ -21,11 +21,11 @@ pub fn calculate_spare_penalty<L: SeqLen>(
                 (
                     penalties.e as i64 * (
                         anchor_size + query_length_this_side.min(record_length_this_side)
-                    ).as_i64()
+                    ) as i64
                 ) - penalties.o as i64
             )
         ) / (
-            PREC_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
-        ) as i64 + 1
-    ) as usize
+            PREC_SCALE  as i64 * penalties.e  as i64 - cutoff.maximum_penalty_per_scale  as i64
+        ) + 1
+    ) as u32
 }

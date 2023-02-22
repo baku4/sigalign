@@ -1,5 +1,5 @@
 use crate::core::{
-    SeqLen, ReferenceInterface, SequenceBuffer,
+    ReferenceInterface, SequenceBuffer,
     regulators::{
         Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
     },
@@ -13,7 +13,7 @@ use super::common_steps::{
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
 
-pub fn semi_global_alignment_algorithm<L: SeqLen, R: ReferenceInterface<L>>(
+pub fn semi_global_alignment_algorithm<R: ReferenceInterface>(
     reference: &R,
     sequence_buffer: &mut R::Buffer,
     query: &[u8],
@@ -706,7 +706,7 @@ impl PosTable {
         
         match wave_front.end_point.k {
             Some(last_k) => {
-                let last_penalty = wave_front.end_point.score;
+                let last_penalty = wave_front.end_point.penalty;
                 let comp_index = (wave_front.wave_front_scores[last_penalty].max_k + last_k) as usize;
 
                 let (right_extension, right_traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
@@ -723,7 +723,7 @@ impl PosTable {
                 (Some(right_extension), right_traversed_anchors)
             },
             None => {
-                let last_penalty = wave_front.end_point.score;
+                let last_penalty = wave_front.end_point.penalty;
                 let comp_index = wave_front.wave_front_scores[last_penalty].component_index_of_max_length();
 
                 let (right_extension, right_traversed_positions) = wave_front.backtrace_from_point_checking_right_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
@@ -774,7 +774,7 @@ impl PosTable {
         
         match wave_front.end_point.k {
             Some(last_k) => {
-                let last_penalty = wave_front.end_point.score;
+                let last_penalty = wave_front.end_point.penalty;
                 let comp_index = (wave_front.wave_front_scores[last_penalty].max_k + last_k) as usize;
 
                 let (left_extension, left_traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);
@@ -790,7 +790,7 @@ impl PosTable {
                 (Some(left_extension), left_traversed_anchors)
             },
             None => {
-                let last_penalty = wave_front.end_point.score;
+                let last_penalty = wave_front.end_point.penalty;
                 let comp_index = wave_front.wave_front_scores[last_penalty].component_index_of_max_length();
 
                 let (left_extension, left_traversed_positions) = wave_front.backtrace_from_point_checking_left_traversed(last_penalty as u32, comp_index as u32, penalties, pattern_size);

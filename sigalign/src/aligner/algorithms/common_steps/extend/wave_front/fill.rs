@@ -1,7 +1,10 @@
 use crate::core::regulators::{
 	Penalty, 
 };
-use super::{WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker, MatchCounter};
+use super::{
+    WaveFront, WaveEndPoint, WaveFrontScore, Components, Component, BackTraceMarker,
+    MatchCounter, ForwardMatchCounter, ReverseMatchCounter,
+};
 
 impl WaveFront {
     pub fn align_right_to_end_point(
@@ -9,83 +12,82 @@ impl WaveFront {
         ref_seq: &[u8],
         qry_seq: &[u8],
         penalties: &Penalty,
-        spare_penalty: usize,
+        spare_penalty: u32,
     ) {
-        self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_forward)
+        self.align_to_end_point::<ForwardMatchCounter>(ref_seq, qry_seq, penalties, spare_penalty)
     }
     pub fn align_left_to_end_point(
         &mut self,
         ref_seq: &[u8],
         qry_seq: &[u8],
         penalties: &Penalty,
-        spare_penalty: usize,
+        spare_penalty: u32,
     ) {
-        self.align_to_end_point(ref_seq, qry_seq, penalties, spare_penalty, &consecutive_match_reverse)
+        self.align_to_end_point::<ReverseMatchCounter>(ref_seq, qry_seq, penalties, spare_penalty)
     }
     #[inline]
-    fn align_to_end_point(
+    fn align_to_end_point<C: MatchCounter>(
         &mut self,
         ref_seq: &[u8],
         qry_seq: &[u8],
         penalties: &Penalty,
-        spare_penalty: usize,
-        match_counter: MatchCounter,
+        spare_penalty: u32,
     ) {
         let ref_len = ref_seq.len();
         let qry_len = qry_seq.len();
 
-        let first_match_count = match_counter(ref_seq, qry_seq, 0, 0);
+        let first_match_count = C::count_consecutive_match(ref_seq, qry_seq, 0, 0);
 
         self.wave_front_scores[0].add_first_components(first_match_count);
 
         if first_match_count as usize >= ref_len || first_match_count as usize >= qry_len {
-            let end_point = WaveEndPoint { score: 0, k: Some(0) };
+            let end_point = WaveEndPoint { penalty: 0, k: Some(0) };
             self.end_point = end_point;
         } else {
-            let end_point = self.fill_wave_front_scores_until_end(
+            let end_point = self.fill_wave_front_scores_until_end::<C>(
                 ref_seq,
                 qry_seq,
                 spare_penalty,
                 penalties,
-                match_counter
             );
             self.end_point = end_point;
         }
     }
-    fn fill_wave_front_scores_until_end(
+    #[inline]
+    fn fill_wave_front_scores_until_end<C: MatchCounter>(
         &mut self,
         ref_seq: &[u8],
         qry_seq: &[u8],
-        mut spare_penalty: usize,
+        mut spare_penalty: u32,
         penalties: &Penalty,
-        match_counter: MatchCounter,
     ) -> WaveEndPoint {
-        if self.wave_front_scores.len() <= spare_penalty {
-            spare_penalty = self.wave_front_scores.len() - 1;
+        if self.wave_front_scores.len() as u32 <= spare_penalty {
+            spare_penalty = (self.wave_front_scores.len() - 1) as u32;
         }
-        for score in 1..=spare_penalty {
-            self.update_components_of_next_wave_front_score(score, penalties);
+        for penalty in 1..=spare_penalty {
+            self.update_components_of_next_wave_front_score(penalty, penalties);
            
-            let optional_last_k = self.wave_front_scores[score].extend_components_until_end(ref_seq, qry_seq, match_counter);
+            let optional_last_k = self.wave_front_scores[penalty as usize].extend_components_until_end::<C>(ref_seq, qry_seq);
 
             if let Some(last_k) = optional_last_k {
-                return WaveEndPoint { score: score, k: Some(last_k) };
+                return WaveEndPoint { penalty: penalty as usize, k: Some(last_k) };
             }
         }
 
-        WaveEndPoint { score: spare_penalty, k: None }
+        WaveEndPoint { penalty: spare_penalty as usize, k: None }
     }
+    #[inline]
     fn update_components_of_next_wave_front_score(
         &mut self,
-        score: usize,
+        penalty: u32,
         penalties: &Penalty,
     ) {
         let mismatch_penalty = &penalties.x;
         let gap_open_penalty = &penalties.o;
         let gap_extend_penalty = &penalties.e;
 
-        let max_k = self.wave_front_scores[score].max_k;
-        let new_components_by_k = &self.wave_front_scores[score].components_by_k;
+        let max_k = self.wave_front_scores[penalty as usize].max_k;
+        let new_components_by_k = &self.wave_front_scores[penalty as usize].components_by_k;
         // TODO: Faster init
         unsafe {
             new_components_by_k.iter().for_each(
@@ -94,8 +96,8 @@ impl WaveFront {
         }
 
         // (1) From score: s-o-e
-        if let Some(pre_score) = score.checked_sub((gap_open_penalty + gap_extend_penalty) as usize) {
-            let pre_wave_front_score = &self.wave_front_scores[pre_score];
+        if let Some(pre_score) = penalty.checked_sub(gap_open_penalty + gap_extend_penalty) {
+            let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
             new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
                 let k = index_of_k as i32 - max_k;
                 let new_components_of_k = component as *const Components as *mut Components;
@@ -130,8 +132,8 @@ impl WaveFront {
             });
         }
         // (2) From score: s-e
-        if let Some(pre_score) = score.checked_sub(*gap_extend_penalty as usize) {
-            let pre_wave_front_score = &self.wave_front_scores[pre_score];
+        if let Some(pre_score) = penalty.checked_sub(*gap_extend_penalty) {
+            let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
             new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
                 let k = index_of_k as i32 - max_k;
                 let new_components_of_k = component as *const Components as *mut Components;
@@ -171,8 +173,8 @@ impl WaveFront {
             });
         }
         // (3) From score: s-x
-        if let Some(pre_score) = score.checked_sub(*mismatch_penalty as usize) {
-            let pre_wave_front_score = &self.wave_front_scores[pre_score];
+        if let Some(pre_score) = penalty.checked_sub(*mismatch_penalty) {
+            let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
             new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
                 let k = index_of_k as i32 - max_k;
                 let new_components_of_k = component as *const Components as *mut Components;
@@ -218,14 +220,15 @@ impl WaveFront {
 }
 
 impl WaveFrontScore {
+    #[inline]
     fn add_first_components(&mut self, first_match_count: i32) {
         self.components_by_k = vec![Components::new_start_point(first_match_count)];
     }
-    fn extend_components_until_end(
+    #[inline]
+    fn extend_components_until_end<C: MatchCounter>(
         &mut self,
         ref_seq: &[u8],
         qry_seq: &[u8],
-        match_counter: MatchCounter,
     ) -> Option<i32> {
         for (components, k) in self.components_by_k.iter_mut().zip(-self.max_k..=self.max_k) {
             let m_component = &mut components.m;
@@ -234,7 +237,7 @@ impl WaveFrontScore {
                 // Extend & update
                 let mut v = (m_component.fr - k) as usize;
                 let mut h = m_component.fr as usize;
-                let match_count = match_counter(ref_seq, qry_seq, v, h);
+                let match_count = C::count_consecutive_match(ref_seq, qry_seq, v, h);
                 m_component.fr += match_count;
                 // Check exit condition
                 v += match_count as usize;
@@ -246,29 +249,4 @@ impl WaveFrontScore {
         }
         None
     }
-}
-
-//TODO: Apply SIMD
-//TODO: Make inlined
-fn consecutive_match_forward(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
-    let mut fr_to_add: i32 = 0;
-    for (v1, v2) in qry_seq[v..].iter().zip(ref_seq[h..].iter()) {
-        if *v1 == *v2 {
-            fr_to_add += 1;
-        } else {
-            return fr_to_add
-        }
-    }
-    fr_to_add
-}
-fn consecutive_match_reverse(ref_seq: &[u8], qry_seq: &[u8], v: usize, h: usize) -> i32 {
-    let mut fr_to_add: i32 = 0;
-    for (v1, v2) in qry_seq[..qry_seq.len()-v].iter().rev().zip(ref_seq[..ref_seq.len()-h].iter().rev()) {
-        if *v1 == *v2 {
-            fr_to_add += 1;
-        } else {
-            return fr_to_add
-        }
-    }
-    fr_to_add
 }

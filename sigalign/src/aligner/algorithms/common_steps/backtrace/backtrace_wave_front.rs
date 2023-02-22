@@ -1,5 +1,4 @@
 use crate::core::{
-    SeqLen,
     regulators::Penalty,
     results::{
         AlignmentOperations, AlignmentOperation,
@@ -12,17 +11,17 @@ use super::{TraversedPosition};
 impl WaveFront {
     pub fn backtrace_from_point_checking_right_traversed(
         &self,
-        mut score: u32,
+        mut penalty: u32,
         index_of_component: u32,
         penalties: &Penalty,
         pattern_size: u32,
     ) -> (Extension, Vec<TraversedPosition>) {
-        let penalty_from_start_point = score;
+        let penalty_from_start_point = penalty;
 
         let wave_front_scores = &self.wave_front_scores;
         let mut operations: Vec<AlignmentOperations> = Vec::new(); // TODO: Capacity can be applied?
         
-        let mut wave_front_score = &wave_front_scores[score as usize];
+        let mut wave_front_score = &wave_front_scores[penalty as usize];
 
         // Init
         let mut component_type = ComponentType::M;
@@ -44,12 +43,12 @@ impl WaveFront {
                 ComponentType::M => {
                     match component.bt {
                         BackTraceMarker::FromM => {
-                            // (1) Next score
-                            score -= penalties.x;
+                            // (1) Next penalty
+                            penalty -= penalties.x;
                             // (2) Next k
                             // not change
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -72,7 +71,7 @@ impl WaveFront {
                                     pattern_count_from_start_point: pattern_count_to_next_pattern as u32,
                                     traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
-                                    traversed_penalty_to_anchor_end: score as u32 + penalties.x,
+                                    traversed_penalty_to_anchor_end: penalty as u32 + penalties.x,
                                     index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
@@ -112,7 +111,7 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         BackTraceMarker::FromI => {
-                            // (1) Next score
+                            // (1) Next penalty
                             // not change
                             // (2) Next k
                             // not change
@@ -140,7 +139,7 @@ impl WaveFront {
                                     pattern_count_from_start_point: pattern_count_to_next_pattern as u32,
                                     traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
-                                    traversed_penalty_to_anchor_end: score as u32,
+                                    traversed_penalty_to_anchor_end: penalty as u32,
                                     index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
@@ -159,7 +158,7 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         BackTraceMarker::FromD => {
-                            // (1) Next score
+                            // (1) Next penalty
                             // not change
                             // (2) Next k
                             // not change
@@ -187,7 +186,7 @@ impl WaveFront {
                                     pattern_count_from_start_point: pattern_count_to_next_pattern as u32,
                                     traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
-                                    traversed_penalty_to_anchor_end: score as u32,
+                                    traversed_penalty_to_anchor_end: penalty as u32,
                                     index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
@@ -233,12 +232,12 @@ impl WaveFront {
                 ComponentType::I => {
                     match component.bt {
                         BackTraceMarker::FromM => {
-                            // (1) Next score
-                            score -= penalties.o + penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -264,12 +263,12 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         _ => { // FROM_I
-                            // (1) Next score
-                            score -= penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.e;
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -300,12 +299,12 @@ impl WaveFront {
                 ComponentType::D => {
                     match component.bt {
                         BackTraceMarker::FromM => {
-                            // (1) Next score
-                            score -= penalties.o + penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -331,12 +330,12 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         _ => { // FROM_D
-                            // (1) Next score
-                            score -= penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.e;
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -368,17 +367,17 @@ impl WaveFront {
     }
     pub fn backtrace_from_point_checking_left_traversed(
         &self,
-        mut score: u32,
+        mut penalty: u32,
         index_of_component: u32,
         penalties: &Penalty,
         pattern_size: u32,
     ) -> (Extension, Vec<TraversedPosition>) {
-        let penalty_from_start_point = score;
+        let penalty_from_start_point = penalty;
 
         let wave_front_scores = &self.wave_front_scores;
         let mut operations: Vec<AlignmentOperations> = Vec::new(); // TODO: Capacity can be applied?
         
-        let mut wave_front_score = &wave_front_scores[score as usize];
+        let mut wave_front_score = &wave_front_scores[penalty as usize];
 
         // Init
         let mut component_type = ComponentType::M;
@@ -400,12 +399,12 @@ impl WaveFront {
                 ComponentType::M => {
                     match component.bt {
                         BackTraceMarker::FromM => {
-                            // (1) Next score
-                            score -= penalties.x;
+                            // (1) Next penalty
+                            penalty -= penalties.x;
                             // (2) Next k
                             // not change
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -428,7 +427,7 @@ impl WaveFront {
                                     pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
                                     traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
-                                    traversed_penalty_to_anchor_end: score + penalties.x,
+                                    traversed_penalty_to_anchor_end: penalty + penalties.x,
                                     index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
@@ -468,7 +467,7 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         BackTraceMarker::FromI => {
-                            // (1) Next score
+                            // (1) Next penalty
                             // not change
                             // (2) Next k
                             // not change
@@ -496,7 +495,7 @@ impl WaveFront {
                                     pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
                                     traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
-                                    traversed_penalty_to_anchor_end: score,
+                                    traversed_penalty_to_anchor_end: penalty,
                                     index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
@@ -515,7 +514,7 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         BackTraceMarker::FromD => {
-                            // (1) Next score
+                            // (1) Next penalty
                             // not change
                             // (2) Next k
                             // not change
@@ -543,7 +542,7 @@ impl WaveFront {
                                     pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
                                     traversed_record_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
-                                    traversed_penalty_to_anchor_end: score,
+                                    traversed_penalty_to_anchor_end: penalty,
                                     index_of_operation: operations.len() as u32,
                                     alternative_match_count: (alternative_match_count - anchor_size) as u32,
                                 };
@@ -589,12 +588,12 @@ impl WaveFront {
                 ComponentType::I => {
                     match component.bt {
                         BackTraceMarker::FromM => {
-                            // (1) Next score
-                            score -= penalties.o + penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -620,12 +619,12 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         _ => { // FROM_I
-                            // (1) Next score
-                            score -= penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.e;
                             // (2) Next k
                             k -= 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
@@ -656,12 +655,12 @@ impl WaveFront {
                 ComponentType::D => {
                     match component.bt {
                         BackTraceMarker::FromM => {
-                            // (1) Next score
-                            score -= penalties.o + penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             component_type = ComponentType::M;
                             // (5) Next component
@@ -687,12 +686,12 @@ impl WaveFront {
                             fr = next_fr;
                         },
                         _ => { // FROM_D
-                            // (1) Next score
-                            score -= penalties.e;
+                            // (1) Next penalty
+                            penalty -= penalties.e;
                             // (2) Next k
                             k += 1;
                             // (3) Next WFS
-                            wave_front_score = &wave_front_scores[score as usize];
+                            wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component

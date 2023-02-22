@@ -109,16 +109,16 @@ impl WaveFront {
         penalties: &Penalty,
         cutoff: &Cutoff,
     ) ->  Self {
-        let max_score = Self::safe_max_score_from_length(query_length, penalties, cutoff);
+        let max_penalty = Self::safe_max_penalty_from_length(query_length, penalties, cutoff);
 
-        WaveFront::new_allocated(penalties, max_score as usize)
+        WaveFront::new_allocated(penalties, max_penalty as usize)
     }
-    fn safe_max_score_from_length(
+    fn safe_max_penalty_from_length(
         query_length: u32,
         penalties: &Penalty,
         cutoff: &Cutoff,
     ) -> u32 {
-        let max_score = u32::max(
+        let max_penalty = u32::max(
             penalties.o,
             (
                 cutoff.maximum_penalty_per_scale * (
@@ -128,6 +128,6 @@ impl WaveFront {
                 PREC_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
             ) + 1
         );
-        max_score
+        max_penalty
     }
 }

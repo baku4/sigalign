@@ -49,11 +49,11 @@ impl WaveFront {
     // | PM>| PM>| PM>| PM>| ... | PM |
     // --------------------------------
     pub fn get_sorted_vpc_vector(&self, maximum_penalty_per_scale: u32, minimum_scaled_penalty_margin: i64) -> Vec<VPC> {
-        let last_score = self.end_point.score;
+        let last_penalty = self.end_point.penalty;
 
         let mut sorted_vpc_vector: Vec<VPC> = Vec::new();
 
-        self.wave_front_scores[..=last_score].iter().enumerate().for_each(|(penalty, wave_front_score)| {
+        self.wave_front_scores[..=last_penalty].iter().enumerate().for_each(|(penalty, wave_front_score)| {
             let (max_query_length, length, comp_index) = wave_front_score.point_of_maximum_query_length();
             let scaled_penalty_margin = (length as u32 * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE as usize) as i64;
 

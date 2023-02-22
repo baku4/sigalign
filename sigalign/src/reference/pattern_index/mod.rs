@@ -2,7 +2,7 @@
 use crate::core::{SeqLen, PatternLocation};
 use super::{SequenceType};
 
-pub trait PatternIndex<L: SeqLen> {
+pub trait PatternIndex {
     type Option;
 
     fn new(

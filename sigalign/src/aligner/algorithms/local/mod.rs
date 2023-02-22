@@ -1,7 +1,7 @@
 use crate::core::{
-    SeqLen, ReferenceInterface, SequenceBuffer,
+    ReferenceInterface, SequenceBuffer,
     regulators::{
-        Penalty, PREC_SCALE, Cutoff,
+        Penalty, Cutoff,
     },
     results::{
         AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
@@ -19,7 +19,7 @@ mod extend;
 use extend::LocalExtension;
 mod backtrace;
 
-pub fn local_alignment_algorithm<L: SeqLen, R: ReferenceInterface<L>>(
+pub fn local_alignment_algorithm<R: ReferenceInterface>(
     reference: &R,
     sequence_buffer: &mut R::Buffer,
     query: &[u8],

@@ -5,7 +5,7 @@ mod sequence_length;
 pub use sequence_length::SeqLen;
 
 // Reference
-pub trait ReferenceInterface<L: SeqLen> {
+pub trait ReferenceInterface {
     type Buffer: SequenceBuffer;
 
     fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;

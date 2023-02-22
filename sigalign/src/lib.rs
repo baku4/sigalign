@@ -12,7 +12,7 @@ pub mod core;
 //  - Reference
 pub mod reference;
 //  - Aligner
-mod aligner;
+pub mod aligner;
 // Structure of alignment result
 // pub mod result;
 // (4) Public APIs
