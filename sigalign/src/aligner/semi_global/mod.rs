@@ -3,7 +3,7 @@ use crate::core::{
     results::AlignmentResult,
 };
 use super::{
-    AlignerInterface,
+    Aligner,
     AlignmentRegulator, RegulatorError,
     WaveFrontCache, SingleWaveFrontCache, semi_global_alignment_algorithm,
 };
@@ -14,7 +14,7 @@ pub struct SemiGlobalAligner {
     pub wave_front_cache: SingleWaveFrontCache,
 }
 
-impl AlignerInterface for SemiGlobalAligner {
+impl Aligner for SemiGlobalAligner {
     fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,

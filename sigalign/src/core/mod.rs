@@ -11,7 +11,7 @@ pub trait ReferenceInterface {
     fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;
     fn get_buffer(&self) -> Self::Buffer;
     fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer);
-    fn is_indexed(&self, query: &[u8]) -> bool;
+    fn is_valid(&self, query: &[u8]) -> bool;
 }
 pub trait SequenceBuffer {
     fn request_sequence(&self) -> &[u8];

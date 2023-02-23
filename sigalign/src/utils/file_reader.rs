@@ -1,5 +1,3 @@
-use crate::Result;
-
 use std::path::Path;
 use std::io::Read;
 use std::fs::File;
@@ -9,6 +7,7 @@ use seq_io::fasta::{
     Record,
 };
 
+/// The reader of FASTA formatted file
 pub struct FastaReader<R: Read> {
     reader: SeqIoReader<R>,
 }
@@ -22,8 +21,8 @@ impl<R: Read> FastaReader<R> {
     }
 }
 impl FastaReader<File> {
-    pub fn from_file_path<P: AsRef<Path>>(file_path: P) -> Result<Self> {
-        let reader = SeqIoReader::from_path(file_path)?;
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
+        let reader = SeqIoReader::from_path(path)?;
         Ok(Self {
             reader
         })

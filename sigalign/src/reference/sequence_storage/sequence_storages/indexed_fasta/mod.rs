@@ -1,18 +1,10 @@
 use super::{
-    Result,
-    SequenceBuffer,
+    SequenceStorage, SequenceBuffer,
+    ConcatenatedSequenceWithBoundaries,
 };
-use super::{
-    SequenceStorage,
-    // Trait
-    Serialize, EstimateSize,
-    RcStorage,
-};
-
+use crate::utils::{path_to_byte, byte_to_pathbuf};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-
-use crate::util::{path_to_byte, byte_to_pathbuf};
 
 use capwriter::{Saveable, Loadable};
 use faimm::IndexedFasta as FaiIndexedFasta;

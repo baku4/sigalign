@@ -1,4 +1,3 @@
-use crate::core::SeqLen;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

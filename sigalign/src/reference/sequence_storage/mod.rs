@@ -1,11 +1,5 @@
 /*!
-The customizable storage of sequences inside the [Reference].
-
-- `SequenceStorage` is storage of sequences.
-
-- The target means one sequence and its additional information such as label.
-
-- The basically implemented [InMemoryStorage] is recommended in most cases.
+The storage of sequences
 */
 
 use crate::core::{SequenceBuffer};
@@ -40,7 +34,7 @@ pub trait SequenceStorage {
     }
 }
 
-
+pub mod sequence_storages;
 
 // Re-export
 // pub use crate::core::SequenceBuffer;

@@ -1,5 +1,3 @@
-use crate::{Result, error_msg};
-
 use std::path::{PathBuf, Path};
 
 pub fn path_to_byte<P>(path: P) -> Result<Vec<u8>> where

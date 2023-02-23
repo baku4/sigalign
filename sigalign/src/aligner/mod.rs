@@ -57,7 +57,8 @@ mod wave_front_cache;
 use wave_front_cache::{WaveFrontCache, DoubleWaveFrontCache, SingleWaveFrontCache};
 
 mod regulator;
-use regulator::{AlignmentRegulator, RegulatorError};
+use regulator::{AlignmentRegulator};
+pub use regulator::{RegulatorError};
 
 // Modes
 mod local;
@@ -65,7 +66,7 @@ mod semi_global;
 pub use local::LocalAligner;
 pub use semi_global::SemiGlobalAligner;
 
-pub trait AlignerInterface: Sized {
+pub trait Aligner: Sized {
     fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,

@@ -31,9 +31,7 @@ SearchRange is the **sorted** index of targets. This can be modified after build
 ### 4. SequenceStorage
 SequenceStorage is the storage of all targets sequences. SequenceStorage is defined as trait. The implementation detail of storing and parsing the sequence can be optimize for various scenarios. SigAlign has the default implementations of SequenceStorage. InMemoryStorage is one of them to store all sequence into the memory.
 */
-use std::marker::PhantomData;
-
-use crate::core::{SeqLen, ReferenceInterface, PatternLocation};
+use crate::core::{ReferenceInterface, PatternLocation};
 
 #[derive(Debug)]
 pub struct Reference<I, S> where
@@ -46,10 +44,10 @@ pub struct Reference<I, S> where
     sequence_storage: S,
 }
 
-mod sequence_type;
+pub mod sequence_type;
 use sequence_type::SequenceType;
 pub mod pattern_index;
-use pattern_index::{PatternIndex, ConcatenatedSequenceWithBoundaries};
+use pattern_index::{PatternIndex, ConcatenatedSequenceWithBoundaries, PatternIndexBuildError};
 pub mod sequence_storage;
 use sequence_storage::SequenceStorage;
 
@@ -68,8 +66,8 @@ impl<I, S> ReferenceInterface for Reference<I, S> where
     fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer) {
         self.sequence_storage.fill_buffer(target_index, buffer)
     }
-    fn is_indexed(&self, query: &[u8]) -> bool {
-        self.sequence_type.is_indexed(query)
+    fn is_valid(&self, query: &[u8]) -> bool {
+        self.sequence_type.validate_query(query)
     }
 }
 
@@ -80,21 +78,30 @@ impl<I, S> Reference<I, S> where
     pub fn new(
         sequence_storage: S,
         pattern_index_option: I::Option,
-    ) -> Self {
+    ) -> Result<Self, ReferenceBuildError> {
         let concatenated_sequence_with_boundaries = sequence_storage.get_concatenated_sequence_with_boundaries();
         let sequence_type = SequenceType::new(&concatenated_sequence_with_boundaries.concatenated_sequence);
-        let pattern_index = I::new(concatenated_sequence_with_boundaries, &sequence_type, pattern_index_option);
+        let pattern_index = I::new(concatenated_sequence_with_boundaries, &sequence_type, pattern_index_option)?;
         let num_targets = sequence_storage.num_targets();
         let search_range: Vec<u32> = (0..num_targets).collect();
 
-        Self {
+        Ok(Self {
             sequence_type,
             search_range,
             pattern_index,
             sequence_storage,
-        }
+        })
     }
 }
+
+use thiserror::Error;
+#[derive(Debug, Error)]
+pub enum ReferenceBuildError {
+    #[error(transparent)]
+    PatternIndexBuildError(#[from] PatternIndexBuildError)
+}
+
+mod features;
 
 // // Requirements for inner structures
 // mod requirements;

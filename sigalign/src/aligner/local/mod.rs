@@ -3,7 +3,7 @@ use crate::core::{
     results::AlignmentResult,
 };
 use super::{
-    AlignerInterface,
+    Aligner,
     AlignmentRegulator, RegulatorError,
     WaveFrontCache, DoubleWaveFrontCache, local_alignment_algorithm,
 };
@@ -14,7 +14,7 @@ pub struct LocalAligner {
     pub wave_front_cache: DoubleWaveFrontCache,
 }
 
-impl AlignerInterface for LocalAligner {
+impl Aligner for LocalAligner {
     fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
