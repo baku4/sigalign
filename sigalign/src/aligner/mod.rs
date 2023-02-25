@@ -1,5 +1,5 @@
 /*!
-Alignment executor.
+Alignment executor
 
 - Aligner has two modes
     1. Semi-global algorithm
@@ -53,8 +53,11 @@ use crate::core::{
 mod algorithms;
 use algorithms::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
 
-mod wave_front_cache;
-use wave_front_cache::{WaveFrontCache, DoubleWaveFrontCache, SingleWaveFrontCache};
+mod wave_front_pool;
+use wave_front_pool::{
+    WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
+    AllocationStrategy, LinearStrategy, DoublingStrategy,
+};
 
 mod regulator;
 use regulator::{AlignmentRegulator};

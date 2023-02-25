@@ -42,6 +42,10 @@ impl<B: Block<u32>> PatternIndex for Lfi32<B> {
         let characters_by_index: Vec<&[u8]> = valid_characters.iter()
             .map(|v| v.as_slice())
             .collect();
+        let sequence_length = concatenated_sequence_with_boundaries.concatenated_sequence.len();
+        if sequence_length >= u32::MAX as usize {
+            return Err(PatternIndexBuildError::SequenceLengthOver(u32::MAX as u64))
+        }
         match LtFmIndex::build(
             concatenated_sequence_with_boundaries.concatenated_sequence,
             &characters_by_index,

@@ -26,3 +26,10 @@ pub struct PatternLocation {
     pub target_index: u32,
     pub sorted_positions: Vec<u32>,
 }
+
+// Extension for serialization
+#[cfg(target_endian = "little")]
+pub(crate) type EndianType = byteorder::LittleEndian;
+#[cfg(target_endian = "big")]
+pub(crate) type EndianType = byteorder::BigEndian;
+pub(crate) use byteorder::{ReadBytesExt, WriteBytesExt};

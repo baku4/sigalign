@@ -34,30 +34,7 @@ pub trait SequenceStorage {
     }
 }
 
-pub mod sequence_storages;
-
-// Re-export
-// pub use crate::core::SequenceBuffer;
-// pub use super::JoinedSequence;
-
-// use super::{
-//     Result,
-// };
-
-// // Traits to implement
-// pub use super::{
-//     Serialize, EstimateSize, Divide,
-//     LabelStorage, RcStorage,
-// };
-
-// // Basic sequence storages implementations
-// mod in_memory;
-// pub use in_memory::{InMemoryStorage, InMemoryRcStorage};
-// mod indexed_fasta;
-// pub use indexed_fasta::{IndexedFastaStorage, IndexedFastaRcStorage};
-
-// /**
-// Storage for alignment target sequences
+pub mod implementations;
 
 // - `SequenceStorage` requires `Buffer` and three methods.
 //     1. `Buffer`
@@ -71,35 +48,3 @@ pub mod sequence_storages;
 //             * Returns empty `Buffer` of `SequenceStorage`.
 //         3. `fill_sequence_buffer`
 //             * Fills `Buffer` with sequence of record index.
-
-// - Method of `get_joined_sequence` can be overrode for better performance.
-//     - [JoinedSequence] is required to create index to build [Reference].
-//     - By default, this method is implemented by summing up each sequence.
-// */
-// pub trait SequenceStorage {
-//     type Buffer: SequenceBuffer;
-
-//     fn total_record_count(&self) -> usize;
-//     fn get_buffer(&self) -> Self::Buffer;
-//     fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer);
-//     fn get_joined_sequence(&self) -> JoinedSequence {
-//         let total_record_count = self.total_record_count();
-//         let mut record_boundary_positions = Vec::with_capacity(total_record_count + 1);
-//         record_boundary_positions.push(0);
-//         let mut accumulated_length = 0;
-
-//         let mut sequence_buffer = self.get_buffer();
-
-//         let mut bytes = Vec::new();
-//         for record_index in 0..total_record_count {
-//             self.fill_sequence_buffer(record_index, &mut sequence_buffer);
-//             let record_sequence = sequence_buffer.request_sequence();
-//             accumulated_length += record_sequence.len() as u64;
-//             record_boundary_positions.push(accumulated_length);
-
-//             bytes.extend_from_slice(record_sequence)
-//         }
-        
-//         JoinedSequence::new(bytes, record_boundary_positions)
-//     }
-// }

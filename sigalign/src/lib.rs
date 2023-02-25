@@ -12,9 +12,7 @@ pub mod core;
 // Implementations
 pub mod reference;
 pub mod aligner;
-/// wrapper
 pub mod wrapper;
-
 /// Utilities
 pub mod utils;
 /// Collection of error

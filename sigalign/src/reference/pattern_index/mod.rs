@@ -21,14 +21,21 @@ pub struct ConcatenatedSequenceWithBoundaries {
 use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum PatternIndexBuildError {
-    #[error("Error in sequence type: {0}")]
-    SequenceType(String),
+    #[error("Sequence length is over the maximum capacity {0}")]
+    SequenceLengthOver(u64), // Maximum capacity
+    #[error("Unsupported sequence types: {0}")]
+    UnsupportedSequenceType(String), // Concatenated unsupported sequence
+    #[error("Pattern index can make index of {max} characters, input is {input}")]
+    OverMaximumCharacters{
+        max: u32,    // The maximum number of characters that PatternIndex can index
+        input: u32,  // Input characters
+    },
     #[error("Error in option: {0}")]
-    Option(String),
+    Option(String), // Error message
 }
 
 /// Implementations for [PatternIndex]
-pub mod pattern_indices;
+pub mod implementations;
 
 // use crate::AHashMap;
 

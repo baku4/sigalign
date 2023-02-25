@@ -1,5 +1,5 @@
 /*!
-The database for multiple targeted sequences.
+The database for multiple targeted sequences
 # Reference
 Reference is the database for multiple targeted sequences.
 ## Features
@@ -92,16 +92,31 @@ impl<I, S> Reference<I, S> where
             sequence_storage,
         })
     }
+    pub fn from_raw_unchecked(
+        sequence_type: SequenceType,
+        search_range: Vec<u32>,
+        pattern_index: I,
+        sequence_storage: S,
+    ) -> Self {
+        Self {
+            sequence_type,
+            search_range,
+            pattern_index,
+            sequence_storage,
+        }
+    }
 }
 
 use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum ReferenceBuildError {
     #[error(transparent)]
-    PatternIndexBuildError(#[from] PatternIndexBuildError)
+    PatternIndexBuildError(#[from] PatternIndexBuildError),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }
 
-mod features;
+pub mod features;
 
 // // Requirements for inner structures
 // mod requirements;

@@ -1,5 +1,8 @@
+/*!
+The wrappers of implementations.
+*/
 mod reference;
-pub use reference::ReferenceWrapper;
+pub use reference::DefaultReference;
 
-mod aligner;
-pub use aligner::AlignerWrapper;
+// mod aligner;
+// pub use aligner::DefaultAligner;

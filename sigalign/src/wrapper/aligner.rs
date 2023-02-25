@@ -1,6 +1,6 @@
 use crate::aligner::{LocalAligner, SemiGlobalAligner, Aligner, RegulatorError};
 
-pub struct AlignerWrapper {
+pub struct DefaultAligner {
     inner: SelfDescAligner,
 }
 enum SelfDescAligner {
@@ -8,7 +8,7 @@ enum SelfDescAligner {
     SemiGlobal(SemiGlobalAligner),
 }
 
-impl AlignerWrapper {
+impl DefaultAligner {
     pub fn new_local(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
