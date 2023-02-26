@@ -45,10 +45,8 @@ Alignment executor
         - The semi-global mode uses about half of the cache than local mode for the same query length.
     - Aligner automatically controls sequence buffer when a reference is passed.
 */
-use crate::core::{
-    ReferenceInterface,
-    results::AlignmentResult,
-};
+use crate::core::ReferenceInterface;
+use crate::results::AlignmentResult;
 
 mod algorithms;
 use algorithms::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
@@ -56,6 +54,8 @@ use algorithms::{WaveFront, local_alignment_algorithm, semi_global_alignment_alg
 mod wave_front_pool;
 use wave_front_pool::{
     WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
+};
+pub use wave_front_pool::{
     AllocationStrategy, LinearStrategy, DoublingStrategy,
 };
 
@@ -69,7 +69,7 @@ mod semi_global;
 pub use local::LocalAligner;
 pub use semi_global::SemiGlobalAligner;
 
-pub trait Aligner: Sized {
+pub trait AlignerInterface: Sized {
     fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,

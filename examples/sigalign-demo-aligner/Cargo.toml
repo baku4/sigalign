@@ -8,7 +8,7 @@ description = "Binary implementation"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sigalign = { path = "../../sigalign", features = ["short_key", "four_dp"] }
+sigalign = { path = "../../sigalign", features = ["short_key"] }
 anyhow = "1.0.44"
 clap = "4.0.26"
 log = "0.4.14"

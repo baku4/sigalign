@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sigalign = { path = "../sigalign", features = ["short_key", "four_dp"] }
+sigalign = { path = "../sigalign", features = ["short_key"] }
 sigalign_stable = { package = "sigalign", version = "0.2.0", features = ["short_key", "four_dp"] }
 lt-fm-index = "0.5.6"
 

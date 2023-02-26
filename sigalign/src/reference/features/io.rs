@@ -5,6 +5,7 @@ use super::{
     SequenceStorage,
 };
 
+/// Save and load the structure
 use std::io::{Write, Read, Error};
 pub trait Serialize {
     fn save_to<W>(&self, writer: W) -> Result<(), Error> where

@@ -28,4 +28,3 @@ seq_io = "0.3.1"
 
 [features]
 short_key = []
-four_dp = []

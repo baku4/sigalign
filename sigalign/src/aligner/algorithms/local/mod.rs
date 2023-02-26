@@ -2,10 +2,10 @@ use crate::core::{
     ReferenceInterface, SequenceBuffer,
     regulators::{
         Penalty, Cutoff,
-    },
-    results::{
-        AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
-    },
+    }
+};
+use crate::results::{
+    AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
 };
 use super::common_steps::{
     PosTable, AnchorIndex, TraversedAnchor,

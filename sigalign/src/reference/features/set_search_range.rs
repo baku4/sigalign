@@ -1,17 +1,17 @@
 use super::{
     Reference,
-    SequenceType,
     PatternIndex,
     SequenceStorage,
 };
 
 use thiserror::Error;
+/// An error that occurs when setting the search range.
 #[derive(Debug, Error)]
 pub enum SetSearchRangeError {
     #[error("Target index cannot be empty")]
-    Empty,
+    EmptyIndexError,
     #[error("Index cannot be over the total target")]
-    Over,
+    IndexOutOfRangeError,
 }
 
 impl<I, S> Reference<I, S> where
@@ -22,11 +22,11 @@ impl<I, S> Reference<I, S> where
         target_index.sort();
         let last_record_index = match target_index.last() {
             Some(v) => v,
-            None => return Err(SetSearchRangeError::Empty),
+            None => return Err(SetSearchRangeError::EmptyIndexError),
         };
         let total_target_count = self.sequence_storage.num_targets() as u32;
         if total_target_count < *last_record_index {
-            return Err(SetSearchRangeError::Over);
+            return Err(SetSearchRangeError::IndexOutOfRangeError);
         } else {
             self.set_search_range_unchecked(target_index);
             Ok(())

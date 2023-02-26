@@ -1,8 +1,6 @@
-use crate::core::{
-    regulators::Penalty,
-    results::{
-        AlignmentOperations, AlignmentOperation,
-    },
+use crate::core::regulators::Penalty;
+use crate::results::{
+    AlignmentOperations, AlignmentOperation,
 };
 
 use super::{Extension, WaveFront, BackTraceMarker};

@@ -31,11 +31,10 @@ impl<A: AllocationStrategy> WaveFrontPool for SingleWaveFrontPool<A> {
         cutoff: &Cutoff,
     ) {
         if self.allocated_query_len < query_len {
-            let next_query_len = A::next_query_len(self.allocated_query_len);
-            let max_penalty = safe_max_penalty_from_len(next_query_len, penalties, cutoff);
-            let wave_front = WaveFront::new_allocated(penalties, max_penalty as usize);
-            // TODO: Do not allocate whole space.
-            self.allocated_query_len = next_query_len;
+            let enlarged_query_len = A::get_enlarged_query_len(query_len);
+            let max_penalty = safe_max_penalty_from_len(enlarged_query_len, penalties, cutoff);
+            let wave_front = WaveFront::new_allocated(penalties, max_penalty as usize); // TODO: not to allocate whole space.
+            self.allocated_query_len = enlarged_query_len;
             self.wave_front = wave_front;
         }
     }

@@ -1,7 +1,5 @@
-use crate::core::{
-    SeqLen,
-    results::AlignmentOperations,
-};
+use crate::core::SeqLen;
+use crate::results::AlignmentOperations;
 
 /// Wavefront structure
 mod wave_front;

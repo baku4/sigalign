@@ -8,7 +8,7 @@ use std::io::{Read, Write};
 use crate::{
     Result, error_msg,
     init_logger,
-    test_data::*,
+    test_data_path::*,
 };
 use super::{
     ReferenceBuilder,

@@ -1,12 +1,30 @@
 use ahash::{AHashMap, AHashSet};
 
-use super::*;
-
 mod dp_optimal_alignment;
 use dp_optimal_alignment::{
     optimal_semi_global_alignment,
     optimal_local_alignment,
 };
+use sigalign::{
+    reference::{
+        ReferenceInterface,
+        sequence_storage::SequenceBuffer,
+    },
+    wrapper::{
+        DefaultReference, DefaultAligner,
+    },
+    results::{
+        AlignmentResult,
+        TargetAlignmentResult,
+        AlignmentPosition,
+        AlignmentOperations,
+        AlignmentOperation,
+        AnchorAlignmentResult,
+    },
+    utils,
+};
+
+const PREC_SCALE: u32 = 10000;
 
 #[derive(Debug)]
 pub struct DpBasedAligner {
@@ -26,7 +44,13 @@ impl DpBasedAligner {
         minimum_aligned_length: usize,
         maximum_penalty_per_length: f32,
     ) -> Self {
-        let aligner = Aligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length).unwrap();
+        let aligner = DefaultAligner::new_local(
+            mismatch_penalty as u32,
+            gap_open_penalty as u32,
+            gap_extend_penalty as u32,
+            minimum_aligned_length as u32,
+            maximum_penalty_per_length,
+        ).unwrap();
         let pattern_size = aligner.get_pattern_size();
 
         let maximum_penalty_per_scale = (PREC_SCALE as f32 * maximum_penalty_per_length) as usize;
@@ -40,9 +64,9 @@ impl DpBasedAligner {
             pattern_size,
         }
     }
-    pub fn semi_global_alignment<S: SequenceStorage>(
+    pub fn semi_global_alignment(
         &self,
-        reference: &Reference<S>,
+        reference: &DefaultReference,
         query: &[u8],
     ) -> AlignmentResult {
         self.do_alignment(
@@ -51,9 +75,9 @@ impl DpBasedAligner {
             optimal_semi_global_alignment,
         )
     }
-    pub fn local_alignment<S: SequenceStorage>(
+    pub fn local_alignment(
         &self,
-        reference: &Reference<S>,
+        reference: &DefaultReference,
         query: &[u8],
     ) -> AlignmentResult {
         self.do_alignment(
@@ -62,13 +86,12 @@ impl DpBasedAligner {
             optimal_local_alignment,
         )
     }
-    fn do_alignment<S, F>(
+    fn do_alignment<F>(
         &self,
-        reference: &Reference<S>,
+        reference: &DefaultReference,
         query: &[u8],
         alignment_algorithm: F,
     ) -> AlignmentResult where
-        S: SequenceStorage,
         F: Fn(&[u8], &[u8], usize, usize, usize, usize, usize, usize, usize, usize) ->  Option<AnchorAlignmentResult>,
     {
         let alignment_start_positions_by_record = self.get_alignment_start_position(reference, query);
@@ -77,7 +100,7 @@ impl DpBasedAligner {
         let mut record_alignment_results = Vec::new();
 
         for (record_index, alignment_start_positions) in alignment_start_positions_by_record {
-            reference.fill_buffer(record_index, &mut sequence_buffer);
+            reference.fill_buffer(record_index as u32, &mut sequence_buffer);
             let record = sequence_buffer.request_sequence();
 
             let anchor_alignment_results: Vec<AnchorAlignmentResult> = alignment_start_positions.into_iter().filter_map(|alignment_start_position| {
@@ -98,8 +121,8 @@ impl DpBasedAligner {
             if anchor_alignment_results.len() != 0 {
                 let unique_alignments = get_unique_alignments(anchor_alignment_results);
 
-                let record_alignment_result = RecordAlignmentResult {
-                    index: record_index,
+                let record_alignment_result = TargetAlignmentResult {
+                    index: record_index as u32,
                     alignments: unique_alignments,
                 };
 
@@ -108,9 +131,9 @@ impl DpBasedAligner {
         }
         AlignmentResult(record_alignment_results)
     }
-    fn get_alignment_start_position<S: SequenceStorage>(
+    fn get_alignment_start_position(
         &self,
-        reference: &Reference<S>,
+        reference: &DefaultReference,
         query: &[u8],
     ) -> AHashMap<usize, Vec<AlignmentStartPosition>> {
         // Slice query to patterns
@@ -128,15 +151,15 @@ impl DpBasedAligner {
 
             for pattern_location in pattern_locations {
                 let record_index = pattern_location.target_index;
-                if let None = alignment_start_positions_by_record.get(&record_index) {
-                    alignment_start_positions_by_record.insert(record_index, Vec::new());
+                if let None = alignment_start_positions_by_record.get(&(record_index as usize)) {
+                    alignment_start_positions_by_record.insert(record_index as usize, Vec::new());
                 };
 
-                let alignment_start_positions = alignment_start_positions_by_record.get_mut(&record_index).unwrap();
+                let alignment_start_positions = alignment_start_positions_by_record.get_mut(&(record_index as usize)).unwrap();
 
                 for record_position in pattern_location.sorted_positions{
                     let new_alignment_start_position = AlignmentStartPosition {
-                        record_start_position: record_position,
+                        record_start_position: record_position as usize,
                         query_start_position: qry_pos,
                         pattern_size: pattern_size,
                     };
@@ -188,7 +211,7 @@ fn get_unique_alignments(mut anchor_alignment_results: Vec<AnchorAlignmentResult
     });
 
     // Sort out
-    let mut registered_position: AHashSet<(usize, usize)> = AHashSet::new(); // record index, query index
+    let mut registered_position: AHashSet<(u32, u32)> = AHashSet::new(); // record index, query index
     let mut unique_alignments = Vec::new();
     for anchor_alignment_result in anchor_alignment_results {
         let base_pair_position_set = get_base_pair_position_set(&anchor_alignment_result);
@@ -205,40 +228,40 @@ fn get_unique_alignments(mut anchor_alignment_results: Vec<AnchorAlignmentResult
 
 fn get_query_length_and_penalty(anchor_alignment_result: &AnchorAlignmentResult) -> (usize, usize) {
     let query_length = anchor_alignment_result.operations.iter().map(|op| {
-        match op.case {
-            AlignmentCase::Match
-            | AlignmentCase::Subst
-            | AlignmentCase::Deletion => op.count as usize,
+        match op.operation {
+            AlignmentOperation::Match
+            | AlignmentOperation::Subst
+            | AlignmentOperation::Deletion => op.count as usize,
             _ => 0,
         }
     }).sum();
 
-    (query_length, anchor_alignment_result.penalty)
+    (query_length, anchor_alignment_result.penalty as usize)
 }
-fn get_base_pair_position_set(anchor_alignment_result: &AnchorAlignmentResult) -> AHashSet<(usize, usize)> {
+fn get_base_pair_position_set(anchor_alignment_result: &AnchorAlignmentResult) -> AHashSet<(u32, u32)> {
     let mut position_set = AHashSet::new();
 
     let alignment_position = &anchor_alignment_result.position;
-    let mut record_index = alignment_position.record.0;
+    let mut record_index = alignment_position.target.0;
     let mut query_index = alignment_position.query.0;
 
     for op in &anchor_alignment_result.operations {
         let count = op.count as usize;
 
-        match op.case {
-            AlignmentCase::Match | AlignmentCase::Subst=> {
-                for v in (record_index..record_index+count).zip(query_index..query_index+count) {
+        match op.operation {
+            AlignmentOperation::Match | AlignmentOperation::Subst=> {
+                for v in (record_index..record_index+count as u32).zip(query_index..query_index+count as u32) {
                     position_set.insert(v);
                 }
 
-                record_index += count;
-                query_index += count;
+                record_index += count as u32;
+                query_index += count as u32;
             },
-            AlignmentCase::Insertion => {
-                record_index += count;
+            AlignmentOperation::Insertion => {
+                record_index += count as u32;
             },
-            AlignmentCase::Deletion => {
-                query_index += count;
+            AlignmentOperation::Deletion => {
+                query_index += count as u32;
             },
         }
     }

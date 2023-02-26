@@ -1,10 +1,8 @@
-// Fasta alignment result
-use crate::{Serialize, Deserialize};
-use super::{
-    AlignmentResult,
-};
+use super::AlignmentResult; 
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct FastaAlignmentResult(
     pub Vec<ReadAlignmentResult>
 );

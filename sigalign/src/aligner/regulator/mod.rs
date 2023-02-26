@@ -1,10 +1,8 @@
-use crate::core::{
-    regulators::{
-        Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
-    },
-    results::{
-        AlignmentResult, AnchorAlignmentResult,
-    },
+use crate::core::regulators::{
+    Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
+};
+use crate::results::{
+    AlignmentResult, AnchorAlignmentResult,
 };
 use num::integer;
 

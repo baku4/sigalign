@@ -12,12 +12,7 @@ impl SequenceType {
     }
     #[inline]
     pub fn validate_query(&self, query: &[u8]) -> bool {
-        for chr in query {
-            if !self.0[*chr as usize] {
-                return false
-            }
-        }
-        true
+        !query.iter().any(|chr| !self.0[*chr as usize])
     }
     #[inline]
     pub fn valid_characters(&self) -> Vec<u8> {

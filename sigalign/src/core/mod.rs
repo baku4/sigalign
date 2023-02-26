@@ -1,5 +1,4 @@
 pub mod regulators;
-pub mod results;
 
 mod sequence_length;
 pub use sequence_length::SeqLen;
@@ -17,10 +16,12 @@ pub trait SequenceBuffer {
     fn request_sequence(&self) -> &[u8];
 }
 
+/// The index of pattern.
+///
 /// Positions are should be sorted in ascending order.
 ///   - In general, positions are automatically sorted when searching for an index of a target.
 ///   - Reordering is not performed in algorithm.
-/// The range of position in one target is restricted to the bound of u32
+/// The range of position in one target is restricted to the bound of `u32`
 #[derive(Debug)]
 pub struct PatternLocation {
     pub target_index: u32,

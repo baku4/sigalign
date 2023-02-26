@@ -1,9 +1,7 @@
-use crate::core::{
-    ReferenceInterface,
-    results::AlignmentResult,
-};
+use crate::core::ReferenceInterface;
+use crate::results::AlignmentResult;
 use super::{
-    Aligner,
+    AlignerInterface,
     AlignmentRegulator, RegulatorError,
     WaveFrontPool, DoubleWaveFrontPool, LinearStrategy, AllocationStrategy,
     local_alignment_algorithm,
@@ -15,7 +13,7 @@ pub struct LocalAligner<A: AllocationStrategy> {
     pub wave_front_pool: DoubleWaveFrontPool<A>,
 }
 
-impl<A: AllocationStrategy> Aligner for LocalAligner<A> {
+impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
     fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,

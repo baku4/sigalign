@@ -1,11 +1,14 @@
-use crate::aligner::{LocalAligner, SemiGlobalAligner, Aligner, RegulatorError};
+use crate::aligner::{
+    LocalAligner, SemiGlobalAligner, AlignerInterface, RegulatorError,
+    AllocationStrategy, LinearStrategy, DoublingStrategy,
+};
 
 pub struct DefaultAligner {
     inner: SelfDescAligner,
 }
 enum SelfDescAligner {
-    Local(LocalAligner),
-    SemiGlobal(SemiGlobalAligner),
+    Local(LocalAligner<LinearStrategy>),
+    SemiGlobal(SemiGlobalAligner<LinearStrategy>),
 }
 
 impl DefaultAligner {
@@ -30,3 +33,6 @@ impl DefaultAligner {
         Ok(Self { inner: SelfDescAligner::SemiGlobal(aligner) })
     }
 }
+
+mod alignment;
+pub use alignment::DefaultAlignmentError;

@@ -31,7 +31,8 @@ SearchRange is the **sorted** index of targets. This can be modified after build
 ### 4. SequenceStorage
 SequenceStorage is the storage of all targets sequences. SequenceStorage is defined as trait. The implementation detail of storing and parsing the sequence can be optimize for various scenarios. SigAlign has the default implementations of SequenceStorage. InMemoryStorage is one of them to store all sequence into the memory.
 */
-use crate::core::{ReferenceInterface, PatternLocation};
+pub use crate::core::{ReferenceInterface};
+use crate::core::PatternLocation;
 
 #[derive(Debug)]
 pub struct Reference<I, S> where

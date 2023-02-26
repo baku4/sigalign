@@ -2,7 +2,6 @@ use crate::core::{regulators::{
     Penalty, PREC_SCALE, Cutoff,
 }};
 use super::WaveFront;
-use std::fmt;
 
 pub trait WaveFrontPool {
     fn new(penalties: &Penalty, cutoff: &Cutoff) -> Self;
@@ -15,23 +14,23 @@ pub trait WaveFrontPool {
 }
 pub trait AllocationStrategy: Clone {
     const INITIAL_QUERY_LEN: u32;
-
-    fn next_query_len(current: u32) -> u32;
+    fn get_enlarged_query_len(needed_query_len: u32) -> u32;
 }
 #[derive(Debug, Clone)]
 pub struct LinearStrategy;
 impl AllocationStrategy for LinearStrategy {
     const INITIAL_QUERY_LEN: u32 = 200;
-    fn next_query_len(current: u32) -> u32 {
-        current + Self::INITIAL_QUERY_LEN
+    fn get_enlarged_query_len(needed_query_len: u32) -> u32 {
+        needed_query_len + Self::INITIAL_QUERY_LEN
     }
 }
 #[derive(Debug, Clone)]
 pub struct DoublingStrategy;
 impl AllocationStrategy for DoublingStrategy {
     const INITIAL_QUERY_LEN: u32 = 200;
-    fn next_query_len(current: u32) -> u32 {
-        current << 1
+    fn get_enlarged_query_len(needed_query_len: u32) -> u32 {
+        let leading_zeros = needed_query_len.leading_zeros();
+        1 << (32 - leading_zeros)
     }
 }
 

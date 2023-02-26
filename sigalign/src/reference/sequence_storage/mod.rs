@@ -2,7 +2,7 @@
 The storage of sequences
 */
 
-use crate::core::{SequenceBuffer};
+pub use crate::core::{SequenceBuffer};
 use super::{ConcatenatedSequenceWithBoundaries};
 pub trait SequenceStorage {
     type Buffer: SequenceBuffer;

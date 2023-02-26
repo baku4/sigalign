@@ -1,9 +1,7 @@
-use crate::core::{
-    ReferenceInterface,
-    results::AlignmentResult,
-};
+use crate::core::ReferenceInterface;
+use crate::results::AlignmentResult;
 use super::{
-    Aligner,
+    AlignerInterface,
     AlignmentRegulator, RegulatorError,
     WaveFrontPool, SingleWaveFrontPool, AllocationStrategy,
     semi_global_alignment_algorithm,
@@ -15,7 +13,7 @@ pub struct SemiGlobalAligner<A: AllocationStrategy> {
     pub wave_front_pool: SingleWaveFrontPool<A>,
 }
 
-impl<A: AllocationStrategy> Aligner for SemiGlobalAligner<A> {
+impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
     fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,

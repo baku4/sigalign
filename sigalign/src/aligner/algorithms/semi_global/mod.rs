@@ -3,9 +3,9 @@ use crate::core::{
     regulators::{
         Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
     },
-    results::{
-        AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations, AlignmentOperation,
-    },
+};
+use crate::results::{
+    AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations, AlignmentOperation,
 };
 
 use super::common_steps::{

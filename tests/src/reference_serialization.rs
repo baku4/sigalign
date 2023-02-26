@@ -1,4 +1,4 @@
-use crate::test_data::get_lf_fa_path;
+use crate::test_data_path::get_lf_fa_path;
 use super::{
     Reference,
     ReferenceBuilder,

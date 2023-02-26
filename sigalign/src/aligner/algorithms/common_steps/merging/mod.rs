@@ -1,4 +1,4 @@
-use crate::core::results::{
+use crate::results::{
     AlignmentOperations, AlignmentOperation,
 };
 

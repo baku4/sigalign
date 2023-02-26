@@ -1,10 +1,10 @@
-use crate::{
+use sigalign::results::{
     AlignmentPosition,
+    AlignmentOperations,
     AlignmentOperation,
-    AlignmentCase,
     AnchorAlignmentResult,
-    PREC_SCALE,
 };
+use super::PREC_SCALE;
 
 use bio::alignment::pairwise::*;
 use bio::alignment::pairwise::Aligner as AlignerFromCrateBio;
@@ -60,25 +60,25 @@ pub fn optimal_semi_global_alignment(
     let (position, operations) = merge_left_and_right_alignments(
         &left_alignment,
         &right_alignment,
-        record_start_position,
-        query_start_position,
-        pattern_size,
+        record_start_position as u32,
+        query_start_position as u32,
+        pattern_size as u32,
     );
 
     // Cutoff Check
     let length: u32 = operations.iter()
-        .map(|AlignmentOperation { case: _, count }| *count)
+        .map(|AlignmentOperations { operation: _, count }| *count)
         .sum();
     let length = length as usize;
     
     let penalty = ((left_alignment.score + right_alignment.score) * -1) as usize;
 
-    let penalty_per_scale_of_this_alignment = PREC_SCALE * penalty / length;
+    let penalty_per_scale_of_this_alignment = PREC_SCALE as usize * penalty / length;
 
     if (length >= minimum_aligned_length) && (penalty_per_scale_of_this_alignment <= maximum_penalty_per_scale) {
         Some(AnchorAlignmentResult {
-            penalty,
-            length,
+            penalty: penalty as u32,
+            length: length as u32,
             position,
             operations,
         })
@@ -141,7 +141,7 @@ pub fn optimal_local_alignment(
 
         left_alignments_with_length_and_penalty.push((left_alignment, length, penalty));
 
-        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PREC_SCALE <= maximum_penalty_per_scale * length);
+        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PREC_SCALE as usize <= maximum_penalty_per_scale * length);
         if satisfy_cutoff_alone {
             break
         }
@@ -161,7 +161,7 @@ pub fn optimal_local_alignment(
         let (length, penalty) = get_length_and_penalty_of_alignment(&right_alignment);
         right_alignments_with_length_and_penalty.push((right_alignment, length, penalty));
 
-        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PREC_SCALE <= maximum_penalty_per_scale * length);
+        let satisfy_cutoff_alone = (length >= minimum_aligned_length) && (penalty * PREC_SCALE as usize <= maximum_penalty_per_scale * length);
         if satisfy_cutoff_alone {
             break
         }
@@ -199,7 +199,7 @@ pub fn optimal_local_alignment(
     let optimal_index_of_alignment = {
         let mut optimal_index_of_alignment = None;
         for index_of_alignment in indices_of_alignment {
-            let satisfy_cutoff = (index_of_alignment.length >= minimum_aligned_length) && (index_of_alignment.penalty * PREC_SCALE <= maximum_penalty_per_scale * index_of_alignment.length);
+            let satisfy_cutoff = (index_of_alignment.length >= minimum_aligned_length) && (index_of_alignment.penalty * PREC_SCALE as usize <= maximum_penalty_per_scale * index_of_alignment.length);
 
             if satisfy_cutoff {
                 optimal_index_of_alignment = Some(index_of_alignment);
@@ -217,13 +217,13 @@ pub fn optimal_local_alignment(
             let (position, operations) = merge_left_and_right_alignments(
                 &left_alignment,
                 &right_alignment,
-                record_start_position,
-                query_start_position,
-                pattern_size,
+                record_start_position as u32,
+                query_start_position as u32,
+                pattern_size as u32,
             );
             Some(AnchorAlignmentResult {
-                penalty: index_of_alignment.penalty,
-                length: index_of_alignment.length,
+                penalty: index_of_alignment.penalty as u32,
+                length: index_of_alignment.length as u32,
                 position,
                 operations,
             })
@@ -237,23 +237,23 @@ pub fn optimal_local_alignment(
 fn merge_left_and_right_alignments(
     left_alignment: &AlignmentFromCrateBio,
     right_alignment: &AlignmentFromCrateBio,
-    record_start_position: usize,
-    query_start_position: usize,
-    pattern_size: usize,
-) -> (AlignmentPosition, Vec<AlignmentOperation>) {
+    record_start_position: u32,
+    query_start_position: u32,
+    pattern_size: u32,
+) -> (AlignmentPosition, Vec<AlignmentOperations>) {
     // Position & Operation
     let position = AlignmentPosition {
-        record: (
-            record_start_position - left_alignment.x_aln_len(),
-            record_start_position + pattern_size + right_alignment.x_aln_len()
+        target: (
+            record_start_position - left_alignment.x_aln_len() as u32,
+            record_start_position + pattern_size + right_alignment.x_aln_len() as u32,
         ),
         query: (
-            query_start_position - left_alignment.y_aln_len(),
-            query_start_position + pattern_size + right_alignment.y_aln_len()
+            query_start_position - left_alignment.y_aln_len() as u32,
+            query_start_position + pattern_size + right_alignment.y_aln_len() as u32,
         ),
     };
 
-    let mut operations: Vec<AlignmentOperation> = Vec::new();
+    let mut operations: Vec<AlignmentOperations> = Vec::new();
 
     left_alignment.operations.iter().for_each(|operation| {
         add_one_operation(&mut operations, operation);
@@ -273,27 +273,27 @@ fn merge_left_and_right_alignments(
     (position, operations)
 }
 fn add_one_operation(
-    alignment_operations: &mut Vec<AlignmentOperation>,
+    alignment_operations: &mut Vec<AlignmentOperations>,
     alignment_type_from_crate_bio: &AlignmentOperationFromCrateBio,
 ) {
     let alignment_type_to_add = match alignment_type_from_crate_bio {
-        AlignmentOperationFromCrateBio::Match => AlignmentCase::Match,
-        AlignmentOperationFromCrateBio::Subst => AlignmentCase::Subst,
-        AlignmentOperationFromCrateBio::Ins => AlignmentCase::Insertion,
-        AlignmentOperationFromCrateBio::Del => AlignmentCase::Deletion,
+        AlignmentOperationFromCrateBio::Match => AlignmentOperation::Match,
+        AlignmentOperationFromCrateBio::Subst => AlignmentOperation::Subst,
+        AlignmentOperationFromCrateBio::Ins => AlignmentOperation::Insertion,
+        AlignmentOperationFromCrateBio::Del => AlignmentOperation::Deletion,
         _ => return
     };
 
     if let Some(alignment_operation) = alignment_operations.last_mut() {
-        if alignment_type_to_add == alignment_operation.case {
+        if alignment_type_to_add == alignment_operation.operation {
             alignment_operation.count += 1;
             return
         }
     }
 
     alignment_operations.push(
-        AlignmentOperation {
-            case: alignment_type_to_add,
+        AlignmentOperations {
+            operation: alignment_type_to_add,
             count: 1,
         }
     );
