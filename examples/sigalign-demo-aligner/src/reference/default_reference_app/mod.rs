@@ -28,7 +28,6 @@ struct ReferenceConfig {
     divide_size: Option<usize>,
     use_rc: bool,
     // Pattern finder config
-    use_128_bwt: bool,
     kmer: Option<usize>,
     sa_sampling_ratio: Option<u64>,
 }
@@ -102,7 +101,6 @@ impl ReferenceConfig {
         let use_rc = matches.get_flag("reverse");
         
         // (3) Pattern finder config
-        let use_128_bwt = matches.get_flag("cpb");
         let kmer = match matches.get_one::<usize>("klt") {
             Some(v) => Some(*v),
             None => None,
@@ -118,7 +116,6 @@ impl ReferenceConfig {
                 output_file_pathbuf,
                 divide_size,
                 use_rc,
-                use_128_bwt,
                 kmer,
                 sa_sampling_ratio,
             }
@@ -128,6 +125,7 @@ impl ReferenceConfig {
         let divided_sequence_storages = {
             let sss = SigReferenceWrapper::get_divided_sequence_storages(
                 &self.input_file_pathbuf,
+                self.use_rc,
                 self.divide_size,
             )?;
             eprintln!(" Storage is divided into {}.", sss.len());

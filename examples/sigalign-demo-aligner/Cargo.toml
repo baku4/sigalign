@@ -17,5 +17,6 @@ default = []
 # Change the alignment method
 tsv = [] # Print TSV formatted output to stdout.
 thread = [] # Align multiple query files using worker thread. Output is TSV to stdout
+non_rc = [] # Do not use reverse complementary
 # Change the reference type
 idx_fa = [] # Use indexed fasta as sequence storage.

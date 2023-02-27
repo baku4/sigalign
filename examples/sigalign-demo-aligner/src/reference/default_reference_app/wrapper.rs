@@ -108,6 +108,7 @@ impl Serialize for LfiWrapper {
 impl SigReferenceWrapper {
     pub fn get_divided_sequence_storages(
         input_file_pathbuf: &PathBuf,
+        use_rc: bool,
         maximum_size: Option<usize>,
     ) -> Result<Vec<InMemoryStorage>> {
         let mut sss = Vec::new();
@@ -115,9 +116,15 @@ impl SigReferenceWrapper {
             None => {
                 let mut ss = InMemoryStorage::new();
                 ss.add_fasta_file(input_file_pathbuf)?;
-                sss.push(ss)
+                if use_rc {
+                    ss.append_reverse_complement();
+                }
+                sss.push(ss);
             },
-            Some(maximum_size) => {
+            Some(mut maximum_size) => {
+                if use_rc {
+                    maximum_size = maximum_size / 2;
+                }
                 let fasta_reader = FastaReader::from_path(input_file_pathbuf)?;
                 let mut ss = InMemoryStorage::new();
                 let mut current_size = 0;
@@ -128,6 +135,9 @@ impl SigReferenceWrapper {
                     } else {
                         let mut to_swap_ss = InMemoryStorage::new();
                         std::mem::swap(&mut ss, &mut to_swap_ss);
+                        if use_rc {
+                            to_swap_ss.append_reverse_complement();
+                        }
                         sss.push(to_swap_ss);
                         ss.add_target(&seq, &label);
                         current_size = seq.len();
@@ -155,12 +165,12 @@ impl SigReferenceWrapper {
                 lookup_table_kmer_size: ltks as u32,
             }
         };
-        let mut reference = InnerReference::new(
+        let reference = InnerReference::new(
             sequence_storage,
             pattern_index_option,
         )?;
         eprint!("built in {} s; ", start.elapsed().as_secs_f64());
-        let file = File::open(file_path)?;
+        let file = File::create(file_path)?;
         reference.save_to(file)?;
         Ok(())
     }
