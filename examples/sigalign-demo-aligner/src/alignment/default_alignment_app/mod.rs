@@ -14,14 +14,15 @@ use clap::{
 
 use crate::{
     reference::{
-        Reference,
+        SigReferenceWrapper,
         ReferencePaths,
     }
 };
 use sigalign::{
-    Aligner as SigAligner,
-    Reference as SigReference,
-    result::FastaAlignmentResult,
+    wrapper::DefaultAligner as SigAligner,
+    results::{
+        fasta::{FastaAlignmentResult, FastaReverseComplementAlignmentResult},
+    },
 };
 
 pub struct AlignmentApp;
@@ -32,10 +33,10 @@ pub struct AlignmentConfig {
     input_reference_paths: ReferencePaths,
     output_json_pathbuf: PathBuf,
     // Condition
-    px: usize,
-    po: usize,
-    pe: usize,
-    min_len: usize,
+    px: u32,
+    po: u32,
+    pe: u32,
+    min_len: u32,
     max_ppl: f32,
     // Algorithm
     use_local_alg: bool,
@@ -125,15 +126,15 @@ impl AlignmentConfig {
         // (2) Condition
         let (px, po, pe) = {
             let mut iterator: clap::parser::ValuesRef<_> = matches.get_many::<String>("penalties").unwrap();
-            let px: usize = iterator.next().unwrap().parse().expect("Mismatch penalty allows integer.");
-            let po: usize = iterator.next().unwrap().parse().expect("Gap-open penalty allows integer.");
-            let pe: usize = iterator.next().unwrap().parse().expect("Gap-extend penalty allows integer.");
+            let px: u32 = iterator.next().unwrap().parse().expect("Mismatch penalty allows integer.");
+            let po: u32 = iterator.next().unwrap().parse().expect("Gap-open penalty allows integer.");
+            let pe: u32 = iterator.next().unwrap().parse().expect("Gap-extend penalty allows integer.");
 
             (px, po, pe)
         };
         let (min_len, max_ppl) = {
             let mut iterator: clap::parser::ValuesRef<_> = matches.get_many::<String>("cutoffs").unwrap();
-            let min_len: usize = iterator.next().unwrap().parse().expect("Cutoff of MINLEN allows integer.");
+            let min_len: u32 = iterator.next().unwrap().parse().expect("Cutoff of MINLEN allows integer.");
             let max_ppl: f32 = iterator.next().unwrap().parse().expect("Cutoff of MAXPPL allows float.");
 
             (min_len, max_ppl)
@@ -186,7 +187,7 @@ impl AlignmentConfig {
             eprintln!("  Reference {}", ref_idx);
             let reference = {
                 let start = Instant::now();
-                let reference = Reference::load_from_file(ref_file_path).unwrap();
+                let reference = SigReferenceWrapper::load_from_file(ref_file_path).unwrap();
                 eprintln!("   - Load reference {} s", start.elapsed().as_secs_f64());
                 reference
             };
@@ -200,7 +201,7 @@ impl AlignmentConfig {
             // Get result
             let result = {
                 let start = Instant::now();
-                let result = aligner.fasta_file_alignment(
+                let result = aligner.align_fasta_file_with_rc_dna(
                     &reference.inner,
                     &self.input_fasta_pathbuf,
                 ).unwrap();

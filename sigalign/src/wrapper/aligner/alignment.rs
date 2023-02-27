@@ -1,9 +1,14 @@
 use crate::{core::ReferenceInterface, aligner::AlignerInterface};
 use crate::results::{
     AlignmentResult,
-    fasta::{FastaAlignmentResult, ReadAlignmentResult},
+    fasta::{
+        FastaAlignmentResult,
+        ReadAlignmentResult,
+        FastaReverseComplementAlignmentResult,
+        ReadReverseComplementAlignmentResult,
+    },
 };
-use crate::utils::FastaReader;
+use crate::utils::{FastaReader, reverse_complement_of_dna};
 use super::{DefaultAligner, SelfDescAligner};
 
 use thiserror::Error;
@@ -16,6 +21,7 @@ pub enum DefaultAlignmentError {
 }
 
 impl DefaultAligner {
+    // One query
     pub fn align_query<R: ReferenceInterface>(&mut self, reference: &R, query: &[u8]) -> Result<AlignmentResult, DefaultAlignmentError> {
         if !reference.is_valid(query) {
             return Err(DefaultAlignmentError::UnsupportedQuery)
@@ -23,20 +29,44 @@ impl DefaultAligner {
         let mut sequence_buffer = reference.get_buffer();
         Ok(self.align_query_unchecked_with_sequence_buffer::<R>(reference, &mut sequence_buffer, query))
     }
+    pub fn align_query_unchecked_with_sequence_buffer<R: ReferenceInterface>(
+        &mut self,
+        reference: &R,
+        sequence_buffer: &mut R::Buffer,
+        query: &[u8],
+    ) -> AlignmentResult {
+        match &mut self.inner {
+            SelfDescAligner::Local(v) => v.alignment(reference, sequence_buffer, query),
+            SelfDescAligner::SemiGlobal(v) => v.alignment(reference, sequence_buffer, query),
+        }
+    }
+    // FASTA
     pub fn align_fasta_file<R, P>(&mut self, reference: &R, file_path: P) -> Result<FastaAlignmentResult, DefaultAlignmentError> where
         R: ReferenceInterface,
         P: AsRef<std::path::Path>,
     {
         let fasta_reader = FastaReader::from_path(file_path)?;
         Ok(self.align_from_fasta_reader(reference, fasta_reader))
-
     }
     pub fn align_fasta_bytes<R, P>(&mut self, reference: &R, bytes: &[u8]) -> FastaAlignmentResult where
         R: ReferenceInterface,
     {
         let fasta_reader = FastaReader::from_bytes(bytes);
         self.align_from_fasta_reader(reference, fasta_reader)
-
+    }
+    // FASTA with Rc
+    pub fn align_fasta_file_with_rc_dna<R, P>(&mut self, reference: &R, file_path: P) -> Result<FastaReverseComplementAlignmentResult, DefaultAlignmentError> where
+        R: ReferenceInterface,
+        P: AsRef<std::path::Path>,
+    {
+        let fasta_reader = FastaReader::from_path(file_path)?;
+        Ok(self.align_from_fasta_reader_with_rc_dna(reference, fasta_reader))
+    }
+    pub fn align_fasta_bytes_with_rc_dna<R, P>(&mut self, reference: &R, bytes: &[u8]) -> FastaReverseComplementAlignmentResult where
+        R: ReferenceInterface,
+    {
+        let fasta_reader = FastaReader::from_bytes(bytes);
+        self.align_from_fasta_reader_with_rc_dna(reference, fasta_reader)
     }
 
     fn align_from_fasta_reader<R1, R2>(&mut self, reference: &R1, fasta_reader: FastaReader<R2>) -> FastaAlignmentResult where
@@ -64,15 +94,45 @@ impl DefaultAligner {
             }).collect()
         )
     }
-    fn align_query_unchecked_with_sequence_buffer<R: ReferenceInterface>(
+    fn align_from_fasta_reader_with_rc_dna<R1, R2>(
         &mut self,
-        reference: &R,
-        sequence_buffer: &mut R::Buffer,
-        query: &[u8],
-    ) -> AlignmentResult {
-        match &mut self.inner {
-            SelfDescAligner::Local(v) => v.alignment(reference, sequence_buffer, query),
-            SelfDescAligner::SemiGlobal(v) => v.alignment(reference, sequence_buffer, query),
-        }
+        reference: &R1,
+        fasta_reader: FastaReader<R2>,
+    ) -> FastaReverseComplementAlignmentResult where
+        R1: ReferenceInterface,
+        R2: std::io::Read,
+    {
+        let mut sequence_buffer = reference.get_buffer();
+        let mut results = Vec::new(); //TODO: Apply cap
+        fasta_reader.into_iter().for_each(|(label, query)| {
+            if reference.is_valid(&query) {
+                // Forward
+                let result = self.align_query_unchecked_with_sequence_buffer(reference, &mut sequence_buffer, &query);
+                if result.0.len() != 0 {
+                    results.push(
+                        ReadReverseComplementAlignmentResult {
+                            read: label.clone(),
+                            is_forward: true,
+                            result: result,
+                        }
+                    )
+                };
+                // Reverse
+                let rc_query = reverse_complement_of_dna(&query);
+                let result = self.align_query_unchecked_with_sequence_buffer(reference, &mut sequence_buffer, &rc_query);
+                if result.0.len() != 0 {
+                    results.push(
+                        ReadReverseComplementAlignmentResult {
+                            read: label,
+                            is_forward: false,
+                            result: result,
+                        }
+                    )
+                };
+            }
+        });
+
+        FastaReverseComplementAlignmentResult(results)
     }
+    
 }

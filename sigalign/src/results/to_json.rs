@@ -40,13 +40,20 @@ macro_rules! impl_translate_between_json {
 }
 
 use super::{
-    fasta::{FastaAlignmentResult, ReadAlignmentResult},
+    fasta::{
+        FastaAlignmentResult,
+        ReadAlignmentResult,
+        FastaReverseComplementAlignmentResult,
+        ReadReverseComplementAlignmentResult,
+    },
     AlignmentResult,
     TargetAlignmentResult,
     AnchorAlignmentResult,
 };
 impl_translate_between_json!(FastaAlignmentResult);
 impl_translate_between_json!(ReadAlignmentResult);
+impl_translate_between_json!(FastaReverseComplementAlignmentResult);
+impl_translate_between_json!(ReadReverseComplementAlignmentResult);
 impl_translate_between_json!(AlignmentResult);
 impl_translate_between_json!(TargetAlignmentResult);
 impl_translate_between_json!(AnchorAlignmentResult);

@@ -2,7 +2,7 @@ use super::{
     SequenceStorage, SequenceBuffer,
     ConcatenatedSequenceWithBoundaries,
 };
-use crate::utils::{FastaReader, reverse_complement_of_nucleotide};
+use crate::utils::{FastaReader, reverse_complement_of_dna};
 
 // mod reverse_complement;
 // pub use reverse_complement::InMemoryRcStorage;
@@ -65,7 +65,7 @@ impl InMemoryStorage {
             label_index: vec![0],
         }
     }
-    pub fn add_record(
+    pub fn add_target(
         &mut self,
         sequence: &[u8],
         label: &str,
@@ -91,7 +91,7 @@ impl InMemoryStorage {
         R: std::io::Read,
     {
         fasta_reader.for_each(|(label, sequence)| {
-            self.add_record(&sequence, &label);
+            self.add_target(&sequence, &label);
         });
     }
     pub fn to_reverse_complement(&self) -> Self {
@@ -100,7 +100,7 @@ impl InMemoryStorage {
             let start_idx = self.sequence_index[idx];
             let end_idx = self.sequence_index[idx+1];
             let org_seq = &self.concatenated_sequence[start_idx..end_idx];
-            let mut rc_seq = reverse_complement_of_nucleotide(org_seq);
+            let mut rc_seq = reverse_complement_of_dna(org_seq);
             new_combined_sequence.append(&mut rc_seq);
         });
 
@@ -119,7 +119,7 @@ impl InMemoryStorage {
             let start_idx = self.sequence_index[idx];
             let end_idx = self.sequence_index[idx+1];
             let org_seq = &self.concatenated_sequence[start_idx..end_idx];
-            let mut rc_seq = reverse_complement_of_nucleotide(org_seq);
+            let mut rc_seq = reverse_complement_of_dna(org_seq);
             self.concatenated_sequence.append(&mut rc_seq);
         });
         // sequence_index

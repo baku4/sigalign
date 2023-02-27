@@ -5,8 +5,6 @@ authors = ["baku4 <bahkhun@gmail.com>"]
 edition = "2018"
 description = "Binary implementation"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 sigalign = { path = "../../sigalign", features = ["short_key"] }
 anyhow = "1.0.44"
@@ -19,6 +17,5 @@ default = []
 # Change the alignment method
 tsv = [] # Print TSV formatted output to stdout.
 thread = [] # Align multiple query files using worker thread. Output is TSV to stdout
-rc_qry = [] # Reverse complementary is handled at the query level. Output is TSV to stdout.
 # Change the reference type
 idx_fa = [] # Use indexed fasta as sequence storage.

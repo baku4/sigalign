@@ -7,7 +7,7 @@ use clap::{
 mod reference;
 use reference::{
     ReferenceApp,
-    Reference,
+    SigReferenceWrapper,
     ReferencePaths,
     InnerReference,
 };
@@ -26,8 +26,8 @@ impl Application {
             .arg_required_else_help(true)
             .propagate_version(true)
             .subcommand_required(true)
-            .subcommand(ReferenceApp::get_command().display_order(1))
-            .subcommand(AlignmentApp::get_command().display_order(2));
+            .subcommand(ReferenceApp::get_command().display_order(1));
+            // .subcommand(AlignmentApp::get_command().display_order(2));
         
         let matches = app.get_matches();
         
@@ -35,9 +35,9 @@ impl Application {
             Some(("reference", sub_matches)) => {
                 ReferenceApp::run(sub_matches)
             },
-            Some(("alignment", sub_matches)) => {
-                AlignmentApp::run(sub_matches)
-            },
+            // Some(("alignment", sub_matches)) => {
+            //     AlignmentApp::run(sub_matches)
+            // },
             _ => unreachable!(""),
         }
     }

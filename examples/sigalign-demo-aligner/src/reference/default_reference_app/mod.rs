@@ -14,7 +14,7 @@ use super::ReferencePaths;
 
 mod wrapper;
 pub use wrapper::{
-    Reference,
+    SigReferenceWrapper,
     InnerReference,
 };
 
@@ -46,7 +46,6 @@ impl ReferenceApp {
                 .required(true))
             .arg(arg!(-w --overwrite  "Overwrite output reference file").display_order(3))
             .arg(arg!(-r --reverse  "Use reverse complementary sequence (for nucleotide)").display_order(4))
-            .arg(arg!(-c --cpb  "Use higher compressed (128) Bwt block").display_order(5))
             .arg(arg!(-s --ssr <INT>  "Suffix array sampling ratio").display_order(6)
                 .value_parser(value_parser!(u64))
                 .required(false))
@@ -127,10 +126,9 @@ impl ReferenceConfig {
     }
     fn build_and_save_references(&self) -> Result<()> {
         let divided_sequence_storages = {
-            let sss = Reference::get_divided_sequence_storages(
+            let sss = SigReferenceWrapper::get_divided_sequence_storages(
                 &self.input_file_pathbuf,
                 self.divide_size,
-                self.use_rc,
             )?;
             eprintln!(" Storage is divided into {}.", sss.len());
             sss
@@ -143,9 +141,8 @@ impl ReferenceConfig {
 
         divided_sequence_storages.into_iter().enumerate().zip(reference_paths.0).for_each(|((idx, ss), file_path)| {
             eprint!(" Ref idx {}; ", idx);
-            Reference::build_and_save(
+            SigReferenceWrapper::build_and_save(
                 ss,
-                self.use_128_bwt,
                 self.kmer,
                 self.sa_sampling_ratio,
                 &file_path,

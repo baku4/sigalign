@@ -38,10 +38,10 @@ impl<R: Read> Iterator for FastaReader<R> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.reader.next() {
-            Some(Ok(record)) => {
+            Some(Ok(seq)) => {
                 Some((
-                    String::from_utf8(record.id_bytes().to_vec()).unwrap(),
-                    record.to_owned_record().seq,
+                    String::from_utf8(seq.id_bytes().to_vec()).unwrap(),
+                    seq.to_owned_record().seq,
                 ))
             },
             _ => {
