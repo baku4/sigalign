@@ -1,6 +1,5 @@
 // Test if result of current repository == result of stable version of SigAlign
 // Answer is created from the SigAlign of version in `crate`
-
 use std::fs;
 use std::path::PathBuf;
 use std::io::{Read, Write};
@@ -10,32 +9,35 @@ use crate::{
     init_logger,
     test_data_path::*,
 };
-use super::{
-    ReferenceBuilder,
-    Reference,
-    InMemoryRcStorage,
-    Aligner,
-    FastaAlignmentResult,
-    ReadAlignmentResult,
-    RecordAlignmentResult,
-    AlignmentResult,
-    AnchorAlignmentResult,
+
+use sigalign::{
+    wrapper::{
+        DefaultReference, DefaultAligner
+    },
+    results::{
+        fasta::{FastaAlignmentResult, ReadAlignmentResult},
+        AlignmentResult,
+        TargetAlignmentResult,    
+        AnchorAlignmentResult,
+    },
 };
 
-mod stable_answer;
 use log::{info, error};
+mod stable_answer;
+mod result_converter;
 use stable_answer::get_answer_or_generate;
+use result_converter::convert_result_of_stable_version_to_current;
 
 const ANSWER_ALIGNER_OPTION: (
-    usize,
-    usize,
-    usize,
-    usize,
+    u32,
+    u32,
+    u32,
+    u32,
     f32,
 ) = (
-    4, // Mismatch penalty
-    6, // Gap-open penalty
-    2, // Gap-extend penalty
+    4,   // Mismatch penalty
+    6,   // Gap-open penalty
+    2,   // Gap-extend penalty
     100, // Min. length
     0.1, // Max. penalty per length
 );
@@ -50,19 +52,17 @@ fn test_current_algorithms_are_collect() {
     let qry_file = get_qry_for_val_path();
 
     // Build reference
-    let mut in_mem_rc_storage = InMemoryRcStorage::new();
-    in_mem_rc_storage.add_fasta_file(&ref_file).unwrap();
-    let reference = ReferenceBuilder::new().build(in_mem_rc_storage).unwrap();
+    let reference = DefaultReference::from_fasta_file(&ref_file).unwrap();
 
     // Prepare Aligners
-    let mut semi_global_aligner = Aligner::new_semi_global(
+    let mut semi_global_aligner = DefaultAligner::new_semi_global(
         ANSWER_ALIGNER_OPTION.0,
         ANSWER_ALIGNER_OPTION.1,
         ANSWER_ALIGNER_OPTION.2,
         ANSWER_ALIGNER_OPTION.3,
         ANSWER_ALIGNER_OPTION.4,
     ).unwrap();
-    let mut local_aligner = Aligner::new_local(
+    let mut local_aligner = DefaultAligner::new_local(
         ANSWER_ALIGNER_OPTION.0,
         ANSWER_ALIGNER_OPTION.1,
         ANSWER_ALIGNER_OPTION.2,
@@ -74,13 +74,19 @@ fn test_current_algorithms_are_collect() {
 
     // Perform alignment
     let [semi_global_result_answer, local_result_answer] = get_answer_or_generate().unwrap();
+    let semi_global_result_answer = convert_result_of_stable_version_to_current(&semi_global_result_answer);
+    let local_result_answer = convert_result_of_stable_version_to_current(&local_result_answer);
     info!("Answers are loaded");
-    let semi_global_result_of_current = semi_global_aligner.fasta_file_alignment(&reference, &qry_file).unwrap();
+
+    let semi_global_result_of_current = semi_global_aligner.align_fasta_file(&reference, &qry_file).unwrap();
     info!("Alignment of semi-global mode is done");
+
     assert_eq_fasta_alignment_result(semi_global_result_of_current, semi_global_result_answer);
     info!("Comparison of semi-global mode is done");
-    let local_result_of_current = local_aligner.fasta_file_alignment(&reference, &qry_file).unwrap();
+
+    let local_result_of_current = local_aligner.align_fasta_file(&reference, &qry_file).unwrap();
     info!("Alignment of local mode is done");
+    
     assert_eq_fasta_alignment_result(local_result_of_current, local_result_answer);
     info!("Comparison of local mode is done");
 }
@@ -134,7 +140,7 @@ fn is_equal_alignment_result(
         })
     }
 }
-fn sort_record_alignment_results(vec: &Vec<RecordAlignmentResult>) -> Vec<RecordAlignmentResult> {
+fn sort_record_alignment_results(vec: &Vec<TargetAlignmentResult>) -> Vec<TargetAlignmentResult> {
     let mut sorted = vec.clone();
     sorted.sort_by_key(|v| v.index);
     sorted
@@ -180,9 +186,9 @@ fn cmp_anchor_alignment_result(a: &AnchorAlignmentResult, b: &AnchorAlignmentRes
             if let Ordering::Equal = order3 {
                 let order4 = a.position.query.1.cmp(&b.position.query.1);
                 if let Ordering::Equal = order4 {
-                    let order5 = a.position.record.0.cmp(&b.position.record.0);
+                    let order5 = a.position.target.0.cmp(&b.position.target.0);
                     if let Ordering::Equal = order5 {
-                        a.position.record.1.cmp(&b.position.record.1)
+                        a.position.target.1.cmp(&b.position.target.1)
                     } else {
                         order5
                     }

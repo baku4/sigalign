@@ -89,6 +89,18 @@ impl AlignmentRegulator {
             self.penalties.e * self.gcd_for_compression,
         ]
     }
+    /// Get mismatch penalty
+    pub fn get_mismatch_penalty(&self) -> u32 {
+        self.penalties.x * self.gcd_for_compression
+    }
+    /// Get gap-open penalty
+    pub fn get_gap_open_penalty(&self) -> u32 {
+        self.penalties.o * self.gcd_for_compression
+    }
+    /// Get gap-extend penalty
+    pub fn get_gap_extend_penalty(&self) -> u32 {
+        self.penalties.e * self.gcd_for_compression
+    }
     /// Get similarity cutoff
     pub fn get_similarity_cutoff(&self) -> (u32, f32) {
         (
@@ -96,12 +108,18 @@ impl AlignmentRegulator {
             (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PREC_SCALE as f32,
         )
     }
+    pub fn get_minimum_aligned_length(&self) -> u32 {
+        self.cutoff.minimum_aligned_length
+    }
+    pub fn get_maximum_penalty_per_length(&self) -> f32 {
+        (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PREC_SCALE as f32
+    }
     /// Get size of pattern
     pub fn get_pattern_size(&self) -> u32 {
         self.pattern_size
     }
 }
-pub fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> u32 {
+fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> u32 {
     let mut n = 1;
     loop { // TODO: Optimize
         let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();

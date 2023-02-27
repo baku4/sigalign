@@ -65,6 +65,7 @@ pub enum AlignmentOperation {
 }
 
 pub mod fasta;
+mod to_json;
 
 // pub use crate::core::{
 //     AlignmentResult,
@@ -98,5 +99,4 @@ pub mod fasta;
 // mod result_counts;
 
 // // Encoders
-// mod to_json;
 // mod to_labeled;

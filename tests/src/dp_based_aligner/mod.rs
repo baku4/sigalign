@@ -61,7 +61,7 @@ impl DpBasedAligner {
             gap_extend_penalty,
             minimum_aligned_length,
             maximum_penalty_per_scale,
-            pattern_size,
+            pattern_size: pattern_size as usize,
         }
     }
     pub fn semi_global_alignment(

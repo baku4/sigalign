@@ -3,9 +3,11 @@ use crate::aligner::{
     AllocationStrategy, LinearStrategy, DoublingStrategy,
 };
 
+#[derive(Clone)]
 pub struct DefaultAligner {
     inner: SelfDescAligner,
 }
+#[derive(Clone)]
 enum SelfDescAligner {
     Local(LocalAligner<LinearStrategy>),
     SemiGlobal(SemiGlobalAligner<LinearStrategy>),
@@ -36,3 +38,5 @@ impl DefaultAligner {
 
 mod alignment;
 pub use alignment::DefaultAlignmentError;
+
+mod debug;

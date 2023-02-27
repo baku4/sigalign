@@ -1,23 +1,5 @@
-use crate::{Result, error_msg};
-use crate::Deserialize;
-use super::{
-    AlignmentResult,
-};
-use super::{
-    FastaAlignmentResult,
-    ReadAlignmentResult,
-    FastaAlignmentLabeledResult,
-    ReadAlignmentLabeledResult,
-    AlignmentLabeledResult,
-    RecordAlignmentLabeledResult,
-};
-
-trait JsonValue {
-    fn json_value(&self) -> String;
-    fn json_value_short(&self) -> String;
-}
-
-use std::io::Write;
+use std::io::{Write, Error};
+use serde::Deserialize;
 use serde_json::{
     to_string,
     to_string_pretty,
@@ -26,132 +8,45 @@ use serde_json::{
     from_str,
 };
 
-impl FastaAlignmentResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-
-impl ReadAlignmentResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-impl AlignmentResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-impl FastaAlignmentLabeledResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-impl ReadAlignmentLabeledResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-impl AlignmentLabeledResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-impl RecordAlignmentLabeledResult {
-    pub fn to_json(&self) -> String {
-        to_string(self).unwrap()
-    }
-    pub fn to_json_pretty(&self) -> String {
-        to_string_pretty(self).unwrap()
-    }
-    pub fn write_as_json<W: Write>(&self, writer: W) {
-        to_writer(writer, self).unwrap()
-    }
-    pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
-        to_writer_pretty(writer, self).unwrap()
-    }
-    pub fn from_json(s: &str) -> Result<Self> {
-        translate_str_to_result(s)
-    }
-}
-
-fn translate_str_to_result<'a, T>(s: &'a str) -> Result<T> where
+fn translate_str_to_result<'a, T>(s: &'a str) -> Result<T, Error> where
     T: Deserialize<'a>
 {
     match from_str(s) {
         Ok(v) => Ok(v),
-        Err(e) => error_msg!("Str to result translation failed. {}", e),
+        Err(_) => Err(std::io::ErrorKind::InvalidData.into()),
     }
 }
+
+macro_rules! impl_translate_between_json {
+    ( $st: ident ) => {
+        impl $st {
+            pub fn to_json(&self) -> String {
+                to_string(self).unwrap()
+            }
+            pub fn to_json_pretty(&self) -> String {
+                to_string_pretty(self).unwrap()
+            }
+            pub fn write_as_json<W: Write>(&self, writer: W) {
+                to_writer(writer, self).unwrap()
+            }
+            pub fn write_as_json_pretty<W: Write>(&self, writer: W) {
+                to_writer_pretty(writer, self).unwrap()
+            }
+            pub fn from_json(s: &str) -> Result<Self, Error> {
+                translate_str_to_result(s)
+            }
+        }
+    };
+}
+
+use super::{
+    fasta::{FastaAlignmentResult, ReadAlignmentResult},
+    AlignmentResult,
+    TargetAlignmentResult,
+    AnchorAlignmentResult,
+};
+impl_translate_between_json!(FastaAlignmentResult);
+impl_translate_between_json!(ReadAlignmentResult);
+impl_translate_between_json!(AlignmentResult);
+impl_translate_between_json!(TargetAlignmentResult);
+impl_translate_between_json!(AnchorAlignmentResult);

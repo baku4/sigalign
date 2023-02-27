@@ -3,14 +3,14 @@ use crate::results::AlignmentResult;
 use super::{
     AlignerInterface,
     AlignmentRegulator, RegulatorError,
-    WaveFrontPool, DoubleWaveFrontPool, LinearStrategy, AllocationStrategy,
+    WaveFrontPool, DoubleWaveFrontPool, AllocationStrategy,
     local_alignment_algorithm,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct LocalAligner<A: AllocationStrategy> {
-    pub regulator: AlignmentRegulator,
-    pub wave_front_pool: DoubleWaveFrontPool<A>,
+    regulator: AlignmentRegulator,
+    internal_buffer: DoubleWaveFrontPool<A>,
 }
 
 impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
@@ -25,7 +25,7 @@ impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
         let wave_front_pool = DoubleWaveFrontPool::new(&regulator.penalties, &regulator.cutoff);
         Ok(Self {
             regulator,
-            wave_front_pool,
+            internal_buffer: wave_front_pool,
         })
     }
     fn alignment<R: ReferenceInterface>(
@@ -34,7 +34,7 @@ impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
         sequence_buffer: &mut R::Buffer,
         query: &[u8],
     ) -> AlignmentResult {
-        self.wave_front_pool.allocate_if_needed(
+        self.internal_buffer.allocate_if_needed(
             query.len() as u32,
             &self.regulator.penalties,
             &self.regulator.cutoff,
@@ -46,10 +46,29 @@ impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
             self.regulator.pattern_size,
             &self.regulator.penalties,
             &self.regulator.cutoff,
-            &mut self.wave_front_pool.wave_front_1,
-            &mut self.wave_front_pool.wave_front_2,
+            &mut self.internal_buffer.wave_front_1,
+            &mut self.internal_buffer.wave_front_2,
         );
 
         self.regulator.result_of_uncompressed_penalty(reference_alignment_result)
+    }
+
+    fn get_mismatch_penalty(&self) -> u32 {
+        self.regulator.get_mismatch_penalty()
+    }
+    fn get_gap_open_penalty(&self) -> u32 {
+        self.regulator.get_gap_open_penalty()
+    }
+    fn get_gap_extend_penalty(&self) -> u32 {
+        self.regulator.get_gap_extend_penalty()
+    }
+    fn get_minimum_aligned_length(&self) -> u32 {
+        self.regulator.get_minimum_aligned_length()
+    }
+    fn get_maximum_penalty_per_length(&self) -> f32 {
+        self.regulator.get_maximum_penalty_per_length()
+    }
+    fn get_pattern_size(&self) -> u32 {
+        self.regulator.get_pattern_size()
     }
 }

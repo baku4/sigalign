@@ -7,7 +7,7 @@ use super::{
     WaveFront, WaveFrontPool, AllocationStrategy,
     safe_max_penalty_from_len,
 };
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DoubleWaveFrontPool<A: AllocationStrategy> {
     pub allocated_query_len: u32,
     pub wave_front_1: WaveFront,
@@ -42,5 +42,15 @@ impl<A: AllocationStrategy> WaveFrontPool for DoubleWaveFrontPool<A> {
             self.wave_front_1 = wave_front_1;
             self.wave_front_1 = wave_front_2;
         }
+    }
+}
+
+impl<A: AllocationStrategy> std::fmt::Debug for DoubleWaveFrontPool<A> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DoubleWaveFrontPool")
+            .field("allocated_query_len", &self.allocated_query_len)
+            .field("allocation_strategy", &self.phantom)
+            .field("num_wave_front_pool", b"2")
+            .finish()
     }
 }

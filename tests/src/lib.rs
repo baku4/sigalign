@@ -1,11 +1,4 @@
-use sigalign::{
-    wrapper::{DefaultReference, DefaultAligner},
-};
-use sigalign::utils::*;
-use sigalign::results::*;
-
 use anyhow::{Result, bail as error_msg};
-use ahash::{AHashMap, AHashSet};
 
 // Test Data
 pub mod test_data_path;
@@ -19,7 +12,7 @@ use logger::init_logger;
 
 // Test Main
 // Validate result
-// mod validate_result; 
+mod validate_result;
 // Fasta reader can read various type of FASTA formatted file
 // mod read_fasta;
 // Test sequence storages

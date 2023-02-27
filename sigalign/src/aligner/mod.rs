@@ -51,11 +51,11 @@ use crate::results::AlignmentResult;
 mod algorithms;
 use algorithms::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
 
-mod wave_front_pool;
-use wave_front_pool::{
+mod internal_buffer;
+use internal_buffer::{
     WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
 };
-pub use wave_front_pool::{
+pub use internal_buffer::{
     AllocationStrategy, LinearStrategy, DoublingStrategy,
 };
 
@@ -83,7 +83,14 @@ pub trait AlignerInterface: Sized {
         sequence_buffer: &mut R::Buffer,
         query: &[u8],
     ) -> AlignmentResult;
+
+    fn get_mismatch_penalty(&self) -> u32;
+    fn get_gap_open_penalty(&self) -> u32;
+    fn get_gap_extend_penalty(&self) -> u32;
+    fn get_minimum_aligned_length(&self) -> u32;
+    fn get_maximum_penalty_per_length(&self) -> f32;
+    fn get_pattern_size(&self) -> u32;
 }
 
 // Features
-// mod feature;
+mod features;
