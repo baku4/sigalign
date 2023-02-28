@@ -14,11 +14,11 @@ use logger::init_logger;
 // Validate result
 mod validate_result;
 // Fasta reader can read various type of FASTA formatted file
-// mod read_fasta;
+mod read_fasta;
 // Test sequence storages
 // mod sequence_storage;
 // Save and load reference
-// mod reference_serialization;
+mod reference_serialization;
 // Compare result with "Dynamic Programming" method
 // mod same_result_with_dp;
 // #[cfg(test)]
