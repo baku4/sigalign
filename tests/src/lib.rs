@@ -20,6 +20,6 @@ mod read_fasta;
 // Save and load reference
 mod reference_serialization;
 // Compare result with "Dynamic Programming" method
-// mod same_result_with_dp;
+mod same_result_with_dp;
 // #[cfg(test)]
 // mod print_alignment_result_to_cmp;

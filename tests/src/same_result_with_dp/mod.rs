@@ -1,9 +1,20 @@
-use super::*;
-use crate::test_data_path::*;
+use crate::{
+    init_logger,
+    test_data_path::*,
+    dp_based_aligner::DpBasedAligner,
+};
+use log::{info, error, warn};
 use std::{path::PathBuf, ops::Range, io::{Read, Write}};
 use ahash::{AHashMap, AHashSet};
-
-type DefaultReference = Reference<InMemoryRcStorage>;
+use sigalign::{
+    wrapper::{DefaultReference, DefaultAligner},
+    utils::FastaReader,
+    results::{
+        AlignmentResult,
+        AnchorAlignmentResult,
+        TargetAlignmentResult,
+    },
+};
 
 #[test]
 fn print_debug_status_of_local_alignment_results() {
@@ -19,7 +30,7 @@ fn print_debug_status_of_local_alignment_results() {
     let qry_file = get_qry_for_val_path();
     
     // Caching alignments
-    let mut qry_reader = FastaReader::from_file_path(qry_file).unwrap();
+    let mut qry_reader = FastaReader::from_path(qry_file).unwrap();
 
     let qry_count = 200; // TODO: Use Total Qry
 
@@ -35,7 +46,7 @@ fn print_debug_status_of_local_alignment_results() {
             &local_tmp_dir,
         );
 
-        let sig_res = sig_aligner.query_alignment_unchecked(&reference, &query);
+        let sig_res = sig_aligner.align_query(&reference, &query).unwrap();
         info!("Result count: DP - {}, Sig - {}", dp_res.0.len(), sig_res.0.len());
 
         let (is_same, only_in_dp, only_in_sig) = compare_alignment_result(&dp_res, &sig_res);
@@ -109,22 +120,22 @@ impl DpBasedAligner {
     }
 }
 
-fn get_default_aligners(is_local: bool) -> (DpBasedAligner, Aligner) {
+fn get_default_aligners(is_local: bool) -> (DpBasedAligner, DefaultAligner) {
     let px = 4;
     let po = 6;
     let pe = 2;
     let mal = 50;
-    let mppl = 0.1;
+    let mppl = 0.2;
 
     let dp_based_aligner = DpBasedAligner::new(
-        px,
-        po,
-        pe,
-        mal,
+        px as usize,
+        po as usize,
+        pe as usize,
+        mal as usize,
         mppl,
     );
     let sig_aligner = if is_local {
-        Aligner::new_local(
+        DefaultAligner::new_local(
             px,
             po,
             pe,
@@ -132,7 +143,7 @@ fn get_default_aligners(is_local: bool) -> (DpBasedAligner, Aligner) {
             mppl,
         ).unwrap()
     } else {
-        Aligner::new_semi_global(
+        DefaultAligner::new_semi_global(
             px,
             po,
             pe,
@@ -146,24 +157,15 @@ fn get_default_aligners(is_local: bool) -> (DpBasedAligner, Aligner) {
 fn get_default_reference() -> DefaultReference {
     let ref_file = get_ref_for_val_path();
 
-    let mut sequence_storage = InMemoryRcStorage::new();
-    sequence_storage.add_fasta_file(ref_file).unwrap();
-
-    let reference = ReferenceBuilder::new()
-        .change_bwt_block_size_to_128()
-        .change_count_array_kmer(4).unwrap()
-        .change_sampling_ratio(2).unwrap()
-        .build(sequence_storage).unwrap();
-
-    reference
+    DefaultReference::from_fasta_file(ref_file).unwrap()
 }
 
-type RecordAlignmentMap = AHashMap<usize, AHashSet<AnchorAlignmentResult>>;
-fn compare_alignment_result(a: &AlignmentResult, b: &AlignmentResult) -> (bool, RecordAlignmentMap, RecordAlignmentMap) {
+type TargetAlignmentMap = AHashMap<u32, AHashSet<AnchorAlignmentResult>>;
+fn compare_alignment_result(a: &AlignmentResult, b: &AlignmentResult) -> (bool, TargetAlignmentMap, TargetAlignmentMap) {
     // To hash map
-    let to_map = |ar: &AlignmentResult| -> RecordAlignmentMap {
-        ar.0.iter().map(|record_alignment_result| {
-            (record_alignment_result.index, record_alignment_result.alignments.clone().into_iter().collect())
+    let to_map = |ar: &AlignmentResult| -> TargetAlignmentMap {
+        ar.0.iter().map(|target_alignment_result| {
+            (target_alignment_result.index, target_alignment_result.alignments.clone().into_iter().collect())
         }).collect()
     };
     let mut a_map = to_map(a);
@@ -172,8 +174,8 @@ fn compare_alignment_result(a: &AlignmentResult, b: &AlignmentResult) -> (bool, 
     // Compare record_alignment_result
     let mut is_same = true;
 
-    let a_map_keys: AHashSet<usize> = a_map.keys().map(|v| *v).collect();
-    let b_map_keys: AHashSet<usize> = b_map.keys().map(|v| *v).collect();
+    let a_map_keys: AHashSet<u32> = a_map.keys().map(|v| *v).collect();
+    let b_map_keys: AHashSet<u32> = b_map.keys().map(|v| *v).collect();
 
     let common_rec_indices = a_map_keys.intersection(&b_map_keys);
     for &common_rec_index in common_rec_indices {
