@@ -15,6 +15,8 @@ use logger::init_logger;
 mod validate_result;
 // Fasta reader can read various type of FASTA formatted file
 mod read_fasta;
+// Pattern Index
+mod pattern_index;
 // Test sequence storages
 // mod sequence_storage;
 // Save and load reference
