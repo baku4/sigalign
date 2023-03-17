@@ -22,6 +22,7 @@ use sigalign::{
     reference::{ReferenceInterface},
     wrapper::{DefaultAligner},
     results::{
+        AlignmentResult,
         TargetAlignmentResult,
         AnchorAlignmentResult,
         AlignmentOperations,
@@ -203,44 +204,19 @@ impl AlignmentConfig {
                 // (1) Original Query
                 {
                     let result = aligner.align_query_unchecked_with_sequence_buffer(&reference, &mut sequence_buffer, &query);
-                    result.0.into_iter().for_each(|TargetAlignmentResult {
-                        index: record_index,
-                        alignments: anchor_results,
-                    }| {
-                        anchor_results.into_iter().for_each(|anchor_result| {
-                            let line = format!(
-                                "{}\tF\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-                                label, ref_idx, record_index, anchor_result.penalty, anchor_result.length,
-                                anchor_result.position.query.0, anchor_result.position.query.1,
-                                anchor_result.position.target.0, anchor_result.position.target.1,
-                                operations_to_string(&anchor_result.operations)
-                            );
-            
-                            stdout.write(line.as_bytes()).unwrap();
-                        });
-                    });
+                    let lines = alignment_result_to_tsv::<ForwardDirection>(
+                        result, ref_idx, &label
+                    );
+                    stdout.write(&lines).unwrap();
                 }
                 // (2) Reverse complementary Query
                 {
                     let rev_com_query = reverse_complement_of_dna(&query);
                     let result = aligner.align_query_unchecked_with_sequence_buffer(&reference, &mut sequence_buffer, &rev_com_query);
-    
-                    result.0.into_iter().for_each(|TargetAlignmentResult {
-                        index: record_index,
-                        alignments: anchor_results,
-                    }| {
-                        anchor_results.into_iter().for_each(|anchor_result| {
-                            let line = format!(
-                                "{}\tR\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-                                label, ref_idx, record_index, anchor_result.penalty, anchor_result.length,
-                                anchor_result.position.query.0, anchor_result.position.query.1,
-                                anchor_result.position.target.0, anchor_result.position.target.1,
-                                operations_to_string(&anchor_result.operations)
-                            );
-            
-                            stdout.write(line.as_bytes()).unwrap();
-                        });
-                    });
+                    let lines = alignment_result_to_tsv::<ReverseDirection>(
+                        result, ref_idx, &label
+                    );
+                    stdout.write(&lines).unwrap();
                 }
             });
             eprintln!("   - Alignment {} s", start.elapsed().as_secs_f64());
@@ -250,6 +226,36 @@ impl AlignmentConfig {
     }
 }
 
+trait Direction {
+    const TAG : u8;
+}
+struct ForwardDirection;
+impl Direction for ForwardDirection { const TAG : u8 = b'F'; }
+struct ReverseDirection;
+impl Direction for ReverseDirection { const TAG : u8 = b'R'; }
+
+#[inline]
+fn alignment_result_to_tsv<D: Direction>(
+    result: AlignmentResult,
+    ref_idx: usize,
+    label: &str,
+) -> Vec<u8> {
+    result.0.into_iter().map(|TargetAlignmentResult {
+        index: record_index,
+        alignments: anchor_results,
+    }| {
+        anchor_results.into_iter().map(|anchor_result| {
+            format!(
+                "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                label, D::TAG, ref_idx, record_index, anchor_result.penalty, anchor_result.length,
+                anchor_result.position.query.0, anchor_result.position.query.1,
+                anchor_result.position.target.0, anchor_result.position.target.1,
+                operations_to_string(&anchor_result.operations)
+            ).into_bytes()
+        }).flatten().collect::<Vec<u8>>()
+    }).flatten().collect::<Vec<u8>>()
+}
+#[inline]
 fn operations_to_string(operations: &Vec<AlignmentOperations>) -> String {
     let string_ops: Vec<String> = operations.iter().map(|op| {
         format!(

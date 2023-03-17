@@ -13,7 +13,6 @@ mod default_alignment_app;
 )))]
 pub use default_alignment_app::AlignmentApp;
 
-
 #[cfg(feature = "tsv")]
 mod tsv_alignment_app;
 #[cfg(feature = "tsv")]
