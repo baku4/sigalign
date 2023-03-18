@@ -19,11 +19,24 @@ use crate::{
     }
 };
 use sigalign::{
-    wrapper::DefaultAligner as SigAligner,
+    aligner::{
+        AlignerInterface,
+        LocalAligner, LinearStrategy,
+    },
     results::{
-        fasta::{FastaAlignmentResult, FastaReverseComplementAlignmentResult},
+        fasta::{
+            FastaAlignmentResult,
+            FastaReverseComplementAlignmentResult,
+            ReadAlignmentResult,
+            ReadReverseComplementAlignmentResult,
+        },
+    }, reference::ReferenceInterface,
+    utils::{
+        FastaReader,
+        reverse_complement_of_dna,
     },
 };
+type SigAligner = LocalAligner<LinearStrategy>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -38,8 +51,6 @@ pub struct AlignmentConfig {
     pe: u32,
     min_len: u32,
     max_ppl: f32,
-    // Algorithm
-    use_local_alg: bool,
 }
 
 impl AlignmentApp {
@@ -47,19 +58,13 @@ impl AlignmentApp {
         Command::new("alignment")
             .about("Alignment with FASTA file")
             .arg_required_else_help(true)
-            .arg(arg!(-s --semiglobal "Use semi-global algorithm").display_order(1))
-            .arg(arg!(-l --local "Use local algorithm").display_order(2))
-            .group(ArgGroup::new("algorithm")
-                .required(true)
-                .multiple(false)
-                .args(["semiglobal", "local"]))
-            .arg(arg!(-i --input <FILE> "Input query FASTA path").display_order(3)
+            .arg(arg!(-i --input <FILE> "Input query FASTA path").display_order(1)
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
-            .arg(arg!(-r --reference <FILE> "SigAlign reference file").display_order(4)
+            .arg(arg!(-r --reference <FILE> "SigAlign reference file").display_order(2)
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
-            .arg(arg!(-o --output <FILE> "Output json path without extension. Output will be saved to {output}.{ref_num}.json").display_order(5)
+            .arg(arg!(-o --output <FILE> "Output json path without extension. Output will be saved to {output}.{ref_num}.json").display_order(3)
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
             .arg(Arg::new("penalties").short('p').long("penalties")
@@ -67,13 +72,13 @@ impl AlignmentApp {
                 .num_args(3)
                 .help("Mismatch, Gap-open and Gap-extend penalties")
                 .required(true)
-                .display_order(6))
+                .display_order(5))
             .arg(Arg::new("cutoffs").short('c').long("cutoffs")
                 .value_names(["INT", "FLOAT"])
                 .num_args(2)
                 .help("Minimum aligned length and maximum penalty per length")
                 .required(true)
-                .display_order(7))
+                .display_order(5))
     }
     pub fn run(matches: &ArgMatches) {
         let total_start = Instant::now();
@@ -139,15 +144,6 @@ impl AlignmentConfig {
 
             (min_len, max_ppl)
         };
-        
-        // (3) Algorithm
-        let use_local_alg = if matches.get_flag("semiglobal") {
-            false
-        } else if matches.get_flag("local") {
-            true
-        } else {
-            error_msg!("Unknown algorithm")
-        };
 
         Ok(
             Self {
@@ -159,28 +155,17 @@ impl AlignmentConfig {
                 pe,
                 min_len,
                 max_ppl,
-                use_local_alg,
             }
         )
     }
     fn make_aligner(&self) -> SigAligner {
-        if self.use_local_alg {
-            SigAligner::new_local(
-                self.px,
-                self.po,
-                self.pe,
-                self.min_len,
-                self.max_ppl,
-            )
-        } else {
-            SigAligner::new_semi_global(
-                self.px,
-                self.po,
-                self.pe,
-                self.min_len,
-                self.max_ppl,
-            )
-        }.unwrap()
+        SigAligner::new(
+            self.px,
+            self.po,
+            self.pe,
+            self.min_len,
+            self.max_ppl,
+        ).unwrap()
     }
     fn perform_alignment(&self, mut aligner: SigAligner) {
         self.input_reference_paths.0.iter().enumerate().for_each(|(ref_idx, ref_file_path)| {
@@ -201,10 +186,7 @@ impl AlignmentConfig {
             // Get result
             let result = {
                 let start = Instant::now();
-                let result = aligner.align_fasta_file_with_rc_dna(
-                    &reference.inner,
-                    &self.input_fasta_pathbuf,
-                ).unwrap();
+                let result = align_fasta_file_with_rc_dna(&mut aligner, &reference, &self.input_fasta_pathbuf);
                 eprintln!("   - Alignment {} s", start.elapsed().as_secs_f64());
                 result
             };
@@ -218,4 +200,41 @@ impl AlignmentConfig {
             }
         });
     }
+}
+
+#[inline]
+fn align_fasta_file_with_rc_dna(
+    aligner: &mut SigAligner,
+    reference: &SigReferenceWrapper,
+    input_fasta: &PathBuf,
+) -> FastaReverseComplementAlignmentResult {
+    let mut sequence_buffer = reference.as_ref().get_buffer();
+    let fasta_reader = FastaReader::from_path(input_fasta).unwrap();
+    let mut results = Vec::new();
+    fasta_reader.for_each(|(label, query)| {
+        let result = aligner.alignment(
+            &reference.inner,
+            &mut sequence_buffer,
+            &query,
+        );
+        results.push(ReadReverseComplementAlignmentResult {
+            read: label.clone(),
+            is_forward: true,
+            result,
+        });
+
+        let rev_query = reverse_complement_of_dna(&query);
+        let result = aligner.alignment(
+            &reference.inner,
+            &mut sequence_buffer,
+            &rev_query,
+        );
+        results.push(ReadReverseComplementAlignmentResult {
+            read: label.clone(),
+            is_forward: false,
+            result,
+        });
+    });
+    
+    FastaReverseComplementAlignmentResult(results)
 }

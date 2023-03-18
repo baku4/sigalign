@@ -29,8 +29,14 @@ use sigalign::{
         AlignmentOperations,
         AlignmentOperation,
     },
+    aligner::{
+        AlignerInterface,
+        LocalAligner,
+        LinearStrategy,
+    },
     utils::{FastaReader, reverse_complement_of_dna},
 };
+type SigAligner = LocalAligner<LinearStrategy>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -44,8 +50,6 @@ pub struct AlignmentConfig {
     pe: u32,
     min_len: u32,
     max_ppl: f32,
-    // Algorithm
-    use_local_alg: bool,
     // Thread pool
     thread: usize,
 }
@@ -55,22 +59,16 @@ impl AlignmentApp {
         Command::new("alignment")
             .about("Alignment with FASTA file (use thread pool for multiple query files)")
             .arg_required_else_help(true)
-            .arg(arg!(-s --semiglobal "Use semi-global algorithm").display_order(1))
-            .arg(arg!(-l --local "Use local algorithm").display_order(2))
-            .group(ArgGroup::new("algorithm")
-                .required(true)
-                .multiple(false)
-                .args(["semiglobal", "local"]))
-            .arg(arg!(-i --input "Input query FASTA path").display_order(3)
+            .arg(arg!(-i --input "Input query FASTA path").display_order(1)
                 .value_names(["FILE"])
                 .action(ArgAction::Set)
                 .value_parser(value_parser!(PathBuf))
                 .num_args(1..)
                 .required(true))
-            .arg(arg!(-r --reference <FILE> "SigAlign reference file").display_order(4)
+            .arg(arg!(-r --reference <FILE> "SigAlign reference file").display_order(2)
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
-            .arg(arg!(-t --thread <INT> "The number of thread").display_order(5)
+            .arg(arg!(-t --thread <INT> "The number of thread").display_order(3)
                 .value_parser(value_parser!(usize))
                 .required(false))
             .arg(Arg::new("penalties").short('p').long("penalties")
@@ -78,13 +76,13 @@ impl AlignmentApp {
                 .num_args(3)
                 .help("Mismatch, Gap-open and Gap-extend penalties")
                 .required(true)
-                .display_order(6))
+                .display_order(4))
             .arg(Arg::new("cutoffs").short('c').long("cutoffs")
                 .value_names(["INT", "FLOAT"])
                 .num_args(2)
                 .help("Minimum aligned length and maximum penalty per length")
                 .required(true)
-                .display_order(7))
+                .display_order(5))
     }
     pub fn run(matches: &ArgMatches) {
         let total_start = Instant::now();
@@ -150,15 +148,6 @@ impl AlignmentConfig {
             (min_len, max_ppl)
         };
         
-        // (3) Algorithm
-        let use_local_alg = if matches.get_flag("semiglobal") {
-            false
-        } else if matches.get_flag("local") {
-            true
-        } else {
-            error_msg!("Unknown algorithm")
-        };
-
         // (4) Thread
         let thread = match matches.get_one::<usize>("thread") {
             Some(v) => *v,
@@ -174,35 +163,24 @@ impl AlignmentConfig {
                 pe,
                 min_len,
                 max_ppl,
-                use_local_alg,
                 thread,
             }
         )
     }
-    fn make_aligner(&self) -> DefaultAligner {
-        if self.use_local_alg {
-            DefaultAligner::new_local(
-                self.px,
-                self.po,
-                self.pe,
-                self.min_len,
-                self.max_ppl,
-            )
-        } else {
-            DefaultAligner::new_semi_global(
-                self.px,
-                self.po,
-                self.pe,
-                self.min_len,
-                self.max_ppl,
-            )
-        }.unwrap()
+    fn make_aligner(&self) -> SigAligner {
+        SigAligner::new(
+            self.px,
+            self.po,
+            self.pe,
+            self.min_len,
+            self.max_ppl,
+        ).unwrap()
     }
     // TSV line format:
     // | query label | reference index | record index | penalty | length |
     //  query start position | query end position | record start position | record end position |
     //  string operations |
-    fn perform_alignment(&self, aligner: DefaultAligner) {
+    fn perform_alignment(&self, aligner: SigAligner) {
         let pool_num = self.thread;
         let mut pool = ThreadPool::new(pool_num, aligner, &self.input_fasta_pathbuf_list);
 
@@ -233,7 +211,7 @@ struct ThreadPool<'a> {
 }
 
 impl<'a> ThreadPool<'a> {
-    fn new(size: usize, aligner: DefaultAligner, input_fasta_pathbuf_list: &'a Vec<PathBuf>) -> Self {
+    fn new(size: usize, aligner: SigAligner, input_fasta_pathbuf_list: &'a Vec<PathBuf>) -> Self {
         let mut workers = Vec::with_capacity(size);
 
         let (job_sender, job_receiver) = mpsc::channel();
@@ -305,12 +283,12 @@ struct Worker {
 impl Worker {
     fn new(
         id: usize,
-        mut aligner: DefaultAligner,
+        mut aligner: SigAligner,
         job_receiver: Arc<Mutex<mpsc::Receiver<Job>>>,
         res_sender: mpsc::Sender<JobCompleteSign>,
     ) -> Worker {
         let thread = thread::spawn(move || {
-            let mut stdout = std::io::stdout();
+            let stdout = std::io::stdout();
 
             loop {
                 let msg = job_receiver.lock().unwrap().recv();
@@ -327,7 +305,7 @@ impl Worker {
                 fasta_reader.for_each(|(label, query)| {
                     // (1) Original Query
                     {
-                        let result = aligner.align_query_unchecked_with_sequence_buffer(reference.as_ref(), &mut sequence_buffer, &query);
+                        let result = aligner.alignment(reference.as_ref(), &mut sequence_buffer, &query);
                         result.0.into_iter().for_each(|TargetAlignmentResult {
                             index: record_index,
                             alignments: anchor_results,
@@ -341,14 +319,14 @@ impl Worker {
                                     operations_to_string(&anchor_result.operations)
                                 );
                 
-                                stdout.write(line.as_bytes()).unwrap();
+                                let _ = stdout.lock().write(line.as_bytes()).unwrap();
                             });
                         });
                     }
                     // (2) Reverse complementary Query
                     {
                         let rev_com_query = reverse_complement_of_dna(&query);
-                        let result = aligner.align_query_unchecked_with_sequence_buffer(reference.as_ref(), &mut sequence_buffer, &rev_com_query);
+                        let result = aligner.alignment(reference.as_ref(), &mut sequence_buffer, &rev_com_query);
         
                         result.0.into_iter().for_each(|TargetAlignmentResult {
                             index: record_index,
@@ -363,7 +341,7 @@ impl Worker {
                                     operations_to_string(&anchor_result.operations)
                                 );
                 
-                                stdout.write(line.as_bytes()).unwrap();
+                                let _ = stdout.lock().write(line.as_bytes()).unwrap();
                             });
                         });
                     }
@@ -378,8 +356,9 @@ impl Worker {
     }
 }
 
+#[inline]
 fn operations_to_string(operations: &Vec<AlignmentOperations>) -> String {
-    let string_ops: Vec<String> = operations.iter().map(|op| {
+    let vec = operations.iter().map(|op| {
         format!(
             "{}{}",
             match op.operation {
@@ -389,7 +368,7 @@ fn operations_to_string(operations: &Vec<AlignmentOperations>) -> String {
                 AlignmentOperation::Deletion => 'D',
             },
             op.count,
-        )
-    }).collect();
-    string_ops.concat()
+        ).into_bytes()
+    }).flatten().collect();
+    unsafe { String::from_utf8_unchecked(vec) }
 }

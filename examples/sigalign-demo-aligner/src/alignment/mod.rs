@@ -1,22 +1,22 @@
 use super::{Result, error_msg};
 
 #[cfg(not(any(
-    feature = "tsv",
+    feature = "json",
     feature = "thread",
     feature = "non_rc",
 )))]
-mod default_alignment_app;
-#[cfg(not(any(
-    feature = "tsv",
-    feature = "thread",
-    feature = "non_rc",
-)))]
-pub use default_alignment_app::AlignmentApp;
-
-#[cfg(feature = "tsv")]
 mod tsv_alignment_app;
-#[cfg(feature = "tsv")]
+#[cfg(not(any(
+    feature = "json",
+    feature = "thread",
+    feature = "non_rc",
+)))]
 pub use tsv_alignment_app::AlignmentApp;
+
+#[cfg(feature = "json")]
+mod json_alignment_app;
+#[cfg(feature = "json")]
+pub use json_alignment_app::AlignmentApp;
 
 #[cfg(feature = "thread")]
 mod pool_alignment_app;

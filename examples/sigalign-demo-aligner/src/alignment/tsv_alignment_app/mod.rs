@@ -20,7 +20,11 @@ use crate::{
 };
 use sigalign::{
     reference::{ReferenceInterface},
-    wrapper::{DefaultAligner},
+    aligner::{
+        AlignerInterface,
+        LocalAligner,
+        LinearStrategy,
+    },
     results::{
         AlignmentResult,
         TargetAlignmentResult,
@@ -30,6 +34,7 @@ use sigalign::{
     },
     utils::{FastaReader, reverse_complement_of_dna},
 };
+type SigAligner = LocalAligner<LinearStrategy>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -43,8 +48,6 @@ pub struct AlignmentConfig {
     pe: u32,
     min_len: u32,
     max_ppl: f32,
-    // Algorithm
-    use_local_alg: bool,
 }
 
 impl AlignmentApp {
@@ -52,16 +55,10 @@ impl AlignmentApp {
         Command::new("alignment")
             .about("Alignment with FASTA file (print the result as TSV to stdout)")
             .arg_required_else_help(true)
-            .arg(arg!(-s --semiglobal "Use semi-global algorithm").display_order(1))
-            .arg(arg!(-l --local "Use local algorithm").display_order(2))
-            .group(ArgGroup::new("algorithm")
-                .required(true)
-                .multiple(false)
-                .args(["semiglobal", "local"]))
-            .arg(arg!(-i --input <FILE> "Input query FASTA path").display_order(3)
+            .arg(arg!(-i --input <FILE> "Input query FASTA path").display_order(1)
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
-            .arg(arg!(-r --reference <FILE> "SigAlign reference file").display_order(4)
+            .arg(arg!(-r --reference <FILE> "SigAlign reference file").display_order(2)
                 .value_parser(value_parser!(PathBuf))
                 .required(true))
             .arg(Arg::new("penalties").short('p').long("penalties")
@@ -69,13 +66,13 @@ impl AlignmentApp {
                 .num_args(3)
                 .help("Mismatch, Gap-open and Gap-extend penalties")
                 .required(true)
-                .display_order(6))
+                .display_order(3))
             .arg(Arg::new("cutoffs").short('c').long("cutoffs")
                 .value_names(["INT", "FLOAT"])
                 .num_args(2)
                 .help("Minimum aligned length and maximum penalty per length")
                 .required(true)
-                .display_order(7))
+                .display_order(4))
     }
     pub fn run(matches: &ArgMatches) {
         let total_start = Instant::now();
@@ -139,15 +136,6 @@ impl AlignmentConfig {
             (min_len, max_ppl)
         };
         
-        // (3) Algorithm
-        let use_local_alg = if matches.get_flag("semiglobal") {
-            false
-        } else if matches.get_flag("local") {
-            true
-        } else {
-            error_msg!("Unknown algorithm")
-        };
-
         Ok(
             Self {
                 input_fasta_pathbuf,
@@ -157,34 +145,22 @@ impl AlignmentConfig {
                 pe,
                 min_len,
                 max_ppl,
-                use_local_alg,
             }
         )
     }
-    fn make_aligner(&self) -> DefaultAligner {
-        if self.use_local_alg {
-            DefaultAligner::new_local(
-                self.px,
-                self.po,
-                self.pe,
-                self.min_len,
-                self.max_ppl,
-            )
-        } else {
-            DefaultAligner::new_semi_global(
-                self.px,
-                self.po,
-                self.pe,
-                self.min_len,
-                self.max_ppl,
-            )
-        }.unwrap()
+    fn make_aligner(&self) -> SigAligner {
+        SigAligner::new(self.px,
+            self.po,
+            self.pe,
+            self.min_len,
+            self.max_ppl,
+        ).unwrap()
     }
     // TSV line format:
     // | query label | reference index | record index | penalty | length |
     //  query start position | query end position | record start position | record end position |
     //  string operations |
-    fn perform_alignment(&self, mut aligner: DefaultAligner) {
+    fn perform_alignment(&self, mut aligner: SigAligner) {
         let stdout = std::io::stdout();
         let lock = stdout.lock();
         let mut buf_writer = std::io::BufWriter::with_capacity(
@@ -209,7 +185,7 @@ impl AlignmentConfig {
             fasta_reader.for_each(|(label, query)| {
                 // (1) Original Query
                 {
-                    let result = aligner.align_query_unchecked_with_sequence_buffer(&reference, &mut sequence_buffer, &query);
+                    let result = aligner.alignment(&reference, &mut sequence_buffer, &query);
                     write_alignment_result_as_tsv::<ForwardDirection>(
                         result,
                         &mut buf_writer,
@@ -221,7 +197,7 @@ impl AlignmentConfig {
                 // (2) Reverse complementary Query
                 {
                     let rev_com_query = reverse_complement_of_dna(&query);
-                    let result = aligner.align_query_unchecked_with_sequence_buffer(&reference, &mut sequence_buffer, &rev_com_query);
+                    let result = aligner.alignment(&reference, &mut sequence_buffer, &rev_com_query);
                     write_alignment_result_as_tsv::<ReverseDirection>(
                         result,
                         &mut buf_writer,
