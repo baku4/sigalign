@@ -2,7 +2,7 @@ use super::{Result, error_msg};
 use std::{
     path::PathBuf,
     time::Instant, fs::File,
-    io::Write,
+    io::{Write, BufWriter, StdoutLock},
 };
 use clap::{
     builder::{Command, Arg},
@@ -185,7 +185,13 @@ impl AlignmentConfig {
     //  query start position | query end position | record start position | record end position |
     //  string operations |
     fn perform_alignment(&self, mut aligner: DefaultAligner) {
-        let mut stdout = std::io::stdout();
+        let stdout = std::io::stdout();
+        let lock = stdout.lock();
+        let mut buf_writer = std::io::BufWriter::with_capacity(
+            32 * 1024,
+            lock,
+        );
+        let mut itoa_buffer = itoa::Buffer::new();
 
         self.input_reference_paths.0.iter().enumerate().for_each(|(ref_idx, ref_file_path)| {
             eprintln!("  Reference {}", ref_idx);
@@ -204,25 +210,29 @@ impl AlignmentConfig {
                 // (1) Original Query
                 {
                     let result = aligner.align_query_unchecked_with_sequence_buffer(&reference, &mut sequence_buffer, &query);
-                    let lines = alignment_result_to_tsv::<ForwardDirection>(
-                        result, ref_idx, &label
+                    write_alignment_result_as_tsv::<ForwardDirection>(
+                        result,
+                        &mut buf_writer,
+                        &mut itoa_buffer,
+                        &ref_idx,
+                        label.as_bytes(),
                     );
-                    stdout.write(&lines).unwrap();
                 }
                 // (2) Reverse complementary Query
                 {
                     let rev_com_query = reverse_complement_of_dna(&query);
                     let result = aligner.align_query_unchecked_with_sequence_buffer(&reference, &mut sequence_buffer, &rev_com_query);
-                    let lines = alignment_result_to_tsv::<ReverseDirection>(
-                        result, ref_idx, &label
+                    write_alignment_result_as_tsv::<ReverseDirection>(
+                        result,
+                        &mut buf_writer,
+                        &mut itoa_buffer,
+                        &ref_idx,
+                        label.as_bytes(),
                     );
-                    stdout.write(&lines).unwrap();
                 }
             });
             eprintln!("   - Alignment {} s", start.elapsed().as_secs_f64());
         });
-
-        stdout.flush().unwrap();
     }
 }
 
@@ -234,40 +244,54 @@ impl Direction for ForwardDirection { const TAG : u8 = b'F'; }
 struct ReverseDirection;
 impl Direction for ReverseDirection { const TAG : u8 = b'R'; }
 
-#[inline]
-fn alignment_result_to_tsv<D: Direction>(
+#[inline(always)]
+fn write_alignment_result_as_tsv<D: Direction>(
     result: AlignmentResult,
-    ref_idx: usize,
-    label: &str,
-) -> Vec<u8> {
-    result.0.into_iter().map(|TargetAlignmentResult {
-        index: record_index,
+    buf_writer: &mut BufWriter<StdoutLock>,
+    itoa_buffer: &mut itoa::Buffer,
+    ref_idx: &usize,
+    label: &[u8],
+) {
+    result.0.into_iter().for_each(|TargetAlignmentResult {
+        index: target_index,
         alignments: anchor_results,
     }| {
-        anchor_results.into_iter().map(|anchor_result| {
-            format!(
-                "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-                label, D::TAG, ref_idx, record_index, anchor_result.penalty, anchor_result.length,
-                anchor_result.position.query.0, anchor_result.position.query.1,
-                anchor_result.position.target.0, anchor_result.position.target.1,
-                operations_to_string(&anchor_result.operations)
-            ).into_bytes()
-        }).flatten().collect::<Vec<u8>>()
-    }).flatten().collect::<Vec<u8>>()
-}
-#[inline]
-fn operations_to_string(operations: &Vec<AlignmentOperations>) -> String {
-    let string_ops: Vec<String> = operations.iter().map(|op| {
-        format!(
-            "{}{}",
-            match op.operation {
-                AlignmentOperation::Match => 'M',
-                AlignmentOperation::Subst => 'S',
-                AlignmentOperation::Insertion => 'I',
-                AlignmentOperation::Deletion => 'D',
-            },
-            op.count,
-        )
-    }).collect();
-    string_ops.concat()
+        anchor_results.into_iter().for_each(|anchor_result| {
+            let _ = buf_writer.write(label).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(D::TAG).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(*ref_idx).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(target_index).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(anchor_result.penalty).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(anchor_result.length).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(anchor_result.position.query.0).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(anchor_result.position.query.1).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(anchor_result.position.target.0).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(anchor_result.position.target.1).as_bytes()).unwrap();
+            let _ = buf_writer.write(b"\t").unwrap();
+            anchor_result.operations.iter().for_each(|AlignmentOperations {
+                operation,
+                count,
+            }| {
+                let _ = buf_writer.write(
+                    match operation {
+                        AlignmentOperation::Match => b"M",
+                        AlignmentOperation::Subst => b"S",
+                        AlignmentOperation::Insertion => b"I",
+                        AlignmentOperation::Deletion => b"D",
+                    }
+                ).unwrap();
+                let _ = buf_writer.write(itoa_buffer.format(*count).as_bytes()).unwrap();
+            });
+            let _ = buf_writer.write(b"\n").unwrap();
+        });
+    });
 }
