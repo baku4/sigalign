@@ -28,6 +28,13 @@ mod result_converter;
 use stable_answer::get_answer_or_generate;
 use result_converter::convert_result_of_stable_version_to_current;
 
+// For bench
+pub fn get_sample_result_of_val_test() -> FastaAlignmentResult {
+    let [sample_result_of_stable, _] = get_answer_or_generate().unwrap();
+    let sample_result = convert_result_of_stable_version_to_current(&sample_result_of_stable);
+    sample_result
+}
+
 const ANSWER_ALIGNER_OPTION: (
     u32,
     u32,

@@ -18,6 +18,12 @@ faimm = "0.3.0"
 env_logger = "0.9.1"
 
 [dev-dependencies]
+criterion = { version = "0.4", features = ["html_reports"] }
+itoa = "1.0.6"
+
+[[bench]]
+name = "benchmark"
+harness = false
 
 [features]
 print = []

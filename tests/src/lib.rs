@@ -13,6 +13,7 @@ use logger::init_logger;
 // Test Main
 // Validate result
 mod validate_result;
+pub use validate_result::get_sample_result_of_val_test;
 // Fasta reader can read various type of FASTA formatted file
 mod read_fasta;
 // Pattern Index
