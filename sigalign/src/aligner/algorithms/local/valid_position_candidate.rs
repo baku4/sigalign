@@ -4,7 +4,7 @@ use super::{WaveFront, WaveFrontScore, BackTraceMarker};
 // Validate Position Candidate
 #[derive(Debug, Clone)]
 pub struct VPC {
-    pub scaled_penalty_margin: i64,
+    pub scaled_penalty_delta: i64,
     pub query_length: u32,
     pub penalty: u32,
     pub component_index: u32,
@@ -15,7 +15,7 @@ impl VPC {
     pub fn get_optimal_position(
         left_vpc_vector: &Vec<Self>,
         right_vpc_vector: &Vec<Self>,
-        anchor_scaled_penalty_margin: i64,
+        anchor_scaled_penalty_delta: i64,
         anchor_size: u32,
     ) -> (usize, usize) {
         let mut optimal_left_vpc_index = 0;
@@ -24,9 +24,9 @@ impl VPC {
 
         for (left_vpc_index, left_vpc) in left_vpc_vector.iter().enumerate().rev() {
             for (right_vpc_index, right_vpc) in right_vpc_vector.iter().enumerate().rev() {
-                let scaled_penalty_margin = left_vpc.scaled_penalty_margin + right_vpc.scaled_penalty_margin + anchor_scaled_penalty_margin;
+                let scaled_penalty_delta = left_vpc.scaled_penalty_delta + right_vpc.scaled_penalty_delta + anchor_scaled_penalty_delta;
 
-                if scaled_penalty_margin >= 0 {
+                if scaled_penalty_delta >= 0 {
                     let query_length = left_vpc.query_length + right_vpc.query_length + anchor_size;
                     if optimal_max_query_length < query_length {
                         optimal_max_query_length = query_length;
@@ -48,16 +48,16 @@ impl WaveFront {
     // | QL |<QL |<QL |<QL | ... |<QL |
     // | PM>| PM>| PM>| PM>| ... | PM |
     // --------------------------------
-    pub fn get_sorted_vpc_vector(&self, maximum_penalty_per_scale: u32, minimum_scaled_penalty_margin: i64) -> Vec<VPC> {
+    pub fn get_sorted_vpc_vector(&self, maximum_penalty_per_scale: u32, minimum_scaled_penalty_delta: i64) -> Vec<VPC> {
         let last_penalty = self.end_point.penalty;
 
         let mut sorted_vpc_vector: Vec<VPC> = Vec::new();
 
         self.wave_front_scores[..=last_penalty].iter().enumerate().for_each(|(penalty, wave_front_score)| {
             let (max_query_length, length, comp_index) = wave_front_score.point_of_maximum_query_length();
-            let scaled_penalty_margin = (length as u32 * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE as usize) as i64;
+            let scaled_penalty_delta = (length as u32 * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE as usize) as i64;
 
-            if minimum_scaled_penalty_margin <= scaled_penalty_margin {
+            if minimum_scaled_penalty_delta <= scaled_penalty_delta {
                 let mut ql_index_to_insert: usize = 0;
                 let mut pm_index_to_insert: usize = 0;
                 let mut ql_is_same_as_pre = false;
@@ -76,7 +76,7 @@ impl WaveFront {
                     }
                     // PM
                     if pm_index_to_insert == 0 {
-                        if vpc_in_vector.scaled_penalty_margin > scaled_penalty_margin {
+                        if vpc_in_vector.scaled_penalty_delta > scaled_penalty_delta {
                             pm_index_to_insert = index + 1;
                         }
                     }
@@ -94,7 +94,7 @@ impl WaveFront {
                         pm_index_to_insert,
                         VPC {
                             query_length: max_query_length,
-                            scaled_penalty_margin,
+                            scaled_penalty_delta,
                             penalty: penalty as u32,
                             component_index: comp_index,
                         },
@@ -106,18 +106,18 @@ impl WaveFront {
                                 pm_index_to_insert,
                                 VPC {
                                     query_length: max_query_length,
-                                    scaled_penalty_margin,
+                                    scaled_penalty_delta,
                                     penalty: penalty as u32,
                                     component_index: comp_index,
                                 },
                             );
                         } else {
-                            if sorted_vpc_vector[ql_index_to_insert].scaled_penalty_margin < scaled_penalty_margin {
+                            if sorted_vpc_vector[ql_index_to_insert].scaled_penalty_delta < scaled_penalty_delta {
                                 sorted_vpc_vector.insert(
                                     pm_index_to_insert,
                                     VPC {
                                         query_length: max_query_length,
-                                        scaled_penalty_margin,
+                                        scaled_penalty_delta,
                                         penalty: penalty as u32,
                                         component_index: comp_index,
                                     },

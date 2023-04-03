@@ -92,8 +92,8 @@ fn local_alignment_query_to_target(
                 right_extension,
                 left_traversed_anchors,
                 right_traversed_anchors,
-                left_scaled_penalty_margins,
-                right_scaled_penalty_margins,
+                left_scaled_penalty_deltas,
+                right_scaled_penalty_deltas,
             ) = match cached_extension {
                 Some(v) => {
                     (
@@ -101,12 +101,12 @@ fn local_alignment_query_to_target(
                         v.right_extension,
                         v.left_traversed_anchors,
                         v.right_traversed_anchors,
-                        v.left_scaled_penalty_margins,
-                        v.right_scaled_penalty_margins,
+                        v.left_scaled_penalty_deltas,
+                        v.right_scaled_penalty_deltas,
                     )
                 },
                 None => {
-                    let scaled_penalty_margin_of_left = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64; // Assuming this anchor is leftmost of alignment (It is safe)
+                    let scaled_penalty_delta_of_left = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64; // Assuming this anchor is leftmost of alignment (It is safe)
                     let local_extension = pos_table.extend_right_first_for_local(
                         &current_anchor_index,
                         pattern_size,
@@ -114,7 +114,7 @@ fn local_alignment_query_to_target(
                         query,
                         penalties,
                         cutoff,
-                        scaled_penalty_margin_of_left,
+                        scaled_penalty_delta_of_left,
                         left_wave_front,
                         right_wave_front,
                     );
@@ -123,8 +123,8 @@ fn local_alignment_query_to_target(
                         local_extension.right_extension,
                         local_extension.left_traversed_anchors,
                         local_extension.right_traversed_anchors,
-                        local_extension.left_scaled_penalty_margins,
-                        local_extension.right_scaled_penalty_margins,
+                        local_extension.left_scaled_penalty_deltas,
+                        local_extension.right_scaled_penalty_deltas,
                     )
                 }
             };
@@ -196,7 +196,7 @@ fn local_alignment_query_to_target(
                 } else {
                     // If left anchor does not have alignment cache: extend
                     if left_anchor.extensions_cache.is_none() {
-                        let left_scaled_penalty_margin = left_scaled_penalty_margins[index];
+                        let left_scaled_penalty_delta = left_scaled_penalty_deltas[index];
                         let local_alignment_of_traversed = pos_table.extend_right_first_for_local(
                             &left_traversed_anchor_index,
                             pattern_size,
@@ -204,7 +204,7 @@ fn local_alignment_query_to_target(
                             query,
                             penalties,
                             cutoff,
-                            left_scaled_penalty_margin,
+                            left_scaled_penalty_delta,
                             left_wave_front,
                             right_wave_front,
                         );
@@ -234,7 +234,7 @@ fn local_alignment_query_to_target(
                 } else {
                     // If left anchor does not have alignment cache: extend
                     if right_anchor.extensions_cache.is_none() {
-                        let right_scaled_penalty_margin = right_scaled_penalty_margins[index];
+                        let right_scaled_penalty_delta = right_scaled_penalty_deltas[index];
                         let local_alignment_of_traversed = pos_table.extend_left_first_for_local(
                             &right_traversed_anchor_index,
                             pattern_size,
@@ -242,7 +242,7 @@ fn local_alignment_query_to_target(
                             query,
                             penalties,
                             cutoff,
-                            right_scaled_penalty_margin,
+                            right_scaled_penalty_delta,
                             left_wave_front,
                             right_wave_front,
                         );

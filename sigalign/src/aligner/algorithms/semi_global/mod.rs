@@ -25,14 +25,14 @@ pub fn semi_global_alignment_algorithm<R: ReferenceInterface>(
 ) -> AlignmentResult {
     let pos_table_map = PosTable::new_by_target_index(reference, &query, pattern_size);
     let pattern_count = query.len() as u32 / pattern_size;
-    let left_penalty_margins = left_penalty_margin_for_new_pattern(pattern_count, pattern_size, min_penalty_for_pattern, cutoff);
+    let left_penalty_deltas = left_penalty_delta_for_new_pattern(pattern_count, pattern_size, min_penalty_for_pattern, cutoff);
 
     let record_alignment_results: Vec<TargetAlignmentResult> = pos_table_map.into_iter().filter_map(|(record_index, pos_table)| {
         reference.fill_buffer(record_index, sequence_buffer);
         let record_sequence = sequence_buffer.request_sequence();
         let anchor_alignment_results = semi_global_alignment_query_to_target(
             &pos_table,
-            &left_penalty_margins,
+            &left_penalty_deltas,
             pattern_size,
             record_sequence,
             &query,
@@ -56,7 +56,7 @@ pub fn semi_global_alignment_algorithm<R: ReferenceInterface>(
 
 fn semi_global_alignment_query_to_target(
     pos_table: &PosTable,
-    left_penalty_margin_for_new_pattern: &Vec<i64>,
+    left_penalty_delta_for_new_pattern: &Vec<i64>,
     pattern_size: u32,
     target: &[u8],
     query: &[u8],
@@ -87,7 +87,7 @@ fn semi_global_alignment_query_to_target(
             //
             let have_valid_right_extension = anchor_table.fill_right_extension_index(
                 pos_table,
-                left_penalty_margin_for_new_pattern,
+                left_penalty_delta_for_new_pattern,
                 &current_anchor_index,
                 &mut extension_cache,
                 pattern_size,
@@ -268,7 +268,7 @@ fn semi_global_alignment_query_to_target(
     }).collect()
 }
 
-fn left_penalty_margin_for_new_pattern(
+fn left_penalty_delta_for_new_pattern(
     pattern_count: u32,
     pattern_size: u32,
     min_penalty_for_pattern: &MinPenaltyForPattern,
@@ -290,7 +290,7 @@ impl AnchorTable {
     fn fill_right_extension_index(
         &mut self,
         pos_table: &PosTable,
-        left_penalty_margin_for_new_pattern: &Vec<i64>,
+        left_penalty_delta_for_new_pattern: &Vec<i64>,
         current_anchor_index: &AnchorIndex,
         extension_cache: &mut Vec<SemiGlobalExtension>,
         pattern_size: u32,
@@ -304,7 +304,7 @@ impl AnchorTable {
             // If have right minimum penalty
             // : Extend left first
             if let Some(right_minimum_penalty) = self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_minimum_penalty.clone() {
-                let right_scaled_penalty_margin = {
+                let right_scaled_penalty_delta = {
                     let anchor_position = &pos_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
                     let pattern_count = anchor_position.pattern_count;
                     let anchor_size = pattern_count * pattern_size;
@@ -332,7 +332,7 @@ impl AnchorTable {
                     query,
                     penalties,
                     cutoff,
-                    right_scaled_penalty_margin,
+                    right_scaled_penalty_delta,
                     wave_front,
                 );
 
@@ -351,8 +351,8 @@ impl AnchorTable {
                 }
             };
 
-            // Scaled penalty margin of left
-            let scaled_penalty_margin_of_left = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index {
+            // Scaled penalty delta of left
+            let scaled_penalty_delta_of_left = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index {
                 Some(SemiGlobalExtensionIndex::Owned(extension_index)) => {
                     let extension = &extension_cache[extension_index as usize].0;
                     (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
@@ -362,7 +362,7 @@ impl AnchorTable {
                     (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
                 None => {
-                    left_penalty_margin_for_new_pattern[current_anchor_index.0 as usize]
+                    left_penalty_delta_for_new_pattern[current_anchor_index.0 as usize]
                 },
             };
             // Generate right extension
@@ -373,7 +373,7 @@ impl AnchorTable {
                 query,
                 penalties,
                 cutoff,
-                scaled_penalty_margin_of_left,
+                scaled_penalty_delta_of_left,
                 wave_front,
             );
             // Add right extension to extension cache
@@ -421,9 +421,9 @@ impl AnchorTable {
             return false
         }
         if self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index.is_none() {
-            // Scaled penalty margin of right
+            // Scaled penalty delta of right
             // Always have right extension
-            let scaled_penalty_margin_of_right = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_extension_index.as_ref().unwrap() {
+            let scaled_penalty_delta_of_right = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_extension_index.as_ref().unwrap() {
                 SemiGlobalExtensionIndex::Owned(extension_index) => {
                     let extension = &extension_cache[*extension_index as usize].0;
                     (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
@@ -441,7 +441,7 @@ impl AnchorTable {
                 query,
                 penalties,
                 cutoff,
-                scaled_penalty_margin_of_right,
+                scaled_penalty_delta_of_right,
                 wave_front,
             );
             // Add right extension to extension cache
@@ -681,7 +681,7 @@ impl PosTable {
         query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
-        scaled_penalty_margin_of_left: i64,
+        scaled_penalty_delta_of_left: i64,
         wave_front: &mut WaveFront,
     ) -> (Option<Extension>, Vec<TraversedAnchor>) {
         let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
@@ -700,7 +700,7 @@ impl PosTable {
         let right_record_slice = &target[right_record_start_index as usize..];
         let right_query_slice = &query[right_query_start_index as usize..];
 
-        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_left, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
+        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_delta_of_left, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
 
         wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         
@@ -749,7 +749,7 @@ impl PosTable {
         query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
-        scaled_penalty_margin_of_right: i64,
+        scaled_penalty_delta_of_right: i64,
         wave_front: &mut WaveFront,
     ) -> (Option<Extension>, Vec<TraversedAnchor>) {
         let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
@@ -768,7 +768,7 @@ impl PosTable {
         let left_record_slice = &target[..left_record_last_index as usize];
         let left_query_slice = &query[..left_query_last_index as usize];
 
-        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_right, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
+        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_delta_of_right, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
 
         wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         

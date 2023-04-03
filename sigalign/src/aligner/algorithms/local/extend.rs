@@ -15,8 +15,8 @@ pub struct LocalExtension {
     pub right_extension: Extension,
     pub left_traversed_anchors: Vec<TraversedAnchor>,
     pub right_traversed_anchors: Vec<TraversedAnchor>,
-    pub left_scaled_penalty_margins: Vec<i64>,
-    pub right_scaled_penalty_margins: Vec<i64>,
+    pub left_scaled_penalty_deltas: Vec<i64>,
+    pub right_scaled_penalty_deltas: Vec<i64>,
 }
 
 impl PosTable {
@@ -28,7 +28,7 @@ impl PosTable {
         query_sequence: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
-        scaled_penalty_margin_of_left: i64,
+        scaled_penalty_delta_of_left: i64,
         left_wave_front: &mut WaveFront,
         right_wave_front: &mut WaveFront,
     ) -> LocalExtension {
@@ -45,7 +45,7 @@ impl PosTable {
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_margin = anchor_size.as_i64() * cutoff.maximum_penalty_per_scale as i64;
+        let anchor_scaled_penalty_delta = anchor_size.as_i64() * cutoff.maximum_penalty_per_scale as i64;
 
         // 
         // (2) Get right extension & VPC vector
@@ -53,11 +53,11 @@ impl PosTable {
         let right_record_slice = &target_sequence[right_record_start_index as usize..];
         let right_query_slice = &query_sequence[right_query_start_index as usize..];
 
-        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_left, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
+        let right_spare_penalty = calculate_spare_penalty(scaled_penalty_delta_of_left, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
-        let right_minimum_scaled_penalty_margin = - anchor_scaled_penalty_margin - scaled_penalty_margin_of_left;
-        let right_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_margin);
+        let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_left;
+        let right_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
 
         // 
         // (3) Get left extension & VPC vector
@@ -65,17 +65,17 @@ impl PosTable {
         let left_record_slice = &target_sequence[..left_record_last_index as usize];
         let left_query_slice = &query_sequence[..left_query_last_index as usize];
 
-        let right_max_scaled_penalty_margin = right_vpc_vector[0].scaled_penalty_margin as i64;
-        let left_spare_penalty = calculate_spare_penalty(right_max_scaled_penalty_margin, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
+        let right_max_scaled_penalty_delta = right_vpc_vector[0].scaled_penalty_delta as i64;
+        let left_spare_penalty = calculate_spare_penalty(right_max_scaled_penalty_delta, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
-        let left_minimum_scaled_penalty_margin = -anchor_scaled_penalty_margin - right_max_scaled_penalty_margin;
-        let left_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_margin);
+        let left_minimum_scaled_penalty_delta = -anchor_scaled_penalty_delta - right_max_scaled_penalty_delta;
+        let left_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
         //
         // (4) Find optimal position of VPC vectors
         //
-        let (left_vpc_index, right_vpc_index) = VPC::get_optimal_position(&left_vpc_vector, &right_vpc_vector, anchor_scaled_penalty_margin, anchor_size);
+        let (left_vpc_index, right_vpc_index) = VPC::get_optimal_position(&left_vpc_vector, &right_vpc_vector, anchor_scaled_penalty_delta, anchor_size);
 
         //
         // (5) Get extensions
@@ -105,9 +105,9 @@ impl PosTable {
         );
 
         //
-        // (6) Scaled penalty margin
+        // (6) Scaled penalty delta
         //
-        let left_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+        let left_scaled_penalty_deltas: Vec<i64> = get_scaled_penalty_deltas_of_vpc_vector(
             &left_extension,
             &left_vpc_vector,
             cutoff,
@@ -115,7 +115,7 @@ impl PosTable {
             &left_traversed_anchors,
         );
 
-        let right_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+        let right_scaled_penalty_deltas: Vec<i64> = get_scaled_penalty_deltas_of_vpc_vector(
             &right_extension,
             &right_vpc_vector,
             cutoff,
@@ -128,8 +128,8 @@ impl PosTable {
             right_extension,
             left_traversed_anchors,
             right_traversed_anchors,
-            left_scaled_penalty_margins,
-            right_scaled_penalty_margins,
+            left_scaled_penalty_deltas,
+            right_scaled_penalty_deltas,
         }
     }
     pub fn extend_left_first_for_local(
@@ -140,7 +140,7 @@ impl PosTable {
         query: &[u8],
         penalties: &Penalty,
         cutoff: &Cutoff,
-        scaled_penalty_margin_of_right: i64,
+        scaled_penalty_delta_of_right: i64,
         left_wave_front: &mut WaveFront,
         right_wave_front: &mut WaveFront,
     ) -> LocalExtension {
@@ -157,7 +157,7 @@ impl PosTable {
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_margin = (anchor_size * cutoff.maximum_penalty_per_scale) as i64;
+        let anchor_scaled_penalty_delta = (anchor_size * cutoff.maximum_penalty_per_scale) as i64;
 
         // 
         // (2) Get left extension & VPC vector
@@ -165,11 +165,11 @@ impl PosTable {
         let left_record_slice = &target[..left_record_last_index as usize];
         let left_query_slice = &query[..left_query_last_index as usize];
 
-        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_margin_of_right, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
+        let left_spare_penalty = calculate_spare_penalty(scaled_penalty_delta_of_right, anchor_size, left_query_slice.len() as u32, left_record_slice.len() as u32, penalties, cutoff);
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
-        let left_minimum_scaled_penalty_margin = - anchor_scaled_penalty_margin - scaled_penalty_margin_of_right;
-        let left_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_margin);
+        let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_right;
+        let left_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
         // 
         // (3) Get right extension & VPC vector
@@ -177,17 +177,17 @@ impl PosTable {
         let right_record_slice = &target[right_record_start_index as usize..];
         let right_query_slice = &query[right_query_start_index as usize..];
 
-        let left_max_scaled_penalty_margin = left_vpc_vector[0].scaled_penalty_margin as i64;
-        let right_spare_penalty = calculate_spare_penalty(left_max_scaled_penalty_margin, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
+        let left_max_scaled_penalty_delta = left_vpc_vector[0].scaled_penalty_delta as i64;
+        let right_spare_penalty = calculate_spare_penalty(left_max_scaled_penalty_delta, anchor_size, right_query_slice.len() as u32, right_record_slice.len() as u32, penalties, cutoff);
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
-        let right_minimum_scaled_penalty_margin = - anchor_scaled_penalty_margin - left_max_scaled_penalty_margin;
-        let right_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_margin);
+        let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - left_max_scaled_penalty_delta;
+        let right_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
 
         //
         // (4) Find optimal position of VPC vectors
         //
-        let (left_vpc_index, right_vpc_index) = VPC::get_optimal_position(&left_vpc_vector, &right_vpc_vector, anchor_scaled_penalty_margin, anchor_size);
+        let (left_vpc_index, right_vpc_index) = VPC::get_optimal_position(&left_vpc_vector, &right_vpc_vector, anchor_scaled_penalty_delta, anchor_size);
 
         //
         // (5) Get extensions
@@ -217,9 +217,9 @@ impl PosTable {
         );
 
         //
-        // (6) Scaled penalty margin
+        // (6) Scaled penalty delta
         //
-        let left_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+        let left_scaled_penalty_deltas: Vec<i64> = get_scaled_penalty_deltas_of_vpc_vector(
             &left_extension,
             &left_vpc_vector,
             cutoff,
@@ -227,7 +227,7 @@ impl PosTable {
             &left_traversed_anchors,
         );
 
-        let right_scaled_penalty_margins: Vec<i64> = get_scaled_penalty_margins_of_vpc_vector(
+        let right_scaled_penalty_deltas: Vec<i64> = get_scaled_penalty_deltas_of_vpc_vector(
             &right_extension,
             &right_vpc_vector,
             cutoff,
@@ -240,33 +240,33 @@ impl PosTable {
             right_extension,
             left_traversed_anchors,
             right_traversed_anchors,
-            left_scaled_penalty_margins,
-            right_scaled_penalty_margins,
+            left_scaled_penalty_deltas,
+            right_scaled_penalty_deltas,
         }
     }
 }
 
-fn get_scaled_penalty_margins_of_vpc_vector(
+fn get_scaled_penalty_deltas_of_vpc_vector(
     extension: &Extension,
     vpc_vector: &Vec<VPC>,
     cutoff: &Cutoff,
     penalties: &Penalty,
     traversed_anchors: &Vec<TraversedAnchor>,
 ) -> Vec<i64> {
-    let scaled_penalty_margin_of_extension = (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64;
+    let scaled_penalty_delta_of_extension = (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64;
 
     let mut vpc_index_for_traversed_anchor = 0;
-    let mut scaled_penalty_margins: Vec<i64> = traversed_anchors.iter().rev().map(|traversed_anchor| {
+    let mut scaled_penalty_deltas: Vec<i64> = traversed_anchors.iter().rev().map(|traversed_anchor| {
         let length_to_traversed_start_position = extension.length - traversed_anchor.remained_length;
         let penalty_to_traversed_start_position = extension.penalty - traversed_anchor.remained_penalty;
         let min_query_length = length_to_traversed_start_position - (penalty_to_traversed_start_position / penalties.e);
         while min_query_length > vpc_vector[vpc_index_for_traversed_anchor].query_length {
             vpc_index_for_traversed_anchor += 1;
         }
-        let remained_scaled_penalty_margin = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64;
-        vpc_vector[vpc_index_for_traversed_anchor].scaled_penalty_margin + remained_scaled_penalty_margin - scaled_penalty_margin_of_extension
+        let remained_scaled_penalty_delta = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64;
+        vpc_vector[vpc_index_for_traversed_anchor].scaled_penalty_delta + remained_scaled_penalty_delta - scaled_penalty_delta_of_extension
     }).collect();
-    scaled_penalty_margins.reverse();
+    scaled_penalty_deltas.reverse();
 
-    scaled_penalty_margins
+    scaled_penalty_deltas
 }
