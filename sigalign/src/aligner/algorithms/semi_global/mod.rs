@@ -592,13 +592,13 @@ impl SemiGlobalExtensionIndex {
         match self {
             SemiGlobalExtensionIndex::Owned(extension_index) => {
                 let extension = &extension_cache[*extension_index as usize].0;
-                (extension.operations.clone(), extension.insertion_count, extension.deletion_count)
+                (extension.reversed_operations.clone(), extension.insertion_count, extension.deletion_count)
             },
             SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
                 let original_extension = &extension_cache[*extension_index as usize].0;
                 let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
 
-                let mut operations = original_extension.operations[traversed_anchor.index_of_operation as usize..].to_vec();
+                let mut operations = original_extension.reversed_operations[traversed_anchor.index_of_operation as usize..].to_vec();
                 operations[0].count = traversed_anchor.alternative_match_count;
 
                 let mut insertion_count = 0;
@@ -626,13 +626,13 @@ impl SemiGlobalExtensionIndex {
         match self {
             SemiGlobalExtensionIndex::Owned(extension_index) => {
                 let extension = &extension_cache[*extension_index as usize].0;
-                (extension.operations.clone(), extension.insertion_count, extension.deletion_count)
+                (extension.reversed_operations.clone(), extension.insertion_count, extension.deletion_count)
             },
             SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
                 let original_extension = &extension_cache[*extension_index as usize].0;
                 let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
 
-                let mut operations = original_extension.operations[..=traversed_anchor.index_of_operation as usize].to_vec();
+                let mut operations = original_extension.reversed_operations[..=traversed_anchor.index_of_operation as usize].to_vec();
                 operations.last_mut().unwrap().count = traversed_anchor.alternative_match_count;
 
                 let mut insertion_count = 0;

@@ -7,6 +7,7 @@ use super::{
 };
 
 impl WaveFront {
+    #[inline]
     pub fn align_right_to_end_point(
         &mut self,
         ref_seq: &[u8],
@@ -16,6 +17,7 @@ impl WaveFront {
     ) {
         self.align_to_end_point::<ForwardMatchCounter>(ref_seq, qry_seq, penalties, spare_penalty)
     }
+    #[inline]
     pub fn align_left_to_end_point(
         &mut self,
         ref_seq: &[u8],

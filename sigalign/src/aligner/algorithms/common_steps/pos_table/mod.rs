@@ -1,15 +1,15 @@
 use crate::core::{
     ReferenceInterface,
-    SeqLen,
 };
 use ahash::AHashMap;
 
 /**
 Position Table: Sorted target positions by pattern
-  - 1st index: target index
-  - 2nd index: pattern index
+  - 1: Pattern index
+  - 2: AnchorPosition sorted by position_in_target
 If the locations of consecutive patterns are ungapped -> merge to one AnchorPosition
 */
+// TODO: Reuse PosTable by caching it on the wave front cache
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PosTable(
     pub Vec<Vec<AnchorPosition>>

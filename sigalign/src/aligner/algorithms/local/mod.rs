@@ -8,15 +8,15 @@ use crate::results::{
     AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
 };
 use super::common_steps::{
-    PosTable, AnchorIndex, TraversedAnchor,
+    PosTable, AnchorIndex, AnchorPosition, TraversedAnchor,
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
 use std::cmp::Ordering;
 
 mod valid_position_candidate;
-use valid_position_candidate::VPC;
+use valid_position_candidate::{Vpc, VpcIndexPackage};
 mod extend;
-use extend::LocalExtension;
+use extend::{LocalExtension, LocalExtensionDep};
 mod backtrace;
 
 pub fn local_alignment_algorithm<R: ReferenceInterface>(
@@ -26,7 +26,7 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     pattern_size: u32,
     penalties: &Penalty,
     cutoff: &Cutoff,
-    left_wave_front: &mut WaveFront,
+    left_wave_front: &mut WaveFront, 
     right_wave_front: &mut WaveFront,
 ) -> AlignmentResult {
     let pos_table_map = PosTable::new_by_target_index(reference, &query, pattern_size);
@@ -58,6 +58,7 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     AlignmentResult(target_alignment_results)
 }
 
+#[inline]
 fn local_alignment_query_to_target(
     pos_table: &PosTable,
     pattern_size: u32,
@@ -68,6 +69,8 @@ fn local_alignment_query_to_target(
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
 ) -> Vec<AnchorAlignmentResult> {
+    // TODO: Use buffer
+    let mut valid_local_extension_buffer: Vec<LocalExtension> = Vec::new();
     let sorted_anchor_indices: Vec<AnchorIndex> = pos_table.0.iter().enumerate().map(|(pattern_index, pattern_position)| {
         (0..pattern_position.len()).map(move |anchor_index| {
             (pattern_index as u32, anchor_index as u32)
@@ -78,13 +81,85 @@ fn local_alignment_query_to_target(
         vec![Anchor::new_empty(); pattern_position.len()]
     }).collect();
 
+    let scaled_penalty_delta_assuming_on_edge = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
+
     let mut local_alignments: Vec<LocalAlignment> = Vec::new();
     sorted_anchor_indices.into_iter().for_each(|current_anchor_index| {
         let current_anchor = &mut anchor_table[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-    
-        if !current_anchor.registered {
+
+        if !current_anchor.skipped {
             //
-            // (1) Get extension of current anchor
+            // (1) Extend current anchor to the right
+            // If cached result is exist -> take it
+            //
+            let local_extensions = if let Some(v) = current_anchor.extensions_cache.take() {
+                v
+            } else {
+                pos_table.extend_assuming_leftmost_anchor_for_local(
+                    &current_anchor_index,
+                    pattern_size,
+                    target,
+                    query,
+                    penalties,
+                    cutoff,
+                    &scaled_penalty_delta_assuming_on_edge,
+                    left_wave_front,
+                    right_wave_front,
+                )
+            };
+            // Get right traversed anchors
+            let rightmost_extension = unsafe { local_extensions.last().unwrap_unchecked() };
+            let right_traversed_anchors = pos_table.get_right_traversed_anchors(
+                &current_anchor_index,
+                rightmost_extension,
+                pattern_size,
+            );
+            //
+            // (2) Extend right anchors to the left
+            //
+            let mut skip_all_other_traversed = false;
+            for traversed_anchor_index in right_traversed_anchors.iter().rev() {
+                let traversed_anchor = &mut anchor_table[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
+                if skip_all_other_traversed { // If the optimal right anchor is found
+                    traversed_anchor.skipped = true;
+                } else {
+                    let local_extensions_of_right_anchor = if let Some(v) = traversed_anchor.extensions_cache.take() {
+                        v
+                    } else {
+                        pos_table.extend_assuming_rightmost_anchor_for_local(
+                            &traversed_anchor_index,
+                            pattern_size,
+                            target,
+                            query,
+                            penalties,
+                            cutoff,
+                            &scaled_penalty_delta_assuming_on_edge,
+                            left_wave_front,
+                            right_wave_front,
+                        )
+                    };
+                    let leftmost_extension = &local_extensions_of_right_anchor[0];
+                    let left_traversed_anchors_of_right_anchor = pos_table.get_left_traversed_anchors(&traversed_anchor_index, leftmost_extension, pattern_size);
+
+                    // Check if converged
+                    // TODO: Using first index instead of using `contains` method is safe?
+                    if left_traversed_anchors_of_right_anchor.contains(&current_anchor_index) {
+                        // TODO:
+                        // To skip all others
+                        traversed_anchor.skipped = true;
+                        skip_all_other_traversed = true;
+                    } else {
+                        traversed_anchor.extensions_cache = Some(local_extensions_of_right_anchor);
+                    }
+                }
+            }
+            //
+            // (3) Extend right anchors to the left
+            //
+
+
+            //
+            // (1) Get extension of current anchor 
             //
             let cached_extension = current_anchor.extensions_cache.take();
             let (
@@ -107,14 +182,14 @@ fn local_alignment_query_to_target(
                 },
                 None => {
                     let scaled_penalty_delta_of_left = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64; // Assuming this anchor is leftmost of alignment (It is safe)
-                    let local_extension = pos_table.extend_right_first_for_local(
+                    let local_extension = pos_table.extend_assuming_leftmost_anchor_for_local(
                         &current_anchor_index,
                         pattern_size,
                         target,
                         query,
                         penalties,
                         cutoff,
-                        scaled_penalty_delta_of_left,
+                        &scaled_penalty_delta_of_left,
                         left_wave_front,
                         right_wave_front,
                     );
@@ -168,8 +243,8 @@ fn local_alignment_query_to_target(
                 };
 
                 let alignment_operations = AlignmentOperations::concatenate_operations(
-                   left_extension.operations,
-                   right_extension.operations,
+                   left_extension.reversed_operations,
+                   right_extension.reversed_operations,
                    anchor_size as u32,
                 );
                 Some((alignment_operations, alignment_position))
@@ -190,21 +265,21 @@ fn local_alignment_query_to_target(
 
                 let left_anchor = &mut anchor_table[left_traversed_anchor_index.0 as usize][left_traversed_anchor_index.1 as usize];
 
-                if left_anchor.registered {
+                if left_anchor.skipped {
                     // Left anchor's optimal alignment is other
                     continue
                 } else {
                     // If left anchor does not have alignment cache: extend
                     if left_anchor.extensions_cache.is_none() {
                         let left_scaled_penalty_delta = left_scaled_penalty_deltas[index];
-                        let local_alignment_of_traversed = pos_table.extend_right_first_for_local(
+                        let local_alignment_of_traversed = pos_table.extend_assuming_leftmost_anchor_for_local(
                             &left_traversed_anchor_index,
                             pattern_size,
                             target,
                             query,
                             penalties,
                             cutoff,
-                            left_scaled_penalty_delta,
+                            &left_scaled_penalty_delta,
                             left_wave_front,
                             right_wave_front,
                         );
@@ -228,7 +303,7 @@ fn local_alignment_query_to_target(
 
                 let right_anchor = &mut anchor_table[right_traversed_anchor_index.0 as usize][right_traversed_anchor_index.1 as usize];
 
-                if right_anchor.registered {
+                if right_anchor.skipped {
                     // Left anchor's optimal alignment is other
                     continue
                 } else {
@@ -279,7 +354,7 @@ fn local_alignment_query_to_target(
             });
             // Register anchors
             symbol[leftmost_optimal_symbol_index..=rightmost_optimal_symbol_index].iter().for_each(|&anchor_index| {
-                anchor_table[anchor_index.0 as usize][anchor_index.1 as usize].registered = true;
+                anchor_table[anchor_index.0 as usize][anchor_index.1 as usize].skipped = true;
             });
 
             if let Some((alignment_operations, alignment_position)) = valid_anchor_alignment_operations_and_position {
@@ -343,15 +418,31 @@ fn local_alignment_query_to_target(
 
 #[derive(Debug, Clone)]
 struct Anchor {
-    extensions_cache: Option<LocalExtension>,
-    registered: bool, // If registered in local alignment
-    included: bool, // If included in used symbol
+    // The extension step can be skipped
+    skipped: bool,
+    // Local extension is sorted from left to right
+    extensions_cache: Option<Vec<LocalExtension>>,
 }
 impl Anchor {
     fn new_empty() -> Self {
         Self {
+            skipped: false,
             extensions_cache: None,
-            registered: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct AnchorDep {
+    extensions_cache: Option<LocalExtensionDep>,
+    skipped: bool, // The extension step can be skipped
+    included: bool, // If included in used symbol
+}
+impl AnchorDep {
+    fn new_empty() -> Self {
+        Self {
+            extensions_cache: None,
+            skipped: false,
             included: false,
         }
     }

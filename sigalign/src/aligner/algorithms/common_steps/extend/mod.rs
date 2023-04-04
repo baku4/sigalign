@@ -1,4 +1,3 @@
-use crate::core::SeqLen;
 use crate::results::AlignmentOperations;
 
 /// Wavefront structure
@@ -12,5 +11,5 @@ pub struct Extension {
     pub length: u32,
     pub insertion_count: u32,
     pub deletion_count: u32,
-    pub operations: Vec<AlignmentOperations>,
+    pub reversed_operations: Vec<AlignmentOperations>,
 }

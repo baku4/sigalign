@@ -131,7 +131,7 @@ impl PosTable {
 
 impl AnchorPosition {
     #[inline]
-    fn binary_search_index(pattern_position: &Vec<Self>, target_position: u32) -> Result<usize, usize> {
+    pub fn binary_search_index(pattern_position: &Vec<Self>, target_position: u32) -> Result<usize, usize> {
         pattern_position.binary_search_by_key(&target_position, |anchor_position| {
             anchor_position.position_in_target
         })
