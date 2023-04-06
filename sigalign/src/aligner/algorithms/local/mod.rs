@@ -12,11 +12,12 @@ use super::common_steps::{
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
 use std::cmp::Ordering;
+use ahash::AHashSet;
 
 mod valid_position_candidate;
 use valid_position_candidate::{Vpc, VpcIndexPackage};
 mod extend;
-use extend::{LocalExtension, LocalExtensionDep};
+use extend::LocalExtension;
 mod backtrace;
 
 pub fn local_alignment_algorithm<R: ReferenceInterface>(
@@ -69,13 +70,19 @@ fn local_alignment_query_to_target(
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
 ) -> Vec<AnchorAlignmentResult> {
+    //FIXME: counter
+    let mut skipped_counter = 0;
+
     // TODO: Use buffer
-    let mut valid_local_extension_buffer: Vec<LocalExtension> = Vec::new();
+    let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
     let sorted_anchor_indices: Vec<AnchorIndex> = pos_table.0.iter().enumerate().map(|(pattern_index, pattern_position)| {
         (0..pattern_position.len()).map(move |anchor_index| {
             (pattern_index as u32, anchor_index as u32)
         })
     }).flatten().collect();
+    // println!("# pos table: {:?}", pos_table);
+    // println!("# pattern_size: {:?}", pattern_size);
+    // println!("# sorted_anchor_indices:\n{:?}", sorted_anchor_indices);
 
     let mut anchor_table: Vec<Vec<Anchor>> = pos_table.0.iter().map(|pattern_position| {
         vec![Anchor::new_empty(); pattern_position.len()]
@@ -83,8 +90,11 @@ fn local_alignment_query_to_target(
 
     let scaled_penalty_delta_assuming_on_edge = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
 
-    let mut local_alignments: Vec<LocalAlignment> = Vec::new();
+    //
+    // 1. Extend all anchors
+    //
     sorted_anchor_indices.into_iter().for_each(|current_anchor_index| {
+        // println!("# current_anchor_index: {:?}", current_anchor_index);
         let current_anchor = &mut anchor_table[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
 
         if !current_anchor.skipped {
@@ -114,13 +124,18 @@ fn local_alignment_query_to_target(
                 rightmost_extension,
                 pattern_size,
             );
+            // println!("# rightmost_extension: {:?}", rightmost_extension);
+            // println!("# right_traversed_anchors: {:?}", right_traversed_anchors);
             //
             // (2) Extend right anchors to the left
             //
             let mut skip_all_other_traversed = false;
             for traversed_anchor_index in right_traversed_anchors.iter().rev() {
+                // println!("# traversed_anchor_index: {:?}", traversed_anchor_index);
                 let traversed_anchor = &mut anchor_table[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
+
                 if skip_all_other_traversed { // If the optimal right anchor is found
+                    skipped_counter += 1;
                     traversed_anchor.skipped = true;
                 } else {
                     let local_extensions_of_right_anchor = if let Some(v) = traversed_anchor.extensions_cache.take() {
@@ -138,249 +153,89 @@ fn local_alignment_query_to_target(
                             right_wave_front,
                         )
                     };
+                    // println!("# local_extensions_of_right_anchor: {:?}", local_extensions_of_right_anchor);
+
                     let leftmost_extension = &local_extensions_of_right_anchor[0];
                     let left_traversed_anchors_of_right_anchor = pos_table.get_left_traversed_anchors(&traversed_anchor_index, leftmost_extension, pattern_size);
+                    // println!("# left_traversed_anchors_of_right_anchor: {:?}", left_traversed_anchors_of_right_anchor);
 
                     // Check if converged
                     // TODO: Using first index instead of using `contains` method is safe?
-                    if left_traversed_anchors_of_right_anchor.contains(&current_anchor_index) {
-                        // TODO:
+                    // (1)
+                    // if left_traversed_anchors_of_right_anchor.contains(&current_anchor_index) {
+                    // (2)
+                    // if (
+                    //     !left_traversed_anchors_of_right_anchor.is_empty()
+                    //     && left_traversed_anchors_of_right_anchor[0] == current_anchor_index
+                    // ) {
+                    // (3)
+                    // let converged = unsafe {
+                    //     leftmost_extension.left_checkpoints.last().unwrap_unchecked()
+                    //     == rightmost_extension.left_checkpoints.last().unwrap_unchecked()
+                    // };
+                    // (4)
+                    // let converged = unsafe {
+                    //     let cp = rightmost_extension.left_checkpoints.last().unwrap_unchecked();
+                    //     leftmost_extension.left_checkpoints.contains(cp)
+                    // };
+                    // (5)
+                    // let converged = unsafe {
+                    //     let cp = rightmost_extension.left_checkpoints.last().unwrap_unchecked();
+                    //     let mut converged = false;
+                    //     for extension in &local_extensions_of_right_anchor {
+                    //         if extension.left_checkpoints.contains(cp) {
+                    //             converged = true;
+                    //             break
+                    //         }
+                    //     }
+                    //     converged
+                    // };
+                    // (6)
+                    let converged = unsafe {
+                        let cp = rightmost_extension.left_checkpoints.last().unwrap_unchecked();
+                        let mut converged = false;
+                        for extension in &local_extensions_of_right_anchor {
+                            if extension.left_checkpoints.last().unwrap_unchecked() == cp {
+                                converged = true;
+                                break
+                            }
+                        }
+                        converged
+                    };
+                    if converged {
+                        for extension in local_extensions_of_right_anchor {
+                            if extension.is_valid(&cutoff.minimum_aligned_length) {
+                                valid_local_extensions_buffer.push(extension);
+                            }
+                        }
                         // To skip all others
                         traversed_anchor.skipped = true;
                         skip_all_other_traversed = true;
+                        skipped_counter += 1;
                     } else {
                         traversed_anchor.extensions_cache = Some(local_extensions_of_right_anchor);
                     }
                 }
             }
             //
-            // (3) Extend right anchors to the left
+            // (4) Add extensions of current anchor
             //
-
-
-            //
-            // (1) Get extension of current anchor 
-            //
-            let cached_extension = current_anchor.extensions_cache.take();
-            let (
-                left_extension,
-                right_extension,
-                left_traversed_anchors,
-                right_traversed_anchors,
-                left_scaled_penalty_deltas,
-                right_scaled_penalty_deltas,
-            ) = match cached_extension {
-                Some(v) => {
-                    (
-                        v.left_extension,
-                        v.right_extension,
-                        v.left_traversed_anchors,
-                        v.right_traversed_anchors,
-                        v.left_scaled_penalty_deltas,
-                        v.right_scaled_penalty_deltas,
-                    )
-                },
-                None => {
-                    let scaled_penalty_delta_of_left = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64; // Assuming this anchor is leftmost of alignment (It is safe)
-                    let local_extension = pos_table.extend_assuming_leftmost_anchor_for_local(
-                        &current_anchor_index,
-                        pattern_size,
-                        target,
-                        query,
-                        penalties,
-                        cutoff,
-                        &scaled_penalty_delta_of_left,
-                        left_wave_front,
-                        right_wave_front,
-                    );
-                    (
-                        local_extension.left_extension,
-                        local_extension.right_extension,
-                        local_extension.left_traversed_anchors,
-                        local_extension.right_traversed_anchors,
-                        local_extension.left_scaled_penalty_deltas,
-                        local_extension.right_scaled_penalty_deltas,
-                    )
+            for extension in local_extensions {
+                if extension.is_valid(&cutoff.minimum_aligned_length) {
+                    valid_local_extensions_buffer.push(extension);
                 }
-            };
-
-            //
-            // (2) Make symbol
-            //
-            let mut symbol = Vec::<AnchorIndex>::with_capacity(
-                left_traversed_anchors.len() + right_traversed_anchors.len() + 1
-            );
-            left_traversed_anchors.iter().for_each(|traversed_anchors| {
-                symbol.push(traversed_anchors.anchor_index.clone())
-            });
-            symbol.push(current_anchor_index.clone());
-            right_traversed_anchors.iter().rev().for_each(|traversed_anchors| {
-                symbol.push(traversed_anchors.anchor_index.clone())
-            });
-
-            //
-            // (3) Make Local Alignment
-            //
-            let anchor_position = &pos_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-            let pattern_count = anchor_position.pattern_count;
-            let anchor_size = pattern_count * pattern_size;
-
-            let length = left_extension.length + right_extension.length + anchor_size;
-            let query_length = length - left_extension.insertion_count - right_extension.insertion_count;
-            let penalty = left_extension.penalty + right_extension.penalty;
-            let valid_anchor_alignment_operations_and_position = if length >= cutoff.minimum_aligned_length {
-                let anchor_query_position = current_anchor_index.0 * pattern_size;
-                let anchor_record_position = anchor_position.position_in_target;
-                let alignment_position = AlignmentPosition {
-                    target: (
-                        anchor_record_position + left_extension.deletion_count - left_extension.length,
-                        anchor_record_position + anchor_size + right_extension.length - right_extension.deletion_count,
-                    ),
-                    query: (
-                        anchor_query_position + left_extension.insertion_count - left_extension.length,
-                        anchor_query_position + anchor_size + right_extension.length - right_extension.insertion_count,
-                    ),
-                };
-
-                let alignment_operations = AlignmentOperations::concatenate_operations(
-                   left_extension.reversed_operations,
-                   right_extension.reversed_operations,
-                   anchor_size as u32,
-                );
-                Some((alignment_operations, alignment_position))
-            } else {
-                None
-            };
-
-            //
-            // (4) Find optimal anchors for this local alignment
-            //
-            let representative_symbol_index = left_traversed_anchors.len();
-            let mut optional_leftmost_symbol_index = None;
-            let mut optional_rightmost_symbol_index = None;
-            // For left symbols
-            for index in 0..left_traversed_anchors.len() {
-                let left_traversed_anchor = &left_traversed_anchors[index];
-                let left_traversed_anchor_index = left_traversed_anchor.anchor_index;
-
-                let left_anchor = &mut anchor_table[left_traversed_anchor_index.0 as usize][left_traversed_anchor_index.1 as usize];
-
-                if left_anchor.skipped {
-                    // Left anchor's optimal alignment is other
-                    continue
-                } else {
-                    // If left anchor does not have alignment cache: extend
-                    if left_anchor.extensions_cache.is_none() {
-                        let left_scaled_penalty_delta = left_scaled_penalty_deltas[index];
-                        let local_alignment_of_traversed = pos_table.extend_assuming_leftmost_anchor_for_local(
-                            &left_traversed_anchor_index,
-                            pattern_size,
-                            target,
-                            query,
-                            penalties,
-                            cutoff,
-                            &left_scaled_penalty_delta,
-                            left_wave_front,
-                            right_wave_front,
-                        );
-                        left_anchor.extensions_cache = Some(local_alignment_of_traversed);
-                    };
-                    let local_extension_of_left_anchor = left_anchor.extensions_cache.as_ref().unwrap();
-                    let search_result = local_extension_of_left_anchor.right_traversed_anchors.binary_search_by(|traversed_anchor| {
-                        traversed_anchor.anchor_index.cmp(&current_anchor_index)
-                    });
-                    if search_result.is_ok() {
-                        let leftmost_symbol_index = index;
-                        optional_leftmost_symbol_index = Some(leftmost_symbol_index);
-                        break;
-                    }
-                }
-            }
-            // For right symbols
-            for index in 0..right_traversed_anchors.len() {
-                let right_traversed_anchor = &right_traversed_anchors[index];
-                let right_traversed_anchor_index = right_traversed_anchor.anchor_index;
-
-                let right_anchor = &mut anchor_table[right_traversed_anchor_index.0 as usize][right_traversed_anchor_index.1 as usize];
-
-                if right_anchor.skipped {
-                    // Left anchor's optimal alignment is other
-                    continue
-                } else {
-                    // If left anchor does not have alignment cache: extend
-                    if right_anchor.extensions_cache.is_none() {
-                        let right_scaled_penalty_delta = right_scaled_penalty_deltas[index];
-                        let local_alignment_of_traversed = pos_table.extend_left_first_for_local(
-                            &right_traversed_anchor_index,
-                            pattern_size,
-                            target,
-                            query,
-                            penalties,
-                            cutoff,
-                            right_scaled_penalty_delta,
-                            left_wave_front,
-                            right_wave_front,
-                        );
-                        right_anchor.extensions_cache = Some(local_alignment_of_traversed);
-                    };
-                    let local_extension_of_right_anchor = right_anchor.extensions_cache.as_ref().unwrap();
-                    let search_result = local_extension_of_right_anchor.left_traversed_anchors.binary_search_by(|traversed_anchor| {
-                        traversed_anchor.anchor_index.cmp(&current_anchor_index)
-                    });
-                    if search_result.is_ok() {
-                        let rightmost_symbol_index = symbol.len() - index - 1;
-                        optional_rightmost_symbol_index = Some(rightmost_symbol_index);
-                        break;
-                    }
-                }
-            }
-            
-            let leftmost_optimal_symbol_index = match optional_leftmost_symbol_index {
-                Some(v) => v,
-                None => representative_symbol_index,
-            };
-
-            let rightmost_optimal_symbol_index = match optional_rightmost_symbol_index {
-                Some(v) => v,
-                None => representative_symbol_index,
-            };
-
-            let mut non_optimal_anchor_indices = Vec::new();
-            symbol[..leftmost_optimal_symbol_index].iter().for_each(|&anchor_index| {
-                non_optimal_anchor_indices.push(anchor_index);
-            });
-            symbol[rightmost_optimal_symbol_index+1..].iter().for_each(|&anchor_index| {
-                non_optimal_anchor_indices.push(anchor_index);
-            });
-            // Register anchors
-            symbol[leftmost_optimal_symbol_index..=rightmost_optimal_symbol_index].iter().for_each(|&anchor_index| {
-                anchor_table[anchor_index.0 as usize][anchor_index.1 as usize].skipped = true;
-            });
-
-            if let Some((alignment_operations, alignment_position)) = valid_anchor_alignment_operations_and_position {
-                let local_alignment = LocalAlignment {
-                    // Symbol
-                    symbol,
-                    // Length and penalty
-                    query_length,
-                    penalty,
-                    length,
-                    // About operation
-                    alignment_operations,
-                    alignment_position,
-                    // About Optimum
-                    non_optimal_anchor_indices,
-                };
-    
-                local_alignments.push(local_alignment);
             }
         }
     });
+    println!("# skipped_counter: {}", skipped_counter);
 
-    // Sort by
-    // (1) longer query is left
-    // (2) lesser penalty is left
-    local_alignments.sort_unstable_by(|a, b| {
+    //
+    // 2. Sort extensions by
+    //   - longer query is left
+    //   - lesser penalty is left
+    //
+    // println!("# valid_local_extension_buffer:\n{:?}", valid_local_extensions_buffer);
+    valid_local_extensions_buffer.sort_unstable_by(|a, b| {
         let query_length_cmp = a.query_length.partial_cmp(&b.query_length).unwrap();
         match query_length_cmp {
             Ordering::Equal => {
@@ -391,29 +246,25 @@ fn local_alignment_query_to_target(
         }
     });
 
-    local_alignments.into_iter().filter_map(|local_alignment| {
-        let mut is_unique_position = true;
-        for non_optimal_anchor_index in local_alignment.non_optimal_anchor_indices.into_iter() {
-            if anchor_table[non_optimal_anchor_index.0 as usize][non_optimal_anchor_index.1 as usize].included {
-                is_unique_position = false;
-                break;
-            }
-        }
-        if is_unique_position {
-            local_alignment.symbol.into_iter().for_each(|anchor_index| {
-                anchor_table[anchor_index.0 as usize][anchor_index.1 as usize].included = true;
-            });
-            let anchor_alignment_result = AnchorAlignmentResult {
-                penalty: local_alignment.penalty,
-                length: local_alignment.length,
-                position: local_alignment.alignment_position,
-                operations: local_alignment.alignment_operations,
-            };
-            Some(anchor_alignment_result)
-        } else {
+    //
+    // 3. Register extensions to print
+    //
+    
+    // TODO: Use cached buffer
+    let mut registered_checkpoints_buffer: AHashSet<(u32, u32)> = AHashSet::new();
+
+    let results = valid_local_extensions_buffer.iter_mut().filter_map(|local_extension| {
+        if local_extension.is_already_registered(&registered_checkpoints_buffer) {
             None
+        } else {
+            local_extension.register_checkpoints(&mut registered_checkpoints_buffer);
+            Some(local_extension.to_alignment_result())
         }
-    }).collect()
+    }).collect();
+    valid_local_extensions_buffer.clear();
+    registered_checkpoints_buffer.clear();
+
+    results
 }
 
 #[derive(Debug, Clone)]
@@ -430,35 +281,4 @@ impl Anchor {
             extensions_cache: None,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-struct AnchorDep {
-    extensions_cache: Option<LocalExtensionDep>,
-    skipped: bool, // The extension step can be skipped
-    included: bool, // If included in used symbol
-}
-impl AnchorDep {
-    fn new_empty() -> Self {
-        Self {
-            extensions_cache: None,
-            skipped: false,
-            included: false,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LocalAlignment {
-    // Symbol
-    symbol: Vec<AnchorIndex>, // sorted anchor indices
-    // Length and penalty
-    query_length: u32,
-    penalty: u32,
-    length: u32,
-    // About operation
-    alignment_operations: Vec<AlignmentOperations>,
-    alignment_position: AlignmentPosition,
-    // About Optimum
-    non_optimal_anchor_indices: Vec<AnchorIndex>,
 }

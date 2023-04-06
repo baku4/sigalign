@@ -10,8 +10,8 @@ pub struct Vpc {
     pub component_index: u32,
 }
 pub struct VpcIndexPackage {
-    left_vpc_indices: Vec<usize>,
-    right_vpc_indices: Vec<usize>,
+    pub left_vpc_indices: Vec<usize>,
+    pub right_vpc_indices: Vec<usize>,
 }
 
 impl Vpc {
@@ -28,27 +28,32 @@ impl Vpc {
         let mut right_vpc_index = 0;
         let mut left_vpc_index = left_sorted_vpc_vector.len(); // This time: last index + 1
 
-        while (left_vpc_index > 0) && (right_vpc_index < right_sorted_vpc_vector.len()) {
+        'outer: while (left_vpc_index > 0) && (right_vpc_index < right_sorted_vpc_vector.len()) {
             left_vpc_index -= 1; // Adjust
             // (1) Get left vpc index of checkpoint
             let rpd_with_anchor = right_sorted_vpc_vector[right_vpc_index].scaled_penalty_delta + anchor_scaled_penalty_delta;
             let mut pd = left_sorted_vpc_vector[left_vpc_index].scaled_penalty_delta + rpd_with_anchor;
             while pd < 0 {
+                if left_vpc_index == 0 {
+                    break 'outer;
+                }
                 left_vpc_index -= 1;
                 pd = left_sorted_vpc_vector[left_vpc_index].scaled_penalty_delta + rpd_with_anchor;
             }
             // (2) Get right vpc index of checkpoint
             let lpd_with_anchor = left_sorted_vpc_vector[left_vpc_index].scaled_penalty_delta + anchor_scaled_penalty_delta;
+            // In the below section:
+            //  PD is next PD when next 'right_vpc' is exists.
             while pd >= 0 {
+                right_vpc_index += 1;
                 if right_vpc_index == right_sorted_vpc_vector.len() {
                     break;
                 }
-                right_vpc_index += 1;
                 pd = lpd_with_anchor + right_sorted_vpc_vector[right_vpc_index].scaled_penalty_delta;
             }
             // (3) Add index to checkpoints
             left_vpc_checkpoints.push(left_vpc_index);
-            right_vpc_checkpoints.push(right_vpc_index - 1);
+            right_vpc_checkpoints.push(right_vpc_index-1);
         }
 
         let checkpoint_count = left_vpc_checkpoints.len();
@@ -109,7 +114,12 @@ impl WaveFront {
     // | PD>| PD>| PD>| PD>| ... | PD |
     // --------------------------------
     #[inline]
-    pub fn get_sorted_vpc_vector(&self, maximum_penalty_per_scale: u32, minimum_scaled_penalty_delta: i64) -> Vec<Vpc> {
+    //TODO: Optimize
+    pub fn get_sorted_vpc_vector(
+        &self,
+        maximum_penalty_per_scale: u32,
+        minimum_scaled_penalty_delta: i64,
+    ) -> Vec<Vpc> {
         let last_penalty = self.end_point.penalty;
 
         let mut sorted_vpc_vector: Vec<Vpc> = Vec::new();
@@ -195,7 +205,10 @@ impl WaveFront {
 }
 
 impl WaveFrontScore {
-    fn point_of_maximum_query_length(&self) -> (u32, i32, u32) { // (Maximum query index, Length of that, Component index of that)
+    // Result:
+    //   (Maximum query index, Length of that, Component index of that)
+    #[inline]
+    fn point_of_maximum_query_length(&self) -> (u32, i32, u32) {
         let mut max_query_length = 0;
         let mut length_cache = 0;
         let mut comp_index_cache = 0;

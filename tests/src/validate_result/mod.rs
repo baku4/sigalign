@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 // Test if result of current repository == result of stable version of SigAlign
 // Answer is created from the SigAlign of version in `crate`
 use std::fs;
@@ -10,6 +11,8 @@ use crate::{
     test_data_path::*,
 };
 
+use sigalign::results::AlignmentOperation;
+use sigalign::utils::FastaReader;
 use sigalign::{
     wrapper::{
         DefaultReference, DefaultAligner
@@ -97,6 +100,93 @@ fn test_current_algorithms_are_collect() {
     assert_eq_fasta_alignment_result(local_result_of_current, local_result_answer);
     info!("Comparison of local mode is done");
 }
+#[test]
+fn print_the_first_alignment_result_for_local() {
+    init_logger();
+    info!("Integrated test of current algorithms starts");
+    
+    // Prepare data
+    let ref_file = get_ref_for_val_path();
+    let qry_file = get_qry_for_val_path();
+
+    // Build reference
+    let reference = DefaultReference::from_fasta_file(&ref_file).unwrap();
+
+    // Prepare Aligners
+    let mut local_aligner = DefaultAligner::new_local(
+        ANSWER_ALIGNER_OPTION.0,
+        ANSWER_ALIGNER_OPTION.1,
+        ANSWER_ALIGNER_OPTION.2,
+        ANSWER_ALIGNER_OPTION.3,
+        ANSWER_ALIGNER_OPTION.4,
+    ).unwrap();
+
+    info!("Reference and aligners of current are ready");
+
+    // Perform alignment
+    let [_, local_result_answer] = get_answer_or_generate().unwrap();
+    let local_result_answer = convert_result_of_stable_version_to_current(&local_result_answer);
+    info!("Answers are loaded");
+
+    //
+    // To view result
+    //
+    let result_index_list = 0..=5000;
+    for result_index in result_index_list {
+        let one_read = local_result_answer.0[result_index].read.clone();
+        let one_local_result_answer = local_result_answer.0[result_index].result.clone();
+        
+        let one_query = {
+            let mut fasta_reader = FastaReader::from_path(&qry_file).unwrap();
+            loop {
+                let query = fasta_reader.next().unwrap();
+                if query.0 == one_read {
+                    break query
+                }
+            }
+        };
+
+        // println!("# result_index: {:?}", result_index);
+        // println!("# query:\n{:?}", String::from_utf8(one_query.1.clone()).unwrap());
+
+        let one_local_result_of_current = local_aligner.align_query(
+            &reference,
+            &one_query.1,
+        ).unwrap();
+        
+        info!("Alignment of local mode is done");
+
+        // if !right_result_includes_left(&one_local_result_answer, &one_local_result_of_current) {
+        //     let res_count = |res: &AlignmentResult| {
+        //         res.0.iter().map(|x| x.alignments.len()).sum::<usize>()
+        //     };
+        //     println!(
+        //         "result count: answer-{}, current-{}",
+        //         res_count(&one_local_result_answer),
+        //         res_count(&one_local_result_of_current),
+        //     );
+        // }
+
+        // Check if last operation is INS
+        one_local_result_of_current.0.iter().for_each(|target_result| {
+            target_result.alignments.iter().for_each(|x| {
+                let ops = &x.operations;
+                let op = ops[0].operation.clone();
+                if (op == AlignmentOperation::Insertion) {
+                    println!("First op is INS");
+                    println!("target_result:\n{:?}", target_result);
+                    panic!("");
+                }
+                let op = ops.last().unwrap().operation.clone();
+                if (op == AlignmentOperation::Insertion) {
+                    println!("Last op is INS");
+                    println!("target_result:\n{:?}", target_result);
+                    panic!("");
+                }
+            })
+        });
+    }
+}
 
 fn assert_eq_fasta_alignment_result(mut a: FastaAlignmentResult, mut b: FastaAlignmentResult) {
     // Sort by read
@@ -125,8 +215,8 @@ fn is_equal_alignment_result(
     a: &AlignmentResult,
     b: &AlignmentResult,
 ) -> bool {
-    let sorted_a = sort_record_alignment_results(&a.0);
-    let sorted_b = sort_record_alignment_results(&b.0);
+    let sorted_a = sort_target_alignment_results(&a.0);
+    let sorted_b = sort_target_alignment_results(&b.0);
 
     if sorted_a.len() != sorted_b.len() {
         error!("Unequal record alignment count. left: {}, right: {}", sorted_a.len(), sorted_b.len());
@@ -147,7 +237,24 @@ fn is_equal_alignment_result(
         })
     }
 }
-fn sort_record_alignment_results(vec: &Vec<TargetAlignmentResult>) -> Vec<TargetAlignmentResult> {
+fn right_result_includes_left(
+    a: &AlignmentResult,
+    b: &AlignmentResult,
+) -> bool {
+    let to_set = |alignment_result: &AlignmentResult| {
+        let set: HashSet<(u32, AnchorAlignmentResult)> = alignment_result.0.iter().map(|target_alignment_result| {
+            let target_index = &target_alignment_result.index;
+            target_alignment_result.alignments.iter().map(|res| {
+                (*target_index, res.clone())
+            })
+        }).flatten().collect();
+        set
+    };
+    let set_a = to_set(a);
+    let set_b = to_set(b);
+    set_a.is_subset(&set_b)
+}
+fn sort_target_alignment_results(vec: &Vec<TargetAlignmentResult>) -> Vec<TargetAlignmentResult> {
     let mut sorted = vec.clone();
     sorted.sort_by_key(|v| v.index);
     sorted

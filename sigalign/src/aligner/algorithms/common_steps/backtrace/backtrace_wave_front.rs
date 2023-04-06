@@ -7,6 +7,7 @@ use super::{Extension, WaveFront, BackTraceMarker};
 use super::{TraversedPosition};
 
 impl WaveFront {
+    #[inline]
     pub fn get_extended_length_of_endpoint(
         &self,
         penalty: u32,

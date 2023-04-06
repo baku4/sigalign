@@ -572,7 +572,7 @@ impl SemiGlobalExtensionIndex {
                     anchor_query_position + anchor_size + right_length - right_insertion_count,
                 ),
             };
-            let alignment_operations = AlignmentOperations::concatenate_operations(
+            let alignment_operations = AlignmentOperations::concatenate_operations_consuming(
             left_alignment_operations,
             right_alignment_operations,
             anchor_size as u32,

@@ -6,30 +6,25 @@ use crate::{
         },
     },
     results::{
-        AlignmentOperation,
+        AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-
 use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchor};
 use super::{Extension, WaveFront, calculate_spare_penalty};
 use super::{Vpc, VpcIndexPackage};
+use ahash::AHashSet;
 
-#[derive(Debug, Clone)]
-pub struct LocalExtensionDep {
-    pub left_extension: Extension,
-    pub right_extension: Extension,
-    pub left_traversed_anchors: Vec<TraversedAnchor>,
-    pub right_traversed_anchors: Vec<TraversedAnchor>,
-    pub left_scaled_penalty_deltas: Vec<i64>,
-    pub right_scaled_penalty_deltas: Vec<i64>,
-}
+// Checkpoint: (Query position, Target position)
+//  - The last checkpoint is the start and end position of the alignment from the extension
 #[derive(Debug, Clone)]
 pub struct LocalExtension {
+    pub anchor_size: u32,
+    pub query_length: u32, // For Sorting
     pub left_extension: Extension,
     pub right_extension: Extension,
     pub left_checkpoints: Vec<(u32, u32)>,
     pub right_checkpoints: Vec<(u32, u32)>,
-    pub representative_anchor: AnchorIndex,
+    pub penalty: u32, // For Sorting
 }
 
 impl PosTable {
@@ -45,7 +40,7 @@ impl PosTable {
         scaled_penalty_delta_of_left: &i64,
         left_wave_front: &mut WaveFront,
         right_wave_front: &mut WaveFront,
-    ) -> Vec<LocalExtension> { // (Vec of LocalExtension, Right traversed anchors)
+    ) -> Vec<LocalExtension> {
         let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
@@ -122,12 +117,18 @@ impl PosTable {
                 let left_extension = left_wave_front.backtrace_from_endpoint(left_vpc.penalty, left_vpc.component_index, penalties);
                 let right_vpc = &right_sorted_vpc_vector[*unsafe { right_vpc_indices.last().unwrap_unchecked() }];
                 let right_extension = right_wave_front.backtrace_from_endpoint(right_vpc.penalty, right_vpc.component_index, penalties);
+                let penalty = left_extension.penalty + right_extension.penalty;
                 LocalExtension {
+                    anchor_size,
+                    query_length: (
+                        left_extension.length - left_extension.insertion_count
+                        + right_extension.length - right_extension.insertion_count
+                    ),
                     left_checkpoints,
                     right_checkpoints,
                     left_extension,
                     right_extension,
-                    representative_anchor: *anchor_index,
+                    penalty,
                 }
             }).collect()
         };
@@ -223,180 +224,95 @@ impl PosTable {
                 let left_extension = left_wave_front.backtrace_from_endpoint(left_vpc.penalty, left_vpc.component_index, penalties);
                 let right_vpc = &right_sorted_vpc_vector[*unsafe { right_vpc_indices.last().unwrap_unchecked() }];
                 let right_extension = right_wave_front.backtrace_from_endpoint(right_vpc.penalty, right_vpc.component_index, penalties);
+                let penalty = left_extension.penalty + right_extension.penalty;
                 LocalExtension {
+                    anchor_size,
+                    query_length: (
+                        left_extension.length - left_extension.insertion_count
+                        + right_extension.length - right_extension.insertion_count
+                    ),
                     left_checkpoints,
                     right_checkpoints,
                     left_extension,
                     right_extension,
-                    representative_anchor: *anchor_index,
+                    penalty,
                 }
             }).collect()
         };
 
-        //
-        // (6) Get left traversed anchors
-        //
-        let left_traversed_anchors = {
-            let leftmost_local_extension = &local_extensions[0];
-            let mut traversed_anchors: Vec<AnchorIndex> = Vec::new(); // (pattern_index, target_position)
-
-            let left_extension = &leftmost_local_extension.left_extension;
-            let mut further_query_length = 0;
-            let mut further_target_length = 0;
-
-            for operations in left_extension.reversed_operations.iter().rev() {
-                match operations.operation {
-                    AlignmentOperation::Match => {
-                        let mut further_pattern_count = further_query_length / pattern_size;
-                        let remained_length_from_previous_pattern_to_this_operations = further_query_length % pattern_size;
-                        let length_to_next_pattern = if remained_length_from_previous_pattern_to_this_operations == 0 {
-                            0
-                        } else {
-                            further_pattern_count += 1;
-                            pattern_size - remained_length_from_previous_pattern_to_this_operations
-                        };
-                        // Traversed
-                        if length_to_next_pattern + pattern_size <= operations.count {
-                            let pattern_index = anchor_index.0 - further_pattern_count;
-                            let target_position = left_target_last_index - further_target_length - length_to_next_pattern;
-                            let pattern_position = &self.0[pattern_index as usize];
-                            let anchor_index_in_pattern = unsafe { AnchorPosition::binary_search_index(pattern_position, target_position).unwrap_unchecked() };
-                            traversed_anchors.push((pattern_index, anchor_index_in_pattern as u32));
-                        }
-
-                        further_query_length += operations.count;
-                        further_target_length += operations.count;
-                    },
-                    AlignmentOperation::Subst => {
-                        further_query_length += operations.count;
-                        further_target_length += operations.count;
-                    },
-                    AlignmentOperation::Insertion => {
-                        further_target_length += operations.count;
-                    },
-                    AlignmentOperation::Deletion => {
-                        further_query_length += operations.count;
-                    },
-                }
-            }
-            traversed_anchors
-        };
-
-        // (local_extensions, left_traversed_anchors)
         local_extensions
     }
+}
+
+impl LocalExtension {
     #[inline]
-    pub fn get_right_traversed_anchors(
+    pub fn is_valid(
         &self,
-        anchor_index: &AnchorIndex,
-        local_extension: &LocalExtension,
-        pattern_size: u32,
-    ) -> Vec<AnchorIndex> {
-        let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
-        let pattern_count = anchor_position.pattern_count;
-        let anchor_size = pattern_count * pattern_size;
-        let right_target_start_index = anchor_position.position_in_target + anchor_size;
-
-        let mut traversed_anchors: Vec<AnchorIndex> = Vec::new(); // (pattern_index, target_position)
-
-        let right_extension = &local_extension.right_extension;
-        let mut further_query_length = 0;
-        let mut further_target_length = 0;
-
-        for operations in right_extension.reversed_operations.iter().rev() {
-            match operations.operation {
-                AlignmentOperation::Match => {
-                    let mut further_pattern_count = further_query_length / pattern_size;
-                    let remained_length_from_previous_pattern_to_this_operations = further_query_length % pattern_size;
-                    let length_to_next_pattern = if remained_length_from_previous_pattern_to_this_operations == 0 {
-                        0
-                    } else {
-                        further_pattern_count += 1;
-                        pattern_size - remained_length_from_previous_pattern_to_this_operations
-                    };
-                    // Traversed
-                    if length_to_next_pattern + pattern_size <= operations.count {
-                        let pattern_index = anchor_index.0 + pattern_count + further_pattern_count;
-                        let target_position = right_target_start_index + further_target_length + length_to_next_pattern;
-                        let pattern_position = &self.0[pattern_index as usize];
-                        let anchor_index_in_pattern = unsafe { AnchorPosition::binary_search_index(pattern_position, target_position).unwrap_unchecked() };
-                        traversed_anchors.push((pattern_index, anchor_index_in_pattern as u32));
-                    }
-
-                    further_query_length += operations.count;
-                    further_target_length += operations.count;
-                },
-                AlignmentOperation::Subst => {
-                    further_query_length += operations.count;
-                    further_target_length += operations.count;
-                },
-                AlignmentOperation::Insertion => {
-                    further_target_length += operations.count;
-                },
-                AlignmentOperation::Deletion => {
-                    further_query_length += operations.count;
-                },
-            }
-        }
-        traversed_anchors
+        minimum_length: &u32,
+    ) -> bool {
+        let length = self.left_extension.length + self.right_extension.length + self.anchor_size;
+        length >= *minimum_length
     }
     #[inline]
-    pub fn get_left_traversed_anchors(
+    pub fn is_already_registered(
         &self,
-        anchor_index: &AnchorIndex,
-        local_extension: &LocalExtension,
-        pattern_size: u32,
-    ) -> Vec<AnchorIndex> {
-        let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
-        let pattern_count = anchor_position.pattern_count;
-        let anchor_size = pattern_count * pattern_size;
-
-        let left_target_last_index = anchor_position.position_in_target;
-        
-        let mut traversed_anchors: Vec<AnchorIndex> = Vec::new(); // (pattern_index, target_position)
-
-        let left_extension = &local_extension.left_extension;
-        let mut further_query_length = 0;
-        let mut further_target_length = 0;
-
-        for operations in left_extension.reversed_operations.iter().rev() {
-            match operations.operation {
-                AlignmentOperation::Match => {
-                    let mut further_pattern_count = further_query_length / pattern_size;
-                    let remained_length_from_previous_pattern_to_this_operations = further_query_length % pattern_size;
-                    let length_to_next_pattern = if remained_length_from_previous_pattern_to_this_operations == 0 {
-                        0
-                    } else {
-                        further_pattern_count += 1;
-                        pattern_size - remained_length_from_previous_pattern_to_this_operations
-                    };
-                    // Traversed
-                    if length_to_next_pattern + pattern_size <= operations.count {
-                        let pattern_index = anchor_index.0 - further_pattern_count;
-                        let target_position = left_target_last_index - further_target_length - length_to_next_pattern;
-                        let pattern_position = &self.0[pattern_index as usize];
-                        let anchor_index_in_pattern = unsafe { AnchorPosition::binary_search_index(pattern_position, target_position).unwrap_unchecked() };
-                        traversed_anchors.push((pattern_index, anchor_index_in_pattern as u32));
-                    }
-
-                    further_query_length += operations.count;
-                    further_target_length += operations.count;
-                },
-                AlignmentOperation::Subst => {
-                    further_query_length += operations.count;
-                    further_target_length += operations.count;
-                },
-                AlignmentOperation::Insertion => {
-                    further_target_length += operations.count;
-                },
-                AlignmentOperation::Deletion => {
-                    further_query_length += operations.count;
-                },
-            }
-        }
-
-        traversed_anchors
+        registered_checkpoints: &AHashSet<(u32, u32)>,
+    ) -> bool {
+        self.left_checkpoints.iter().any(|x| registered_checkpoints.contains(x))
+        && self.right_checkpoints.iter().any(|x| registered_checkpoints.contains(x))
     }
+    #[inline]
+    pub fn register_checkpoints(
+        &self,
+        registered_checkpoints: &mut AHashSet<(u32, u32)>,
+    ) {
+        registered_checkpoints.extend(&self.left_checkpoints);
+        registered_checkpoints.extend(&self.right_checkpoints);
+    }
+    #[inline]
+    pub fn to_alignment_result(&mut self) -> AnchorAlignmentResult {
+        // TODO: Can be calculated in the previous part?
+        let length = self.left_extension.length + self.right_extension.length + self.anchor_size;
+        let alignment_position = {
+            let (query_start, target_start) = unsafe {
+                *self.left_checkpoints.last().unwrap_unchecked()  
+            };
+            let (query_end, target_end) = unsafe {
+                *self.right_checkpoints.last().unwrap_unchecked()  
+            };
+            AlignmentPosition{
+                target: (target_start, target_end),
+                query: (query_start, query_end),
+            }
+        };
+        let operations = AlignmentOperations::concatenate_operations(
+            &self.left_extension.reversed_operations,
+            &mut self.right_extension.reversed_operations,
+            self.anchor_size,
+        );
+
+        AnchorAlignmentResult {
+            penalty: self.penalty,
+            length,
+            position: alignment_position,
+            operations: operations,
+        }
+    }
+}
+
+// FIXME: TO DEP
+
+#[derive(Debug, Clone)]
+pub struct LocalExtensionDep {
+    pub left_extension: Extension,
+    pub right_extension: Extension,
+    pub left_traversed_anchors: Vec<TraversedAnchor>,
+    pub right_traversed_anchors: Vec<TraversedAnchor>,
+    pub left_scaled_penalty_deltas: Vec<i64>,
+    pub right_scaled_penalty_deltas: Vec<i64>,
+}
+
+impl PosTable {
     #[inline]
     pub fn extend_right_first_for_local(
         &self,
