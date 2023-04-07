@@ -81,6 +81,9 @@ impl PosTable {
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - right_max_scaled_penalty_delta;
         let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
+        println!("# left_vpc_len:{}", left_sorted_vpc_vector.len());
+        println!("# right_vpc_len:{}", right_sorted_vpc_vector.len());
+
         //
         // (4) Get packaged indices of VPC vector
         // The result is sorted from left to right
@@ -90,6 +93,7 @@ impl PosTable {
             &right_sorted_vpc_vector,
             anchor_scaled_penalty_delta,
         );
+        println!("# vpc_index_packages:{}", vpc_index_packages.len());
 
         //
         // (5) Get extension results from each Vpc index package
@@ -197,7 +201,9 @@ impl PosTable {
             &right_sorted_vpc_vector,
             anchor_scaled_penalty_delta,
         );
-
+        println!("# left_vpc_len:{}", left_sorted_vpc_vector.len());
+        println!("# right_vpc_len:{}", right_sorted_vpc_vector.len());
+        println!("# vpc_index_packages:{}", vpc_index_packages.len());
         //
         // (5) Get extension results from each Vpc index package
         //

@@ -90,11 +90,17 @@ impl WaveFront {
 
         let max_k = self.wave_front_scores[penalty as usize].max_k;
         let new_components_by_k = &self.wave_front_scores[penalty as usize].components_by_k;
+        // TODO: Faster init
+        // unsafe {
+        //     let ptr = new_components_by_k.as_ptr() as *mut Components;
+        //     let len = new_components_by_k.len();
+        //     let byte_len = len * std::mem::size_of::<Components>();
+        //     std::ptr::write_bytes(ptr, 0, byte_len);
+        // }
         unsafe {
-            let ptr = new_components_by_k.as_ptr() as *mut Components;
-            let len = new_components_by_k.len();
-            let byte_len = len * std::mem::size_of::<Components>();
-            std::ptr::write_bytes(ptr, 0, byte_len);
+            new_components_by_k.iter().for_each(
+                |v| *(v as *const Components as *mut Components) = Components::default()
+            );
         }
 
         // (1) From score: s-o-e

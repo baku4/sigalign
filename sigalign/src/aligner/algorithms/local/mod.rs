@@ -72,6 +72,7 @@ fn local_alignment_query_to_target(
 ) -> Vec<AnchorAlignmentResult> {
     //FIXME: counter
     let mut skipped_counter = 0;
+    let mut right_traversed_anchors_count = 0;
 
     // TODO: Use buffer
     let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
@@ -83,6 +84,7 @@ fn local_alignment_query_to_target(
     // println!("# pos table: {:?}", pos_table);
     // println!("# pattern_size: {:?}", pattern_size);
     // println!("# sorted_anchor_indices:\n{:?}", sorted_anchor_indices);
+    println!("# total_anchor_count:{}", sorted_anchor_indices.len());
 
     let mut anchor_table: Vec<Vec<Anchor>> = pos_table.0.iter().map(|pattern_position| {
         vec![Anchor::new_empty(); pattern_position.len()]
@@ -118,12 +120,15 @@ fn local_alignment_query_to_target(
                 )
             };
             // Get right traversed anchors
-            let rightmost_extension = unsafe { local_extensions.last().unwrap_unchecked() };
+            let leftmost_of_right_extension = &local_extensions[0];
+            //unsafe { local_extensions.last().unwrap_unchecked() };
             let right_traversed_anchors = pos_table.get_right_traversed_anchors(
                 &current_anchor_index,
-                rightmost_extension,
+                leftmost_of_right_extension,
                 pattern_size,
             );
+            right_traversed_anchors_count += right_traversed_anchors.len();
+            
             // println!("# rightmost_extension: {:?}", rightmost_extension);
             // println!("# right_traversed_anchors: {:?}", right_traversed_anchors);
             //
@@ -155,8 +160,9 @@ fn local_alignment_query_to_target(
                     };
                     // println!("# local_extensions_of_right_anchor: {:?}", local_extensions_of_right_anchor);
 
-                    let leftmost_extension = &local_extensions_of_right_anchor[0];
-                    let left_traversed_anchors_of_right_anchor = pos_table.get_left_traversed_anchors(&traversed_anchor_index, leftmost_extension, pattern_size);
+                    let rightmost_of_left_extension = unsafe { local_extensions_of_right_anchor.last().unwrap_unchecked() };
+                    // &local_extensions_of_right_anchor[0];
+                    let left_traversed_anchors_of_right_anchor = pos_table.get_left_traversed_anchors(&traversed_anchor_index, rightmost_of_left_extension, pattern_size);
                     // println!("# left_traversed_anchors_of_right_anchor: {:?}", left_traversed_anchors_of_right_anchor);
 
                     // Check if converged
@@ -192,7 +198,7 @@ fn local_alignment_query_to_target(
                     // };
                     // (6)
                     let converged = unsafe {
-                        let cp = rightmost_extension.left_checkpoints.last().unwrap_unchecked();
+                        let cp = leftmost_of_right_extension.left_checkpoints.last().unwrap_unchecked();
                         let mut converged = false;
                         for extension in &local_extensions_of_right_anchor {
                             if extension.left_checkpoints.last().unwrap_unchecked() == cp {
@@ -228,6 +234,7 @@ fn local_alignment_query_to_target(
         }
     });
     println!("# skipped_counter: {}", skipped_counter);
+    println!("# right_traversed_anchors_count:{}", right_traversed_anchors_count);
 
     //
     // 2. Sort extensions by
