@@ -47,11 +47,11 @@ fn safe_max_penalty_from_len(
     u32::max(
         penalties.o,
         (
-            cutoff.maximum_penalty_per_scale * (
+            cutoff.maximum_scaled_penalty_per_length * (
                 penalties.e * query_len - penalties.o
             )
         ) / (
-            PREC_SCALE * penalties.e - cutoff.maximum_penalty_per_scale
+            PREC_SCALE * penalties.e - cutoff.maximum_scaled_penalty_per_length
         ) + 1
     )
 }

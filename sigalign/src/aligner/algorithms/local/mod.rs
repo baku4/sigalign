@@ -121,7 +121,7 @@ fn local_alignment_query_to_target(
         });
     });
 
-    let scaled_penalty_delta_assuming_last_anchor_on_the_side = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
+    let scaled_penalty_delta_assuming_last_anchor_on_the_side = ((pattern_size - 1) * cutoff.maximum_scaled_penalty_per_length) as i64;
 
     //
     // 1. Extend all anchors to right
@@ -209,7 +209,7 @@ fn local_alignment_query_to_target_dep(
         vec![AnchorDep::new_empty(); pattern_position.len()]
     }).collect();
 
-    let scaled_penalty_delta_assuming_on_edge = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
+    let scaled_penalty_delta_assuming_on_edge = ((pattern_size - 1) * cutoff.maximum_scaled_penalty_per_length) as i64;
 
     //
     // 1. Extend all anchors

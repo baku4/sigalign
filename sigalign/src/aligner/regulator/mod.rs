@@ -105,14 +105,14 @@ impl AlignmentRegulator {
     pub fn get_similarity_cutoff(&self) -> (u32, f32) {
         (
             self.cutoff.minimum_aligned_length,
-            (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PREC_SCALE as f32,
+            (self.cutoff.maximum_scaled_penalty_per_length * self.gcd_for_compression) as f32 / PREC_SCALE as f32,
         )
     }
     pub fn get_minimum_aligned_length(&self) -> u32 {
         self.cutoff.minimum_aligned_length
     }
     pub fn get_maximum_penalty_per_length(&self) -> f32 {
-        (self.cutoff.maximum_penalty_per_scale * self.gcd_for_compression) as f32 / PREC_SCALE as f32
+        (self.cutoff.maximum_scaled_penalty_per_length * self.gcd_for_compression) as f32 / PREC_SCALE as f32
     }
     /// Get size of pattern
     pub fn get_pattern_size(&self) -> u32 {
@@ -129,8 +129,8 @@ fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPena
                 (
                     (PREC_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
                 )
-                + 4 * cutoff.maximum_penalty_per_scale
-            ) as f32 / (2 * (n+1) * cutoff.maximum_penalty_per_scale) as f32
+                + 4 * cutoff.maximum_scaled_penalty_per_length
+            ) as f32 / (2 * (n+1) * cutoff.maximum_scaled_penalty_per_length) as f32
         ).ceil() - 2_f32;
 
         let pattern_size = max_penalty.min(upper_bound);
@@ -184,11 +184,11 @@ impl Cutoff {
     fn new_with_scaled_max_ppl(minimum_aligned_length: u32, maximum_penalty_per_scale: u32) -> Self {
         Self {
             minimum_aligned_length,
-            maximum_penalty_per_scale,
+            maximum_scaled_penalty_per_length: maximum_penalty_per_scale,
         }
     }
     fn divide_by_gcd(&mut self, gcd: u32) {
-        self.maximum_penalty_per_scale /= gcd;
+        self.maximum_scaled_penalty_per_length /= gcd;
     }
 }
 

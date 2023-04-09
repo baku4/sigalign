@@ -278,7 +278,7 @@ fn left_penalty_delta_for_new_pattern(
         let mut min_penalty = (left_pattern_count / 2) * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even);
         min_penalty += (left_pattern_count % 2) * min_penalty_for_pattern.odd;
         let then_max_length =  pattern_size * left_pattern_count + left_pattern_count;
-        (then_max_length * cutoff.maximum_penalty_per_scale - min_penalty) as i64
+        (then_max_length * cutoff.maximum_scaled_penalty_per_length - min_penalty) as i64
     }).collect()
 }
 
@@ -322,7 +322,7 @@ impl AnchorTable {
                     };
                     let then_right_maximum_length = then_right_minimum_length + max_gap;
 
-                    (then_right_maximum_length * cutoff.maximum_penalty_per_scale) as i64 - (right_minimum_penalty * PREC_SCALE) as i64
+                    (then_right_maximum_length * cutoff.maximum_scaled_penalty_per_length) as i64 - (right_minimum_penalty * PREC_SCALE) as i64
                 };
 
                 let (optional_left_extension, left_traversed_anchors) = pos_table.extend_left(
@@ -355,11 +355,11 @@ impl AnchorTable {
             let scaled_penalty_delta_of_left = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].left_extension_index {
                 Some(SemiGlobalExtensionIndex::Owned(extension_index)) => {
                     let extension = &extension_cache[extension_index as usize].0;
-                    (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
+                    (extension.length * cutoff.maximum_scaled_penalty_per_length) as i64 - (extension.penalty * PREC_SCALE) as i64
                 },
                 Some(SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index)) => {
                     let traversed_anchor = &extension_cache[extension_index as usize].1[traversed_anchor_index as usize];
-                    (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
+                    (traversed_anchor.remained_length * cutoff.maximum_scaled_penalty_per_length) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
                 None => {
                     left_penalty_delta_for_new_pattern[current_anchor_index.0 as usize]
@@ -426,11 +426,11 @@ impl AnchorTable {
             let scaled_penalty_delta_of_right = match self.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize].right_extension_index.as_ref().unwrap() {
                 SemiGlobalExtensionIndex::Owned(extension_index) => {
                     let extension = &extension_cache[*extension_index as usize].0;
-                    (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64
+                    (extension.length * cutoff.maximum_scaled_penalty_per_length) as i64 - (extension.penalty * PREC_SCALE) as i64
                 },
                 SemiGlobalExtensionIndex::Traversed(extension_index, traversed_anchor_index) => {
                     let traversed_anchor = &extension_cache[*extension_index as usize].1[*traversed_anchor_index as usize];
-                    (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
+                    (traversed_anchor.remained_length * cutoff.maximum_scaled_penalty_per_length) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64
                 },
             };
             // Generate right extension
@@ -554,7 +554,7 @@ impl SemiGlobalExtensionIndex {
         if (
             length >= cutoff.minimum_aligned_length
         ) && (
-            (cutoff.maximum_penalty_per_scale * length) >= (penalty * PREC_SCALE)
+            (cutoff.maximum_scaled_penalty_per_length * length) >= (penalty * PREC_SCALE)
         ) {
             let anchor_query_position = anchor_index.0 * pattern_size;
             let anchor_record_position = anchor_position.position_in_target;

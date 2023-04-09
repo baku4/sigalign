@@ -91,7 +91,7 @@ pub fn extend_leftmost_anchor_to_right(
     sorted_vpc_vector_buffer.clear();
     //   - Fill buffer
     wave_front.fill_sorted_vpc_vector(
-        &cutoff.maximum_penalty_per_scale,
+        &cutoff.maximum_scaled_penalty_per_length,
         &mut sorted_vpc_vector_buffer,
     );
 
@@ -102,6 +102,7 @@ pub fn extend_leftmost_anchor_to_right(
             vpc.penalty,
             pattern_size,
             vpc.component_index,
+            cutoff.maximum_scaled_penalty_per_length,
             penalties,
             &mut traversed_positions_buffer,
         );
@@ -171,7 +172,7 @@ impl PosTable {
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_delta = anchor_size.as_i64() * cutoff.maximum_penalty_per_scale as i64;
+        let anchor_scaled_penalty_delta = anchor_size.as_i64() * cutoff.maximum_scaled_penalty_per_length as i64;
 
         // 
         // (2) Get right extension & VPC vector
@@ -185,7 +186,7 @@ impl PosTable {
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_left;
         let mut right_sorted_vpc_vector = Vec::new();
         right_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut right_sorted_vpc_vector,
         );
 
@@ -202,7 +203,7 @@ impl PosTable {
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - right_max_scaled_penalty_delta;
         let mut left_sorted_vpc_vector = Vec::new();
         left_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut left_sorted_vpc_vector,
         );
 
@@ -290,7 +291,7 @@ impl PosTable {
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_delta = (anchor_size * cutoff.maximum_penalty_per_scale) as i64;
+        let anchor_scaled_penalty_delta = (anchor_size * cutoff.maximum_scaled_penalty_per_length) as i64;
 
         // 
         // (2) Get left extension & VPC vector
@@ -304,7 +305,7 @@ impl PosTable {
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_right;
         let mut left_sorted_vpc_vector = Vec::new();
         left_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut left_sorted_vpc_vector,
         );
 
@@ -321,7 +322,7 @@ impl PosTable {
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - left_max_scaled_penalty_delta;
         let mut right_sorted_vpc_vector = Vec::new();
         right_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut right_sorted_vpc_vector,
         );
 
@@ -476,7 +477,7 @@ impl PosTable {
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_delta = anchor_size.as_i64() * cutoff.maximum_penalty_per_scale as i64;
+        let anchor_scaled_penalty_delta = anchor_size.as_i64() * cutoff.maximum_scaled_penalty_per_length as i64;
 
         // 
         // (2) Get right extension & VPC vector
@@ -490,7 +491,7 @@ impl PosTable {
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_left;
         let mut right_sorted_vpc_vector = Vec::new();
         right_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut right_sorted_vpc_vector,
         );
 
@@ -507,7 +508,7 @@ impl PosTable {
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - right_max_scaled_penalty_delta;
         let mut left_sorted_vpc_vector = Vec::new();
         left_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut left_sorted_vpc_vector,
         );
 
@@ -618,7 +619,7 @@ impl PosTable {
         let left_query_last_index = anchor_index.0 * pattern_size;
         let right_query_start_index = left_query_last_index + anchor_size;
 
-        let anchor_scaled_penalty_delta = (anchor_size * cutoff.maximum_penalty_per_scale) as i64;
+        let anchor_scaled_penalty_delta = (anchor_size * cutoff.maximum_scaled_penalty_per_length) as i64;
 
         // 
         // (2) Get left extension & VPC vector
@@ -632,7 +633,7 @@ impl PosTable {
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_right;
         let mut left_vpc_vector = Vec::new();
         left_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut left_vpc_vector,
         );
 
@@ -649,7 +650,7 @@ impl PosTable {
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - left_max_scaled_penalty_delta;
         let mut right_vpc_vector = Vec::new();
         right_wave_front.fill_sorted_vpc_vector(
-            &cutoff.maximum_penalty_per_scale,
+            &cutoff.maximum_scaled_penalty_per_length,
             &mut right_vpc_vector,
         );
 
@@ -722,7 +723,7 @@ fn get_scaled_penalty_deltas_of_vpc_vector(
     penalties: &Penalty,
     traversed_anchors: &Vec<TraversedAnchor>,
 ) -> Vec<i64> {
-    let scaled_penalty_delta_of_extension = (extension.length * cutoff.maximum_penalty_per_scale) as i64 - (extension.penalty * PREC_SCALE) as i64;
+    let scaled_penalty_delta_of_extension = (extension.length * cutoff.maximum_scaled_penalty_per_length) as i64 - (extension.penalty * PREC_SCALE) as i64;
 
     let mut vpc_index_for_traversed_anchor = 0;
     let mut scaled_penalty_deltas: Vec<i64> = traversed_anchors.iter().rev().map(|traversed_anchor| {
@@ -732,7 +733,7 @@ fn get_scaled_penalty_deltas_of_vpc_vector(
         while min_query_length > vpc_vector[vpc_index_for_traversed_anchor].query_length {
             vpc_index_for_traversed_anchor += 1;
         }
-        let remained_scaled_penalty_delta = (traversed_anchor.remained_length * cutoff.maximum_penalty_per_scale) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64;
+        let remained_scaled_penalty_delta = (traversed_anchor.remained_length * cutoff.maximum_scaled_penalty_per_length) as i64 - (traversed_anchor.remained_penalty * PREC_SCALE) as i64;
         vpc_vector[vpc_index_for_traversed_anchor].scaled_penalty_delta + remained_scaled_penalty_delta - scaled_penalty_delta_of_extension
     }).collect();
     scaled_penalty_deltas.reverse();

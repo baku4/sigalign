@@ -17,7 +17,7 @@ pub fn calculate_spare_penalty(
         penalties.o as i64,
         (
             penalties.e as i64 * scaled_penalty_delta_of_other_side
-            + cutoff.maximum_penalty_per_scale as i64 * (
+            + cutoff.maximum_scaled_penalty_per_length as i64 * (
                 (
                     penalties.e as i64 * (
                         anchor_size + query_length_this_side.min(record_length_this_side)
@@ -25,7 +25,7 @@ pub fn calculate_spare_penalty(
                 ) - penalties.o as i64
             )
         ) / (
-            PREC_SCALE  as i64 * penalties.e  as i64 - cutoff.maximum_penalty_per_scale  as i64
+            PREC_SCALE  as i64 * penalties.e  as i64 - cutoff.maximum_scaled_penalty_per_length  as i64
         ) + 1
     ) as u32
 }

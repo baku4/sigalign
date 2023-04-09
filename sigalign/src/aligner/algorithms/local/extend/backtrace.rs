@@ -14,6 +14,7 @@ use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spa
 use super::LocalExtension;
 use super::Vpc;
 use ahash::AHashSet;
+use num::integer::div_rem;
 
 #[derive(Debug, Clone)]
 pub struct TraversedPosition {
@@ -22,6 +23,12 @@ pub struct TraversedPosition {
     pub traversed_length_to_anchor_end: u32,
     pub traversed_penalty_to_anchor_end: u32,
     pub index_of_operation: u32,
+
+    pub scaled_penalty_delta_from_the_end: u32,
+    pub penalty_from_the_start: u32,
+    pub estimated_additive_pattern_count: u32,
+    pub estimated_additive_target_position: u32,
+    pub partial_operation_index: u32,
     pub alternative_match_count: u32,
 }
 
@@ -42,6 +49,7 @@ impl WaveFront {
         mut penalty: u32,
         pattern_size: u32,
         component_index: u32,
+        scaled_maximum_penalty_per_length: u32,
         penalties: &Penalty,
         traversed_positions_buffer: &mut Vec<TraversedPosition>,
     ) -> Extension {
@@ -60,6 +68,7 @@ impl WaveFront {
         let mut fr = component.fr;
 
         let operation_length = fr as u32 + component.deletion_count as u32;
+        let scaled_penalty_delta = operation_length * scaled_maximum_penalty_per_length - PREC_SCALE * penalty;
         let deletion_count: u32 = component.deletion_count as u32;
         let insertion_count: u32 = (deletion_count as i32 + k) as u32;
 
@@ -82,6 +91,41 @@ impl WaveFront {
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
+                            let query_index_of_before_the_match = next_fr - k;
+                            
+                            let (quotient, remainder) = div_rem(query_index_of_before_the_match, pattern_size as i32);
+                            let match_count_of_next_pattern = fr + remainder - k - next_fr;
+                            if match_count_of_next_pattern >= pattern_size as i32 {
+                                let penalty_from_the_start = penalty + penalties.x;
+                                let scaled_penalty_delta_from_the_start = operation_length * scaled_maximum_penalty_per_length - PREC_SCALE * penalty_from_the_start;
+                                let traversed_position = TraversedPosition {
+                                    // FIXME: Next
+                                    scaled_penalty_delta_from_the_end: ,
+                                    penalty_from_the_start: penalty_from_the_start,
+                                    estimated_additive_pattern_count: (quotient + 1) as u32,
+                                    estimated_additive_target_position: (fr - match_count_of_next_pattern) as u32,
+                                    partial_operation_index: operations.len() as u32,
+                                    alternative_match_count: match_count_of_next_pattern as u32,
+                                    
+                                    pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
+                                    traversed_target_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
+                                    traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
+                                    traversed_penalty_to_anchor_end: penalty + penalties.x,
+                                    index_of_operation: operations.len() as u32,
+                                    alternative_match_count: (alternative_match_count - anchor_size) as u32,
+                                };
+                                traversed_positions_buffer.push(traversed_position);
+                            }
+                            if fr as u32 + query_index_of_before_the_match % pattern_size >= 2 * pattern_size {
+
+                            }
+                            let match_count_to_next_pattern = pattern_size - query_index_of_before_the_match as u32 % pattern_size - 1;
+
+
+                            let match_count_from_the_pattern = (fr - next_fr - 1) as u32 - match_count_to_next_pattern;
+                            
+
+
                             let match_count = (fr - next_fr - 1) as u32;
 
                             let query_index_of_subst = next_fr - k;
@@ -94,6 +138,13 @@ impl WaveFront {
                                 let anchor_size = traversed_pattern_count * pattern_size as i32;
 
                                 let traversed_position = TraversedPosition {
+                                    scaled_penalty_delta_from_the_end: u32,
+                                    penalty_from_the_start: u32,
+                                    estimated_additive_pattern_count: u32,
+                                    estimated_additive_target_position: u32,
+                                    partial_operation_index: u32,
+                                    alternative_match_count: u32,
+                                    
                                     pattern_count_from_start_point: (pattern_count_to_next_pattern + traversed_pattern_count) as u32,
                                     traversed_target_length_to_anchor: (query_slice_index_of_next_pattern + k + anchor_size) as u32,
                                     traversed_length_to_anchor_end: (query_slice_index_of_next_pattern + k + anchor_size) as u32 + component.deletion_count as u32,
