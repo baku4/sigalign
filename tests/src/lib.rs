@@ -26,3 +26,19 @@ mod reference_serialization;
 mod same_result_with_dp;
 // #[cfg(test)]
 // mod print_alignment_result_to_cmp;
+
+
+#[test]
+fn print_pattern_size() {
+    use sigalign::wrapper::DefaultAligner;
+
+    let aligner = DefaultAligner::new_local(
+        4,
+        6,
+        2,
+        u16::MAX as u32,
+        0.0001,
+    ).unwrap();
+
+    print!("pattern_size: {}", aligner.get_pattern_size());
+}

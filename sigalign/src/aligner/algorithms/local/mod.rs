@@ -19,9 +19,13 @@ use extend::{
     SideExtension,
     LocalExtension,
     extend_leftmost_anchor_to_right,
+    extend_rightmost_anchor_to_left,
 };
-mod backtrace;
-use backtrace::{Vpc, VpcIndexPackageDep};
+mod evaluate;
+use evaluate::{
+    sort_left_side_extensions,
+    sort_right_side_extensions,
+};
 
 pub fn local_alignment_algorithm<R: ReferenceInterface>(
     reference: &R,
@@ -38,7 +42,7 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     let target_alignment_results: Vec<TargetAlignmentResult> = pos_table_map.into_iter().filter_map(|(target_index, pos_table)| {
         reference.fill_buffer(target_index, sequence_buffer);
         let target = sequence_buffer.request_sequence();
-        let anchor_alignment_results = local_alignment_query_to_target(
+        let anchor_alignment_results = local_alignment_query_to_target_dep(
             &pos_table,
             pattern_size,
             target,
@@ -66,26 +70,28 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
 struct Anchor {
     extended_to_right: bool,
     extended_to_left: bool,
+    flat_index: u32,
 }
 impl Anchor {
-    fn new_empty() -> Self {
+    fn new(flat_index: u32) -> Self {
         Self {
             extended_to_right: false,
             extended_to_left: false,
+            flat_index,
         }
     }
 }
 
 #[inline]
-fn new_local_alignment_query_to_target(
+fn local_alignment_query_to_target(
     pos_table: &PosTable,
     pattern_size: u32,
     target: &[u8],
     query: &[u8],
     penalties: &Penalty,
     cutoff: &Cutoff,
-    left_wave_front: &mut WaveFront,
-    right_wave_front: &mut WaveFront,
+    wave_front_for_left_extension: &mut WaveFront,
+    wave_front_for_right_extension: &mut WaveFront,
 ) -> Vec<AnchorAlignmentResult> {
     //FIXME: counter
     let mut skipped_counter = 0;
@@ -99,16 +105,21 @@ fn new_local_alignment_query_to_target(
     let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
     let mut left_side_extensions_buffer: Vec<SideExtension> = Vec::new();
     let mut right_side_extensions_buffer: Vec<SideExtension> = Vec::new();
+    let mut sorted_anchor_indices: Vec<AnchorIndex> = Vec::new();
+    let maximum_pattern_count = pos_table.0.len();
+    let mut anchor_table: Vec<Vec<Anchor>> = vec![Vec::new(); maximum_pattern_count];
+    // ^
 
-    let sorted_anchor_indices: Vec<AnchorIndex> = pos_table.0.iter().enumerate().map(|(pattern_index, pattern_position)| {
-        (0..pattern_position.len()).map(move |anchor_index| {
-            (pattern_index as u32, anchor_index as u32)
-        })
-    }).flatten().collect();
-    
-    let mut anchor_table: Vec<Vec<Anchor>> = pos_table.0.iter().map(|pattern_position| {
-        vec![Anchor::new_empty(); pattern_position.len()]
-    }).collect();
+    let mut flat_index = 0;
+    pos_table.0.iter().enumerate().for_each(|(pattern_index, pattern_position)| {
+        let anchors_by_pattern = &mut anchor_table[pattern_index];
+        (0..pattern_position.len()).for_each(|anchor_index| {
+            let anchor_index = (pattern_index as u32, anchor_index as u32);
+            sorted_anchor_indices.push(anchor_index);
+            anchors_by_pattern.push(Anchor::new(flat_index));
+            flat_index += 1;
+        });
+    });
 
     let scaled_penalty_delta_assuming_last_anchor_on_the_side = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
 
@@ -119,7 +130,7 @@ fn new_local_alignment_query_to_target(
         let current_anchor = &mut anchor_table[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
         if !current_anchor.extended_to_right {
             let spare_penalty = right_spare_penalty_by_pattern_index[current_anchor_index.0 as usize];
-            let side_extensions = extend_leftmost_anchor_to_right(
+            extend_leftmost_anchor_to_right(
                 pos_table,
                 &current_anchor_index,
                 pattern_size,
@@ -128,8 +139,8 @@ fn new_local_alignment_query_to_target(
                 penalties,
                 cutoff,
                 &spare_penalty,
-                right_wave_front,
-                &mut left_side_extensions_buffer,
+                wave_front_for_right_extension,
+                &mut right_side_extensions_buffer,
             );
         }
     });
@@ -137,44 +148,38 @@ fn new_local_alignment_query_to_target(
     // 2. Extend all anchors to left
     //
     sorted_anchor_indices.iter().rev().for_each(|current_anchor_index| {
-        //
-    });
-    
-
-    valid_local_extensions_buffer.sort_unstable_by(|a, b| {
-        let query_length_cmp = a.query_length.partial_cmp(&b.query_length).unwrap();
-        match query_length_cmp {
-            Ordering::Equal => {
-                a.penalty.partial_cmp(&b.penalty).unwrap()
-            },
-            Ordering::Greater => Ordering::Less,
-            Ordering::Less => Ordering::Greater,
+        let current_anchor = &mut anchor_table[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+        if !current_anchor.extended_to_left {
+            let spare_penalty = left_spare_penalty_by_pattern_index[current_anchor_index.0 as usize];
+            extend_rightmost_anchor_to_left(
+                pos_table,
+                &current_anchor_index,
+                pattern_size,
+                target,
+                query,
+                penalties,
+                cutoff,
+                &spare_penalty,
+                wave_front_for_left_extension,
+                &mut left_side_extensions_buffer,
+            );
         }
     });
-
     //
-    // 3. Register extensions to print
-    //
+    // 3. Get valid extensions
+    //   - Sort the side extensions
+    sort_left_side_extensions(&mut left_side_extensions_buffer);
+    sort_right_side_extensions(&mut right_side_extensions_buffer);
+    //   - Add valid extensions
     
-    // TODO: Use cached buffer
-    let mut registered_checkpoints_buffer: AHashSet<(u32, u32)> = AHashSet::new();
+    // 4. Transform the local result to anchor alignment result
+    
 
-    let results = valid_local_extensions_buffer.iter_mut().filter_map(|local_extension| {
-        if local_extension.is_already_registered(&registered_checkpoints_buffer) {
-            None
-        } else {
-            local_extension.register_checkpoints(&mut registered_checkpoints_buffer);
-            Some(local_extension.to_alignment_result())
-        }
-    }).collect();
-    valid_local_extensions_buffer.clear();
-    registered_checkpoints_buffer.clear();
-
-    results
+    Vec::new()
 }
 
 #[inline]
-fn local_alignment_query_to_target(
+fn local_alignment_query_to_target_dep(
     pos_table: &PosTable,
     pattern_size: u32,
     target: &[u8],
