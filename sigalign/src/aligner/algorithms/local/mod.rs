@@ -14,11 +14,14 @@ use super::common_steps::{
 use std::cmp::Ordering;
 use ahash::AHashSet;
 
-mod valid_position_candidate;
-use valid_position_candidate::{Vpc, VpcIndexPackage};
 mod extend;
-use extend::LocalExtension;
+use extend::{
+    SideExtension,
+    LocalExtension,
+    extend_leftmost_anchor_to_right,
+};
 mod backtrace;
+use backtrace::{Vpc, VpcIndexPackageDep};
 
 pub fn local_alignment_algorithm<R: ReferenceInterface>(
     reference: &R,
@@ -59,6 +62,117 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     AlignmentResult(target_alignment_results)
 }
 
+#[derive(Debug, Clone)]
+struct Anchor {
+    extended_to_right: bool,
+    extended_to_left: bool,
+}
+impl Anchor {
+    fn new_empty() -> Self {
+        Self {
+            extended_to_right: false,
+            extended_to_left: false,
+        }
+    }
+}
+
+#[inline]
+fn new_local_alignment_query_to_target(
+    pos_table: &PosTable,
+    pattern_size: u32,
+    target: &[u8],
+    query: &[u8],
+    penalties: &Penalty,
+    cutoff: &Cutoff,
+    left_wave_front: &mut WaveFront,
+    right_wave_front: &mut WaveFront,
+) -> Vec<AnchorAlignmentResult> {
+    //FIXME: counter
+    let mut skipped_counter = 0;
+    let mut right_traversed_anchors_count = 0;
+
+    // TODO: Pre defined
+    let right_spare_penalty_by_pattern_index: Vec<u32> = Vec::new();
+    let left_spare_penalty_by_pattern_index: Vec<u32> = Vec::new();
+
+    // TODO: Use buffer
+    let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
+    let mut left_side_extensions_buffer: Vec<SideExtension> = Vec::new();
+    let mut right_side_extensions_buffer: Vec<SideExtension> = Vec::new();
+
+    let sorted_anchor_indices: Vec<AnchorIndex> = pos_table.0.iter().enumerate().map(|(pattern_index, pattern_position)| {
+        (0..pattern_position.len()).map(move |anchor_index| {
+            (pattern_index as u32, anchor_index as u32)
+        })
+    }).flatten().collect();
+    
+    let mut anchor_table: Vec<Vec<Anchor>> = pos_table.0.iter().map(|pattern_position| {
+        vec![Anchor::new_empty(); pattern_position.len()]
+    }).collect();
+
+    let scaled_penalty_delta_assuming_last_anchor_on_the_side = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
+
+    //
+    // 1. Extend all anchors to right
+    //
+    sorted_anchor_indices.iter().for_each(|current_anchor_index| {
+        let current_anchor = &mut anchor_table[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+        if !current_anchor.extended_to_right {
+            let spare_penalty = right_spare_penalty_by_pattern_index[current_anchor_index.0 as usize];
+            let side_extensions = extend_leftmost_anchor_to_right(
+                pos_table,
+                &current_anchor_index,
+                pattern_size,
+                target,
+                query,
+                penalties,
+                cutoff,
+                &spare_penalty,
+                right_wave_front,
+                &mut left_side_extensions_buffer,
+            );
+        }
+    });
+    //
+    // 2. Extend all anchors to left
+    //
+    sorted_anchor_indices.iter().rev().for_each(|current_anchor_index| {
+        //
+    });
+    
+
+    valid_local_extensions_buffer.sort_unstable_by(|a, b| {
+        let query_length_cmp = a.query_length.partial_cmp(&b.query_length).unwrap();
+        match query_length_cmp {
+            Ordering::Equal => {
+                a.penalty.partial_cmp(&b.penalty).unwrap()
+            },
+            Ordering::Greater => Ordering::Less,
+            Ordering::Less => Ordering::Greater,
+        }
+    });
+
+    //
+    // 3. Register extensions to print
+    //
+    
+    // TODO: Use cached buffer
+    let mut registered_checkpoints_buffer: AHashSet<(u32, u32)> = AHashSet::new();
+
+    let results = valid_local_extensions_buffer.iter_mut().filter_map(|local_extension| {
+        if local_extension.is_already_registered(&registered_checkpoints_buffer) {
+            None
+        } else {
+            local_extension.register_checkpoints(&mut registered_checkpoints_buffer);
+            Some(local_extension.to_alignment_result())
+        }
+    }).collect();
+    valid_local_extensions_buffer.clear();
+    registered_checkpoints_buffer.clear();
+
+    results
+}
+
 #[inline]
 fn local_alignment_query_to_target(
     pos_table: &PosTable,
@@ -86,8 +200,8 @@ fn local_alignment_query_to_target(
     // println!("# sorted_anchor_indices:\n{:?}", sorted_anchor_indices);
     println!("# total_anchor_count:{}", sorted_anchor_indices.len());
 
-    let mut anchor_table: Vec<Vec<Anchor>> = pos_table.0.iter().map(|pattern_position| {
-        vec![Anchor::new_empty(); pattern_position.len()]
+    let mut anchor_table: Vec<Vec<AnchorDep>> = pos_table.0.iter().map(|pattern_position| {
+        vec![AnchorDep::new_empty(); pattern_position.len()]
     }).collect();
 
     let scaled_penalty_delta_assuming_on_edge = ((pattern_size - 1) * cutoff.maximum_penalty_per_scale) as i64;
@@ -275,13 +389,13 @@ fn local_alignment_query_to_target(
 }
 
 #[derive(Debug, Clone)]
-struct Anchor {
+struct AnchorDep {
     // The extension step can be skipped
     skipped: bool,
     // Local extension is sorted from left to right
     extensions_cache: Option<Vec<LocalExtension>>,
 }
-impl Anchor {
+impl AnchorDep {
     fn new_empty() -> Self {
         Self {
             skipped: false,

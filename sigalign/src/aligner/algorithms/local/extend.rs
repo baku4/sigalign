@@ -11,8 +11,67 @@ use crate::{
 };
 use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchor};
 use super::{Extension, WaveFront, calculate_spare_penalty};
-use super::{Vpc, VpcIndexPackage};
+use super::{Vpc, VpcIndexPackageDep};
 use ahash::AHashSet;
+
+#[derive(Debug, Clone)]
+pub struct SideExtension {
+    pub penalty: u32,
+    pub length: u32,
+    pub insertion_count: u32,
+    pub deletion_count: u32,
+    pub reversed_operations: Vec<AlignmentOperations>,
+    pub traversed_anchors: TraversedAnchors,
+}
+#[derive(Debug, Clone)]
+pub struct TraversedAnchors {
+
+}
+
+#[inline]
+pub fn extend_leftmost_anchor_to_right(
+    pos_table: &PosTable,
+    anchor_index: &AnchorIndex,
+    pattern_size: u32,
+    target: &[u8],
+    query: &[u8],
+    penalties: &Penalty,
+    cutoff: &Cutoff,
+    spare_penalty: &u32,
+    wave_front: &mut WaveFront,
+    side_extensions_buffer: &mut Vec<SideExtension>,
+) {
+    // TODO: Use buffer
+    let mut sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
+
+    let anchor_position = &pos_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
+    let pattern_count = anchor_position.pattern_count;
+    let anchor_size = pattern_count * pattern_size;
+
+    // (1) Define the range of sequence to extend
+    let left_target_last_index = anchor_position.position_in_target;
+    let right_target_start_index = left_target_last_index + anchor_size;
+
+    let left_query_last_index = anchor_index.0 * pattern_size;
+    let right_query_start_index = left_query_last_index + anchor_size;
+
+    let right_target_slice = &target[right_target_start_index as usize..];
+    let right_query_slice = &query[right_query_start_index as usize..];
+
+    // (2) Extend the side with wave front
+    wave_front.align_right_to_end_point(
+        right_target_slice,
+        right_query_slice,
+        penalties,
+        *spare_penalty,
+    );
+
+    wave_front.backtrace_for_local(
+        &cutoff.maximum_penalty_per_scale,
+        penalties,
+        &mut sorted_vpc_vector_buffer,
+    );
+}
 
 // Checkpoint: (Query position, Target position)
 //  - The last checkpoint is the start and end position of the alignment from the extension
@@ -66,7 +125,7 @@ impl PosTable {
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_left;
-        let right_sorted_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
+        let right_sorted_vpc_vector = right_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
 
         // 
         // (3) Get left extension & VPC vector
@@ -79,7 +138,7 @@ impl PosTable {
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - right_max_scaled_penalty_delta;
-        let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
+        let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
         println!("# left_vpc_len:{}", left_sorted_vpc_vector.len());
         println!("# right_vpc_len:{}", right_sorted_vpc_vector.len());
@@ -99,7 +158,7 @@ impl PosTable {
         // (5) Get extension results from each Vpc index package
         //
         let local_extensions: Vec<LocalExtension> = {
-            vpc_index_packages.into_iter().map(| VpcIndexPackage {
+            vpc_index_packages.into_iter().map(| VpcIndexPackageDep {
                 left_vpc_indices,
                 right_vpc_indices,
             } | {
@@ -177,7 +236,7 @@ impl PosTable {
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_right;
-        let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
+        let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
         // 
         // (3) Get right extension & VPC vector
@@ -190,7 +249,7 @@ impl PosTable {
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - left_max_scaled_penalty_delta;
-        let right_sorted_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
+        let right_sorted_vpc_vector = right_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
 
         //
         // (4) Get packaged indices of VPC vector
@@ -208,7 +267,7 @@ impl PosTable {
         // (5) Get extension results from each Vpc index package
         //
         let local_extensions: Vec<LocalExtension> = {
-            vpc_index_packages.into_iter().map(| VpcIndexPackage {
+            vpc_index_packages.into_iter().map(| VpcIndexPackageDep {
                 left_vpc_indices,
                 right_vpc_indices,
             } | {
@@ -357,7 +416,7 @@ impl PosTable {
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_left;
-        let right_sorted_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
+        let right_sorted_vpc_vector = right_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
 
         // 
         // (3) Get left extension & VPC vector
@@ -370,7 +429,7 @@ impl PosTable {
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - right_max_scaled_penalty_delta;
-        let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
+        let left_sorted_vpc_vector = left_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
         //
         // (4) Get packaged indices of VPC vector
@@ -491,7 +550,7 @@ impl PosTable {
 
         left_wave_front.align_left_to_end_point(left_record_slice, left_query_slice, penalties, left_spare_penalty);
         let left_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - scaled_penalty_delta_of_right;
-        let left_vpc_vector = left_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
+        let left_vpc_vector = left_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, left_minimum_scaled_penalty_delta);
 
         // 
         // (3) Get right extension & VPC vector
@@ -504,7 +563,7 @@ impl PosTable {
 
         right_wave_front.align_right_to_end_point(right_record_slice, right_query_slice, penalties, right_spare_penalty);
         let right_minimum_scaled_penalty_delta = - anchor_scaled_penalty_delta - left_max_scaled_penalty_delta;
-        let right_vpc_vector = right_wave_front.get_sorted_vpc_vector(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
+        let right_vpc_vector = right_wave_front.get_sorted_vpc_vector_dep(cutoff.maximum_penalty_per_scale, right_minimum_scaled_penalty_delta);
 
         //
         // (4) Find optimal position of VPC vectors

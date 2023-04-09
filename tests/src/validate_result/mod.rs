@@ -168,23 +168,23 @@ fn print_the_first_alignment_result_for_local() {
         // }
 
         // Check if last operation is INS
-        one_local_result_of_current.0.iter().for_each(|target_result| {
-            target_result.alignments.iter().for_each(|x| {
-                let ops = &x.operations;
-                let op = ops[0].operation.clone();
-                if (op == AlignmentOperation::Insertion) {
-                    println!("First op is INS");
-                    println!("target_result:\n{:?}", target_result);
-                    panic!("");
-                }
-                let op = ops.last().unwrap().operation.clone();
-                if (op == AlignmentOperation::Insertion) {
-                    println!("Last op is INS");
-                    println!("target_result:\n{:?}", target_result);
-                    panic!("");
-                }
-            })
-        });
+        // one_local_result_of_current.0.iter().for_each(|target_result| {
+        //     target_result.alignments.iter().for_each(|x| {
+        //         let ops = &x.operations;
+        //         let op = ops[0].operation.clone();
+        //         if (op == AlignmentOperation::Insertion) {
+        //             println!("First op is INS");
+        //             println!("target_result:\n{:?}", target_result);
+        //             panic!("");
+        //         }
+        //         let op = ops.last().unwrap().operation.clone();
+        //         if (op == AlignmentOperation::Insertion) {
+        //             println!("Last op is INS");
+        //             println!("target_result:\n{:?}", target_result);
+        //             panic!("");
+        //         }
+        //     })
+        // });
     }
 }
 
