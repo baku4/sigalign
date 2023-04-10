@@ -9,7 +9,7 @@ use crate::{
         AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchor};
+use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchorDep};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
 use super::{
     SideExtension,

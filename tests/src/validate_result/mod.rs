@@ -131,7 +131,10 @@ fn print_the_first_alignment_result_for_local() {
     //
     // To view result
     //
-    let result_index_list = 0..=5000;
+    let result_index_count = local_result_answer.0.len();
+    let result_index_list = 0..result_index_count;
+
+    println!("# tested_read_count: {}", result_index_count);
     for result_index in result_index_list {
         let one_read = local_result_answer.0[result_index].read.clone();
         let one_local_result_answer = local_result_answer.0[result_index].result.clone();

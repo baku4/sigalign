@@ -8,12 +8,16 @@ use crate::results::{
     AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
 };
 use super::common_steps::{
-    PosTable, AnchorIndex, AnchorPosition, TraversedAnchor,
+    PosTable, AnchorIndex, AnchorPosition, TraversedAnchorDep,
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
 use std::cmp::Ordering;
 use ahash::AHashSet;
 
+mod spare_penalty;
+use spare_penalty::{
+    get_left_spare_penalty_by_pattern_index,
+};
 mod extend;
 use extend::{
     SideExtension,
@@ -42,7 +46,7 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     let target_alignment_results: Vec<TargetAlignmentResult> = pos_table_map.into_iter().filter_map(|(target_index, pos_table)| {
         reference.fill_buffer(target_index, sequence_buffer);
         let target = sequence_buffer.request_sequence();
-        let anchor_alignment_results = local_alignment_query_to_target_dep(
+        let anchor_alignment_results = local_alignment_query_to_target(
             &pos_table,
             pattern_size,
             target,
@@ -98,8 +102,17 @@ fn local_alignment_query_to_target(
     let mut right_traversed_anchors_count = 0;
 
     // TODO: Pre defined
-    let right_spare_penalty_by_pattern_index: Vec<u32> = Vec::new();
-    let left_spare_penalty_by_pattern_index: Vec<u32> = Vec::new();
+    let left_spare_penalty_by_pattern_index: Vec<u32> = get_left_spare_penalty_by_pattern_index(
+        penalties,
+        cutoff.maximum_scaled_penalty_per_length,
+        pattern_size,
+        query.len() as u32 / pattern_size,
+    );
+    let right_spare_penalty_by_pattern_index: Vec<u32> = {
+        let mut vec = left_spare_penalty_by_pattern_index.clone();
+        vec.reverse();
+        vec
+    };
 
     // TODO: Use buffer
     let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
@@ -121,6 +134,8 @@ fn local_alignment_query_to_target(
         });
     });
 
+    println!("# anchor_count: {}", sorted_anchor_indices.len());
+
     let scaled_penalty_delta_assuming_last_anchor_on_the_side = ((pattern_size - 1) * cutoff.maximum_scaled_penalty_per_length) as i64;
 
     //
@@ -133,6 +148,7 @@ fn local_alignment_query_to_target(
             extend_leftmost_anchor_to_right(
                 pos_table,
                 &current_anchor_index,
+                &right_spare_penalty_by_pattern_index,
                 pattern_size,
                 target,
                 query,
@@ -174,7 +190,6 @@ fn local_alignment_query_to_target(
     
     // 4. Transform the local result to anchor alignment result
     
-
     Vec::new()
 }
 
@@ -243,7 +258,7 @@ fn local_alignment_query_to_target_dep(
             //unsafe { local_extensions.last().unwrap_unchecked() };
             let right_traversed_anchors = pos_table.get_right_traversed_anchors(
                 &current_anchor_index,
-                leftmost_of_right_extension,
+                &leftmost_of_right_extension.right_extension,
                 pattern_size,
             );
             right_traversed_anchors_count += right_traversed_anchors.len();

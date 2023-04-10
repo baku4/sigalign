@@ -9,7 +9,7 @@ use crate::results::{
 };
 
 use super::common_steps::{
-    PosTable, AnchorIndex, TraversedAnchor,
+    PosTable, AnchorIndex, TraversedAnchorDep,
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
 
@@ -309,7 +309,7 @@ impl AnchorTable {
                     let pattern_count = anchor_position.pattern_count;
                     let anchor_size = pattern_count * pattern_size;
 
-                    let left_record_end_index = anchor_position.position_in_target;
+                    let left_record_end_index = anchor_position.target_position;
                     let left_query_end_index = current_anchor_index.0 * pattern_size;
 
                     let then_right_minimum_length = (target.len() as u32 - left_record_end_index).min(
@@ -498,7 +498,7 @@ impl Anchor {
 }
 
 #[derive(Debug, Clone)]
-struct SemiGlobalExtension(Extension, Vec<TraversedAnchor>);
+struct SemiGlobalExtension(Extension, Vec<TraversedAnchorDep>);
 
 #[derive(Debug, Clone)]
 enum SemiGlobalExtensionIndex {
@@ -506,7 +506,7 @@ enum SemiGlobalExtensionIndex {
     Traversed(u32, u32), // Extension index, Traversed anchor index
 }
 impl SemiGlobalExtensionIndex {
-    fn side_traversed_anchors<'a>(&self, extension_cache: &'a Vec<SemiGlobalExtension>) -> &'a [TraversedAnchor] {
+    fn side_traversed_anchors<'a>(&self, extension_cache: &'a Vec<SemiGlobalExtension>) -> &'a [TraversedAnchorDep] {
         match self {
             Self::Owned(extension_index) => {
                 &extension_cache[*extension_index as usize].1[..]
@@ -557,7 +557,7 @@ impl SemiGlobalExtensionIndex {
             (cutoff.maximum_scaled_penalty_per_length * length) >= (penalty * PREC_SCALE)
         ) {
             let anchor_query_position = anchor_index.0 * pattern_size;
-            let anchor_record_position = anchor_position.position_in_target;
+            let anchor_record_position = anchor_position.target_position;
 
             let (left_alignment_operations, left_insertion_count, left_deletion_count) = left.left_operations_and_indel_count(extension_cache);
             let (right_alignment_operations, right_insertion_count, right_deletion_count) = right.right_operations_and_indel_count(extension_cache);
@@ -683,7 +683,7 @@ impl PosTable {
         cutoff: &Cutoff,
         scaled_penalty_delta_of_left: i64,
         wave_front: &mut WaveFront,
-    ) -> (Option<Extension>, Vec<TraversedAnchor>) {
+    ) -> (Option<Extension>, Vec<TraversedAnchorDep>) {
         let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
@@ -691,7 +691,7 @@ impl PosTable {
         //
         // (1) Calculate index
         //
-        let right_record_start_index = anchor_position.position_in_target + anchor_size;
+        let right_record_start_index = anchor_position.target_position + anchor_size;
         let right_query_start_index = anchor_index.0 * pattern_size + anchor_size;
 
         // 
@@ -751,7 +751,7 @@ impl PosTable {
         cutoff: &Cutoff,
         scaled_penalty_delta_of_right: i64,
         wave_front: &mut WaveFront,
-    ) -> (Option<Extension>, Vec<TraversedAnchor>) {
+    ) -> (Option<Extension>, Vec<TraversedAnchorDep>) {
         let anchor_position = &self.0[anchor_index.0 as usize][anchor_index.1 as usize];
         let pattern_count = anchor_position.pattern_count;
         let anchor_size = pattern_count * pattern_size;
@@ -759,7 +759,7 @@ impl PosTable {
         //
         // (1) Calculate index
         //
-        let left_record_last_index = anchor_position.position_in_target;
+        let left_record_last_index = anchor_position.target_position;
         let left_query_last_index = anchor_index.0 * pattern_size;
 
         // 

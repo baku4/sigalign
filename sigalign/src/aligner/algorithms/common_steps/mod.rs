@@ -14,7 +14,7 @@ pub use extend::{Extension, WaveFront, WaveEndPoint, WaveFrontScore, Components,
 
 // // 4. Backtrace from the extension
 mod backtrace;
-pub use backtrace::{TraversedPosition, TraversedAnchor};
+pub use backtrace::{TraversedPosition, TraversedAnchorDep};
 
 // // 5. Merge the extension
 mod merging;

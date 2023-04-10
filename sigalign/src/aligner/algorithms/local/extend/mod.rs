@@ -9,7 +9,7 @@ use crate::{
         AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchor};
+use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchorDep};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
 use ahash::AHashSet;
 
@@ -20,6 +20,11 @@ use backtrace::{
     TraversedPosition,
     VpcIndexPackageDep,
 };
+mod traversed;
+use traversed::{
+    TraversedAnchor,
+    get_right_traversed_anchors,
+};
 
 #[derive(Debug, Clone)]
 pub struct SideExtension {
@@ -28,7 +33,7 @@ pub struct SideExtension {
     pub insertion_count: u32,
     pub deletion_count: u32,
     pub reversed_operations: Vec<AlignmentOperations>,
-    pub traversed_anchors: TraversedAnchors,
+    pub traversed_anchors: Vec<TraversedAnchor>,
     pub last_query_index: u32,
 }
 impl SideExtension {
@@ -39,18 +44,17 @@ impl SideExtension {
             insertion_count: 0,
             deletion_count: 0,
             reversed_operations: Vec::new(),
-            traversed_anchors: TraversedAnchors,
+            traversed_anchors: Vec::new(),
             last_query_index: 0,
         }
     }
 }
-#[derive(Debug, Clone)]
-pub struct TraversedAnchors;
 
 #[inline]
 pub fn extend_leftmost_anchor_to_right(
     pos_table: &PosTable,
     anchor_index: &AnchorIndex,
+    right_spare_penalty_by_pattern_index: &Vec<u32>,
     pattern_size: u32,
     target: &[u8],
     query: &[u8],
@@ -69,7 +73,7 @@ pub fn extend_leftmost_anchor_to_right(
     let anchor_size = pattern_count * pattern_size;
 
     // (1) Define the range of sequence to extend
-    let left_target_last_index = anchor_position.position_in_target;
+    let left_target_last_index = anchor_position.target_position;
     let right_target_start_index = left_target_last_index + anchor_size;
 
     let left_query_last_index = anchor_index.0 * pattern_size;
@@ -95,18 +99,30 @@ pub fn extend_leftmost_anchor_to_right(
         &mut sorted_vpc_vector_buffer,
     );
 
-    // FIXME:
     // (4) Append side extensions
     sorted_vpc_vector_buffer.iter().for_each(|vpc| {
-        let extension = wave_front.backtrace_of_right(
+        let mut side_extension = wave_front.backtrace_of_right_side(
             vpc.penalty,
             pattern_size,
+            pattern_count,
             vpc.component_index,
             cutoff.maximum_scaled_penalty_per_length,
             penalties,
             &mut traversed_positions_buffer,
         );
-        let side_extension = SideExtension::new_test();
+        let right_traversed_anchors = get_right_traversed_anchors(
+            pos_table,
+            &mut traversed_positions_buffer,
+            right_spare_penalty_by_pattern_index,
+            anchor_index.0,
+            anchor_position.target_position,
+            pattern_size,
+        );
+        traversed_positions_buffer.clear();
+
+        side_extension.traversed_anchors = right_traversed_anchors;
+        side_extension.last_query_index = right_query_start_index + side_extension.length - side_extension.insertion_count;
+
         side_extensions_buffer.push(side_extension);
     })
 }
@@ -166,7 +182,7 @@ impl PosTable {
         //
         // (1) Calculate index
         //
-        let left_target_last_index = anchor_position.position_in_target;
+        let left_target_last_index = anchor_position.target_position;
         let right_target_start_index = left_target_last_index + anchor_size;
 
         let left_query_last_index = anchor_index.0 * pattern_size;
@@ -285,7 +301,7 @@ impl PosTable {
         //
         // (1) Calculate index
         //
-        let left_target_last_index = anchor_position.position_in_target;
+        let left_target_last_index = anchor_position.target_position;
         let right_target_start_index = left_target_last_index + anchor_size;
 
         let left_query_last_index = anchor_index.0 * pattern_size;
@@ -444,8 +460,8 @@ impl LocalExtension {
 pub struct LocalExtensionDep {
     pub left_extension: Extension,
     pub right_extension: Extension,
-    pub left_traversed_anchors: Vec<TraversedAnchor>,
-    pub right_traversed_anchors: Vec<TraversedAnchor>,
+    pub left_traversed_anchors: Vec<TraversedAnchorDep>,
+    pub right_traversed_anchors: Vec<TraversedAnchorDep>,
     pub left_scaled_penalty_deltas: Vec<i64>,
     pub right_scaled_penalty_deltas: Vec<i64>,
 }
@@ -471,7 +487,7 @@ impl PosTable {
         //
         // (1) Calculate index
         //
-        let left_record_last_index = anchor_position.position_in_target;
+        let left_record_last_index = anchor_position.target_position;
         let right_record_start_index = left_record_last_index + anchor_size;
 
         let left_query_last_index = anchor_index.0 * pattern_size;
@@ -613,7 +629,7 @@ impl PosTable {
         //
         // (1) Calculate index
         //
-        let left_record_last_index = anchor_position.position_in_target;
+        let left_record_last_index = anchor_position.target_position;
         let right_record_start_index = left_record_last_index + anchor_size;
 
         let left_query_last_index = anchor_index.0 * pattern_size;
@@ -721,7 +737,7 @@ fn get_scaled_penalty_deltas_of_vpc_vector(
     vpc_vector: &Vec<Vpc>,
     cutoff: &Cutoff,
     penalties: &Penalty,
-    traversed_anchors: &Vec<TraversedAnchor>,
+    traversed_anchors: &Vec<TraversedAnchorDep>,
 ) -> Vec<i64> {
     let scaled_penalty_delta_of_extension = (extension.length * cutoff.maximum_scaled_penalty_per_length) as i64 - (extension.penalty * PREC_SCALE) as i64;
 

@@ -22,7 +22,7 @@ Position of anchor in target
 */
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorPosition {
-    pub position_in_target: u32,
+    pub target_position: u32,
     pub pattern_count: u32,
 }
 
@@ -97,7 +97,7 @@ impl AnchorPosition {
     fn new_vec(sorted_target_positions: Vec<u32>) -> Vec<Self> {
         sorted_target_positions.into_iter().map(|pos| {
             Self {
-                position_in_target: pos,
+                target_position: pos,
                 pattern_count: 1,
             }
         }).collect()
@@ -116,9 +116,9 @@ impl AnchorPosition {
         while (left_index < left_count) && (right_index < right_count) {
             let left_anchor_position = &mut left[left_index];
             let right_anchor_position = &right[right_index];
-            let right_target_position = right_anchor_position.position_in_target;
+            let right_target_position = right_anchor_position.target_position;
 
-            match (left_anchor_position.position_in_target + pattern_size).checked_sub(right_target_position) {
+            match (left_anchor_position.target_position + pattern_size).checked_sub(right_target_position) {
                 Some(record_position_gap) => {
                     if record_position_gap == 0 {
                         let right_pattern_count = right_anchor_position.pattern_count;
@@ -160,35 +160,35 @@ mod tests {
             vec![
                 vec![
                     AnchorPosition {
-                        position_in_target: 20,
+                        target_position: 20,
                         pattern_count: 2,
                     },
                     AnchorPosition {
-                        position_in_target: 50,
+                        target_position: 50,
                         pattern_count: 1,
                     },
                     AnchorPosition {
-                        position_in_target: 80,
+                        target_position: 80,
                         pattern_count: 3,
                     },
                 ],
                 vec![
                     AnchorPosition {
-                        position_in_target: 10,
+                        target_position: 10,
                         pattern_count: 1,
                     },
                     AnchorPosition {
-                        position_in_target: 70,
+                        target_position: 70,
                         pattern_count: 2,
                     },
                 ],
                 vec![
                     AnchorPosition {
-                        position_in_target: 0,
+                        target_position: 0,
                         pattern_count: 1,
                     },
                     AnchorPosition {
-                        position_in_target: 150,
+                        target_position: 150,
                         pattern_count: 1,
                     },
                 ],

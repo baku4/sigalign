@@ -16,7 +16,7 @@ pub struct TraversedPosition {
 }
 
 #[derive(Debug, Clone)]
-pub struct TraversedAnchor {
+pub struct TraversedAnchorDep {
     pub anchor_index: AnchorIndex,
     pub remained_length: u32,
     pub remained_penalty: u32,
@@ -30,8 +30,8 @@ impl TraversedPosition{
         anchor_index: AnchorIndex,
         length_of_extension: u32,
         penalty_of_extension: u32,
-    ) -> TraversedAnchor {
-        TraversedAnchor {
+    ) -> TraversedAnchorDep {
+        TraversedAnchorDep {
             anchor_index,
             remained_length: length_of_extension - self.traversed_length_to_anchor_end,
             remained_penalty: penalty_of_extension - self.traversed_penalty_to_anchor_end,
@@ -44,8 +44,8 @@ impl TraversedPosition{
         anchor_index: AnchorIndex,
         length_of_extension: u32,
         penalty_of_extension: u32,
-    ) -> TraversedAnchor {
-        TraversedAnchor {
+    ) -> TraversedAnchorDep {
+        TraversedAnchorDep {
             anchor_index,
             remained_length: length_of_extension - self.traversed_length_to_anchor_end,
             remained_penalty: penalty_of_extension - self.traversed_penalty_to_anchor_end,
@@ -65,7 +65,7 @@ impl PosTable {
         length_of_extension: u32,
         penalty_of_extension: u32,
         pattern_size: u32,
-    ) -> Vec<TraversedAnchor> {
+    ) -> Vec<TraversedAnchorDep> {
         traversed_positions.into_iter().map(|traversed_position| {
             let mut pattern_index = anchor_pattern_index + anchor_pattern_count + traversed_position.pattern_count_from_start_point;
             let mut target_position = target_start_index + traversed_position.traversed_record_length_to_anchor;
@@ -100,7 +100,7 @@ impl PosTable {
         length_of_extension: u32,
         penalty_of_extension: u32,
         pattern_size: u32,
-    ) -> Vec<TraversedAnchor> {
+    ) -> Vec<TraversedAnchorDep> {
         traversed_positions.into_iter().map(|traversed_position| {
             let mut pattern_index = anchor_pattern_index - traversed_position.pattern_count_from_start_point;
             let mut target_position = record_last_index - traversed_position.traversed_record_length_to_anchor;
@@ -133,7 +133,7 @@ impl AnchorPosition {
     #[inline]
     pub fn binary_search_index(pattern_position: &Vec<Self>, target_position: u32) -> Result<usize, usize> {
         pattern_position.binary_search_by_key(&target_position, |anchor_position| {
-            anchor_position.position_in_target
+            anchor_position.target_position
         })
     }
 }
