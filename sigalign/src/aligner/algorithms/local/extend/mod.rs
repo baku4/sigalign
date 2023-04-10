@@ -9,7 +9,7 @@ use crate::{
         AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchorDep};
+use super::{AnchorTable, Anchor, AnchorIndex};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
 use ahash::AHashSet;
 
@@ -18,7 +18,6 @@ use valid_position_candidate::Vpc;
 mod backtrace;
 use backtrace::{
     TraversedPosition,
-    VpcIndexPackageDep,
 };
 mod traversed;
 use traversed::{
@@ -52,7 +51,7 @@ impl SideExtension {
 
 #[inline]
 pub fn extend_leftmost_anchor_to_right(
-    pos_table: &PosTable,
+    anchor_table: &AnchorTable,
     anchor_index: &AnchorIndex,
     right_spare_penalty_by_pattern_index: &Vec<u32>,
     pattern_size: u32,
@@ -68,7 +67,7 @@ pub fn extend_leftmost_anchor_to_right(
     let mut sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
     let mut traversed_positions_buffer: Vec<TraversedPosition> = Vec::new();
 
-    let anchor_position = &pos_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
+    let anchor_position = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
     let pattern_count = anchor_position.pattern_count;
     let anchor_size = pattern_count * pattern_size;
 
@@ -111,7 +110,7 @@ pub fn extend_leftmost_anchor_to_right(
             &mut traversed_positions_buffer,
         );
         let right_traversed_anchors = get_right_traversed_anchors(
-            pos_table,
+            anchor_table,
             &mut traversed_positions_buffer,
             right_spare_penalty_by_pattern_index,
             anchor_index.0,
@@ -128,7 +127,7 @@ pub fn extend_leftmost_anchor_to_right(
 }
 #[inline]
 pub fn extend_rightmost_anchor_to_left(
-    pos_table: &PosTable,
+    anchor_table: &AnchorTable,
     anchor_index: &AnchorIndex,
     pattern_size: u32,
     target: &[u8],
@@ -147,6 +146,7 @@ pub fn extend_rightmost_anchor_to_left(
 
 // FIXME: TO DEP
 
+/*
 
 // Checkpoint: (Query position, Target position)
 //  - The last checkpoint is the start and end position of the alignment from the extension
@@ -756,3 +756,5 @@ fn get_scaled_penalty_deltas_of_vpc_vector(
 
     scaled_penalty_deltas
 }
+
+ */

@@ -9,9 +9,8 @@ use crate::{
         AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-use super::{PosTable, AnchorIndex, AnchorPosition};
+use super::{AnchorTable, Anchor, AnchorIndex};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
-use super::LocalExtension;
 use super::Vpc;
 use super::TraversedPosition;
 use ahash::AHashSet;
@@ -31,7 +30,7 @@ pub struct PositionSymbol {
 
 #[inline]
 pub fn get_right_traversed_anchors(
-    pos_table: &PosTable,
+    anchor_table: &AnchorTable,
     traversed_positions: &mut Vec<TraversedPosition>,
     right_spare_penalty_by_pattern_index: &Vec<u32>,
     base_pattern_index: u32,
@@ -44,9 +43,9 @@ pub fn get_right_traversed_anchors(
         let mut pattern_index = base_pattern_index + traversed_position.estimated_additive_pattern_index;
         let mut target_position = base_target_position + traversed_position.estimated_additive_target_position;
         let anchor_index_in_pattern = loop {
-            let anchor_positions = &pos_table.0[pattern_index as usize];
+            let anchors_by_pattern = &anchor_table.0[pattern_index as usize];
             match binary_search(
-                anchor_positions,
+                anchors_by_pattern,
                 target_position,
             ) {
                 Ok(v) => {
@@ -75,10 +74,10 @@ pub fn get_right_traversed_anchors(
 
 #[inline(always)]
 fn binary_search(
-    anchor_positions: &Vec<AnchorPosition>,
+    anchors_by_pattern: &Vec<Anchor>,
     target_position: u32,
 ) -> Result<usize, usize> {
-    anchor_positions.binary_search_by_key(&target_position, |anchor_position| {
-        anchor_position.target_position
+    anchors_by_pattern.binary_search_by_key(&target_position, |anchor| {
+        anchor.target_position
     })
 }

@@ -9,9 +9,8 @@ use crate::{
         AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-use super::{PosTable, AnchorIndex, AnchorPosition, TraversedAnchorDep};
+use super::{AnchorTable, Anchor, AnchorIndex};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
-use super::LocalExtension;
 use super::SideExtension;
 use super::Vpc;
 use ahash::AHashSet;
@@ -400,7 +399,7 @@ impl WaveFront {
 
 // FIXME: To dep
 
-
+/*
 pub struct VpcIndexPackageDep {
     pub left_vpc_indices: Vec<usize>,
     pub right_vpc_indices: Vec<usize>,
@@ -588,7 +587,7 @@ mod tests {
 }
 
 
-impl PosTable {
+impl AnchorTable {
     #[inline]
     pub fn get_right_traversed_anchors(
         &self,
@@ -725,3 +724,5 @@ impl PosTable {
         traversed_anchors
     }
 }
+
+ */
