@@ -69,6 +69,10 @@ impl WaveFront {
             wave_front_scores,
         }
     }
+    #[inline]
+    pub fn is_reached_to_sequence_end(&self) -> bool {
+        self.end_point.k.is_some()
+    }
 }
 
 impl WaveFrontScore {

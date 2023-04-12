@@ -87,6 +87,7 @@ pub fn extend_rightmost_anchor_to_left(
         penalties,
         *spare_penalty,
     );
+    let sequence_end_is_reached = wave_front.is_reached_to_sequence_end();
 
     // (3) Get valid position candidates
     //   - Clear buffer
@@ -110,8 +111,11 @@ pub fn extend_rightmost_anchor_to_left(
             penalties,
             traversed_positions_buffer,
         );
-        
+        // println!("# left_traversed_positions_len: {}", traversed_positions_buffer.len());
+
         if traversed_positions_buffer.len() != 0{
+            
+            // println!("side_extension:{:?}", side_extension);
             let left_traversed_anchors = get_left_traversed_anchors_tagging_skip_info(
                 anchor_table,
                 traversed_positions_buffer,
@@ -120,9 +124,8 @@ pub fn extend_rightmost_anchor_to_left(
                 anchor_index.0,
                 pattern_count,
                 target_position,
-                &side_extension,
+                sequence_end_is_reached,
             );
-            // println!("# left_traversed_positions_len: {}", traversed_positions_buffer.len());
     
             side_extension.traversed_anchors = left_traversed_anchors;
         }
@@ -170,6 +173,7 @@ pub fn extend_leftmost_anchor_to_right(
         penalties,
         *spare_penalty,
     );
+    let sequence_end_is_reached = wave_front.is_reached_to_sequence_end();
 
     // (3) Get valid position candidates
     //   - Clear buffer
@@ -202,7 +206,7 @@ pub fn extend_leftmost_anchor_to_right(
             spare_penalty_calculator,
             anchor_index.0,
             target_position,
-            &side_extension,
+            sequence_end_is_reached,
         );
 
         side_extension.traversed_anchors = right_traversed_anchors;
