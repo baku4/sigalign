@@ -10,7 +10,7 @@ use crate::{
     }
 };
 use super::{AnchorTable, Anchor, AnchorIndex};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
+use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker};
 use ahash::AHashSet;
 
 

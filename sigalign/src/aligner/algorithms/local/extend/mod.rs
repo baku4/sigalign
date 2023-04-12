@@ -10,19 +10,20 @@ use crate::{
     }
 };
 use super::{AnchorTable, Anchor, AnchorIndex};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
+use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, SparePenaltyCalculator};
 use ahash::AHashSet;
 
 mod valid_position_candidate;
-use valid_position_candidate::Vpc;
+pub use valid_position_candidate::Vpc;
 mod backtrace;
-use backtrace::{
+pub use backtrace::{
     TraversedPosition,
 };
 mod traversed;
 use traversed::{
     TraversedAnchor,
-    get_right_traversed_anchors,
+    get_right_traversed_anchors_tagging_skip_info,
+    get_left_traversed_anchors_tagging_skip_info,
 };
 
 #[derive(Debug, Clone)]
@@ -50,10 +51,11 @@ impl SideExtension {
 }
 
 #[inline]
-pub fn extend_leftmost_anchor_to_right(
-    anchor_table: &AnchorTable,
+pub fn extend_rightmost_anchor_to_left(
+    anchor_table: &mut AnchorTable,
     anchor_index: &AnchorIndex,
-    right_spare_penalty_by_pattern_index: &Vec<u32>,
+    spare_penalty_calculator: &SparePenaltyCalculator,
+    scaled_penalty_delta_assuming_leftmost_anchor: u32,
     pattern_size: u32,
     target: &[u8],
     query: &[u8],
@@ -62,21 +64,101 @@ pub fn extend_leftmost_anchor_to_right(
     spare_penalty: &u32,
     wave_front: &mut WaveFront,
     side_extensions_buffer: &mut Vec<SideExtension>,
+    sorted_vpc_vector_buffer: &mut Vec<Vpc>,
+    traversed_positions_buffer: &mut Vec<TraversedPosition>,
 ) {
-    // TODO: Use buffer
-    let mut sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
-    let mut traversed_positions_buffer: Vec<TraversedPosition> = Vec::new();
+    sorted_vpc_vector_buffer.clear();
 
-    let anchor_position = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
-    let pattern_count = anchor_position.pattern_count;
+    let (pattern_count, target_position) = {
+        let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];        
+        (anchor.pattern_count, anchor.target_position)
+    };
+
+    // (1) Define the range of sequence to extend
+    let left_query_last_index = anchor_index.0 * pattern_size;
+
+    let left_target_slice = &target[..target_position as usize];
+    let left_query_slice = &query[..left_query_last_index as usize];
+
+    // (2) Extend the side with wave front
+    wave_front.align_left_to_end_point(
+        left_target_slice,
+        left_query_slice,
+        penalties,
+        *spare_penalty,
+    );
+
+    // (3) Get valid position candidates
+    //   - Clear buffer
+    sorted_vpc_vector_buffer.clear();
+    //   - Fill buffer
+    wave_front.fill_sorted_vpc_vector(
+        &cutoff.maximum_scaled_penalty_per_length,
+        sorted_vpc_vector_buffer,
+    );
+    // println!("# left_vpc_vector_len: {}", sorted_vpc_vector_buffer.len());
+
+    // (4) Append side extensions
+    sorted_vpc_vector_buffer.iter().for_each(|vpc| {
+        traversed_positions_buffer.clear();
+
+        let mut side_extension = wave_front.backtrace_of_left_side(
+            vpc.penalty,
+            pattern_size,
+            vpc.component_index,
+            cutoff.maximum_scaled_penalty_per_length,
+            penalties,
+            traversed_positions_buffer,
+        );
+        
+        if traversed_positions_buffer.len() != 0{
+            let left_traversed_anchors = get_left_traversed_anchors_tagging_skip_info(
+                anchor_table,
+                traversed_positions_buffer,
+                spare_penalty_calculator,
+                scaled_penalty_delta_assuming_leftmost_anchor,
+                anchor_index.0,
+                pattern_count,
+                target_position,
+                &side_extension,
+            );
+            // println!("# left_traversed_positions_len: {}", traversed_positions_buffer.len());
+    
+            side_extension.traversed_anchors = left_traversed_anchors;
+        }
+        
+        side_extension.last_query_index = left_query_last_index + side_extension.length - side_extension.insertion_count;
+
+        side_extensions_buffer.push(side_extension);
+    })
+}
+#[inline]
+pub fn extend_leftmost_anchor_to_right(
+    anchor_table: &mut AnchorTable,
+    anchor_index: &AnchorIndex,
+    spare_penalty_calculator: &SparePenaltyCalculator,
+    pattern_size: u32,
+    target: &[u8],
+    query: &[u8],
+    penalties: &Penalty,
+    cutoff: &Cutoff,
+    spare_penalty: &u32,
+    wave_front: &mut WaveFront,
+    side_extensions_buffer: &mut Vec<SideExtension>,
+    sorted_vpc_vector_buffer: &mut Vec<Vpc>,
+    traversed_positions_buffer: &mut Vec<TraversedPosition>,
+) {
+    sorted_vpc_vector_buffer.clear();
+
+    let (pattern_count, target_position) = {
+        let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];        
+        (anchor.pattern_count, anchor.target_position)
+    };
     let anchor_size = pattern_count * pattern_size;
 
     // (1) Define the range of sequence to extend
-    let left_target_last_index = anchor_position.target_position;
-    let right_target_start_index = left_target_last_index + anchor_size;
-
-    let left_query_last_index = anchor_index.0 * pattern_size;
-    let right_query_start_index = left_query_last_index + anchor_size;
+    let right_target_start_index = target_position + anchor_size;
+    let right_query_start_index = anchor_index.0 * pattern_size + anchor_size;
 
     let right_target_slice = &target[right_target_start_index as usize..];
     let right_query_slice = &query[right_query_start_index as usize..];
@@ -95,11 +177,14 @@ pub fn extend_leftmost_anchor_to_right(
     //   - Fill buffer
     wave_front.fill_sorted_vpc_vector(
         &cutoff.maximum_scaled_penalty_per_length,
-        &mut sorted_vpc_vector_buffer,
+        sorted_vpc_vector_buffer,
     );
 
+    // println!("# right_vpc_vector_len: {}", sorted_vpc_vector_buffer.len());
     // (4) Append side extensions
     sorted_vpc_vector_buffer.iter().for_each(|vpc| {
+        traversed_positions_buffer.clear();
+
         let mut side_extension = wave_front.backtrace_of_right_side(
             vpc.penalty,
             pattern_size,
@@ -107,17 +192,18 @@ pub fn extend_leftmost_anchor_to_right(
             vpc.component_index,
             cutoff.maximum_scaled_penalty_per_length,
             penalties,
-            &mut traversed_positions_buffer,
+            traversed_positions_buffer,
         );
-        let right_traversed_anchors = get_right_traversed_anchors(
+        // println!("# right_traversed_positions_len: {}", traversed_positions_buffer.len());
+        
+        let right_traversed_anchors = get_right_traversed_anchors_tagging_skip_info(
             anchor_table,
-            &mut traversed_positions_buffer,
-            right_spare_penalty_by_pattern_index,
+            traversed_positions_buffer,
+            spare_penalty_calculator,
             anchor_index.0,
-            anchor_position.target_position,
-            pattern_size,
+            target_position,
+            &side_extension,
         );
-        traversed_positions_buffer.clear();
 
         side_extension.traversed_anchors = right_traversed_anchors;
         side_extension.last_query_index = right_query_start_index + side_extension.length - side_extension.insertion_count;
@@ -125,22 +211,6 @@ pub fn extend_leftmost_anchor_to_right(
         side_extensions_buffer.push(side_extension);
     })
 }
-#[inline]
-pub fn extend_rightmost_anchor_to_left(
-    anchor_table: &AnchorTable,
-    anchor_index: &AnchorIndex,
-    pattern_size: u32,
-    target: &[u8],
-    query: &[u8],
-    penalties: &Penalty,
-    cutoff: &Cutoff,
-    spare_penalty: &u32,
-    wave_front: &mut WaveFront,
-    side_extensions_buffer: &mut Vec<SideExtension>,
-) {
-    // FIXME:
-}
-
 
 
 

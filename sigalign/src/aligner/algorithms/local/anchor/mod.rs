@@ -16,8 +16,8 @@ pub struct Anchor {
     pub target_position: u32,
     pub pattern_count: u32,
     pub flat_index: u32,
-    pub extended_to_right: bool,
-    pub extended_to_left: bool,
+    pub skip_extending_to_the_right: bool,
+    pub skip_extending_to_the_left: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorTable(
@@ -99,8 +99,8 @@ impl Anchor {
                 target_position: pos,
                 pattern_count: 1,
                 flat_index: 0,
-                extended_to_right: false,
-                extended_to_left: false,
+                skip_extending_to_the_right: false,
+                skip_extending_to_the_left: false,
             }
         }).collect()
     }
@@ -140,15 +140,4 @@ impl Anchor {
             }
         }
     }
-}
-
-
-/**
-Position of anchor in target 
-  - Restrict to u32
-*/
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AnchorPosition {
-    pub target_position: u32,
-    pub pattern_count: u32,
 }

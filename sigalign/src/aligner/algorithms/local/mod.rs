@@ -22,11 +22,15 @@ use anchor::{
 };
 mod spare_penalty;
 use spare_penalty::{
+    SparePenaltyCalculator,
     get_left_spare_penalty_by_pattern_index,
+    get_divided_left_spare_penalty,
 };
 mod extend;
 use extend::{
     SideExtension,
+    TraversedPosition,
+    Vpc,
     extend_leftmost_anchor_to_right,
     extend_rightmost_anchor_to_left,
 };
@@ -90,24 +94,23 @@ fn local_alignment_query_to_target(
     let mut skipped_counter = 0;
     let mut right_traversed_anchors_count = 0;
 
+    let max_pattern_count = query.len() as u32 / pattern_size;
+
     // TODO: Pre defined
-    let left_spare_penalty_by_pattern_index: Vec<u32> = get_left_spare_penalty_by_pattern_index(
+    let spare_penalty_calculator = SparePenaltyCalculator::new(
         penalties,
         cutoff.maximum_scaled_penalty_per_length,
         pattern_size,
-        query.len() as u32 / pattern_size,
+        max_pattern_count,
     );
-    let right_spare_penalty_by_pattern_index: Vec<u32> = {
-        let mut vec = left_spare_penalty_by_pattern_index.clone();
-        vec.reverse();
-        vec
-    };
 
     // TODO: Use buffer
     // let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
     let mut left_side_extensions_buffer: Vec<SideExtension> = Vec::new();
     let mut right_side_extensions_buffer: Vec<SideExtension> = Vec::new();
     let mut sorted_anchor_indices: Vec<AnchorIndex> = Vec::new();
+    let mut sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
+    let mut traversed_positions_buffer: Vec<TraversedPosition> = Vec::new();
     let maximum_pattern_count = anchor_table.0.len();
     // ^
 
@@ -121,42 +124,23 @@ fn local_alignment_query_to_target(
         })
     });
 
-    println!("# anchor_count: {}", sorted_anchor_indices.len());
-
-    let scaled_penalty_delta_assuming_last_anchor_on_the_side = ((pattern_size - 1) * cutoff.maximum_scaled_penalty_per_length) as i64;
+    let scaled_penalty_delta_assuming_last_anchor_on_the_side = (pattern_size - 1) * cutoff.maximum_scaled_penalty_per_length;
 
     //
-    // 1. Extend all anchors to right
-    //
-    sorted_anchor_indices.iter().for_each(|current_anchor_index| {
-        let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-        if !current_anchor.extended_to_right {
-            let spare_penalty = right_spare_penalty_by_pattern_index[current_anchor_index.0 as usize];
-            extend_leftmost_anchor_to_right(
-                anchor_table,
-                &current_anchor_index,
-                &right_spare_penalty_by_pattern_index,
-                pattern_size,
-                target,
-                query,
-                penalties,
-                cutoff,
-                &spare_penalty,
-                wave_front_for_right_extension,
-                &mut right_side_extensions_buffer,
-            );
-        }
-    });
-    //
-    // 2. Extend all anchors to left
+    // 1. Extend all anchors to left
     //
     sorted_anchor_indices.iter().rev().for_each(|current_anchor_index| {
         let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-        if !current_anchor.extended_to_left {
-            let spare_penalty = left_spare_penalty_by_pattern_index[current_anchor_index.0 as usize];
+        // if !current_anchor.skip_extending_to_the_left {
+            let spare_penalty = spare_penalty_calculator.get_left_spare_penalty(
+                current_anchor_index.0,
+                current_anchor.pattern_count,
+            );
             extend_rightmost_anchor_to_left(
                 anchor_table,
                 &current_anchor_index,
+                &spare_penalty_calculator,
+                scaled_penalty_delta_assuming_last_anchor_on_the_side,
                 pattern_size,
                 target,
                 query,
@@ -165,9 +149,64 @@ fn local_alignment_query_to_target(
                 &spare_penalty,
                 wave_front_for_left_extension,
                 &mut left_side_extensions_buffer,
+                &mut sorted_vpc_vector_buffer,
+                &mut traversed_positions_buffer,
             );
-        }
+        // }
     });
+
+    //FIXME: For debugging
+    {
+        let mut count_of_skipped_to_left_after_left_extension = 0;
+        let mut count_of_skipped_to_right_after_left_extension = 0;
+        anchor_table.0.iter().for_each(|x| {
+            x.iter().for_each(|v| {
+                if v.skip_extending_to_the_left {
+                    count_of_skipped_to_left_after_left_extension += 1;
+                }
+                if v.skip_extending_to_the_right {
+                    count_of_skipped_to_right_after_left_extension += 1;
+                }
+            })
+        });
+        println!("# count_of_skipped_to_left_after_left_extension: {}", count_of_skipped_to_left_after_left_extension);
+        println!("# count_of_skipped_to_right_after_left_extension: {}", count_of_skipped_to_right_after_left_extension);
+    }
+    //
+    // 2. Extend all anchors to right
+    //
+    sorted_anchor_indices.iter().for_each(|current_anchor_index| {
+        let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+        // if !current_anchor.skip_extending_to_the_right {
+            let spare_penalty = spare_penalty_calculator.get_right_spare_penalty(current_anchor_index.0);
+            extend_leftmost_anchor_to_right(
+                anchor_table,
+                &current_anchor_index,
+                &spare_penalty_calculator,
+                pattern_size,
+                target,
+                query,
+                penalties,
+                cutoff,
+                &spare_penalty,
+                wave_front_for_right_extension,
+                &mut right_side_extensions_buffer,
+                &mut sorted_vpc_vector_buffer,
+                &mut traversed_positions_buffer,
+            );
+        // }
+    });
+    {
+        let mut count_of_skipped_to_right_after_right_extension = 0;
+        anchor_table.0.iter().for_each(|x| {
+            x.iter().for_each(|v| {
+                if v.skip_extending_to_the_right {
+                    count_of_skipped_to_right_after_right_extension += 1;
+                }
+            })
+        });
+        println!("# count_of_skipped_to_right_after_right_extension: {}", count_of_skipped_to_right_after_right_extension);
+    }
     //
     // 3. Get valid extensions
     //   - Sort the side extensions
