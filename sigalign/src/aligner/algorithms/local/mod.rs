@@ -8,7 +8,6 @@ use crate::results::{
     AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
 };
 use super::common_steps::{
-    TraversedAnchorDep,
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
 use std::cmp::Ordering;
@@ -20,17 +19,24 @@ use anchor::{
     AnchorTable,
     AnchorIndex,
 };
+mod symbol;
+use symbol::{
+    LEFT_EMPTY_SYMBOL,
+    RIGHT_EMPTY_SYMBOL,
+    MERGED_EMPTY_SYMBOL,
+};
 mod spare_penalty;
 use spare_penalty::{
     SparePenaltyCalculator,
-    get_left_spare_penalty_by_pattern_index,
-    get_divided_left_spare_penalty,
 };
 mod extend;
 use extend::{
+    NewSideExtension,
     SideExtension,
-    TraversedPosition,
     Vpc,
+    TraversedPositionDep,
+    TraversedAnchorDep,
+    TraversedAnchor,
     extend_leftmost_anchor_to_right,
     extend_rightmost_anchor_to_left,
 };
@@ -105,13 +111,17 @@ fn local_alignment_query_to_target(
     );
 
     // TODO: Use buffer
-    // let mut valid_local_extensions_buffer: Vec<LocalExtension> = Vec::new();
+    //   - (1) Reuse with clear
+    let mut sorted_anchor_indices: Vec<AnchorIndex> = Vec::new();
     let mut left_side_extensions_buffer: Vec<SideExtension> = Vec::new();
     let mut right_side_extensions_buffer: Vec<SideExtension> = Vec::new();
-    let mut sorted_anchor_indices: Vec<AnchorIndex> = Vec::new();
     let mut sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
-    let mut traversed_positions_buffer: Vec<TraversedPosition> = Vec::new();
-    let maximum_pattern_count = anchor_table.0.len();
+    let mut traversed_positions_buffer: Vec<TraversedPositionDep> = Vec::new();
+    let mut traversed_anchors_buffer: Vec<TraversedAnchorDep> = Vec::new();
+    //   - (2) Reuse without clear, need init and index to operate
+    let mut reversed_operations_buffer: Vec<Vec<AlignmentOperations>> = Vec::new();
+    let mut symbols_buffer: Vec<i32> = Vec::new();
+    
     // ^
 
     let mut flat_index = 0;
@@ -131,7 +141,7 @@ fn local_alignment_query_to_target(
     //
     sorted_anchor_indices.iter().rev().for_each(|current_anchor_index| {
         let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-        // if !current_anchor.skip_extending_to_the_left {
+        if !current_anchor.skip_extending_to_the_left {
             let spare_penalty = spare_penalty_calculator.get_left_spare_penalty(
                 current_anchor_index.0,
                 current_anchor.pattern_count,
@@ -152,7 +162,7 @@ fn local_alignment_query_to_target(
                 &mut sorted_vpc_vector_buffer,
                 &mut traversed_positions_buffer,
             );
-        // }
+        }
     });
 
     //FIXME: For debugging
@@ -177,7 +187,7 @@ fn local_alignment_query_to_target(
     //
     sorted_anchor_indices.iter().for_each(|current_anchor_index| {
         let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-        // if !current_anchor.skip_extending_to_the_right {
+        if !current_anchor.skip_extending_to_the_right {
             let spare_penalty = spare_penalty_calculator.get_right_spare_penalty(current_anchor_index.0);
             extend_leftmost_anchor_to_right(
                 anchor_table,
@@ -194,7 +204,7 @@ fn local_alignment_query_to_target(
                 &mut sorted_vpc_vector_buffer,
                 &mut traversed_positions_buffer,
             );
-        // }
+        }
     });
     {
         let mut count_of_skipped_to_right_after_right_extension = 0;
@@ -215,6 +225,13 @@ fn local_alignment_query_to_target(
     //   - Add valid extensions
     
     // 4. Transform the local result to anchor alignment result
+
+    println!("# count_of_left_side_extensions_buffer: {}", left_side_extensions_buffer.len());
+    println!("# count_of_right_side_extensions_buffer: {}", right_side_extensions_buffer.len());
+
+    // println!("left_side_extensions_buffer:\n{:#?}", left_side_extensions_buffer);
+    // println!("right_side_extensions_buffer:\n{:#?}", right_side_extensions_buffer);
+    // panic!("");
     
     Vec::new()
 }

@@ -18,6 +18,16 @@ use num::integer::div_rem;
 
 #[derive(Debug, Clone)]
 pub struct TraversedPosition {
+    pub operation_length_from_the_start: u32,
+    pub penalty_from_the_start: u32,
+    pub estimated_additive_pattern_index: u32,
+    pub estimated_additive_target_position: u32,
+    pub partial_operation_start_index: u32,
+    pub alternative_match_count: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct TraversedPositionDep {
     pub scaled_penalty_delta_from_the_end: i64,
     pub penalty_from_the_start: u32,
     pub estimated_additive_pattern_index: u32,
@@ -42,7 +52,7 @@ impl WaveFront {
         component_index: u32,
         maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
-        traversed_positions_buffer: &mut Vec<TraversedPosition>,
+        traversed_positions_buffer: &mut Vec<TraversedPositionDep>,
     ) -> SideExtension {
         let wave_front_scores = &self.wave_front_scores;
 
@@ -91,7 +101,7 @@ impl WaveFront {
                                     operation_length as i64 * maximum_scaled_penalty_per_length as i64 
                                     - PREC_SCALE as i64 * (total_penalty - penalty_from_the_start) as i64
                                 ;
-                                let traversed_position = TraversedPosition {
+                                let traversed_position = TraversedPositionDep {
                                     scaled_penalty_delta_from_the_end,
                                     penalty_from_the_start,
                                     estimated_additive_pattern_index: quotient as u32,
@@ -159,7 +169,7 @@ impl WaveFront {
                                     operation_length as i64 * maximum_scaled_penalty_per_length as i64 
                                     - PREC_SCALE as i64 * (total_penalty - penalty) as i64
                                 ;
-                                let traversed_position = TraversedPosition {
+                                let traversed_position = TraversedPositionDep {
                                     scaled_penalty_delta_from_the_end,
                                     penalty_from_the_start: penalty,
                                     estimated_additive_pattern_index: quotient as u32,
@@ -205,7 +215,7 @@ impl WaveFront {
                                     operation_length as i64 * maximum_scaled_penalty_per_length as i64 
                                     - PREC_SCALE as i64 * (total_penalty - penalty) as i64
                                 ;
-                                let traversed_position = TraversedPosition {
+                                let traversed_position = TraversedPositionDep {
                                     scaled_penalty_delta_from_the_end,
                                     penalty_from_the_start: penalty,
                                     estimated_additive_pattern_index: quotient as u32,
@@ -246,7 +256,7 @@ impl WaveFront {
                                 deletion_count: total_deletion_count,
                                 reversed_operations: operations,
                                 traversed_anchors: Vec::new(),
-                                last_query_index: 0,
+                                query_index_of_the_end: 0,
                             };
                             return extension;
                         }
@@ -398,7 +408,7 @@ impl WaveFront {
         component_index: u32,
         maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
-        traversed_positions_buffer: &mut Vec<TraversedPosition>,
+        traversed_positions_buffer: &mut Vec<TraversedPositionDep>,
     ) -> SideExtension {
         let wave_front_scores = &self.wave_front_scores;
 
@@ -449,7 +459,7 @@ impl WaveFront {
                                     operation_length as i64 * maximum_scaled_penalty_per_length as i64
                                     - PREC_SCALE as i64 * (total_penalty - penalty_from_the_start) as i64
                                 ;
-                                let traversed_position = TraversedPosition {
+                                let traversed_position = TraversedPositionDep {
                                     scaled_penalty_delta_from_the_end,
                                     penalty_from_the_start,
                                     estimated_additive_pattern_index: (quotient + 1) as u32 + pattern_count_of_anchor,
@@ -518,7 +528,7 @@ impl WaveFront {
                                     operation_length as i64 * maximum_scaled_penalty_per_length as i64 
                                     - PREC_SCALE as i64 * (total_penalty - penalty) as i64
                                 ;
-                                let traversed_position = TraversedPosition {
+                                let traversed_position = TraversedPositionDep {
                                     scaled_penalty_delta_from_the_end,
                                     penalty_from_the_start: penalty,
                                     estimated_additive_pattern_index: (quotient + 1) as u32 + pattern_count_of_anchor,
@@ -565,7 +575,7 @@ impl WaveFront {
                                     operation_length as i64 * maximum_scaled_penalty_per_length as i64 
                                     - PREC_SCALE as i64 * (total_penalty - penalty) as i64
                                 ;
-                                let traversed_position = TraversedPosition {
+                                let traversed_position = TraversedPositionDep {
                                     scaled_penalty_delta_from_the_end,
                                     penalty_from_the_start: penalty,
                                     estimated_additive_pattern_index: (quotient + 1) as u32 + pattern_count_of_anchor,
@@ -604,7 +614,7 @@ impl WaveFront {
                                 deletion_count: total_deletion_count,
                                 reversed_operations: operations,
                                 traversed_anchors: Vec::new(),
-                                last_query_index: 0,
+                                query_index_of_the_end: 0,
                             };
                             return extension;
                         }

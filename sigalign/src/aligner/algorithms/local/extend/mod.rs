@@ -17,14 +17,35 @@ mod valid_position_candidate;
 pub use valid_position_candidate::Vpc;
 mod backtrace;
 pub use backtrace::{
-    TraversedPosition,
+    TraversedPositionDep,
 };
 mod traversed;
+pub use traversed::{
+    TraversedAnchorDep,
+};
 use traversed::{
-    TraversedAnchor,
     get_right_traversed_anchors_tagging_skip_info,
     get_left_traversed_anchors_tagging_skip_info,
 };
+
+#[derive(Debug, Clone)]
+pub struct NewSideExtension {
+    pub query_index_of_the_end: u32,
+    pub symbol_start_index: u32,
+    pub traversed_anchor_start_index: u32,
+    pub traversed_anchor_end_index: u32,
+    pub skip_evaluation: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct TraversedAnchor {
+    pub penalty_delta: i64,
+    pub length: u32,
+    pub penalty: u32,
+    pub operations_start_index: u32,
+    pub operations_end_index: u32,
+    pub alternative_match_count: u32,
+}
 
 #[derive(Debug, Clone)]
 pub struct SideExtension {
@@ -32,22 +53,10 @@ pub struct SideExtension {
     pub length: u32,
     pub insertion_count: u32,
     pub deletion_count: u32,
-    pub reversed_operations: Vec<AlignmentOperations>,
-    pub traversed_anchors: Vec<TraversedAnchor>,
-    pub last_query_index: u32,
-}
-impl SideExtension {
-    fn new_test() -> Self {
-        Self {
-            penalty: 0,
-            length: 0,
-            insertion_count: 0,
-            deletion_count: 0,
-            reversed_operations: Vec::new(),
-            traversed_anchors: Vec::new(),
-            last_query_index: 0,
-        }
-    }
+    // pub reversed_operations_and_symbol_index: u32,
+    reversed_operations: Vec<AlignmentOperations>,
+    traversed_anchors: Vec<TraversedAnchorDep>,
+    pub query_index_of_the_end: u32,
 }
 
 #[inline]
@@ -64,8 +73,10 @@ pub fn extend_rightmost_anchor_to_left(
     spare_penalty: &u32,
     wave_front: &mut WaveFront,
     side_extensions_buffer: &mut Vec<SideExtension>,
+    // reversed_operations_buffer: &mut Vec<AlignmentOperations>,
+    // symbols_buffer: &mut Vec<Symbol>,
     sorted_vpc_vector_buffer: &mut Vec<Vpc>,
-    traversed_positions_buffer: &mut Vec<TraversedPosition>,
+    traversed_positions_buffer: &mut Vec<TraversedPositionDep>,
 ) {
     sorted_vpc_vector_buffer.clear();
 
@@ -97,7 +108,7 @@ pub fn extend_rightmost_anchor_to_left(
         &cutoff.maximum_scaled_penalty_per_length,
         sorted_vpc_vector_buffer,
     );
-    // println!("# left_vpc_vector_len: {}", sorted_vpc_vector_buffer.len());
+    println!("# left_vpc_vector_len: {}", sorted_vpc_vector_buffer.len());
 
     // (4) Append side extensions
     sorted_vpc_vector_buffer.iter().for_each(|vpc| {
@@ -111,7 +122,7 @@ pub fn extend_rightmost_anchor_to_left(
             penalties,
             traversed_positions_buffer,
         );
-        // println!("# left_traversed_positions_len: {}", traversed_positions_buffer.len());
+        println!("# left_traversed_positions_len: {}", traversed_positions_buffer.len());
 
         if traversed_positions_buffer.len() != 0{
             
@@ -130,7 +141,7 @@ pub fn extend_rightmost_anchor_to_left(
             side_extension.traversed_anchors = left_traversed_anchors;
         }
         
-        side_extension.last_query_index = left_query_last_index + side_extension.length - side_extension.insertion_count;
+        side_extension.query_index_of_the_end = left_query_last_index + side_extension.length - side_extension.insertion_count;
 
         side_extensions_buffer.push(side_extension);
     })
@@ -149,7 +160,7 @@ pub fn extend_leftmost_anchor_to_right(
     wave_front: &mut WaveFront,
     side_extensions_buffer: &mut Vec<SideExtension>,
     sorted_vpc_vector_buffer: &mut Vec<Vpc>,
-    traversed_positions_buffer: &mut Vec<TraversedPosition>,
+    traversed_positions_buffer: &mut Vec<TraversedPositionDep>,
 ) {
     sorted_vpc_vector_buffer.clear();
 
@@ -184,7 +195,7 @@ pub fn extend_leftmost_anchor_to_right(
         sorted_vpc_vector_buffer,
     );
 
-    // println!("# right_vpc_vector_len: {}", sorted_vpc_vector_buffer.len());
+    println!("# right_vpc_vector_len: {}", sorted_vpc_vector_buffer.len());
     // (4) Append side extensions
     sorted_vpc_vector_buffer.iter().for_each(|vpc| {
         traversed_positions_buffer.clear();
@@ -198,7 +209,7 @@ pub fn extend_leftmost_anchor_to_right(
             penalties,
             traversed_positions_buffer,
         );
-        // println!("# right_traversed_positions_len: {}", traversed_positions_buffer.len());
+        println!("# right_traversed_positions_len: {}", traversed_positions_buffer.len());
         
         let right_traversed_anchors = get_right_traversed_anchors_tagging_skip_info(
             anchor_table,
@@ -210,7 +221,7 @@ pub fn extend_leftmost_anchor_to_right(
         );
 
         side_extension.traversed_anchors = right_traversed_anchors;
-        side_extension.last_query_index = right_query_start_index + side_extension.length - side_extension.insertion_count;
+        side_extension.query_index_of_the_end = right_query_start_index + side_extension.length - side_extension.insertion_count;
 
         side_extensions_buffer.push(side_extension);
     })

@@ -12,33 +12,28 @@ use crate::{
 use super::{AnchorTable, Anchor, AnchorIndex};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, SparePenaltyCalculator};
 use super::Vpc;
-use super::TraversedPosition;
+use super::TraversedPositionDep;
 use ahash::AHashSet;
 
-
 #[derive(Debug, Clone)]
-pub struct TraversedAnchor {
+pub struct TraversedAnchorDep {
     pub anchor_index: AnchorIndex,
     pub partial_operation_index: u32,
     pub alternative_match_count: u32,
     pub scaled_penalty_delta_from_the_end: i64,
 }
-#[derive(Debug, Clone)]
-pub struct PositionSymbol {
-    
-}
 
 #[inline]
 pub fn get_left_traversed_anchors_tagging_skip_info(
     anchor_table: &mut AnchorTable,
-    traversed_positions: &Vec<TraversedPosition>,
+    traversed_positions: &Vec<TraversedPositionDep>,
     spare_penalty_calculator: &SparePenaltyCalculator,
     scaled_penalty_delta_assuming_leftmost_anchor: u32,
     base_pattern_index: u32,
     base_pattern_count: u32,
     base_target_position: u32,
     sequence_end_is_reached: bool,
-) -> Vec<TraversedAnchor> {
+) -> Vec<TraversedAnchorDep> {
     let base_spare_penalty = spare_penalty_calculator.get_left_spare_penalty(
         base_pattern_index,
         base_pattern_count,
@@ -94,7 +89,7 @@ pub fn get_left_traversed_anchors_tagging_skip_info(
             }
         }
 
-        TraversedAnchor {
+        TraversedAnchorDep {
             anchor_index: (pattern_index, anchor_index_in_pattern as u32),
             scaled_penalty_delta_from_the_end: traversed_position.scaled_penalty_delta_from_the_end,
             partial_operation_index: traversed_position.partial_operation_index,
@@ -105,12 +100,12 @@ pub fn get_left_traversed_anchors_tagging_skip_info(
 #[inline]
 pub fn get_right_traversed_anchors_tagging_skip_info(
     anchor_table: &mut AnchorTable,
-    traversed_positions: &Vec<TraversedPosition>,
+    traversed_positions: &Vec<TraversedPositionDep>,
     spare_penalty_calculator: &SparePenaltyCalculator,
     base_pattern_index: u32,
     base_target_position: u32,
     sequence_end_is_reached: bool,
-) -> Vec<TraversedAnchor> {
+) -> Vec<TraversedAnchorDep> {
     let base_spare_penalty = spare_penalty_calculator.get_right_spare_penalty(base_pattern_index);
 
     traversed_positions.iter().filter_map(|traversed_position| {
@@ -143,7 +138,7 @@ pub fn get_right_traversed_anchors_tagging_skip_info(
                     }
                 }                
 
-                Some(TraversedAnchor {
+                Some(TraversedAnchorDep {
                     anchor_index: (pattern_index, anchor_index_in_pattern as u32),
                     scaled_penalty_delta_from_the_end: traversed_position.scaled_penalty_delta_from_the_end,
                     partial_operation_index: traversed_position.partial_operation_index,
