@@ -11,29 +11,16 @@ use crate::{
 };
 use super::{AnchorTable, Anchor, AnchorIndex};
 use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker};
-use super::SideExtension;
 use super::Vpc;
 use ahash::AHashSet;
 use num::integer::div_rem;
 
-#[derive(Debug, Clone)]
-pub struct TraversedPosition {
-    pub operation_length_from_the_start: u32,
-    pub penalty_from_the_start: u32,
-    pub estimated_additive_pattern_index: u32,
-    pub estimated_additive_target_position: u32,
-    pub partial_operation_start_index: u32,
-    pub alternative_match_count: u32,
-}
-
-#[derive(Debug, Clone)]
-pub struct TraversedPositionDep {
-    pub scaled_penalty_delta_from_the_end: i64,
-    pub penalty_from_the_start: u32,
-    pub estimated_additive_pattern_index: u32,
-    pub estimated_additive_target_position: u32,
-    pub partial_operation_index: u32,
-    pub alternative_match_count: u32,
+pub struct BackTraceResult {
+    pub operation_buffer_range: (u32, u32), // start, end
+    pub traversed_anchor_range: (u32, u32), // start, end
+    pub processed_length: (u32, u32), // query, target
+    pub length_of_extension: u32,
+    pub penalty_of_extension: u32,
 }
 
 enum ComponentType {
@@ -52,13 +39,19 @@ impl WaveFront {
         component_index: u32,
         maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
-        traversed_positions_buffer: &mut Vec<TraversedPositionDep>,
-    ) -> SideExtension {
+        operations_buffer: &mut Vec<AlignmentOperations>,
+        traversed_anchor_buffer: &mut Vec<AnchorIndex>,
+    ) -> BackTraceResult {
+        operations_buffer.push(AlignmentOperations {
+            operation: AlignmentOperation::Insertion,
+            count: 0,
+        });
+        let mut operation_start_index = operations_buffer.len() as u32;
+        let mut traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
+        
         let wave_front_scores = &self.wave_front_scores;
 
         // Initialize
-        let mut operations: Vec<AlignmentOperations> = Vec::new(); // TODO: Capacity can be applied?
-
         let total_penalty = penalty;
         let mut wave_front_score = &wave_front_scores[penalty as usize];
 
@@ -67,9 +60,9 @@ impl WaveFront {
         let mut k = -wave_front_score.max_k + component_index as i32;
         let mut fr = component.fr;
 
-        let total_operation_length = fr as u32 + component.deletion_count as u32;
-        let total_deletion_count: u32 = component.deletion_count as u32;
-        let total_insertion_count: u32 = (total_deletion_count as i32 + k) as u32;
+        let total_length = fr as u32 + component.deletion_count as u32;
+        let total_processed_query = (fr - k) as u32;
+        let total_processed_target = fr as u32;
 
         loop {
             match component_type {
@@ -95,21 +88,11 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(fr-k, pattern_size as i32); // fr - k = query_index_of_first_match
                             let match_count_of_next_pattern = match_count - remainder;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                let penalty_from_the_start = penalty + penalties.x;
-                                let operation_length = total_operation_length - match_count_of_next_pattern as u32 - 1 - next_fr as u32 - component.deletion_count as u32;
-                                let scaled_penalty_delta_from_the_end = 
-                                    operation_length as i64 * maximum_scaled_penalty_per_length as i64 
-                                    - PREC_SCALE as i64 * (total_penalty - penalty_from_the_start) as i64
-                                ;
-                                let traversed_position = TraversedPositionDep {
-                                    scaled_penalty_delta_from_the_end,
-                                    penalty_from_the_start,
-                                    estimated_additive_pattern_index: quotient as u32,
-                                    estimated_additive_target_position: (next_fr + match_count_of_next_pattern + 1) as u32,
-                                    partial_operation_index: operations.len() as u32,
-                                    alternative_match_count: (match_count - match_count_of_next_pattern) as u32,
-                                };
-                                traversed_positions_buffer.push(traversed_position);
+                                let estimated_additive_position_info = (
+                                    quotient as u32,
+                                    (next_fr + match_count_of_next_pattern + 1) as u32,
+                                );
+                                traversed_anchor_buffer.push(estimated_additive_position_info);
                             }
                             
                             // (8) Add operation
@@ -118,10 +101,10 @@ impl WaveFront {
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Subst,
                                         count: last_fr
-                                    }) = operations.last_mut() {
+                                    }) = operations_buffer.last_mut() {
                                     *last_fr += 1;
                                 } else {
-                                    operations.push(
+                                    operations_buffer.push(
                                         AlignmentOperations {
                                             operation: AlignmentOperation::Subst,
                                             count: 1,
@@ -129,13 +112,13 @@ impl WaveFront {
                                     );
                                 }
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: match_count as u32,
                                     }
                                 );
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Subst,
                                         count: 1,
@@ -164,24 +147,15 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
                             let match_count_of_next_pattern = match_count - remainder;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                let operation_length = total_operation_length - match_count_of_next_pattern as u32 - next_fr as u32 - component.deletion_count as u32;
-                                let scaled_penalty_delta_from_the_end = 
-                                    operation_length as i64 * maximum_scaled_penalty_per_length as i64 
-                                    - PREC_SCALE as i64 * (total_penalty - penalty) as i64
-                                ;
-                                let traversed_position = TraversedPositionDep {
-                                    scaled_penalty_delta_from_the_end,
-                                    penalty_from_the_start: penalty,
-                                    estimated_additive_pattern_index: quotient as u32,
-                                    estimated_additive_target_position: (next_fr + match_count_of_next_pattern) as u32,
-                                    partial_operation_index: operations.len() as u32,
-                                    alternative_match_count: (match_count - match_count_of_next_pattern) as u32,
-                                };
-                                traversed_positions_buffer.push(traversed_position);
+                                let estimated_additive_position_info = (
+                                    quotient as u32,
+                                    (next_fr + match_count_of_next_pattern) as u32,
+                                );
+                                traversed_anchor_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: match_count as u32,
@@ -210,24 +184,15 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
                             let match_count_of_next_pattern = match_count - remainder;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                let operation_length = total_operation_length - match_count_of_next_pattern as u32 - next_fr as u32 - component.deletion_count as u32;
-                                let scaled_penalty_delta_from_the_end = 
-                                    operation_length as i64 * maximum_scaled_penalty_per_length as i64 
-                                    - PREC_SCALE as i64 * (total_penalty - penalty) as i64
-                                ;
-                                let traversed_position = TraversedPositionDep {
-                                    scaled_penalty_delta_from_the_end,
-                                    penalty_from_the_start: penalty,
-                                    estimated_additive_pattern_index: quotient as u32,
-                                    estimated_additive_target_position: (next_fr + match_count_of_next_pattern) as u32,
-                                    partial_operation_index: operations.len() as u32,
-                                    alternative_match_count: (match_count - match_count_of_next_pattern) as u32,
-                                };
-                                traversed_positions_buffer.push(traversed_position);
+                                let estimated_additive_position_info = (
+                                    quotient as u32,
+                                    (next_fr + match_count_of_next_pattern) as u32,
+                                );
+                                traversed_anchor_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: match_count as u32,
@@ -240,7 +205,7 @@ impl WaveFront {
                         _ => { // START_POINT
                             // Add operation
                             if fr != 0 {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: fr as u32,
@@ -248,17 +213,23 @@ impl WaveFront {
                                 );
                             };
 
-                            // extension of current anchor
-                            let extension = SideExtension {
-                                penalty: total_penalty,
-                                length: total_operation_length,
-                                insertion_count: total_insertion_count,
-                                deletion_count: total_deletion_count,
-                                reversed_operations: operations,
-                                traversed_anchors: Vec::new(),
-                                query_index_of_the_end: 0,
+                            let backtrace_result = BackTraceResult {
+                                // start, size
+                                operation_buffer_range: (
+                                    operation_start_index,
+                                    operations_buffer.len() as u32,
+                                ),
+                                // start, size
+                                traversed_anchor_range: (
+                                    traversed_anchor_start_index,
+                                    traversed_anchor_buffer.len() as u32,
+                                ),
+                                // query, target
+                                processed_length: (total_processed_query, total_processed_target),
+                                length_of_extension: total_length,
+                                penalty_of_extension: total_penalty,
                             };
-                            return extension;
+                            return backtrace_result;
                         }
                     }
                 },
@@ -283,10 +254,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Insertion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Insertion,
                                         count: 1,
@@ -314,10 +285,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Insertion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Insertion,
                                         count: 1,
@@ -350,10 +321,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Deletion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Deletion,
                                         count: 1,
@@ -381,10 +352,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Deletion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Deletion,
                                         count: 1,
@@ -408,8 +379,16 @@ impl WaveFront {
         component_index: u32,
         maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
-        traversed_positions_buffer: &mut Vec<TraversedPositionDep>,
-    ) -> SideExtension {
+        operations_buffer: &mut Vec<AlignmentOperations>,
+        traversed_anchor_buffer: &mut Vec<AnchorIndex>,
+    ) -> BackTraceResult {
+        operations_buffer.push(AlignmentOperations {
+            operation: AlignmentOperation::Insertion,
+            count: 0,
+        });
+        let mut operation_start_index = operations_buffer.len() as u32;
+        let mut traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
+
         let wave_front_scores = &self.wave_front_scores;
 
         // Initialize
@@ -424,9 +403,9 @@ impl WaveFront {
         let mut k = -wave_front_score.max_k + component_index as i32;
         let mut fr = component.fr;
 
-        let total_operation_length = fr as u32 + component.deletion_count as u32;
-        let total_deletion_count: u32 = component.deletion_count as u32;
-        let total_insertion_count: u32 = (total_deletion_count as i32 + k) as u32;
+        let total_length = fr as u32 + component.deletion_count as u32 + anchor_size;
+        let total_processed_query = (fr - k) as u32 + anchor_size;
+        let total_processed_target = fr as u32 + anchor_size;
 
         loop {
             match component_type {
@@ -453,21 +432,11 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(prev_match_query_index, pattern_size as i32);
                             let match_count_of_next_pattern = match_count + remainder + 1 - pattern_size as i32;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                let penalty_from_the_start = penalty + penalties.x;
-                                let operation_length = total_operation_length + match_count_of_next_pattern as u32 - fr as u32 - component.deletion_count as u32;
-                                let scaled_penalty_delta_from_the_end = 
-                                    operation_length as i64 * maximum_scaled_penalty_per_length as i64
-                                    - PREC_SCALE as i64 * (total_penalty - penalty_from_the_start) as i64
-                                ;
-                                let traversed_position = TraversedPositionDep {
-                                    scaled_penalty_delta_from_the_end,
-                                    penalty_from_the_start,
-                                    estimated_additive_pattern_index: (quotient + 1) as u32 + pattern_count_of_anchor,
-                                    estimated_additive_target_position: (fr - match_count_of_next_pattern) as u32 + anchor_size,
-                                    partial_operation_index: operations.len() as u32,
-                                    alternative_match_count: match_count_of_next_pattern as u32,
-                                };
-                                traversed_positions_buffer.push(traversed_position);
+                                let estimated_additive_position_info = (
+                                    (quotient + 1) as u32 + pattern_count_of_anchor,
+                                    (fr - match_count_of_next_pattern) as u32 + anchor_size,
+                                );
+                                traversed_anchor_buffer.push(estimated_additive_position_info);
                             }
                             
                             // (8) Add operation
@@ -523,20 +492,11 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(prev_match_query_index, pattern_size as i32);
                             let match_count_of_next_pattern = match_count + remainder + 1 - pattern_size as i32;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                let operation_length = total_operation_length + match_count_of_next_pattern as u32 - fr as u32 - component.deletion_count as u32;
-                                let scaled_penalty_delta_from_the_end = 
-                                    operation_length as i64 * maximum_scaled_penalty_per_length as i64 
-                                    - PREC_SCALE as i64 * (total_penalty - penalty) as i64
-                                ;
-                                let traversed_position = TraversedPositionDep {
-                                    scaled_penalty_delta_from_the_end,
-                                    penalty_from_the_start: penalty,
-                                    estimated_additive_pattern_index: (quotient + 1) as u32 + pattern_count_of_anchor,
-                                    estimated_additive_target_position: (fr - match_count_of_next_pattern) as u32 + anchor_size,
-                                    partial_operation_index: operations.len() as u32,
-                                    alternative_match_count: match_count_of_next_pattern as u32,
-                                };
-                                traversed_positions_buffer.push(traversed_position);
+                                let estimated_additive_position_info = (
+                                    (quotient + 1) as u32 + pattern_count_of_anchor,
+                                    (fr - match_count_of_next_pattern) as u32 + anchor_size,
+                                );
+                                traversed_anchor_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -570,20 +530,11 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(prev_match_query_index, pattern_size as i32);
                             let match_count_of_next_pattern = match_count + remainder + 1 - pattern_size as i32;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                let operation_length = total_operation_length + match_count_of_next_pattern as u32 - fr as u32 - component.deletion_count as u32;
-                                let scaled_penalty_delta_from_the_end = 
-                                    operation_length as i64 * maximum_scaled_penalty_per_length as i64 
-                                    - PREC_SCALE as i64 * (total_penalty - penalty) as i64
-                                ;
-                                let traversed_position = TraversedPositionDep {
-                                    scaled_penalty_delta_from_the_end,
-                                    penalty_from_the_start: penalty,
-                                    estimated_additive_pattern_index: (quotient + 1) as u32 + pattern_count_of_anchor,
-                                    estimated_additive_target_position: (fr - match_count_of_next_pattern) as u32 + anchor_size,
-                                    partial_operation_index: operations.len() as u32,
-                                    alternative_match_count: match_count_of_next_pattern as u32,
-                                };
-                                traversed_positions_buffer.push(traversed_position);
+                                let estimated_additive_position_info = (
+                                    (quotient + 1) as u32 + pattern_count_of_anchor,
+                                    (fr - match_count_of_next_pattern) as u32 + anchor_size,
+                                );
+                                traversed_anchor_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -606,17 +557,24 @@ impl WaveFront {
                                     count: last_match_count,
                                 }
                             );
-                            // extension of current anchor
-                            let extension = SideExtension {
-                                penalty: total_penalty,
-                                length: total_operation_length + anchor_size,
-                                insertion_count: total_insertion_count,
-                                deletion_count: total_deletion_count,
-                                reversed_operations: operations,
-                                traversed_anchors: Vec::new(),
-                                query_index_of_the_end: 0,
+
+                            let backtrace_result = BackTraceResult {
+                                // start, size
+                                operation_buffer_range: (
+                                    operation_start_index,
+                                    operations_buffer.len() as u32,
+                                ),
+                                // start, size
+                                traversed_anchor_range: (
+                                    traversed_anchor_start_index,
+                                    traversed_anchor_buffer.len() as u32,
+                                ),
+                                // query, target
+                                processed_length: (total_processed_query, total_processed_target),
+                                length_of_extension: total_length,
+                                penalty_of_extension: total_penalty,
                             };
-                            return extension;
+                            return backtrace_result;
                         }
                     }
                 },

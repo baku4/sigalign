@@ -19,8 +19,39 @@ use ahash::AHashSet;
 pub struct Vpc {
     pub scaled_penalty_delta: i64,
     pub query_length: u32,
-    pub penalty: u32,
+    pub penalty: u32, // FIXME: Delete this field
     pub component_index: u32,
+}
+
+impl Vpc {
+    // Return optimal vpc index of (left, right)
+    pub fn get_optimal_position(
+        left_sorted_vpc_vector: &Vec<Self>,
+        right_sorted_vpc_vector: &Vec<Self>,
+        anchor_scaled_penalty_delta: u32,
+    ) -> (usize, usize) {
+        let mut optimal_left_vpc_index = 0;
+        let mut optimal_right_vpc_index = 0;
+        let mut optimal_max_query_length_without_anchor = 0;
+
+        for (left_vpc_index, left_vpc) in left_sorted_vpc_vector.iter().enumerate().rev() {
+            for (right_vpc_index, right_vpc) in right_sorted_vpc_vector.iter().enumerate().rev() {
+                let scaled_penalty_margin = left_vpc.scaled_penalty_delta + right_vpc.scaled_penalty_delta + anchor_scaled_penalty_delta as i64;
+
+                if scaled_penalty_margin >= 0 {
+                    let query_length_without_anchor = left_vpc.query_length + right_vpc.query_length;
+                    if optimal_max_query_length_without_anchor < query_length_without_anchor {
+                        optimal_max_query_length_without_anchor = query_length_without_anchor;
+                        optimal_left_vpc_index = left_vpc_index;
+                        optimal_right_vpc_index = right_vpc_index;
+                    }
+                    break
+                }
+            }
+        }
+        
+        (optimal_left_vpc_index, optimal_right_vpc_index)
+    }
 }
 
 impl WaveFront {
@@ -34,7 +65,7 @@ impl WaveFront {
     pub fn fill_sorted_vpc_vector(
         &self,
         maximum_penalty_per_scale: &u32,
-        sorted_vpc_vector_buffer: &mut Vec<Vpc>,
+        vpc_buffer: &mut Vec<Vpc>,
     ) {
         let last_penalty = self.end_point.penalty;
 
@@ -47,7 +78,7 @@ impl WaveFront {
             let mut ql_is_same_as_pre = false;
 
             // Find index to insert
-            for (index, vpc_in_vector) in sorted_vpc_vector_buffer.iter().enumerate().rev() {
+            for (index, vpc_in_vector) in vpc_buffer.iter().enumerate().rev() {
                 // QL
                 if ql_index_to_insert == 0 {
                     let checked_sub = max_query_length.checked_sub(vpc_in_vector.query_length);
@@ -72,9 +103,9 @@ impl WaveFront {
             if ql_index_to_insert > pd_index_to_insert {
                 // Delete middle elements and insert new
                 (0..ql_index_to_insert-pd_index_to_insert).for_each(|_| {
-                    sorted_vpc_vector_buffer.remove(pd_index_to_insert);
+                    vpc_buffer.remove(pd_index_to_insert);
                 });
-                sorted_vpc_vector_buffer.insert(
+                vpc_buffer.insert(
                     pd_index_to_insert,
                     Vpc {
                         query_length: max_query_length,
@@ -85,8 +116,8 @@ impl WaveFront {
                 );
             } else if ql_index_to_insert == pd_index_to_insert {
                 if !ql_is_same_as_pre {
-                    if ql_index_to_insert == sorted_vpc_vector_buffer.len() {
-                        sorted_vpc_vector_buffer.insert(
+                    if ql_index_to_insert == vpc_buffer.len() {
+                        vpc_buffer.insert(
                             pd_index_to_insert,
                             Vpc {
                                 query_length: max_query_length,
@@ -96,8 +127,8 @@ impl WaveFront {
                             },
                         );
                     } else {
-                        if sorted_vpc_vector_buffer[ql_index_to_insert].scaled_penalty_delta < scaled_penalty_delta {
-                            sorted_vpc_vector_buffer.insert(
+                        if vpc_buffer[ql_index_to_insert].scaled_penalty_delta < scaled_penalty_delta {
+                            vpc_buffer.insert(
                                 pd_index_to_insert,
                                 Vpc {
                                     query_length: max_query_length,

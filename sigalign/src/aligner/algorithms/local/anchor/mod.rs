@@ -15,9 +15,9 @@ If the locations of consecutive patterns are ungapped -> merge to one Anchor
 pub struct Anchor {
     pub target_position: u32,
     pub pattern_count: u32,
-    pub flat_index: u32,
-    pub skip_extending_to_the_right: bool,
-    pub skip_extending_to_the_left: bool,
+    pub extension_index: u32,
+    pub extended: bool,
+    pub skipped: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorTable(
@@ -98,9 +98,9 @@ impl Anchor {
             Self {
                 target_position: pos,
                 pattern_count: 1,
-                flat_index: 0,
-                skip_extending_to_the_right: false,
-                skip_extending_to_the_left: false,
+                extension_index: 0,
+                extended: false,
+                skipped: false,
             }
         }).collect()
     }

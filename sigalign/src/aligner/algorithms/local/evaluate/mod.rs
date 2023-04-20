@@ -63,8 +63,9 @@ pub fn evaluate(
             let mut left_symbol_ptr: *const i32 = &symbols_buffer[left_side_extension.symbol_start_index as usize];
             let mut right_symbol_ptr: *const i32 = &symbols_buffer[right_side_extension.symbol_start_index as usize];
             let mut merged_symbol_ptr: *const i32 = &symbols_buffer[symbol_start_index_for_pre_result as usize];
-            // If the valid result is already searched:
-            //   -> can skip other right side extensions
+            // Check if the valid result is already searched:
+            //   Un-searched -> 
+            //   Searched -> can skip other right side extensions
             if !valid_result_of_left_is_searched {
                 let mut left_traversed_anchor_index: u32 = 0;
                 let mut right_traversed_anchor_index: u32 = 0;
@@ -110,11 +111,10 @@ pub fn evaluate(
                     right_symbol_ptr = unsafe { right_symbol_ptr.add(1) };
                     merged_symbol_ptr = unsafe { merged_symbol_ptr.add(1) };
                 }
-
-                // Start with "valid_result_of_left_is_searched" is false
+                // Because started with "valid_result_of_left_is_searched" is false,
                 if valid_result_of_left_is_searched {
                     // If valid result is searched:
-                    // Adjust the values for the next merged symbol
+                    // Add new the symbols for the next merged symbol
                     // TODO: Optimize
                     for _ in 0..symbol_length {
                         symbols_buffer.push(MERGED_EMPTY_SYMBOL);

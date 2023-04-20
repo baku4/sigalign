@@ -10,9 +10,8 @@ use crate::{
     }
 };
 use super::{AnchorTable, Anchor, AnchorIndex};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, SparePenaltyCalculator};
+use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker};
 use super::Vpc;
-use super::TraversedPositionDep;
 use ahash::AHashSet;
 
 #[derive(Debug, Clone)]
@@ -23,11 +22,15 @@ pub struct TraversedAnchorDep {
     pub scaled_penalty_delta_from_the_end: i64,
 }
 
+// FIXME: To del
+
+/*
+
 #[inline]
 pub fn get_left_traversed_anchors_tagging_skip_info(
     anchor_table: &mut AnchorTable,
     traversed_positions: &Vec<TraversedPositionDep>,
-    spare_penalty_calculator: &SparePenaltyCalculator,
+    spare_penalty_calculator: &DepSparePenaltyCalculator,
     scaled_penalty_delta_assuming_leftmost_anchor: u32,
     base_pattern_index: u32,
     base_pattern_count: u32,
@@ -101,7 +104,7 @@ pub fn get_left_traversed_anchors_tagging_skip_info(
 pub fn get_right_traversed_anchors_tagging_skip_info(
     anchor_table: &mut AnchorTable,
     traversed_positions: &Vec<TraversedPositionDep>,
-    spare_penalty_calculator: &SparePenaltyCalculator,
+    spare_penalty_calculator: &DepSparePenaltyCalculator,
     base_pattern_index: u32,
     base_target_position: u32,
     sequence_end_is_reached: bool,
@@ -196,3 +199,6 @@ mod tests {
         (length, penalty, length as i64 * maximum_scaled_penalty_per_length as i64 - (penalty * PREC_SCALE) as i64)
     }
 }
+
+
+ */
