@@ -19,7 +19,7 @@ use ahash::AHashSet;
 pub struct Vpc {
     pub scaled_penalty_delta: i64,
     pub query_length: u32,
-    pub penalty: u32, // FIXME: Delete this field
+    pub penalty: u32,
     pub component_index: u32,
 }
 

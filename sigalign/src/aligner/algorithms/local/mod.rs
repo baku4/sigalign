@@ -19,25 +19,18 @@ use anchor::{
     AnchorTable,
     AnchorIndex,
 };
-// mod symbol;
-// use symbol::{
-//     LEFT_EMPTY_SYMBOL,
-//     RIGHT_EMPTY_SYMBOL,
-//     MERGED_EMPTY_SYMBOL,
-// };
 mod spare_penalty;
 use spare_penalty::{
     SparePenaltyCalculator,
-    get_right_spare_penalty_by_pattern_index_from_the_right,
-    DepSparePenaltyCalculator,
 };
 mod extend;
 use extend::{
     LocalExtension,
+    extend_anchor,
     Vpc,
-    extend_assuming_leftmost_anchor,
-    
 };
+
+
 // mod evaluate;
 // use evaluate::{
 //     sort_left_side_extensions,
@@ -91,8 +84,8 @@ fn local_alignment_query_to_target(
     query: &[u8],
     penalties: &Penalty,
     cutoff: &Cutoff,
-    wave_front_for_left_extension: &mut WaveFront,
-    wave_front_for_right_extension: &mut WaveFront,
+    left_wave_front: &mut WaveFront,
+    right_wave_front: &mut WaveFront,
 ) -> Vec<AnchorAlignmentResult> {
     // TODO: Pre defined
     let max_pattern_count = query.len() as u32 / pattern_size;
@@ -106,44 +99,88 @@ fn local_alignment_query_to_target(
     // TODO: Use buffer
     //   - (1) Reuse with clear
     let mut sorted_anchor_indices: Vec<AnchorIndex> = Vec::new();
-    let mut left_sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
-    let mut right_sorted_vpc_vector_buffer: Vec<Vpc> = Vec::new();
+    let mut left_vpc_buffer: Vec<Vpc> = Vec::new();
+    let mut right_vpc_buffer: Vec<Vpc> = Vec::new();
     let mut extension_buffer: Vec<LocalExtension> = Vec::new();
     //   - (2) Reuse without clear, need init and index to operate
     let mut operations_buffer: Vec<AlignmentOperations> = Vec::new();
+    let mut traversed_anchor_index_buffer: Vec<AnchorIndex> = Vec::new();
     // ^
 
+    anchor_table.0.iter().enumerate().for_each(|(pattern_index, anchors_of_pattern)| {
+        (0..anchors_of_pattern.len() as u32).for_each(|v| {
+            sorted_anchor_indices.push((pattern_index as u32, v))
+        })
+    });
     sorted_anchor_indices.iter().for_each(|current_anchor_index| {
-        let current_anchor = &mut anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
+        let current_anchor = &anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
 
         // If skipped: the result of that anchor is included in the result already.
         if !current_anchor.skipped {
             // Extend if not extended
             if !current_anchor.extended {
-                // extend_assuming_leftmost_anchor();
+                extend_anchor(
+                    &anchor_table,
+                    current_anchor,
+                    current_anchor_index.0,
+                    &pattern_size,
+                    &spare_penalty_calculator,
+                    target,
+                    query,
+                    penalties,
+                    cutoff,
+                    left_wave_front,
+                    right_wave_front,
+                    &mut left_vpc_buffer,
+                    &mut right_vpc_buffer,
+                    &mut operations_buffer,
+                    &mut traversed_anchor_index_buffer,
+                    &mut extension_buffer,
+                );
+                // current_anchor.extension_index = (extension_buffer.len() - 1) as u32; // FIXME: Delete if not needed
             }
+            let extension_of_current_anchor = unsafe { extension_buffer.last().unwrap_unchecked() };
 
             // Check the right traversed anchors
-            let right_traversed_anchors: Vec<AnchorIndex> = Vec::new();
-            for right_traversed_anchor in right_traversed_anchors.iter().rev() {
-                let right_anchor = &mut anchor_table.0[right_traversed_anchor.0 as usize][right_traversed_anchor.1 as usize];
-                if !right_anchor.skipped {
+            let right_traversed_anchor_index_range = extension_of_current_anchor.right_traversed_anchor_range;
+            (right_traversed_anchor_index_range.1..right_traversed_anchor_index_range.0).rev().for_each(|idx: u32| {
+                let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
+                let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
+                if !traversed_anchor.skipped {
                     // Extend if not extended
-                    if !right_anchor.extended {
-                        // extend_assuming_leftmost_anchor();
+                    if !traversed_anchor.extended {
+                        extend_anchor(
+                            &anchor_table,
+                            traversed_anchor,
+                            traversed_anchor_index.0,
+                            &pattern_size,
+                            &spare_penalty_calculator,
+                            target,
+                            query,
+                            penalties,
+                            cutoff,
+                            left_wave_front,
+                            right_wave_front,
+                            &mut left_vpc_buffer,
+                            &mut right_vpc_buffer,
+                            &mut operations_buffer,
+                            &mut traversed_anchor_index_buffer,
+                            &mut extension_buffer,
+                        );
                     }
+                    let extension_of_traversed_anchor = unsafe { extension_buffer.last().unwrap_unchecked() };
+                    let left_traversed_anchor_index_range = extension_of_traversed_anchor.left_traversed_anchor_range;
 
-                    let left_traversed_anchors: Vec<AnchorIndex> = Vec::new();
-    
                     skip_extending_of_anchors_in_intersection();
                 }
-            }
+            });
         }
     });
 
     Vec::new()
 }
 
+#[inline]
 fn skip_extending_of_anchors_in_intersection() {
-    //
+    
 }

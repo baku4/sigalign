@@ -37,7 +37,6 @@ impl WaveFront {
         mut penalty: u32,
         pattern_size: u32,
         component_index: u32,
-        maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
         traversed_anchor_buffer: &mut Vec<AnchorIndex>,
@@ -46,8 +45,8 @@ impl WaveFront {
             operation: AlignmentOperation::Insertion,
             count: 0,
         });
-        let mut operation_start_index = operations_buffer.len() as u32;
-        let mut traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
+        let operation_start_index = operations_buffer.len() as u32;
+        let traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
         
         let wave_front_scores = &self.wave_front_scores;
 
@@ -377,7 +376,6 @@ impl WaveFront {
         pattern_size: u32,
         pattern_count_of_anchor: u32,
         component_index: u32,
-        maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
         traversed_anchor_buffer: &mut Vec<AnchorIndex>,
@@ -386,14 +384,13 @@ impl WaveFront {
             operation: AlignmentOperation::Insertion,
             count: 0,
         });
-        let mut operation_start_index = operations_buffer.len() as u32;
-        let mut traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
+        let operation_start_index = operations_buffer.len() as u32;
+        let traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
 
         let wave_front_scores = &self.wave_front_scores;
 
         // Initialize
-        let anchor_size = pattern_count_of_anchor * pattern_size;
-        let mut operations: Vec<AlignmentOperations> = Vec::new(); // TODO: Capacity can be applied?
+        let anchor_size: u32 = pattern_count_of_anchor * pattern_size;
 
         let total_penalty = penalty;
         let mut wave_front_score = &wave_front_scores[penalty as usize];
@@ -445,10 +442,10 @@ impl WaveFront {
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Subst,
                                         count: last_fr
-                                    }) = operations.last_mut() {
+                                    }) = operations_buffer.last_mut() {
                                     *last_fr += 1;
                                 } else {
-                                    operations.push(
+                                    operations_buffer.push(
                                         AlignmentOperations {
                                             operation: AlignmentOperation::Subst,
                                             count: 1
@@ -456,13 +453,13 @@ impl WaveFront {
                                     );
                                 }
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: match_count as u32
                                     }
                                 );
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Subst,
                                         count: 1
@@ -500,7 +497,7 @@ impl WaveFront {
                             }
                             // (8) Add operation
                             if match_count != 0 {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: match_count as u32,
@@ -538,7 +535,7 @@ impl WaveFront {
                             }
                             // (8) Add operation
                             if match_count != 0 {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Match,
                                         count: match_count as u32,
@@ -551,7 +548,7 @@ impl WaveFront {
                         _ => { // START_POINT
                             // Add operation
                             let last_match_count = fr as u32 + anchor_size;
-                            operations.push(
+                            operations_buffer.push(
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Match,
                                     count: last_match_count,
@@ -599,10 +596,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Insertion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Insertion,
                                         count: 1,
@@ -630,10 +627,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Insertion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Insertion,
                                         count: 1,
@@ -666,10 +663,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Deletion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Deletion,
                                         count: 1,
@@ -697,10 +694,10 @@ impl WaveFront {
                                 AlignmentOperations {
                                     operation: AlignmentOperation::Deletion,
                                     count: last_fr
-                                }) = operations.last_mut() {
+                                }) = operations_buffer.last_mut() {
                                 *last_fr += 1;
                             } else {
-                                operations.push(
+                                operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Deletion,
                                         count: 1,

@@ -35,10 +35,10 @@ pub struct AnchorAlignmentResult {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct AlignmentPosition {
-    #[cfg_attr(feature = "short_key", serde(rename = "tgt"))]
-    pub target: (u32, u32),
     #[cfg_attr(feature = "short_key", serde(rename = "qry"))]
     pub query: (u32, u32),
+    #[cfg_attr(feature = "short_key", serde(rename = "tgt"))]
+    pub target: (u32, u32),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
