@@ -136,6 +136,7 @@ fn print_the_first_alignment_result_for_local() {
 
     println!("# tested_read_count: {}", result_index_count);
     for result_index in result_index_list {
+        println!("# result_index: {}", result_index);
         let one_read = local_result_answer.0[result_index].read.clone();
         let one_local_result_answer = local_result_answer.0[result_index].result.clone();
         
@@ -159,16 +160,25 @@ fn print_the_first_alignment_result_for_local() {
         
         info!("Alignment of local mode is done");
 
-        // if !right_result_includes_left(&one_local_result_answer, &one_local_result_of_current) {
-        //     let res_count = |res: &AlignmentResult| {
-        //         res.0.iter().map(|x| x.alignments.len()).sum::<usize>()
-        //     };
-        //     println!(
-        //         "result count: answer-{}, current-{}",
-        //         res_count(&one_local_result_answer),
-        //         res_count(&one_local_result_of_current),
-        //     );
-        // }
+        if !right_result_includes_left(&one_local_result_answer, &one_local_result_of_current) {
+            println!(
+                "{:#?}",
+                one_local_result_answer,
+            );
+            println!(
+                "{:#?}",
+                one_local_result_of_current,
+            );
+            panic!("");
+            let res_count = |res: &AlignmentResult| {
+                res.0.iter().map(|x| x.alignments.len()).sum::<usize>()
+            };
+            println!(
+                "result count: answer-{}, current-{}",
+                res_count(&one_local_result_answer),
+                res_count(&one_local_result_of_current),
+            );
+        }
 
         // Check if last operation is INS
         // one_local_result_of_current.0.iter().for_each(|target_result| {

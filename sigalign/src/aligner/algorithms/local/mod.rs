@@ -10,8 +10,6 @@ use crate::results::{
 use super::common_steps::{
     Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
 };
-use std::cmp::Ordering;
-use ahash::AHashSet;
 
 mod anchor;
 use anchor::{
@@ -26,16 +24,18 @@ use spare_penalty::{
 mod extend;
 use extend::{
     LocalExtension,
-    extend_anchor,
     Vpc,
+    extend_anchor,
+    mark_anchor_as_extended,
 };
-
-
-// mod evaluate;
-// use evaluate::{
-//     sort_left_side_extensions,
-//     sort_right_side_extensions,
-// };
+mod skip;
+use skip::{
+    mark_traversed_anchors_as_skipped
+};
+mod transform;
+use transform::{
+    transform_extension_to_result,
+};
 
 pub fn local_alignment_algorithm<R: ReferenceInterface>(
     reference: &R,
@@ -107,6 +107,8 @@ fn local_alignment_query_to_target(
     let mut traversed_anchor_index_buffer: Vec<AnchorIndex> = Vec::new();
     // ^
 
+    let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
+
     anchor_table.0.iter().enumerate().for_each(|(pattern_index, anchors_of_pattern)| {
         (0..anchors_of_pattern.len() as u32).for_each(|v| {
             sorted_anchor_indices.push((pattern_index as u32, v))
@@ -114,10 +116,9 @@ fn local_alignment_query_to_target(
     });
     sorted_anchor_indices.iter().for_each(|current_anchor_index| {
         let current_anchor = &anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-
         // If skipped: the result of that anchor is included in the result already.
         if !current_anchor.skipped {
-            // Extend if not extended
+            // (1) Extend the current anchor
             if !current_anchor.extended {
                 extend_anchor(
                     &anchor_table,
@@ -137,13 +138,17 @@ fn local_alignment_query_to_target(
                     &mut traversed_anchor_index_buffer,
                     &mut extension_buffer,
                 );
-                // current_anchor.extension_index = (extension_buffer.len() - 1) as u32; // FIXME: Delete if not needed
+                mark_anchor_as_extended(
+                    current_anchor,
+                    extension_buffer.len() as u32 -1,
+                );
             }
-            let extension_of_current_anchor = unsafe { extension_buffer.last().unwrap_unchecked() };
 
-            // Check the right traversed anchors
-            let right_traversed_anchor_index_range = extension_of_current_anchor.right_traversed_anchor_range;
-            (right_traversed_anchor_index_range.1..right_traversed_anchor_index_range.0).rev().for_each(|idx: u32| {
+            // (2) Check the all right traversed anchors
+            let right_traversed_anchor_index_range = extension_buffer[
+                current_anchor.extension_index as usize
+            ].right_traversed_anchor_range;            
+            (right_traversed_anchor_index_range.0..right_traversed_anchor_index_range.1).for_each(|idx: u32| {
                 let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
                 let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
                 if !traversed_anchor.skipped {
@@ -167,20 +172,42 @@ fn local_alignment_query_to_target(
                             &mut traversed_anchor_index_buffer,
                             &mut extension_buffer,
                         );
+                        mark_anchor_as_extended(
+                            traversed_anchor,
+                            extension_buffer.len() as u32 - 1,
+                        );
                     }
-                    let extension_of_traversed_anchor = unsafe { extension_buffer.last().unwrap_unchecked() };
+                    let extension_of_traversed_anchor = &extension_buffer[
+                        traversed_anchor.extension_index as usize
+                    ];
                     let left_traversed_anchor_index_range = extension_of_traversed_anchor.left_traversed_anchor_range;
+                    
 
-                    skip_extending_of_anchors_in_intersection();
+                    mark_traversed_anchors_as_skipped(
+                        anchor_table,
+                        &traversed_anchor_index_buffer,
+                        current_anchor_index,
+                        idx,
+                        right_traversed_anchor_index_range.1,
+                        left_traversed_anchor_index_range.0,
+                        left_traversed_anchor_index_range.1,
+                    );
                 }
             });
+
+            // (3) Output result
+            let extension_of_current_anchor = &extension_buffer[
+                current_anchor.extension_index as usize
+            ];
+            if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
+                let result = transform_extension_to_result(
+                    extension_of_current_anchor,
+                    &operations_buffer,
+                );
+                anchor_alignment_results.push(result);
+            }
         }
     });
 
-    Vec::new()
-}
-
-#[inline]
-fn skip_extending_of_anchors_in_intersection() {
-    
+    anchor_alignment_results
 }

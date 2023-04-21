@@ -90,7 +90,7 @@ impl WaveFront {
 
         let max_k = self.wave_front_scores[penalty as usize].max_k;
         let new_components_by_k = &self.wave_front_scores[penalty as usize].components_by_k;
-        // TODO: Faster init
+        // FIXME: Faster init
         // unsafe {
         //     let ptr = new_components_by_k.as_ptr() as *mut Components;
         //     let len = new_components_by_k.len();
