@@ -48,22 +48,32 @@ Alignment executor
 use crate::core::ReferenceInterface;
 use crate::results::AlignmentResult;
 
-mod algorithms;
-use algorithms::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
-
-mod internal_buffer;
-use internal_buffer::{
-    WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
+use super::algorithm::{
+    // Algorithms
+    semi_global_alignment_algorithm,
+    local_alignment_algorithm,
+    // Structs to be buffered
+    //   - common
+    WaveFront,
+    //   - local
+    AnchorIndex, LocalSparePenaltyCalculator,  LocalExtension, Vpc,
 };
-pub use internal_buffer::{
+
+// Specifications for the aligners
+mod allocation_strategy;
+pub use allocation_strategy::{
     AllocationStrategy, LinearStrategy, DoublingStrategy,
 };
-
+use allocation_strategy::QueryLengthChecker;
+mod wave_front_pool;
+use wave_front_pool::{
+    WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
+};
 mod regulator;
 use regulator::{AlignmentRegulator};
 pub use regulator::{RegulatorError};
 
-// Modes
+// Aligners by mode
 mod local;
 mod semi_global;
 pub use local::LocalAligner;

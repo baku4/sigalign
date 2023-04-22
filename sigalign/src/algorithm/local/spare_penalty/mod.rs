@@ -1,26 +1,15 @@
-use crate::{
-    core::{
-        SeqLen,
-        regulators::{
-            Penalty, PREC_SCALE, Cutoff,
-        },
-    },
-    results::{
-        AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
-    }
+use crate::core::regulators::{
+    Penalty, PREC_SCALE,
 };
-use super::{AnchorTable, Anchor, AnchorIndex};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty};
-use ahash::AHashSet;
-
-pub struct SparePenaltyCalculator {
+#[derive(Debug, Clone)]
+pub struct LocalSparePenaltyCalculator {
     right_spare_penalty_by_pattern_index_from_the_right: Vec<u32>,
     last_pattern_index: u32, // This field is needed to be changed by query
     // (a, b, c, d, min_value) for
     // f(right penalty delta, pattern_index)
     left_coefficients_by_variable: (u32, u32, u32, u32, u32),
 }
-impl SparePenaltyCalculator {
+impl LocalSparePenaltyCalculator {
     pub fn new(
         penalties: &Penalty,
         maximum_scaled_penalty_per_length: u32,
@@ -64,7 +53,7 @@ impl SparePenaltyCalculator {
 
         Self {
             right_spare_penalty_by_pattern_index_from_the_right: fx,
-            last_pattern_index: max_pattern_count - 1,
+            last_pattern_index: 0,
             left_coefficients_by_variable: (a_2, b_2, c_2, d, penalties.o),
         }
     }
@@ -91,7 +80,18 @@ impl SparePenaltyCalculator {
             self.left_coefficients_by_variable.4 as i64
         ) as u32
     }
-    pub fn change_total_pattern_count(
+    pub fn allocate(
+        &mut self,
+        penalties: &Penalty,
+        maximum_scaled_penalty_per_length: u32,
+        pattern_size: u32,
+        max_pattern_count: u32,
+    ) {
+        // TODO: Do not make the new struct
+        let new = Self::new(penalties, maximum_scaled_penalty_per_length, pattern_size, max_pattern_count);
+        *self = new;
+    }
+    pub fn change_last_pattern_index(
         &mut self,
         last_pattern_index: u32,
     ) {

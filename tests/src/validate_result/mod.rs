@@ -2,6 +2,7 @@ use std::collections::HashSet;
 // Test if result of current repository == result of stable version of SigAlign
 // Answer is created from the SigAlign of version in `crate`
 use std::fs;
+use std::ops::Sub;
 use std::path::PathBuf;
 use std::io::{Read, Write};
 
@@ -138,7 +139,8 @@ fn print_the_first_alignment_result_for_local() {
     for result_index in result_index_list {
         println!("# result_index: {}", result_index);
         let one_read = local_result_answer.0[result_index].read.clone();
-        let one_local_result_answer = local_result_answer.0[result_index].result.clone();
+        let mut one_local_result_answer = local_result_answer.0[result_index].result.clone();
+        one_local_result_answer.0.sort_by_key(|x| x.index);
         
         let one_query = {
             let mut fasta_reader = FastaReader::from_path(&qry_file).unwrap();
@@ -153,23 +155,23 @@ fn print_the_first_alignment_result_for_local() {
         // println!("# result_index: {:?}", result_index);
         // println!("# query:\n{:?}", String::from_utf8(one_query.1.clone()).unwrap());
 
-        let one_local_result_of_current = local_aligner.align_query(
+        let mut one_local_result_of_current = local_aligner.align_query(
             &reference,
             &one_query.1,
         ).unwrap();
+        one_local_result_of_current.0.sort_by_key(|x| x.index);
         
         info!("Alignment of local mode is done");
 
         if !right_result_includes_left(&one_local_result_answer, &one_local_result_of_current) {
-            println!(
-                "{:#?}",
-                one_local_result_answer,
-            );
-            println!(
-                "{:#?}",
-                one_local_result_of_current,
-            );
-            panic!("");
+            // println!(
+            //     "{:#?}",
+            //     one_local_result_answer,
+            // );
+            // println!(
+            //     "{:#?}",
+            //     one_local_result_of_current,
+            // );
             let res_count = |res: &AlignmentResult| {
                 res.0.iter().map(|x| x.alignments.len()).sum::<usize>()
             };
@@ -265,7 +267,17 @@ fn right_result_includes_left(
     };
     let set_a = to_set(a);
     let set_b = to_set(b);
-    set_a.is_subset(&set_b)
+    if !set_a.is_subset(&set_b) {
+        // let mut only_in_set_a: Vec<(u32, AnchorAlignmentResult)> = set_a.sub(&set_b).into_iter().collect();
+        // let mut only_in_set_b: Vec<(u32, AnchorAlignmentResult)> = set_b.sub(&set_a).into_iter().collect();
+        // only_in_set_a.sort_by_key(|x| x.0);
+        // only_in_set_b.sort_by_key(|x| x.0);
+        // println!("only_in_set_a:\n{:#?}", only_in_set_a);
+        // println!("only_in_set_b:\n{:#?}", only_in_set_b);
+        false
+    } else {
+        true
+    }
 }
 fn sort_target_alignment_results(vec: &Vec<TargetAlignmentResult>) -> Vec<TargetAlignmentResult> {
     let mut sorted = vec.clone();

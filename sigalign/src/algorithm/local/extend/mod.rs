@@ -1,8 +1,7 @@
 use crate::{
     core::{
-        SeqLen,
         regulators::{
-            Penalty, PREC_SCALE, Cutoff,
+            Penalty, Cutoff,
         },
     },
     results::{
@@ -10,7 +9,7 @@ use crate::{
     }
 };
 use super::{AnchorTable, Anchor, AnchorIndex};
-use super::{Extension, WaveFront, WaveFrontScore, BackTraceMarker, SparePenaltyCalculator};
+use super::{WaveFront, WaveFrontScore, BackTraceMarker, LocalSparePenaltyCalculator};
 
 mod valid_position_candidate;
 pub use valid_position_candidate::Vpc;
@@ -22,6 +21,7 @@ use traversed::{
     transform_right_additive_position_to_traversed_anchor_index,
 };
 
+#[derive(Debug, Clone)]
 pub struct LocalExtension {
     pub alignment_position: AlignmentPosition,
     pub penalty: u32,
@@ -39,7 +39,7 @@ pub fn extend_anchor(
     anchor: &Anchor,
     pattern_index: u32,
     pattern_size: &u32,
-    spare_penalty_calculator: &SparePenaltyCalculator,
+    spare_penalty_calculator: &LocalSparePenaltyCalculator,
     target: &[u8],
     query: &[u8],
     penalties: &Penalty,

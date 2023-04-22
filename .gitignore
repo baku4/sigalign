@@ -18,3 +18,5 @@ Cargo.lock
 .DS_Store
 # Jupyter notebook cache
 .ipynb_checkpoints
+# VSC configuration
+/.vscode

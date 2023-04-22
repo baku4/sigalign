@@ -7,26 +7,30 @@ use crate::core::{
 use crate::results::{
     AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
 };
-use super::common_steps::{
-    Extension, WaveFront, WaveFrontScore, BackTraceMarker, calculate_spare_penalty,
+use super::{
+    WaveFront, WaveFrontScore, BackTraceMarker,
 };
 
 mod anchor;
 use anchor::{
     Anchor,
     AnchorTable,
+};
+pub use anchor::{
     AnchorIndex,
 };
 mod spare_penalty;
-use spare_penalty::{
-    SparePenaltyCalculator,
+pub use spare_penalty::{
+    LocalSparePenaltyCalculator,
 };
 mod extend;
 use extend::{
-    LocalExtension,
-    Vpc,
     extend_anchor,
     mark_anchor_as_extended,
+};
+pub use extend::{
+    LocalExtension,
+    Vpc,
 };
 mod skip;
 use skip::{
@@ -44,8 +48,16 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     pattern_size: u32,
     penalties: &Penalty,
     cutoff: &Cutoff,
-    left_wave_front: &mut WaveFront, 
+    // Buffers
+    spare_penalty_calculator: &mut LocalSparePenaltyCalculator,
+    left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
+    left_vpc_buffer: &mut Vec<Vpc>,
+    right_vpc_buffer: &mut Vec<Vpc>,
+    sorted_anchor_indices: &mut Vec<AnchorIndex>,
+    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    operations_buffer: &mut Vec<AlignmentOperations>,
+    extension_buffer: &mut Vec<LocalExtension>,
 ) -> AlignmentResult {
     let mut anchor_table_map = AnchorTable::new_by_target_index(reference, query, pattern_size);
 
@@ -59,8 +71,15 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
             &query,
             &penalties,
             &cutoff,
+            spare_penalty_calculator,
             left_wave_front,
             right_wave_front,
+            left_vpc_buffer,
+            right_vpc_buffer,
+            sorted_anchor_indices,
+            traversed_anchor_index_buffer,
+            operations_buffer,
+            extension_buffer,
         );
 
         if anchor_alignment_results.len() == 0 {
@@ -84,36 +103,37 @@ fn local_alignment_query_to_target(
     query: &[u8],
     penalties: &Penalty,
     cutoff: &Cutoff,
+    // Buffers
+    spare_penalty_calculator: &mut LocalSparePenaltyCalculator,
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
+    left_vpc_buffer: &mut Vec<Vpc>,
+    right_vpc_buffer: &mut Vec<Vpc>,
+    sorted_anchor_indices: &mut Vec<AnchorIndex>,
+    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    operations_buffer: &mut Vec<AlignmentOperations>,
+    extension_buffer: &mut Vec<LocalExtension>,
 ) -> Vec<AnchorAlignmentResult> {
-    // TODO: Pre defined
-    let max_pattern_count = query.len() as u32 / pattern_size;
-    let spare_penalty_calculator = SparePenaltyCalculator::new(
-        penalties,
-        cutoff.maximum_scaled_penalty_per_length,
-        pattern_size,
-        max_pattern_count,
+    // Initialize
+    //   - Clear the buffers
+    sorted_anchor_indices.clear();
+    traversed_anchor_index_buffer.clear();
+    operations_buffer.clear();
+    extension_buffer.clear();
+    //   - Change the last pattern index
+    spare_penalty_calculator.change_last_pattern_index(
+        anchor_table.0.len() as u32 - 1
     );
-
-    // TODO: Use buffer
-    //   - (1) Reuse with clear
-    let mut sorted_anchor_indices: Vec<AnchorIndex> = Vec::new();
-    let mut left_vpc_buffer: Vec<Vpc> = Vec::new();
-    let mut right_vpc_buffer: Vec<Vpc> = Vec::new();
-    let mut extension_buffer: Vec<LocalExtension> = Vec::new();
-    //   - (2) Reuse without clear, need init and index to operate
-    let mut operations_buffer: Vec<AlignmentOperations> = Vec::new();
-    let mut traversed_anchor_index_buffer: Vec<AnchorIndex> = Vec::new();
-    // ^
-
+    //   - Create vector of results
     let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
-
+    //   - Fill the anchor index vecotr
     anchor_table.0.iter().enumerate().for_each(|(pattern_index, anchors_of_pattern)| {
         (0..anchors_of_pattern.len() as u32).for_each(|v| {
             sorted_anchor_indices.push((pattern_index as u32, v))
         })
     });
+
+    // Run
     sorted_anchor_indices.iter().for_each(|current_anchor_index| {
         let current_anchor = &anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
         // If skipped: the result of that anchor is included in the result already.
@@ -132,11 +152,11 @@ fn local_alignment_query_to_target(
                     cutoff,
                     left_wave_front,
                     right_wave_front,
-                    &mut left_vpc_buffer,
-                    &mut right_vpc_buffer,
-                    &mut operations_buffer,
-                    &mut traversed_anchor_index_buffer,
-                    &mut extension_buffer,
+                    left_vpc_buffer,
+                    right_vpc_buffer,
+                    operations_buffer,
+                    traversed_anchor_index_buffer,
+                    extension_buffer,
                 );
                 mark_anchor_as_extended(
                     current_anchor,
@@ -166,11 +186,11 @@ fn local_alignment_query_to_target(
                             cutoff,
                             left_wave_front,
                             right_wave_front,
-                            &mut left_vpc_buffer,
-                            &mut right_vpc_buffer,
-                            &mut operations_buffer,
-                            &mut traversed_anchor_index_buffer,
-                            &mut extension_buffer,
+                            left_vpc_buffer,
+                            right_vpc_buffer,
+                            operations_buffer,
+                            traversed_anchor_index_buffer,
+                            extension_buffer,
                         );
                         mark_anchor_as_extended(
                             traversed_anchor,
@@ -185,7 +205,7 @@ fn local_alignment_query_to_target(
 
                     mark_traversed_anchors_as_skipped(
                         anchor_table,
-                        &traversed_anchor_index_buffer,
+                        traversed_anchor_index_buffer,
                         current_anchor_index,
                         idx,
                         right_traversed_anchor_index_range.1,
@@ -202,24 +222,12 @@ fn local_alignment_query_to_target(
             if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
                 let result = transform_extension_to_result(
                     extension_of_current_anchor,
-                    &operations_buffer,
+                    operations_buffer,
                 );
                 anchor_alignment_results.push(result);
             }
         }
     });
-
-    // {
-    //     let mut skipped_count = 0;
-    //     sorted_anchor_indices.iter().for_each(|x| {
-    //         if anchor_table.0[x.0 as usize][x.1 as usize].skipped {
-    //             skipped_count += 1;
-    //         }
-    //     });
-    //     println!("# anchor_count: {}", sorted_anchor_indices.len());
-    //     println!("# skipped_count: {}", skipped_count);
-    //     println!("# result_count: {}", anchor_alignment_results.len());
-    // }
 
     anchor_alignment_results
 }

@@ -3,14 +3,16 @@ use crate::results::AlignmentResult;
 use super::{
     AlignerInterface,
     AlignmentRegulator, RegulatorError,
-    WaveFrontPool, SingleWaveFrontPool, AllocationStrategy,
+    WaveFrontPool, SingleWaveFrontPool,
+    AllocationStrategy, QueryLengthChecker,
     semi_global_alignment_algorithm,
 };
 
 #[derive(Debug, Clone)]
 pub struct SemiGlobalAligner<A: AllocationStrategy> {
+    query_length_checker: QueryLengthChecker<A>,
     regulator: AlignmentRegulator,
-    internal_buffer: SingleWaveFrontPool<A>,
+    wave_front_pool: SingleWaveFrontPool,
 }
 
 impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
@@ -21,11 +23,19 @@ impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
         minimum_aligned_length: u32,
         maximum_penalty_per_length: f32,
     ) -> Result<Self, RegulatorError> {
+        let query_length_checker = QueryLengthChecker::new();
         let regulator = AlignmentRegulator::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
-        let wave_front_pool = SingleWaveFrontPool::new(&regulator.penalties, &regulator.cutoff);
+        // Create buffers
+        let query_length = query_length_checker.get_allocated_length();
+        let wave_front_pool = SingleWaveFrontPool::new(
+            query_length,
+            &regulator.penalties,
+            &regulator.cutoff,
+        );
         Ok(Self {
+            query_length_checker,
             regulator,
-            internal_buffer: wave_front_pool,
+            wave_front_pool,
         })
     }
     fn alignment<R: ReferenceInterface>(
@@ -34,11 +44,13 @@ impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
         sequence_buffer: &mut R::Buffer,
         query: &[u8],
     ) -> AlignmentResult {
-        self.internal_buffer.allocate_if_needed(
-            query.len() as u32,
-            &self.regulator.penalties,
-            &self.regulator.cutoff,
-        );
+        if let Some(v) = self.query_length_checker.optional_length_to_be_allocated(query.len() as u32) {
+            self.wave_front_pool.allocate(
+                v,
+                &self.regulator.penalties,
+                &self.regulator.cutoff,
+            );
+        }
         let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
             sequence_buffer,
@@ -47,7 +59,7 @@ impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
             &self.regulator.penalties,
             &self.regulator.min_penalty_for_pattern,
             &self.regulator.cutoff,
-            &mut self.internal_buffer.wave_front,
+            &mut self.wave_front_pool.wave_front,
         );
 
         self.regulator.result_of_uncompressed_penalty(reference_alignment_result)

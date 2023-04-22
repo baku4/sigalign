@@ -1,5 +1,6 @@
-// Policy
 mod core;
+mod algorithm;
+
 // Implementations
 pub mod reference;
 pub mod aligner;
