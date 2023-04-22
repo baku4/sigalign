@@ -10,44 +10,44 @@ impl WaveFront {
     #[inline]
     pub fn align_right_to_end_point(
         &mut self,
-        ref_seq: &[u8],
+        tgt_seq: &[u8],
         qry_seq: &[u8],
         penalties: &Penalty,
         spare_penalty: u32,
     ) {
-        self.align_to_end_point::<ForwardMatchCounter>(ref_seq, qry_seq, penalties, spare_penalty)
+        self.align_to_end_point::<ForwardMatchCounter>(tgt_seq, qry_seq, penalties, spare_penalty)
     }
     #[inline]
     pub fn align_left_to_end_point(
         &mut self,
-        ref_seq: &[u8],
+        tgt_seq: &[u8],
         qry_seq: &[u8],
         penalties: &Penalty,
         spare_penalty: u32,
     ) {
-        self.align_to_end_point::<ReverseMatchCounter>(ref_seq, qry_seq, penalties, spare_penalty)
+        self.align_to_end_point::<ReverseMatchCounter>(tgt_seq, qry_seq, penalties, spare_penalty)
     }
     #[inline]
     fn align_to_end_point<C: MatchCounter>(
         &mut self,
-        ref_seq: &[u8],
+        tgt_seq: &[u8],
         qry_seq: &[u8],
         penalties: &Penalty,
         spare_penalty: u32,
     ) {
-        let ref_len = ref_seq.len();
+        let tgt_len = tgt_seq.len();
         let qry_len = qry_seq.len();
 
-        let first_match_count = C::count_consecutive_match(ref_seq, qry_seq, 0, 0);
+        let first_match_count = C::count_consecutive_match(tgt_seq, qry_seq, 0, 0);
 
         self.wave_front_scores[0].add_first_components(first_match_count);
 
-        if first_match_count as usize >= ref_len || first_match_count as usize >= qry_len {
+        if first_match_count as usize >= tgt_len || first_match_count as usize >= qry_len {
             let end_point = WaveEndPoint { penalty: 0, k: Some(0) };
             self.end_point = end_point;
         } else {
             let end_point = self.fill_wave_front_scores_until_end::<C>(
-                ref_seq,
+                tgt_seq,
                 qry_seq,
                 spare_penalty,
                 penalties,
@@ -58,7 +58,7 @@ impl WaveFront {
     #[inline]
     fn fill_wave_front_scores_until_end<C: MatchCounter>(
         &mut self,
-        ref_seq: &[u8],
+        tgt_seq: &[u8],
         qry_seq: &[u8],
         mut spare_penalty: u32,
         penalties: &Penalty,
@@ -69,7 +69,7 @@ impl WaveFront {
         for penalty in 1..=spare_penalty {
             self.update_components_of_next_wave_front_score(penalty, penalties);
            
-            let optional_last_k = self.wave_front_scores[penalty as usize].extend_components_until_end::<C>(ref_seq, qry_seq);
+            let optional_last_k = self.wave_front_scores[penalty as usize].extend_components_until_end::<C>(tgt_seq, qry_seq);
 
             if let Some(last_k) = optional_last_k {
                 return WaveEndPoint { penalty: penalty as usize, k: Some(last_k) };
@@ -235,7 +235,7 @@ impl WaveFrontScore {
     #[inline]
     fn extend_components_until_end<C: MatchCounter>(
         &mut self,
-        ref_seq: &[u8],
+        tgt_seq: &[u8],
         qry_seq: &[u8],
     ) -> Option<i32> {
         for (components, k) in self.components_by_k.iter_mut().zip(-self.max_k..=self.max_k) {
@@ -245,12 +245,12 @@ impl WaveFrontScore {
                 // Extend & update
                 let mut v = (m_component.fr - k) as usize;
                 let mut h = m_component.fr as usize;
-                let match_count = C::count_consecutive_match(ref_seq, qry_seq, v, h);
+                let match_count = C::count_consecutive_match(tgt_seq, qry_seq, v, h);
                 m_component.fr += match_count;
                 // Check exit condition
                 v += match_count as usize;
                 h += match_count as usize;
-                if h >= ref_seq.len() || v >= qry_seq.len() {
+                if h >= tgt_seq.len() || v >= qry_seq.len() {
                     return Some(k);
                 }
             };

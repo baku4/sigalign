@@ -34,9 +34,7 @@ pub fn transform_extension_to_result(
     } else {
         right_operations.len()
     };
-    right_operations[..last_index_of_right_operation].iter().rev().for_each(|x| {
-        operations.push(x.clone())
-    });
+    operations.extend(right_operations[..last_index_of_right_operation].iter().rev().cloned());
 
     AnchorAlignmentResult {
         penalty: extension.penalty,
