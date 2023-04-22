@@ -54,7 +54,6 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    sorted_anchor_indices: &mut Vec<AnchorIndex>,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<LocalExtension>,
@@ -76,7 +75,6 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
             right_wave_front,
             left_vpc_buffer,
             right_vpc_buffer,
-            sorted_anchor_indices,
             traversed_anchor_index_buffer,
             operations_buffer,
             extension_buffer,
@@ -109,14 +107,12 @@ fn local_alignment_query_to_target(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    sorted_anchor_indices: &mut Vec<AnchorIndex>,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<LocalExtension>,
 ) -> Vec<AnchorAlignmentResult> {
     // Initialize
     //   - Clear the buffers
-    sorted_anchor_indices.clear();
     traversed_anchor_index_buffer.clear();
     operations_buffer.clear();
     extension_buffer.clear();
@@ -126,107 +122,99 @@ fn local_alignment_query_to_target(
     );
     //   - Create vector of results
     let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
-    //   - Fill the anchor index vecotr
+    
     anchor_table.0.iter().enumerate().for_each(|(pattern_index, anchors_of_pattern)| {
-        (0..anchors_of_pattern.len() as u32).for_each(|v| {
-            sorted_anchor_indices.push((pattern_index as u32, v))
-        })
-    });
-
-    // Run
-    sorted_anchor_indices.iter().for_each(|current_anchor_index| {
-        let current_anchor = &anchor_table.0[current_anchor_index.0 as usize][current_anchor_index.1 as usize];
-        // If skipped: the result of that anchor is included in the result already.
-        if !current_anchor.skipped {
-            // (1) Extend the current anchor
-            if !current_anchor.extended {
-                extend_anchor(
-                    &anchor_table,
-                    current_anchor,
-                    current_anchor_index.0,
-                    &pattern_size,
-                    &spare_penalty_calculator,
-                    target,
-                    query,
-                    penalties,
-                    cutoff,
-                    left_wave_front,
-                    right_wave_front,
-                    left_vpc_buffer,
-                    right_vpc_buffer,
-                    operations_buffer,
-                    traversed_anchor_index_buffer,
-                    extension_buffer,
-                );
-                mark_anchor_as_extended(
-                    current_anchor,
-                    extension_buffer.len() as u32 -1,
-                );
-            }
-
-            // (2) Check the all right traversed anchors
-            let right_traversed_anchor_index_range = extension_buffer[
-                current_anchor.extension_index as usize
-            ].right_traversed_anchor_range;            
-            (right_traversed_anchor_index_range.0..right_traversed_anchor_index_range.1).for_each(|idx: u32| {
-                let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
-                let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
-                if !traversed_anchor.skipped {
-                    // Extend if not extended
-                    if !traversed_anchor.extended {
-                        extend_anchor(
-                            &anchor_table,
-                            traversed_anchor,
-                            traversed_anchor_index.0,
-                            &pattern_size,
-                            &spare_penalty_calculator,
-                            target,
-                            query,
-                            penalties,
-                            cutoff,
-                            left_wave_front,
-                            right_wave_front,
-                            left_vpc_buffer,
-                            right_vpc_buffer,
-                            operations_buffer,
-                            traversed_anchor_index_buffer,
-                            extension_buffer,
-                        );
-                        mark_anchor_as_extended(
-                            traversed_anchor,
-                            extension_buffer.len() as u32 - 1,
-                        );
-                    }
-                    let extension_of_traversed_anchor = &extension_buffer[
-                        traversed_anchor.extension_index as usize
-                    ];
-                    let left_traversed_anchor_index_range = extension_of_traversed_anchor.left_traversed_anchor_range;
-                    
-
-                    mark_traversed_anchors_as_skipped(
-                        anchor_table,
+        anchors_of_pattern.iter().enumerate().for_each(|(anchor_index_in_pattern, current_anchor)| {
+            if !current_anchor.skipped {
+                // (1) Extend the current anchor
+                if !current_anchor.extended {
+                    extend_anchor(
+                        &anchor_table,
+                        current_anchor,
+                        pattern_index as u32,
+                        &pattern_size,
+                        &spare_penalty_calculator,
+                        target,
+                        query,
+                        penalties,
+                        cutoff,
+                        left_wave_front,
+                        right_wave_front,
+                        left_vpc_buffer,
+                        right_vpc_buffer,
+                        operations_buffer,
                         traversed_anchor_index_buffer,
-                        current_anchor_index,
-                        idx,
-                        right_traversed_anchor_index_range.1,
-                        left_traversed_anchor_index_range.0,
-                        left_traversed_anchor_index_range.1,
+                        extension_buffer,
+                    );
+                    mark_anchor_as_extended(
+                        current_anchor,
+                        extension_buffer.len() as u32 -1,
                     );
                 }
-            });
-
-            // (3) Output result
-            let extension_of_current_anchor = &extension_buffer[
-                current_anchor.extension_index as usize
-            ];
-            if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
-                let result = transform_extension_to_result(
-                    extension_of_current_anchor,
-                    operations_buffer,
-                );
-                anchor_alignment_results.push(result);
+    
+                // (2) Check the all right traversed anchors
+                let right_traversed_anchor_index_range = extension_buffer[
+                    current_anchor.extension_index as usize
+                ].right_traversed_anchor_range;            
+                (right_traversed_anchor_index_range.0..right_traversed_anchor_index_range.1).for_each(|idx: u32| {
+                    let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
+                    let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
+                    if !traversed_anchor.skipped {
+                        // Extend if not extended
+                        if !traversed_anchor.extended {
+                            extend_anchor(
+                                &anchor_table,
+                                traversed_anchor,
+                                traversed_anchor_index.0,
+                                &pattern_size,
+                                &spare_penalty_calculator,
+                                target,
+                                query,
+                                penalties,
+                                cutoff,
+                                left_wave_front,
+                                right_wave_front,
+                                left_vpc_buffer,
+                                right_vpc_buffer,
+                                operations_buffer,
+                                traversed_anchor_index_buffer,
+                                extension_buffer,
+                            );
+                            mark_anchor_as_extended(
+                                traversed_anchor,
+                                extension_buffer.len() as u32 - 1,
+                            );
+                        }
+                        let extension_of_traversed_anchor = &extension_buffer[
+                            traversed_anchor.extension_index as usize
+                        ];
+                        let left_traversed_anchor_index_range = extension_of_traversed_anchor.left_traversed_anchor_range;
+                        
+                        mark_traversed_anchors_as_skipped(
+                            anchor_table,
+                            traversed_anchor_index_buffer,
+                            (pattern_index as u32, anchor_index_in_pattern as u32),
+                            idx,
+                            right_traversed_anchor_index_range.1,
+                            left_traversed_anchor_index_range.0,
+                            left_traversed_anchor_index_range.1,
+                        );
+                    }
+                });
+    
+                // (3) Output result
+                let extension_of_current_anchor = &extension_buffer[
+                    current_anchor.extension_index as usize
+                ];
+                if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
+                    let result = transform_extension_to_result(
+                        extension_of_current_anchor,
+                        operations_buffer,
+                    );
+                    anchor_alignment_results.push(result);
+                }
             }
-        }
+        });
     });
 
     anchor_alignment_results

@@ -9,7 +9,7 @@ pub fn mark_traversed_anchors_as_skipped(
     anchor_table: &AnchorTable,
     traversed_anchor_index_buffer: &Vec<AnchorIndex>,
     // of current anchor
-    current_anchor_index: &(u32, u32),
+    current_anchor_index: (u32, u32),
     right_traversed_anchor_index_start: u32,
     right_traversed_anchor_index_end: u32,
     // of right traversed anchor
@@ -68,7 +68,7 @@ pub fn mark_traversed_anchors_as_skipped(
     // Mark the right anchors as skip
     for _ in 0..left_traversed_anchor_count {
         if cmp_anchor_index(
-            current_anchor_index as *const AnchorIndex,
+            &current_anchor_index as *const AnchorIndex,
             left_anchor_index_ptr,
         ) == Ordering::Equal {
             mark_anchor_as_skipped(
