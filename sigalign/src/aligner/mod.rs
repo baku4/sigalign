@@ -56,7 +56,7 @@ use super::algorithm::{
     //   - common
     WaveFront,
     //   - local
-    AnchorIndex, LocalSparePenaltyCalculator,  LocalExtension, Vpc,
+    AnchorIndex, LocalSparePenaltyCalculator, Extension, Vpc,
 };
 
 // Specifications for the aligners

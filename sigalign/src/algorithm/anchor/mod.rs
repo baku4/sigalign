@@ -3,7 +3,11 @@ use crate::core::{
 };
 use ahash::AHashMap;
 
-//TODO: Use buffer
+mod unsafe_marking;
+pub use unsafe_marking::{
+    mark_anchor_as_extended,
+    mark_traversed_anchors_as_skipped,
+};
 
 /**
 Anchor Table: Sorted target positions by pattern

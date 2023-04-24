@@ -1,8 +1,20 @@
 use super::{
+    Anchor,
     AnchorTable,
     AnchorIndex,
 };
 use std::cmp::Ordering;
+
+#[inline(always)]
+pub fn mark_anchor_as_extended(
+    anchor: &Anchor,
+    extension_index: u32,
+) {
+    unsafe {
+        std::ptr::write(&anchor.extended as *const bool as *mut bool, true);
+        std::ptr::write(&anchor.extension_index as *const u32 as *mut u32, extension_index);
+    };
+}
 
 #[inline]
 pub fn mark_traversed_anchors_as_skipped(

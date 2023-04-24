@@ -1,24 +1,25 @@
-use crate::core::{
-    ReferenceInterface, SequenceBuffer,
-    regulators::{
-        Penalty, Cutoff,
-    }
-};
-use crate::results::{
-    AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
+use crate::{
+    core::{
+        ReferenceInterface, SequenceBuffer,
+        regulators::{
+            Penalty, Cutoff,
+        }
+    },
+    results::{
+        AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult,
+        AlignmentPosition, AlignmentOperations,
+    },
 };
 use super::{
-    WaveFront, WaveFrontScore, BackTraceMarker,
+    Anchor, AnchorTable, AnchorIndex,
+    WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
+    Extension,
+    mark_anchor_as_extended,
+    mark_traversed_anchors_as_skipped,
+    transform_left_additive_position_to_traversed_anchor_index,
+    transform_right_additive_position_to_traversed_anchor_index,
 };
 
-mod anchor;
-use anchor::{
-    Anchor,
-    AnchorTable,
-};
-pub use anchor::{
-    AnchorIndex,
-};
 mod spare_penalty;
 pub use spare_penalty::{
     LocalSparePenaltyCalculator,
@@ -26,19 +27,9 @@ pub use spare_penalty::{
 mod extend;
 use extend::{
     extend_anchor,
-    mark_anchor_as_extended,
 };
 pub use extend::{
-    LocalExtension,
     Vpc,
-};
-mod skip;
-use skip::{
-    mark_traversed_anchors_as_skipped
-};
-mod transform;
-use transform::{
-    transform_extension_to_result,
 };
 
 pub fn local_alignment_algorithm<R: ReferenceInterface>(
@@ -56,7 +47,7 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    extension_buffer: &mut Vec<LocalExtension>,
+    extension_buffer: &mut Vec<Extension>,
 ) -> AlignmentResult {
     let mut anchor_table_map = AnchorTable::new_by_target_index(reference, query, pattern_size);
 
@@ -109,7 +100,7 @@ fn local_alignment_query_to_target(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    extension_buffer: &mut Vec<LocalExtension>,
+    extension_buffer: &mut Vec<Extension>,
 ) -> Vec<AnchorAlignmentResult> {
     // Initialize
     //   - Clear the buffers
@@ -148,14 +139,14 @@ fn local_alignment_query_to_target(
                     );
                     mark_anchor_as_extended(
                         current_anchor,
-                        extension_buffer.len() as u32 -1,
+                        extension_buffer.len() as u32 - 1,
                     );
                 }
     
                 // (2) Check the all right traversed anchors
                 let right_traversed_anchor_index_range = extension_buffer[
                     current_anchor.extension_index as usize
-                ].right_traversed_anchor_range;            
+                ].right_traversed_anchor_range;
                 (right_traversed_anchor_index_range.0..right_traversed_anchor_index_range.1).for_each(|idx: u32| {
                     let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
                     let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
@@ -207,10 +198,7 @@ fn local_alignment_query_to_target(
                     current_anchor.extension_index as usize
                 ];
                 if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
-                    let result = transform_extension_to_result(
-                        extension_of_current_anchor,
-                        operations_buffer,
-                    );
+                    let result = extension_of_current_anchor.parse_anchor_alignment_result(operations_buffer);
                     anchor_alignment_results.push(result);
                 }
             }

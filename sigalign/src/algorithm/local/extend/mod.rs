@@ -8,29 +8,16 @@ use crate::{
         AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
     }
 };
-use super::{AnchorTable, Anchor, AnchorIndex};
-use super::{WaveFront, WaveFrontScore, BackTraceMarker, LocalSparePenaltyCalculator};
-
-mod valid_position_candidate;
-pub use valid_position_candidate::Vpc;
-mod backtrace;
-use backtrace::BackTraceResult;
-mod traversed;
-use traversed::{
+use super::{
+    AnchorTable, Anchor, AnchorIndex,
+    WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
+    Extension, LocalSparePenaltyCalculator,
     transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
 
-#[derive(Debug, Clone)]
-pub struct LocalExtension {
-    pub alignment_position: AlignmentPosition,
-    pub penalty: u32,
-    pub length: u32,
-    pub left_side_operation_range: (u32, u32),
-    pub left_traversed_anchor_range: (u32, u32),
-    pub right_side_operation_range: (u32, u32),
-    pub right_traversed_anchor_range: (u32, u32),
-}
+mod valid_position_candidate;
+pub use valid_position_candidate::Vpc;
 
 // Assuming leftmost anchor
 #[inline]
@@ -51,7 +38,7 @@ pub fn extend_anchor(
     right_vpc_buffer: &mut Vec<Vpc>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
-    extension_buffer: &mut Vec<LocalExtension>,
+    extension_buffer: &mut Vec<Extension>,
 ) {
     // 1. Init
     // 1.1. Define the range of sequence to extend
@@ -155,7 +142,7 @@ pub fn extend_anchor(
     );
     
     // 5. Push extension
-    let extension = LocalExtension {
+    let extension = Extension {
         alignment_position: AlignmentPosition {
             query: (
                 left_query_end_index - left_back_trace_result.processed_length.0,
@@ -174,15 +161,4 @@ pub fn extend_anchor(
         right_traversed_anchor_range: right_back_trace_result.traversed_anchor_range,
     };
     extension_buffer.push(extension);
-}
-
-#[inline(always)]
-pub fn mark_anchor_as_extended(
-    anchor: &Anchor,
-    extension_index: u32,
-) {
-    unsafe {
-        std::ptr::write(&anchor.extended as *const bool as *mut bool, true);
-        std::ptr::write(&anchor.extension_index as *const u32 as *mut u32, extension_index);
-    };
 }

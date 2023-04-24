@@ -7,7 +7,7 @@ use super::{
     AlignerInterface,
     AlignmentRegulator, RegulatorError,
     WaveFrontPool, DoubleWaveFrontPool, AllocationStrategy, QueryLengthChecker,
-    AnchorIndex, LocalSparePenaltyCalculator,  LocalExtension, Vpc,
+    AnchorIndex, LocalSparePenaltyCalculator, Extension, Vpc,
     local_alignment_algorithm,
 };
 
@@ -22,7 +22,7 @@ pub struct LocalAligner<A: AllocationStrategy> {
     right_vpc_buffer: Vec<Vpc>,
     traversed_anchor_index_buffer: Vec<AnchorIndex>,
     operations_buffer: Vec<AlignmentOperations>,
-    extension_buffer: Vec<LocalExtension>,
+    extension_buffer: Vec<Extension>,
 }
 
 impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {

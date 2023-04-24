@@ -5,9 +5,7 @@ use crate::{
     },
 };
 use super::{
-    AnchorIndex,
-    WaveFront, BackTraceMarker,
-    Vpc,
+    AnchorIndex, WaveFront, BackTraceMarker,
 };
 use num::integer::div_rem;
 
@@ -35,14 +33,14 @@ impl WaveFront {
         component_index: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
-        traversed_anchor_buffer: &mut Vec<AnchorIndex>,
+        traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     ) -> BackTraceResult {
         operations_buffer.push(AlignmentOperations {
             operation: AlignmentOperation::Insertion,
             count: 0,
         });
         let operation_start_index = operations_buffer.len() as u32;
-        let traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
+        let traversed_anchor_start_index = traversed_anchor_index_buffer.len() as u32;
         
         let wave_front_scores = &self.wave_front_scores;
 
@@ -87,7 +85,7 @@ impl WaveFront {
                                     quotient as u32,
                                     (next_fr + match_count_of_next_pattern + 1) as u32,
                                 );
-                                traversed_anchor_buffer.push(estimated_additive_position_info);
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
                             }
                             
                             // (8) Add operation
@@ -146,7 +144,7 @@ impl WaveFront {
                                     quotient as u32,
                                     (next_fr + match_count_of_next_pattern) as u32,
                                 );
-                                traversed_anchor_buffer.push(estimated_additive_position_info);
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -183,7 +181,7 @@ impl WaveFront {
                                     quotient as u32,
                                     (next_fr + match_count_of_next_pattern) as u32,
                                 );
-                                traversed_anchor_buffer.push(estimated_additive_position_info);
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -217,7 +215,7 @@ impl WaveFront {
                                 // start, size
                                 traversed_anchor_range: (
                                     traversed_anchor_start_index,
-                                    traversed_anchor_buffer.len() as u32,
+                                    traversed_anchor_index_buffer.len() as u32,
                                 ),
                                 // query, target
                                 processed_length: (total_processed_query, total_processed_target),
@@ -374,14 +372,14 @@ impl WaveFront {
         component_index: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
-        traversed_anchor_buffer: &mut Vec<AnchorIndex>,
+        traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     ) -> BackTraceResult {
         operations_buffer.push(AlignmentOperations {
             operation: AlignmentOperation::Insertion,
             count: 0,
         });
         let operation_start_index = operations_buffer.len() as u32;
-        let traversed_anchor_start_index = traversed_anchor_buffer.len() as u32;
+        let traversed_anchor_start_index = traversed_anchor_index_buffer.len() as u32;
 
         let wave_front_scores = &self.wave_front_scores;
 
@@ -429,7 +427,7 @@ impl WaveFront {
                                     (quotient + 1) as u32 + pattern_count_of_anchor,
                                     (fr - match_count_of_next_pattern) as u32 + anchor_size,
                                 );
-                                traversed_anchor_buffer.push(estimated_additive_position_info);
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
                             }
                             
                             // (8) Add operation
@@ -489,7 +487,7 @@ impl WaveFront {
                                     (quotient + 1) as u32 + pattern_count_of_anchor,
                                     (fr - match_count_of_next_pattern) as u32 + anchor_size,
                                 );
-                                traversed_anchor_buffer.push(estimated_additive_position_info);
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -527,7 +525,7 @@ impl WaveFront {
                                     (quotient + 1) as u32 + pattern_count_of_anchor,
                                     (fr - match_count_of_next_pattern) as u32 + anchor_size,
                                 );
-                                traversed_anchor_buffer.push(estimated_additive_position_info);
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -560,7 +558,7 @@ impl WaveFront {
                                 // start, size
                                 traversed_anchor_range: (
                                     traversed_anchor_start_index,
-                                    traversed_anchor_buffer.len() as u32,
+                                    traversed_anchor_index_buffer.len() as u32,
                                 ),
                                 // query, target
                                 processed_length: (total_processed_query, total_processed_target),
