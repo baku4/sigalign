@@ -1,18 +1,25 @@
 use crate::core::ReferenceInterface;
-use crate::results::AlignmentResult;
+use crate::results::{
+    AlignmentResult, AlignmentOperations,
+};
 use super::{
     AlignerInterface,
     AlignmentRegulator, RegulatorError,
-    WaveFrontPool, SingleWaveFrontPool,
-    AllocationStrategy, QueryLengthChecker,
+    WaveFrontPool, SingleWaveFrontPool, AllocationStrategy, QueryLengthChecker,
+    AnchorIndex, SemiGlobalSparePenaltyCalculator, Extension,
     semi_global_alignment_algorithm,
 };
 
 #[derive(Debug, Clone)]
 pub struct SemiGlobalAligner<A: AllocationStrategy> {
-    query_length_checker: QueryLengthChecker<A>,
     regulator: AlignmentRegulator,
+    spare_penalty_calculator: SemiGlobalSparePenaltyCalculator,
+    query_length_checker: QueryLengthChecker<A>,
+    // Buffers
     wave_front_pool: SingleWaveFrontPool,
+    traversed_anchor_index_buffer: Vec<AnchorIndex>,
+    operations_buffer: Vec<AlignmentOperations>,
+    extension_buffer: Vec<Extension>,
 }
 
 impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
@@ -25,6 +32,14 @@ impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
     ) -> Result<Self, RegulatorError> {
         let query_length_checker = QueryLengthChecker::new();
         let regulator = AlignmentRegulator::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
+        let query_length = query_length_checker.get_allocated_length();
+        let spare_penalty_calculator = SemiGlobalSparePenaltyCalculator::new(
+            &regulator.penalties,
+            &regulator.min_penalty_for_pattern,
+            regulator.cutoff.maximum_scaled_penalty_per_length,
+            regulator.pattern_size,
+            query_length / regulator.pattern_size,
+        );
         // Create buffers
         let query_length = query_length_checker.get_allocated_length();
         let wave_front_pool = SingleWaveFrontPool::new(
@@ -33,9 +48,13 @@ impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
             &regulator.cutoff,
         );
         Ok(Self {
-            query_length_checker,
             regulator,
+            spare_penalty_calculator,
+            query_length_checker,
             wave_front_pool,
+            traversed_anchor_index_buffer: Vec::new(),
+            operations_buffer: Vec::new(),
+            extension_buffer: Vec::new(),
         })
     }
     fn alignment<R: ReferenceInterface>(
@@ -45,21 +64,34 @@ impl<A: AllocationStrategy> AlignerInterface for SemiGlobalAligner<A> {
         query: &[u8],
     ) -> AlignmentResult {
         if let Some(v) = self.query_length_checker.optional_length_to_be_allocated(query.len() as u32) {
+            let k = self.regulator.pattern_size;
+            let max_pattern_count = v / k;
+            self.spare_penalty_calculator.allocate(
+                &self.regulator.penalties,
+                &self.regulator.min_penalty_for_pattern,
+                self.regulator.cutoff.maximum_scaled_penalty_per_length,
+                self.regulator.pattern_size,
+                max_pattern_count,
+            );
             self.wave_front_pool.allocate(
                 v,
                 &self.regulator.penalties,
                 &self.regulator.cutoff,
             );
         }
+
         let reference_alignment_result = semi_global_alignment_algorithm(
             reference,
             sequence_buffer,
             query,
             self.regulator.pattern_size,
             &self.regulator.penalties,
-            &self.regulator.min_penalty_for_pattern,
             &self.regulator.cutoff,
+            &mut self.spare_penalty_calculator,
             &mut self.wave_front_pool.wave_front,
+            &mut self.traversed_anchor_index_buffer,
+            &mut self.operations_buffer,
+            &mut self.extension_buffer,
         );
 
         self.regulator.result_of_uncompressed_penalty(reference_alignment_result)

@@ -101,7 +101,7 @@ pub fn extend_anchor(
             penalty: 0,
             length: 0,
             left_side_operation_range: (0, 0),
-            left_traversed_anchor_range: (0, 0),
+            left_traversed_anchor_range: (1, 1),
             right_side_operation_range: (0, 0),
             right_traversed_anchor_range: right_traversed_anchor_range,
         };
@@ -110,24 +110,13 @@ pub fn extend_anchor(
         return;
     }
     //   - have chance to valid: proceed
-    let right_back_trace_result = {
-        let (penalty, component_index) = {
-            let end_point = &wave_front.end_point;
-            (
-                end_point.penalty as u32,
-                unsafe { end_point.k.unwrap_unchecked() } as u32,
-            )
-        };
-        wave_front.backtrace_of_right_side(
-            penalty,
-            *pattern_size,
-            pattern_count,
-            component_index,
-            penalties,
-            operations_buffer,
-            traversed_anchor_index_buffer,
-        )
-    };
+    let right_back_trace_result = wave_front.backtrace_from_the_end_of_right_side(
+        *pattern_size,
+        pattern_count,
+        penalties,
+        operations_buffer,
+        traversed_anchor_index_buffer,
+    );
     transform_right_additive_position_to_traversed_anchor_index(
         anchor_table,
         traversed_anchor_index_buffer,
@@ -195,23 +184,12 @@ pub fn extend_anchor(
         return;
     }
     //   - have chance to valid: proceed
-    let left_back_trace_result = {
-        let (penalty, component_index) = {
-            let end_point = &wave_front.end_point;
-            (
-                end_point.penalty as u32,
-                unsafe { end_point.k.unwrap_unchecked() } as u32,
-            )
-        };
-        wave_front.backtrace_of_left_side(
-            penalty,
-            *pattern_size,
-            component_index,
-            penalties,
-            operations_buffer,
-            traversed_anchor_index_buffer,
-        )
-    };
+    let left_back_trace_result = wave_front.backtrace_from_the_end_of_left_side(
+        *pattern_size,
+        penalties,
+        operations_buffer,
+        traversed_anchor_index_buffer,
+    );
     transform_left_additive_position_to_traversed_anchor_index(
         anchor_table,
         traversed_anchor_index_buffer,

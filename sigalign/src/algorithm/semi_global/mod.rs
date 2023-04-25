@@ -2,7 +2,7 @@ use crate::{
     core::{
         ReferenceInterface, SequenceBuffer,
         regulators::{
-            Penalty, Cutoff, MinPenaltyForPattern,
+            Penalty, Cutoff,
         }
     },
     results::{
@@ -35,41 +35,40 @@ pub fn semi_global_alignment_algorithm<R: ReferenceInterface>(
     query: &[u8],
     pattern_size: u32,
     penalties: &Penalty,
-    min_penalty_for_pattern: &MinPenaltyForPattern,
     cutoff: &Cutoff,
+    // Buffers
+    spare_penalty_calculator: &mut SemiGlobalSparePenaltyCalculator,
     wave_front: &mut WaveFront,
+    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    operations_buffer: &mut Vec<AlignmentOperations>,
+    extension_buffer: &mut Vec<Extension>,
 ) -> AlignmentResult {
     let mut anchor_table_map = AnchorTable::new_by_target_index(reference, query, pattern_size);
     let target_alignment_results: Vec<TargetAlignmentResult> = anchor_table_map.iter_mut().filter_map(|(target_index, anchor_table)| {
         reference.fill_buffer(*target_index, sequence_buffer);
         let target = sequence_buffer.request_sequence();
-        // let anchor_alignment_results = semi_global_alignment_query_to_target(
-        //     anchor_table,
-        //     pattern_size,
-        //     target,
-        //     &query,
-        //     &penalties,
-        //     &cutoff,
-        //     spare_penalty_calculator,
-        //     left_wave_front,
-        //     right_wave_front,
-        //     left_vpc_buffer,
-        //     right_vpc_buffer,
-        //     traversed_anchor_index_buffer,
-        //     operations_buffer,
-        //     extension_buffer,
-        // );
+        let anchor_alignment_results = semi_global_alignment_query_to_target(
+            anchor_table,
+            pattern_size,
+            target,
+            query,
+            penalties,
+            cutoff,
+            spare_penalty_calculator,
+            wave_front,
+            traversed_anchor_index_buffer,
+            operations_buffer,
+            extension_buffer,
+        );
 
-        // if anchor_alignment_results.len() == 0 {
-        //     None
-        // } else {
-        //     Some(TargetAlignmentResult {
-        //         index: *target_index,
-        //         alignments: anchor_alignment_results,
-        //     })
-        // }
-
-        None
+        if anchor_alignment_results.len() == 0 {
+            None
+        } else {
+            Some(TargetAlignmentResult {
+                index: *target_index,
+                alignments: anchor_alignment_results,
+            })
+        }
     }).collect();
 
     AlignmentResult(target_alignment_results)
@@ -88,14 +87,16 @@ fn semi_global_alignment_query_to_target(
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
-) {
+) -> Vec<AnchorAlignmentResult> {
     // Initialize
     //   - Clear the buffers
     traversed_anchor_index_buffer.clear();
     operations_buffer.clear();
     extension_buffer.clear();
     //   - Change the last pattern index
-    // FIXME:
+    spare_penalty_calculator.change_last_pattern_index(
+        anchor_table.0.len() as u32 - 1
+    );
     //   - Create vector of results
     let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
     
@@ -183,4 +184,6 @@ fn semi_global_alignment_query_to_target(
             }
         });
     });
+
+    anchor_alignment_results
 }
