@@ -83,7 +83,7 @@ impl Reference {
     }
     pub fn get_record_sequence(&self, record_index: usize) -> Vec<u8> {
         let mut buffer = self.0.get_buffer();
-        self.0.fill_sequence_buffer(record_index, &mut buffer);
+        self.0.fill_buffer(record_index, &mut buffer);
         let sequence = buffer.request_sequence();
         sequence.to_vec()
     } 

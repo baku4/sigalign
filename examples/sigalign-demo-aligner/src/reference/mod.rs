@@ -16,11 +16,11 @@ mod reference_path;
 pub use reference_path::ReferencePaths;
 
 #[cfg(not(feature = "idx_fa"))]
-mod in_memory_reference;
+mod default_reference_app;
 #[cfg(not(feature = "idx_fa"))]
-pub use in_memory_reference::{
+pub use default_reference_app::{
     ReferenceApp,
-    Reference,
+    SigReferenceWrapper,
     InnerReference,
 };
 

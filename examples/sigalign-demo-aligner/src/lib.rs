@@ -7,7 +7,7 @@ use clap::{
 mod reference;
 use reference::{
     ReferenceApp,
-    Reference,
+    SigReferenceWrapper,
     ReferencePaths,
     InnerReference,
 };

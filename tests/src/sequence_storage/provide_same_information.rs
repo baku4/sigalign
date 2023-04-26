@@ -1,6 +1,6 @@
 use crate::{
     Result, error_msg,
-    test_data::{
+    test_data_path::{
         get_lf_fa_path,
         get_crlf_fa_path,
         get_two_line_fa_path,
@@ -10,9 +10,9 @@ use super::{
     SequenceBuffer,
     SequenceStorage,
     LabelStorage,
-    Serializable,
+    Serialize,
     RcStorage,
-    Divisible,
+    Divide,
 
     InMemoryStorage,
     InMemoryRcStorage,

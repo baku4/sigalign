@@ -1,51 +1,31 @@
-use sigalign::{
-    Aligner,
-    Reference,
-    ReferenceBuilder,
-};
-use sigalign::core::*;
-use sigalign::util::*;
-use sigalign::result::*;
-use sigalign::sequence_storage::{
-    // Trait
-    SequenceStorage,
-    Divisible,
-    LabelStorage,
-    RcStorage,
-    Serializable,
-    SizeAware,
-    // Storage
-    InMemoryStorage,
-    InMemoryRcStorage,
-    IndexedFastaStorage,
-    IndexedFastaRcStorage,
-};
 use anyhow::{Result, bail as error_msg};
-use ahash::{AHashMap, AHashSet};
 
-// Aligner to verifying result
+// Test Data
+pub mod test_data_path;
+pub mod random_text_and_pattern;
+// DP matrix to generate the answer result
+mod dynamic_programming_matrix;
+
+// Aligner to validate the result
 mod dp_based_aligner;
-use dp_based_aligner::DpBasedAligner;
-
-// Data Path
-pub mod test_data;
-pub mod random_text;
-
-use log::{info, warn, error};
-pub fn init_logger() {
-    let _ = env_logger::builder()
-        .target(env_logger::Target::Stdout)
-        .is_test(true)
-        .try_init();
-}
+pub use dp_based_aligner::DpBasedAligner;
+// Logger
+mod logger;
+use logger::init_logger;
 
 // Test Main
+mod readme_example;
 // Validate result
-mod validate_result; 
+mod validate_result;
+pub use validate_result::{
+    get_sample_result_of_val_test,
+};
 // Fasta reader can read various type of FASTA formatted file
 mod read_fasta;
+// Pattern Index
+mod pattern_index;
 // Test sequence storages
-mod sequence_storage;
+// mod sequence_storage;
 // Save and load reference
 mod reference_serialization;
 // Compare result with "Dynamic Programming" method

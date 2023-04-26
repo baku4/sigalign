@@ -1,35 +1,30 @@
-use crate::test_data::get_lf_fa_path;
-use super::{
-    Reference,
-    ReferenceBuilder,
-    InMemoryStorage,
+use crate::test_data_path::get_lf_fa_path;
+use sigalign::{
+    wrapper::DefaultReference,
+    reference::features::Serialize,
 };
 use std::io::Cursor;
 
 #[test]
-fn reference_serialization() {
+fn default_reference_serialization() {
     // First saved buffer
-    let first_reference = get_test_reference();
+    let default_reference = get_default_reference();
 
     let mut buffer_1 = Vec::new();
-    first_reference.save_to(&mut buffer_1).unwrap();
+    default_reference.save_to(&mut buffer_1).unwrap();
     
     let cursor = Cursor::new(buffer_1.clone());
-    let second_reference: Reference<InMemoryStorage> = Reference::load_from(cursor).unwrap();
+    let loaded = DefaultReference::load_from(cursor).unwrap();
 
     // Second saved buffer
     let mut buffer_2 = Vec::new();
-    second_reference.save_to(&mut buffer_2).unwrap();
+    loaded.save_to(&mut buffer_2).unwrap();
 
     assert_eq!(buffer_1, buffer_2);
 }
 
-fn get_test_reference() -> Reference<InMemoryStorage> {
+fn get_default_reference() -> DefaultReference {
     let ref_file = get_lf_fa_path();
-    let mut in_memory_storage = InMemoryStorage::new();
-    in_memory_storage.add_fasta_file(ref_file).unwrap();
-
-    ReferenceBuilder::new()
-        .search_for_nucleotide_only()
-        .build(in_memory_storage).unwrap()
+    let reference = DefaultReference::from_fasta_file(ref_file).unwrap();
+    reference
 }

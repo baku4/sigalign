@@ -1,6 +1,6 @@
 use crate::{
     Result, error_msg,
-    test_data::{
+    test_data_path::{
         get_lf_fa_path,
         get_crlf_fa_path,
         get_two_line_fa_path,
@@ -10,9 +10,9 @@ use super::{
     SequenceBuffer,
     SequenceStorage,
     LabelStorage,
-    Serializable,
+    Serialize,
     RcStorage,
-    Divisible,
+    Divide,
 
     InMemoryStorage,
     InMemoryRcStorage,
@@ -54,7 +54,7 @@ fn sequence_storages_serialization() {
 fn assert_storage_serialization<S>(
     sequence_storage_to_save: &S,
 ) where
-    S: SequenceStorage + Serializable,
+    S: SequenceStorage + Serialize,
 {
     // Save
     let mut buffer = Vec::new();
