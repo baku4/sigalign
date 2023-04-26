@@ -1,6 +1,6 @@
 [package]
 name = "sigalign"
-version = "0.2.0"
+version = "0.3.0-alpha.0"
 authors = ["baku4 <bahkhun@gamil.com>"]
 edition = "2021"
 description = "Pairwise alignment algorithm using gap-affine penalty for nucleotide and amino-acid sequences."
@@ -33,4 +33,3 @@ features = ["fastbwt"]
 
 [features]
 short_key = []
-# fastbwt = ["lt-fm-index/fastbwt"]
