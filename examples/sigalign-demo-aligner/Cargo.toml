@@ -16,7 +16,7 @@ itoa = "1.0.6"
 [features]
 default = []  # Print TSV formatted output to stdout.
 # Change the alignment method
-splice = []   # Splice the query and join
+segment = []   # Align segmented query and join it later
 thread = []   # Align multiple query files using worker thread. Output is TSV to stdout
 json = []     # Use json formatted output.
 non_rc = []   # Do not use reverse complementary

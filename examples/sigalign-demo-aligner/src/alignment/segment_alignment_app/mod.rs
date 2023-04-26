@@ -54,14 +54,14 @@ pub struct AlignmentConfig {
     pe: u32,
     min_len: u32,
     max_ppl: f32,
-    // Splice
-    splice_size: usize,
+    // Segment
+    segment_size: usize,
 }
 
 impl AlignmentApp {
     pub fn get_command() -> Command {
         Command::new("alignment")
-            .about("Alignment with FASTA file (in splice mode)")
+            .about("Alignment with FASTA file (in segmented mode)")
             .arg_required_else_help(true)
             .arg(arg!(-i --input <FILE> "Input query FASTA path").display_order(1)
                 .value_parser(value_parser!(PathBuf))
@@ -81,7 +81,7 @@ impl AlignmentApp {
                 .help("Minimum aligned length and maximum penalty per length")
                 .required(true)
                 .display_order(4))
-            .arg(arg!(-s --splice <INT> "The splice length").display_order(5)
+            .arg(arg!(-s --segment <INT> "The segment length").display_order(5)
                 .value_parser(value_parser!(usize))
                 .required(false))
     }
@@ -147,8 +147,8 @@ impl AlignmentConfig {
             (min_len, max_ppl)
         };
 
-        // (3) Splice size
-        let splice_size = match matches.get_one::<usize>("splice") {
+        // (3) Segment size
+        let segment_size = match matches.get_one::<usize>("segment") {
             Some(v) => *v,
             None => 1_000,
         };
@@ -162,7 +162,7 @@ impl AlignmentConfig {
                 pe,
                 min_len,
                 max_ppl,
-                splice_size,
+                segment_size,
             }
         )
     }
@@ -203,7 +203,7 @@ impl AlignmentConfig {
             fasta_reader.for_each(|(label, query)| {
                 // (1) Original Query
                 {
-                    splice_alignment::<ForwardDirection>(
+                    segmented_alignment::<ForwardDirection>(
                         &mut aligner,
                         &reference,
                         &mut sequence_buffer,
@@ -212,13 +212,13 @@ impl AlignmentConfig {
                         &mut itoa_buffer,
                         &ref_idx,
                         label.as_bytes(),
-                        &self.splice_size,
+                        &self.segment_size,
                     );
                 }
                 // (2) Reverse complementary Query
                 {
                     let rev_com_query = reverse_complement_of_dna(&query);
-                    splice_alignment::<ReverseDirection>(
+                    segmented_alignment::<ReverseDirection>(
                         &mut aligner,
                         &reference,
                         &mut sequence_buffer,
@@ -227,7 +227,7 @@ impl AlignmentConfig {
                         &mut itoa_buffer,
                         &ref_idx,
                         label.as_bytes(),
-                        &self.splice_size,
+                        &self.segment_size,
                     );
                 }
             });
@@ -238,7 +238,7 @@ impl AlignmentConfig {
 
 
 #[inline(always)]
-fn splice_alignment<D: Direction>(
+fn segmented_alignment<D: Direction>(
     aligner: &mut SigAligner,
     reference: &InnerReference,
     sequence_buffer: &mut <InMemoryStorage as SequenceStorage>::Buffer,
@@ -247,12 +247,12 @@ fn splice_alignment<D: Direction>(
     itoa_buffer: &mut itoa::Buffer,
     ref_idx: &usize,
     label: &[u8],
-    splice_size: &usize,
+    segment_size: &usize,
 ) {
-    query.chunks(*splice_size)
+    query.chunks(*segment_size)
         .enumerate()
         .for_each(|(idx, chunk)| {
-        let pos_gap = (idx * splice_size) as u32;
+        let pos_gap = (idx * segment_size) as u32;
         let result = aligner.alignment(
             reference,
             sequence_buffer,

@@ -1,24 +1,24 @@
 use super::{Result, error_msg};
 
 #[cfg(not(any(
-    feature = "splice",
+    feature = "segment",
     feature = "thread",
     feature = "json",
     feature = "non_rc",
 )))]
 mod tsv_alignment_app;
 #[cfg(not(any(
-    feature = "splice",
+    feature = "segment",
     feature = "thread",
     feature = "json",
     feature = "non_rc",
 )))]
 pub use tsv_alignment_app::AlignmentApp;
 
-#[cfg(feature = "splice")]
-mod splice_alignment_app;
-#[cfg(feature = "splice")]
-pub use splice_alignment_app::AlignmentApp;
+#[cfg(feature = "segment")]
+mod segment_alignment_app;
+#[cfg(feature = "segment")]
+pub use segment_alignment_app::AlignmentApp;
 
 #[cfg(feature = "json")]
 mod json_alignment_app;
