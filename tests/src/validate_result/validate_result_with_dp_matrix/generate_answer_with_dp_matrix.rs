@@ -6,7 +6,7 @@ use log::info;
 use sigalign::results::AlignmentResult;
 use std::{path::PathBuf, ops::Range, io::{Read, Write}};
 
-pub fn get_semi_global_result_with_dp_matrix(
+pub fn get_cached_semi_global_result_with_dp_matrix(
     query: &[u8],
     label: &str,
     ref_file: &PathBuf,

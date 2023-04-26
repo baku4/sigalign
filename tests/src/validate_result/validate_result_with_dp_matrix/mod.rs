@@ -13,8 +13,9 @@ use log::{info, error};
 
 mod generate_answer_with_dp_matrix;
 use generate_answer_with_dp_matrix::{
-    get_semi_global_result_with_dp_matrix,
+    get_cached_semi_global_result_with_dp_matrix,
 };
+mod generate_all_answer_with_threads;
 
 const ALIGNER_OPTION: (
     u32,
@@ -60,7 +61,7 @@ fn validate_semi_global_mode_with_dp_matrix() {
         info!(" - query label: {}", label);
         if qry_index == qry_count { break };
 
-        let dpm_result = get_semi_global_result_with_dp_matrix(
+        let dpm_result = get_cached_semi_global_result_with_dp_matrix(
             &query,
             &label,
             &ref_file,
