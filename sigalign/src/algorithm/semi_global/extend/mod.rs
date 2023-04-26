@@ -202,7 +202,11 @@ pub fn extend_anchor(
     let penalty = left_back_trace_result.penalty_of_extension + right_back_trace_result.penalty_of_extension;
     let mut length = left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension;
     //   - if invalid: mark the length as 0
-    if penalty * PREC_SCALE > cutoff.maximum_scaled_penalty_per_length * length {
+    if (
+        length < cutoff.minimum_aligned_length
+    ) || (
+        penalty * PREC_SCALE > cutoff.maximum_scaled_penalty_per_length * length
+    ) {
         length = 0;
     };
     

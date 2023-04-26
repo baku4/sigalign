@@ -77,7 +77,7 @@ impl DpMatrix {
         query_index: usize,
         target_index: usize,
     ) -> u32 {
-        let (mp, xp, yp) = self.matrix[query_index][target_index];
+        let (mp, xp, yp) = self.matrix[query_index+1][target_index+1];
         cmp::min(cmp::min(mp, xp), yp)
     }
     fn get_reversed_operation_from_the_endpoint(

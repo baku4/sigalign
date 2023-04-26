@@ -32,7 +32,7 @@ const ALIGNER_OPTION: (
 
 #[test]
 fn validate_semi_global_mode_with_dp_matrix() {
-    let qry_count = 5; // TODO: Use Total Qry
+    let qry_count = 1000; // TODO: Use Total Qry
 
     init_logger();
     info!("Start to validate semi-global result with DP matrix");
@@ -57,7 +57,7 @@ fn validate_semi_global_mode_with_dp_matrix() {
     // Perform alignment
     let qry_reader = FastaReader::from_path(qry_file).unwrap();
     for (qry_index, (label, query)) in qry_reader.into_iter().enumerate() {
-        info!(" - query index: {}", qry_index);
+        info!(" - query label: {}", label);
         if qry_index == qry_count { break };
 
         let dpm_result = get_semi_global_result_with_dp_matrix(
@@ -72,6 +72,9 @@ fn validate_semi_global_mode_with_dp_matrix() {
         );
 
         let sigalign_result = semi_global_aligner.align_query(&reference, &query).unwrap();
+
+        println!("# dpm_result:\n{:#?}", dpm_result);
+        println!("# sigalign_result:\n{:#?}", sigalign_result);
 
         assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
     }
