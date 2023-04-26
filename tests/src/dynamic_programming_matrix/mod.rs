@@ -6,6 +6,7 @@ use std::cmp;
 
 mod generate;
 mod backtrace;
+mod alignment;
 
 pub struct DpMatrix {
     query: Vec<u8>,
@@ -43,16 +44,4 @@ fn test_dp_matrix() {
         println!("# idx: {:?}", idx);
         println!("{:#?}", v);
     }
-
-    // let (score, aligned_seq1, aligned_seq2) = sequence_alignment(
-    //     seq1,
-    //     seq2,
-    //     gap_open,
-    //     gap_extend,
-    //     mismatch_penalty,
-    // );
-
-    // println!("Score: {}", score);
-    // println!("Aligned seq1: {:?}", aligned_seq1);
-    // println!("Aligned seq1: {:?}", aligned_seq2);
 }

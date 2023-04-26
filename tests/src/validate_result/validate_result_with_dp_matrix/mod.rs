@@ -3,16 +3,17 @@ use crate::{
     init_logger,
     test_data_path::*,
 };
+use ahash::AHashSet;
 use sigalign::{
     wrapper::{
         DefaultAligner, DefaultReference,
-    },
+    }, utils::FastaReader, results::{AlignmentResult, AnchorAlignmentResult},
 };
 use log::{info, error};
 
 mod generate_answer_with_dp_matrix;
 use generate_answer_with_dp_matrix::{
-    get_answer_or_generate_semi_global_result_with_dp_matrix,
+    get_semi_global_result_with_dp_matrix,
 };
 
 const ALIGNER_OPTION: (
@@ -31,7 +32,7 @@ const ALIGNER_OPTION: (
 
 #[test]
 fn validate_semi_global_mode_with_dp_matrix() {
-    let qry_count = 200; // TODO: Use Total Qry
+    let qry_count = 5; // TODO: Use Total Qry
 
     init_logger();
     info!("Start to validate semi-global result with DP matrix");
@@ -54,14 +55,41 @@ fn validate_semi_global_mode_with_dp_matrix() {
     info!("Reference and aligners of current are ready");
 
     // Perform alignment
-    // let [semi_global_result_answer, local_result_answer] = get_answer_or_generate().unwrap();
-    // let semi_global_result_answer = convert_result_of_stable_version_to_current(&semi_global_result_answer);
-    // let local_result_answer = convert_result_of_stable_version_to_current(&local_result_answer);
-    info!("Answers are loaded");
+    let qry_reader = FastaReader::from_path(qry_file).unwrap();
+    for (qry_index, (label, query)) in qry_reader.into_iter().enumerate() {
+        info!(" - query index: {}", qry_index);
+        if qry_index == qry_count { break };
 
-    // let semi_global_result_of_current = semi_global_aligner.align_fasta_file(&reference, &qry_file).unwrap();
-    info!("Alignment of semi-global mode is done");
+        let dpm_result = get_semi_global_result_with_dp_matrix(
+            &query,
+            &label,
+            &ref_file,
+            ALIGNER_OPTION.0,
+            ALIGNER_OPTION.1,
+            ALIGNER_OPTION.2,
+            ALIGNER_OPTION.3,
+            ALIGNER_OPTION.4,
+        );
 
-    // assert_eq_fasta_alignment_result(semi_global_result_of_current, semi_global_result_answer);
-    info!("Comparison of semi-global mode is done");
+        let sigalign_result = semi_global_aligner.align_query(&reference, &query).unwrap();
+
+        assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
+    }
+}
+
+fn assert_sigalign_result_includes_the_dpm_result(
+    sigalign_result: &AlignmentResult,
+    dpm_result: &AlignmentResult,
+) {
+    let sigalign_result_set: AHashSet<(u32, AnchorAlignmentResult)> = alignment_result_to_hashset(sigalign_result);
+
+    let dpm_result_set: AHashSet<(u32, AnchorAlignmentResult)> = alignment_result_to_hashset(dpm_result);
+
+    assert!(sigalign_result_set.is_superset(&dpm_result_set));
+}
+
+fn alignment_result_to_hashset(result: &AlignmentResult) -> AHashSet<(u32, AnchorAlignmentResult)> {
+    result.0.iter().map(|x| {
+        x.alignments.iter().map(|y| { (x.index, y.clone()) })
+    }).flatten().collect()
 }

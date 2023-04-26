@@ -8,7 +8,7 @@ mod dynamic_programming_matrix;
 
 // Aligner to validate the result
 mod dp_based_aligner;
-use dp_based_aligner::DpBasedAligner;
+pub use dp_based_aligner::DpBasedAligner;
 // Logger
 mod logger;
 use logger::init_logger;
@@ -16,6 +16,9 @@ use logger::init_logger;
 // Test Main
 // Validate result
 mod validate_result;
+pub use validate_result::{
+    get_sample_result_of_val_test,
+};
 // Fasta reader can read various type of FASTA formatted file
 mod read_fasta;
 // Pattern Index
