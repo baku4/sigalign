@@ -1,12 +1,13 @@
 [workspace]
+resolver = "2"
 members = [
     "sigalign",
-    "sigalign-py",
     "tests",
     "examples/sigalign-demo-aligner",
-    "examples/sigalign-demo-wasm",
 ]
 exclude = [
+    "examples/sigalign-demo-wasm",
+    "sigalign-py",
     "examples/sigalign-demo-web",
 ]
 
@@ -14,4 +15,5 @@ exclude = [
 opt-level = 1
 
 [profile.release]
+lto = true
 opt-level = 3

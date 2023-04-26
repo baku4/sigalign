@@ -1,28 +1,36 @@
-// Core data structures
-mod conditions;
-mod result;
+pub mod regulators;
 
-pub use conditions::{Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern};
-pub use result::{AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase};
-
-// Sequence
-pub type Sequence<'a> = &'a [u8];
+mod sequence_length;
+pub use sequence_length::SeqLen;
 
 // Reference
 pub trait ReferenceInterface {
     type Buffer: SequenceBuffer;
 
-    fn locate(&self, pattern: Sequence) -> Vec<PatternLocation>;
+    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;
     fn get_buffer(&self) -> Self::Buffer;
-    fn fill_sequence_buffer(&self, record_index: usize, buffer: &mut Self::Buffer);
-    fn searchable(&self, query: Sequence) -> bool;
+    fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer);
+    fn is_valid(&self, query: &[u8]) -> bool;
 }
 pub trait SequenceBuffer {
     fn request_sequence(&self) -> &[u8];
 }
 
+/// The index of pattern.
+///
+/// Positions are should be sorted in ascending order.
+///   - In general, positions are automatically sorted when searching for an index of a target.
+///   - Reordering is not performed in algorithm.
+/// The range of position in one target is restricted to the bound of `u32`
 #[derive(Debug)]
 pub struct PatternLocation {
-    pub record_index: usize,
-    pub positions: Vec<usize>,
+    pub target_index: u32,
+    pub sorted_positions: Vec<u32>,
 }
+
+// Extension for serialization
+#[cfg(target_endian = "little")]
+pub(crate) type EndianType = byteorder::LittleEndian;
+#[cfg(target_endian = "big")]
+pub(crate) type EndianType = byteorder::BigEndian;
+pub(crate) use byteorder::{ReadBytesExt, WriteBytesExt};

@@ -10,7 +10,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-sigalign = { path = "../../sigalign", features = ["four_dp"] }
+sigalign = { path = "../../sigalign", features = [] }
 wasm-bindgen = "0.2.83"
 wasm-bindgen-futures = "0.4.33"
 anyhow = "1.0.44"

@@ -1,145 +1,110 @@
-use crate::{Result, error_msg};
-use crate::core::{
-	Penalties, PRECISION_SCALE, Cutoff, MinPenaltyForPattern,
-	AlignmentResult, RecordAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperation, AlignmentCase,
-    Sequence,
-    ReferenceInterface, SequenceBuffer, PatternLocation,
+/*!
+An alignment executor that performs sequence alignment.
+# Aligner
+The `Aligner` receives two values: (1) the query sequence, and (2) the reference struct, and returns the alignment result.
+
+The `Aligner` is responsible for managing the workspace required for alignment:
+  - It has a cache for alignment extension.
+    - The size of the cache is proportional to the square of the query length.
+    - The semi-global mode uses about half of the cache compared to the local mode for the same query length.
+  - It automatically controls the sequence buffer when a reference is passed.
+## Mode
+The `Aligner` has two modes:
+  1. Semi-global algorithm
+     - At each end of the alignment, either the query or the reference is fully consumed.
+       For example:
+         * Case 1
+           ```text
+           QUERY : -------------
+                       |||||||||
+           RECORD:     -------------
+           ```
+         * Case 2
+           ```text
+           QUERY :     -------------
+                       |||||||||
+           RECORD: -------------
+           ```
+         * Case 3
+           ```text
+           QUERY : -------------
+                      |||||||
+           RECORD:    -------
+           ```
+         * Case 4
+           ```text
+           QUERY :    -------
+                      |||||||
+           RECORD: -------------
+           ```
+  2. Local algorithm
+     - The alignment can include only parts of the record and query sequence.
+       For example:
+         ```text
+         QUERY : ----------------
+                     |||||||
+         RECORD:    ----------------
+         ```
+     - The result is the same as the semi-global alignments of all substrings in the query sequence.
+*/
+use crate::core::ReferenceInterface;
+use crate::results::AlignmentResult;
+
+use super::algorithm::{
+    // Algorithms
+    semi_global_alignment_algorithm,
+    local_alignment_algorithm,
+    // Structs to be buffered
+    //   - common
+    AnchorIndex, WaveFront, Extension,
+    //   - local
+    LocalSparePenaltyCalculator, Vpc,
+    //   - semi global
+    SemiGlobalSparePenaltyCalculator,
 };
-pub use crate::reference::{
-    Reference, SequenceStorage, LabelStorage,
+
+// Specifications for the aligners
+mod allocation_strategy;
+pub use allocation_strategy::{
+    AllocationStrategy, LinearStrategy, DoublingStrategy,
 };
-
-// Core algorithms
-mod algorithm;
-use algorithm::{WaveFront, local_alignment_algorithm, semi_global_alignment_algorithm};
-
-// Common data structures for aligner
-//  - Cache for alignment extension
-mod wave_front_cache;
-use wave_front_cache::{WaveFrontCache, SingleWaveFrontCache, DoubleWaveFrontCache};
-//  - Alignment condition
-mod alignment_condition;
-pub use alignment_condition::{
-    AlignmentCondition,
-    calculate_max_pattern_size,
+use allocation_strategy::QueryLengthChecker;
+mod wave_front_pool;
+use wave_front_pool::{
+    WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
 };
+mod regulator;
+use regulator::{AlignmentRegulator};
+pub use regulator::{RegulatorError};
 
-// Aligner interface
-pub trait AlignerInterface {
-    fn new(condition: AlignmentCondition) -> Self where Self: Sized;
-    fn alignment<S>(
-        &mut self,
-        reference: &Reference<S>,
-        sequence_buffer: &mut S::Buffer,
-        query: Sequence,
-    ) -> AlignmentResult where S: SequenceStorage;
-}
-
-// Aligner implementations
-mod semi_global;
+// Aligners by mode
 mod local;
-pub use semi_global::SemiGlobalAligner;
+mod semi_global;
 pub use local::LocalAligner;
+pub use semi_global::SemiGlobalAligner;
+
+pub trait AlignerInterface: Sized {
+    fn new(
+        mismatch_penalty: u32,
+        gap_open_penalty: u32,
+        gap_extend_penalty: u32,
+        minimum_aligned_length: u32,
+        maximum_penalty_per_length: f32,
+    ) -> Result<Self, RegulatorError>;
+    fn alignment<R: ReferenceInterface>(
+        &mut self,
+        reference: &R,
+        sequence_buffer: &mut R::Buffer,
+        query: &[u8],
+    ) -> AlignmentResult;
+
+    fn get_mismatch_penalty(&self) -> u32;
+    fn get_gap_open_penalty(&self) -> u32;
+    fn get_gap_extend_penalty(&self) -> u32;
+    fn get_minimum_aligned_length(&self) -> u32;
+    fn get_maximum_penalty_per_length(&self) -> f32;
+    fn get_pattern_size(&self) -> u32;
+}
 
 // Features
-mod feature;
-
-/**
-Alignment executor
-
-- Aligner has two modes
-    1. Semi-global algorithm
-        * At each end of the alignment, either the query or the reference is fully consumed.
-        * For example,
-            * Case 1
-                ```text
-                QUERY : -------------
-                            |||||||||
-                RECORD:     -------------
-                ```
-            * Case 2
-                ```text
-                QUERY :     -------------
-                            |||||||||
-                RECORD: -------------
-                ```
-            * Case 3
-                ```text
-                QUERY : -------------
-                           |||||||
-                RECORD:    -------
-                ```
-            * Case 4
-                ```text
-                QUERY :    -------
-                           |||||||
-                RECORD: -------------
-                ```
-    2. Local algorithm
-        * The alignment can contain only parts of record and query sequence.
-        * For example,
-            ```text
-            QUERY : ----------------
-                          |||||||
-            RECORD:    ----------------
-            ```
-        * The result is the same as the semi-global alignments of all substrings in the query sequence.
-
-- Aligner controls work space required to alignment.
-    - Aligner has cache for alignment extension.
-        - The size of the cache is proportional to the square of the query length.
-        - The semi-global mode uses about half of the cache than local mode for the same query length.
-    - Aligner automatically controls sequence buffer when a reference is passed.
-*/
-#[derive(Clone)]
-pub struct Aligner {
-    pub(crate) algorithms: Algorithms,
-}
-
-#[derive(Clone)]
-pub enum Algorithms {
-    SemiGlobal(SemiGlobalAligner),
-    Local(LocalAligner),
-}
-
-/// Basic methods
-impl Aligner {
-    /// Create [Aligner] with semi-global mode
-    pub fn new_semi_global(
-        mismatch_penalty: usize,
-        gap_open_penalty: usize,
-        gap_extend_penalty: usize,
-        minimum_aligned_length: usize,
-        maximum_penalty_per_length: f32,
-    ) -> Result<Self> {
-        let alignment_condition = AlignmentCondition::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
-        Ok(Self {
-            algorithms: Algorithms::SemiGlobal(SemiGlobalAligner::new(alignment_condition))
-        })
-    }
-    /// Create [Aligner] with local mode
-    pub fn new_local(
-        mismatch_penalty: usize,
-        gap_open_penalty: usize,
-        gap_extend_penalty: usize,
-        minimum_aligned_length: usize,
-        maximum_penalty_per_length: f32,
-    ) -> Result<Self> {
-        let alignment_condition = AlignmentCondition::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
-        Ok(Self {
-            algorithms: Algorithms::Local(LocalAligner::new(alignment_condition))
-        })
-    }
-    /// Perform alignment with reference and sequence buffer
-    pub fn alignment<S: SequenceStorage>(
-        &mut self,
-        reference: &Reference<S>,
-        sequence_buffer: &mut S::Buffer,
-        query: Sequence,
-    ) -> AlignmentResult {
-        match &mut self.algorithms {
-            Algorithms::SemiGlobal(aligner) => aligner.alignment(reference, sequence_buffer, query),
-            Algorithms::Local(aligner) => aligner.alignment(reference, sequence_buffer, query),
-        }
-    }
-}
+mod features;
