@@ -29,17 +29,18 @@ pub fn mark_traversed_anchors_as_skipped(
     left_traversed_anchor_index_end: u32,
 ) {
     // Init
-    let mut right_traversed_anchor_count = right_traversed_anchor_index_end - right_traversed_anchor_index_start;
+    //   - Except right most anchor (= extended traversed anchor)
     let mut left_traversed_anchor_count = left_traversed_anchor_index_end - left_traversed_anchor_index_start;
-    // Rightmost anchor index
-    let rightmost_traversed_anchor_index_ptr = &traversed_anchor_index_buffer[
-        right_traversed_anchor_index_start as usize
-    ] as *const AnchorIndex;
-
+    if left_traversed_anchor_count == 0 {
+        return
+    }
+    let mut right_traversed_anchor_count = right_traversed_anchor_index_end - right_traversed_anchor_index_start - 1;
+    
     // Skip middle range
-    right_traversed_anchor_count -= 1;
     let mut right_anchor_index_ptr = unsafe {
-        rightmost_traversed_anchor_index_ptr.add(1)
+        (&traversed_anchor_index_buffer[
+            right_traversed_anchor_index_start as usize
+        ] as *const AnchorIndex).add(1)
     };
     let mut left_anchor_index_ptr = &traversed_anchor_index_buffer[
         left_traversed_anchor_index_end as usize - 1
@@ -83,6 +84,9 @@ pub fn mark_traversed_anchors_as_skipped(
             &current_anchor_index as *const AnchorIndex,
             left_anchor_index_ptr,
         ) == Ordering::Equal {
+            let rightmost_traversed_anchor_index_ptr = &traversed_anchor_index_buffer[
+                right_traversed_anchor_index_start as usize
+            ] as *const AnchorIndex;
             mark_anchor_as_skipped(
                 anchor_table,
                 rightmost_traversed_anchor_index_ptr,

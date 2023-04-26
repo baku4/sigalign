@@ -101,7 +101,7 @@ pub fn extend_anchor(
             penalty: 0,
             length: 0,
             left_side_operation_range: (0, 0),
-            left_traversed_anchor_range: (1, 1),
+            left_traversed_anchor_range: (0, 0),
             right_side_operation_range: (0, 0),
             right_traversed_anchor_range: right_traversed_anchor_range,
         };

@@ -1,35 +1,50 @@
 /*!
-The database for multiple targeted sequences
+A database for multiple targeted sequences.
 # Reference
-Reference is the database for multiple targeted sequences.
 ## Features
-Reference has two main features:
-  1. Get the sequence of the target by index
-  2. Locate the exactly matched pattern in all target.
-### 1. Getting the sequence
-Reference is immutable to be safely shared between multiple threads. To accomplish immutability, getting the sequence is processed outside of the reference by following steps:
-  1. Get the buffer of sequence (In most case, Aligner gets the buffer).
-  2. Fill the sequence to buffer.
-  3. Request the sequence to buffer.
-The implementation of how to get, fill and request sequence can differ by use cases. Therefore, the SequenceStorage that deals with the sequences is `trait`, not a `struct`.
-### 2. Getting the sequence
-Locating the pattern is necessary to algorithm. In algorithm, the sequence is divided into several patterns and each patterns locate in the all target. Locating is getting the index of target sequence which is exactly matched with the pattern. PatternIndex takes this job using FmIndex.
+
+`Reference` has two main features:
+  1. Retrieve the target sequence by index.
+  2. Locate the exact matching pattern in all target sequences.
+
+### 1. Retrieving the sequence
+
+`Reference` is immutable to be safely shared between multiple threads. To accomplish immutability, retrieving the sequence is processed outside of the `Reference` through the following steps:
+  1. Get the sequence buffer (typically done by the `Aligner`).
+  2. Fill the sequence into the buffer.
+  3. Request the sequence from the buffer.
+
+The implementation of getting, filling, and requesting sequences can vary depending on use cases. Therefore, the `SequenceStorage` that handles the sequences is a `trait` instead of a `struct`.
+
+### 2. Locating the pattern
+
+Pattern locating is necessary for the algorithm. In this algorithm, the sequence is divided into several patterns, and each pattern is located in all target sequences. Locating is the process of getting the index of the target sequence, which exactly matches the pattern. `PatternIndex` is responsible for this task using `FmIndex`.
+
 ## Fields
-Reference has four fields:
-  1. SequenceType
-  2. PatternIndex
-  3. SearchRange
-  4. SequenceStorage
+
+`Reference` has four fields:
+  1. `SequenceType`
+  2. `PatternIndex`
+  3. `SearchRange`
+  4. `SequenceStorage`
+
 ### 1. SequenceType
-SequenceType is the definition for the valid sequences. To compress the index and accelerate the speed of locating pattern, Reference makes index only with the input characters set. SequenceType remembers the input characters, and can check whether the sequence is indexed or not.
+
+`SequenceType` defines valid sequences. To compress the index and accelerate pattern locating, `Reference` creates an index only with the input character set. `SequenceType` stores the input characters and checks whether a sequence is indexed or not.
+
 ### 2. PatternIndex
-PatternIndex can locate the exactly matched pattern in all sequence. This is defined as trait. In early version of SigAlign, PatternIndex is solid struct, but some issues are here:
-  1. The performance of PatternIndex takes the large amount of the overall performance, especially for the short query.
-  2. Inner structure of PatternIndex is frequently changed. The LtFmIndex, Rust crate for pattern matching, is used in SigAlign and this crate is actively developing.
+
+`PatternIndex` locates the exact matching pattern in all sequences. This is defined as a trait. In early versions of SigAlign, `PatternIndex` was a solid struct, but some issues arose:
+  1. The performance of `PatternIndex` accounted for a large portion of the overall performance, especially for short queries.
+  2. The inner structure of `PatternIndex` changed frequently. `LtFmIndex`, a Rust crate for pattern matching used in SigAlign, is actively being developed.
+
 ### 3. SearchRange
-SearchRange is the **sorted** index of targets. This can be modified after building the reference. Adjusting the search range is useful when large reference is built and used in case that only needs the subset of reference without re-building the subset of reference.
+
+`SearchRange` is the **sorted** index of target sequences. This can be modified after building the reference. Adjusting the search range is useful when a large reference is built and used in cases that only need a subset of the reference without rebuilding the reference subset.
+
 ### 4. SequenceStorage
-SequenceStorage is the storage of all targets sequences. SequenceStorage is defined as trait. The implementation detail of storing and parsing the sequence can be optimize for various scenarios. SigAlign has the default implementations of SequenceStorage. InMemoryStorage is one of them to store all sequence into the memory.
+
+`SequenceStorage` is the storage for all target sequences. `SequenceStorage` is defined as a trait. The implementation details of storing and parsing sequences can be optimized for various scenarios. SigAlign has default implementations of `SequenceStorage`. `InMemoryStorage` is one of them, storing all sequences in memory.
 */
 pub use crate::core::{ReferenceInterface};
 use crate::core::PatternLocation;

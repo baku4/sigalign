@@ -1,5 +1,5 @@
 /*!
-The wrappers of implementations.
+Easy to use wrappers.
 */
 mod reference;
 pub use reference::DefaultReference;

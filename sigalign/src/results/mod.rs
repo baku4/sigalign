@@ -1,5 +1,5 @@
 /*!
-Alignment results
+Alignment results.
 */ 
 use serde::{Deserialize, Serialize};
 
