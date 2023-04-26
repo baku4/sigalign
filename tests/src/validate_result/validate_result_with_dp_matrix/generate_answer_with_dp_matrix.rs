@@ -1,12 +1,10 @@
 use crate::{
-    init_logger,
     test_data_path::*,
     dynamic_programming_matrix::DpMatrix,
 };
-use log::{info, error, warn};
-use sigalign::{utils::FastaReader, results::{AlignmentResult, fasta::FastaAlignmentResult}};
+use log::info;
+use sigalign::results::AlignmentResult;
 use std::{path::PathBuf, ops::Range, io::{Read, Write}};
-use ahash::{AHashMap, AHashSet};
 
 pub fn get_semi_global_result_with_dp_matrix(
     query: &[u8],
@@ -61,7 +59,7 @@ fn parse_cached_result(cache_file: &PathBuf) -> AlignmentResult {
     let mut out_file = std::fs::File::open(cache_file).unwrap();
 
     let mut json = String::new();
-    out_file.read_to_string(&mut json);
+    out_file.read_to_string(&mut json).unwrap();
     let result = AlignmentResult::from_json(&json).unwrap();
 
     result

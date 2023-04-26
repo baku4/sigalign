@@ -73,9 +73,6 @@ fn validate_semi_global_mode_with_dp_matrix() {
 
         let sigalign_result = semi_global_aligner.align_query(&reference, &query).unwrap();
 
-        println!("# dpm_result:\n{:#?}", dpm_result);
-        println!("# sigalign_result:\n{:#?}", sigalign_result);
-
         assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
     }
 }
