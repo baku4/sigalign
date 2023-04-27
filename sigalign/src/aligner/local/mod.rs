@@ -7,14 +7,14 @@ use super::{
     AlignerInterface,
     AlignmentRegulator, RegulatorError,
     WaveFrontPool, DoubleWaveFrontPool, AllocationStrategy, QueryLengthChecker,
-    AnchorIndex, LocalSparePenaltyCalculator, Extension, Vpc,
+    AnchorIndex, SparePenaltyCalculator, Extension, Vpc,
     local_alignment_algorithm,
 };
 
 #[derive(Debug, Clone)]
 pub struct LocalAligner<A: AllocationStrategy> {
     regulator: AlignmentRegulator,
-    spare_penalty_calculator: LocalSparePenaltyCalculator,
+    spare_penalty_calculator: SparePenaltyCalculator,
     query_length_checker: QueryLengthChecker<A>,
     // Buffers
     wave_front_pool: DoubleWaveFrontPool,
@@ -36,7 +36,7 @@ impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
         let regulator = AlignmentRegulator::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
         let query_length_checker = QueryLengthChecker::new();
         let query_length = query_length_checker.get_allocated_length();
-        let spare_penalty_calculator = LocalSparePenaltyCalculator::new(
+        let spare_penalty_calculator = SparePenaltyCalculator::new(
             &regulator.penalties,
             regulator.cutoff.maximum_scaled_penalty_per_length,
             regulator.pattern_size,
@@ -70,10 +70,7 @@ impl<A: AllocationStrategy> AlignerInterface for LocalAligner<A> {
         if let Some(v) = self.query_length_checker.optional_length_to_be_allocated(query.len() as u32) {
             let k = self.regulator.pattern_size;
             let max_pattern_count = v / k;
-            self.spare_penalty_calculator.allocate(
-                &self.regulator.penalties,
-                self.regulator.cutoff.maximum_scaled_penalty_per_length,
-                self.regulator.pattern_size,
+            self.spare_penalty_calculator.precalculate_right_spare_penalty(
                 max_pattern_count,
             );
             self.wave_front_pool.allocate(

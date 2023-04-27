@@ -12,7 +12,7 @@ use super::{
     AnchorTable, Anchor, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
     Extension,
-    SemiGlobalSparePenaltyCalculator,
+    SparePenaltyCalculator,
     transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
@@ -37,7 +37,7 @@ pub fn extend_anchor(
     anchor: &Anchor,
     pattern_index: u32,
     pattern_size: &u32,
-    spare_penalty_calculator: &SemiGlobalSparePenaltyCalculator,
+    spare_penalty_calculator: &SparePenaltyCalculator,
     target: &[u8],
     query: &[u8],
     penalties: &Penalty,

@@ -56,11 +56,11 @@ use super::algorithm::{
     local_alignment_algorithm,
     // Structs to be buffered
     //   - common
-    AnchorIndex, WaveFront, Extension,
+    AnchorIndex, WaveFront, Extension, SparePenaltyCalculator,
     //   - local
-    LocalSparePenaltyCalculator, Vpc,
+    Vpc,
     //   - semi global
-    SemiGlobalSparePenaltyCalculator,
+    // None
 };
 
 // Specifications for the aligners

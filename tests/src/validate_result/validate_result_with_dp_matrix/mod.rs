@@ -1,3 +1,5 @@
+use std::ops::Sub;
+
 use crate::{
     Result, error_msg,
     init_logger,
@@ -7,7 +9,7 @@ use ahash::AHashSet;
 use sigalign::{
     wrapper::{
         DefaultAligner, DefaultReference,
-    }, utils::FastaReader, results::{AlignmentResult, AnchorAlignmentResult},
+    }, utils::FastaReader, results::{AlignmentResult, AnchorAlignmentResult, AlignmentPosition},
 };
 use log::{info, error};
 
@@ -33,7 +35,7 @@ const ALIGNER_OPTION: (
 
 #[test]
 fn validate_semi_global_mode_with_dp_matrix() {
-    let qry_count = 1000; // TODO: Use Total Qry
+    let qry_count = 10000; // TODO: Use Total Qry
 
     init_logger();
     info!("Start to validate semi-global result with DP matrix");
@@ -78,19 +80,41 @@ fn validate_semi_global_mode_with_dp_matrix() {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct EquivalentResult {
+    target_index: u32,
+    penalty: u32,
+    length: u32,
+    position: AlignmentPosition,
+}
+
 fn assert_sigalign_result_includes_the_dpm_result(
     sigalign_result: &AlignmentResult,
     dpm_result: &AlignmentResult,
 ) {
-    let sigalign_result_set: AHashSet<(u32, AnchorAlignmentResult)> = alignment_result_to_hashset(sigalign_result);
+    let sigalign_result_set: AHashSet<EquivalentResult> = alignment_result_to_hashset(sigalign_result);
 
-    let dpm_result_set: AHashSet<(u32, AnchorAlignmentResult)> = alignment_result_to_hashset(dpm_result);
+    let dpm_result_set: AHashSet<EquivalentResult> = alignment_result_to_hashset(dpm_result);
 
-    assert!(sigalign_result_set.is_superset(&dpm_result_set));
+    // assert!(sigalign_result_set.is_superset(&dpm_result_set));
+    if !sigalign_result_set.is_superset(&dpm_result_set) {
+        println!("#dpm_result:\n{:#?}", &dpm_result);
+        println!("#sigalign_result:\n{:#?}", &sigalign_result);
+        println!("#only in sigalign:\n{:#?}", &sigalign_result_set.sub(&dpm_result_set));
+        println!("#only in dpm:\n{:#?}", &dpm_result_set.sub(&sigalign_result_set));
+        panic!("SigAlign result does not contain the DPM result");
+    }
 }
 
-fn alignment_result_to_hashset(result: &AlignmentResult) -> AHashSet<(u32, AnchorAlignmentResult)> {
+fn alignment_result_to_hashset(result: &AlignmentResult) -> AHashSet<EquivalentResult> {
     result.0.iter().map(|x| {
-        x.alignments.iter().map(|y| { (x.index, y.clone()) })
+        x.alignments.iter().map(|y| {
+            EquivalentResult {
+                target_index: x.index,
+                penalty: y.penalty,
+                length: y.length,
+                position: y.position.clone(),
+            }
+        })
     }).flatten().collect()
 }

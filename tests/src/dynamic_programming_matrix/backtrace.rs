@@ -30,7 +30,9 @@ impl DpMatrix {
             all_endpoints.push((last_query_index, last_target_index, penalty));
         }
 
-        all_endpoints.sort_by_key(|x| { x.2 });
+        all_endpoints.sort_by(|a, b| {
+            a.2.cmp(&b.2).then(b.0.cmp(&a.0))
+        });
 
         let mut paths = AHashSet::new();
         all_endpoints.into_iter().filter_map(|(
@@ -95,18 +97,36 @@ impl DpMatrix {
             let (m_score, x_score, y_score) = self.matrix[i][j];
             let min_score = cmp::min(cmp::min(m_score, x_score), y_score);
 
-            if min_score == x_score {
+            // if min_score == x_score {
+            //     reversed_operation.push(AlignmentOperation::Deletion);
+            //     i -= 1;
+            // } else if min_score == y_score {
+            //     reversed_operation.push(AlignmentOperation::Insertion);
+            //     j -= 1;
+            // } else { // min_score == m_score
+            //     if self.query[i - 1] == self.target[j - 1] {
+            //         reversed_operation.push(AlignmentOperation::Match);
+            //     } else {
+            //         reversed_operation.push(AlignmentOperation::Subst);
+            //     }
+            //     path.insert((i, j));
+            //     i -= 1;
+            //     j -= 1;
+            // }
+            
+            if (min_score == m_score) && (self.query[i - 1] == self.target[j - 1]) {
+                reversed_operation.push(AlignmentOperation::Match);
+                path.insert((i, j));
+                i -= 1;
+                j -= 1;
+            } else if min_score == x_score {
                 reversed_operation.push(AlignmentOperation::Deletion);
                 i -= 1;
             } else if min_score == y_score {
                 reversed_operation.push(AlignmentOperation::Insertion);
                 j -= 1;
-            } else { // min_score == m_score
-                if self.query[i - 1] == self.target[j - 1] {
-                    reversed_operation.push(AlignmentOperation::Match);
-                } else {
-                    reversed_operation.push(AlignmentOperation::Subst);
-                }
+            } else { // (min_score == m_score) && (self.query[i - 1] != self.target[j - 1])
+                reversed_operation.push(AlignmentOperation::Subst);
                 path.insert((i, j));
                 i -= 1;
                 j -= 1;
