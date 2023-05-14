@@ -3,7 +3,7 @@ use std::ops::Sub;
 use crate::{
     Result, error_msg,
     init_logger,
-    test_data_path::*,
+    test_data_path::*, validate_result::validate_result_with_dp_matrix::generate_answer_with_dp_matrix::get_cached_local_result_with_dp_matrix,
 };
 use ahash::AHashSet;
 use sigalign::{
@@ -33,6 +33,52 @@ const ALIGNER_OPTION: (
     0.1, // Max. penalty per length
 );
 
+#[test]
+fn validate_local_mode_with_dp_matrix() {
+    let qry_count = 10000; // TODO: Use Total Qry
+
+    init_logger();
+    info!("Start to validate local result with DP matrix");
+    
+    // Prepare data
+    let ref_file = get_ref_for_val_path();
+    let qry_file = get_qry_for_val_path();
+
+    // Build reference
+    let reference = DefaultReference::from_fasta_file(&ref_file).unwrap();
+
+    // Prepare Aligners
+    let mut local_aligner = DefaultAligner::new_local(
+        ALIGNER_OPTION.0,
+        ALIGNER_OPTION.1,
+        ALIGNER_OPTION.2,
+        ALIGNER_OPTION.3,
+        ALIGNER_OPTION.4,
+    ).unwrap();
+    info!("Reference and aligners of current are ready");
+
+    // Perform alignment
+    let qry_reader = FastaReader::from_path(qry_file).unwrap();
+    for (qry_index, (label, query)) in qry_reader.into_iter().enumerate() {
+        info!(" - query label: {}", label);
+        if qry_index == qry_count { break };
+
+        let dpm_result = get_cached_local_result_with_dp_matrix(
+            &query,
+            &label,
+            &ref_file,
+            ALIGNER_OPTION.0,
+            ALIGNER_OPTION.1,
+            ALIGNER_OPTION.2,
+            ALIGNER_OPTION.3,
+            ALIGNER_OPTION.4,
+        );
+
+        let sigalign_result = local_aligner.align_query(&reference, &query).unwrap();
+
+        assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
+    }
+}
 #[test]
 fn validate_semi_global_mode_with_dp_matrix() {
     let qry_count = 10000; // TODO: Use Total Qry

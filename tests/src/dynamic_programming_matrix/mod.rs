@@ -35,7 +35,7 @@ fn test_dp_matrix() {
         gap_extend_penalty,
     );
     println!("# Start to parse result");
-    let result = dp_matrix.parse_the_valid_semi_global_result(
+    let result = dp_matrix.parse_valid_semi_global_result(
         50,
         0.1,
     );
