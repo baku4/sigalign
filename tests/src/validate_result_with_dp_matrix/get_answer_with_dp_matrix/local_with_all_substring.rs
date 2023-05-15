@@ -38,8 +38,6 @@ pub fn get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_
                 min_length,
                 max_penalty_per_length,
             );
-            // println!("local result:\n{:#?}", result);
-            // panic!("TEST");
             save_result_to_file(&result_cache_file, &result);
     } else {
         info!("DPM gets cached result");

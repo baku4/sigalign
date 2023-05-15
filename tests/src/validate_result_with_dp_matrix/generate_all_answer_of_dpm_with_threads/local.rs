@@ -51,20 +51,24 @@ impl Worker {
         sig_reference: Arc<DefaultReference>,
     ) -> Self {
         let thread = thread::spawn(move || loop {
-            if let Ok((label, query)) = rx.lock().unwrap().recv() {
-                info!(" - query label: {}", label);
-                let _ = get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_matrix(
-                    &query,
-                    &label,
-                    &sig_reference,
-                    ALIGNER_OPTION.0,
-                    ALIGNER_OPTION.1,
-                    ALIGNER_OPTION.2,
-                    ALIGNER_OPTION.3,
-                    ALIGNER_OPTION.4,
-                );
-            } else {
-                break;
+            let job  = rx.lock().unwrap().recv();
+            match job {
+                Ok((label, query)) => {
+                    info!(" - query label: {}", label);
+                    let _ = get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_matrix(
+                        &query,
+                        &label,
+                        &sig_reference,
+                        ALIGNER_OPTION.0,
+                        ALIGNER_OPTION.1,
+                        ALIGNER_OPTION.2,
+                        ALIGNER_OPTION.3,
+                        ALIGNER_OPTION.4,
+                    );
+                },
+                Err(_) => {
+                    break;
+                },
             }
         });
 
