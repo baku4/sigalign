@@ -7,6 +7,10 @@ use std::cmp;
 mod generate;
 mod backtrace;
 mod alignment;
+pub use alignment::{
+    local_all_substring_with_dpm_only_to_pattern_matched_targets,
+    semi_global_with_dpm,
+};
 
 pub struct DpMatrix {
     query: Vec<u8>,

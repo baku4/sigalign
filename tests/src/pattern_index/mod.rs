@@ -1,3 +1,6 @@
+/*!
+Retest the pattern index
+*/
 use sigalign::{
     reference::{
         sequence_type::SequenceType,

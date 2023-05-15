@@ -1,4 +1,0 @@
-mod validate_result_with_dp_matrix;
-
-mod validate_result_with_previous_version;
-pub use validate_result_with_previous_version::get_sample_result_of_val_test;

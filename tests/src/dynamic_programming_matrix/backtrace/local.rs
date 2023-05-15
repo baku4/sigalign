@@ -20,12 +20,6 @@ pub fn parse_valid_local_result(
     for substring_length in (1..=query_length).rev() {
         for start_query_index in 0..(query_length+1-substring_length) {
             let last_query_index = start_query_index + substring_length - 1;
-            println!(
-                "from {} to {}: {}",
-                start_query_index,
-                last_query_index,
-                String::from_utf8(dp_matrix.query[start_query_index..=last_query_index].to_vec()).unwrap()
-            );
 
             let unique_alignments = parse_the_unique_alignments_and_its_path(
                 dp_matrix,
@@ -34,7 +28,6 @@ pub fn parse_valid_local_result(
             );
 
             unique_alignments.into_iter().for_each(|(x, path)| {
-                // println!("Unique_alignment: {:?}", &x);
                 let length = x.length;
                 let penalty = x.penalty;
                 if (

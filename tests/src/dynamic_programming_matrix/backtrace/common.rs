@@ -200,51 +200,12 @@ pub fn cal_penalty(
     }).sum()
 }
 
-
-impl DpMatrix {
-    #[inline]
-    pub fn get_penalty(
-        &self,
-        query_index: usize,
-        target_index: usize,
-    ) -> u32 {
-        let (mp, xp, yp) = self.matrix[query_index+1][target_index+1];
-        cmp::min(cmp::min(mp, xp), yp)
-    }
-    pub fn get_reversed_operation_from_the_endpoint(
-        &self,
-        query_index: usize,
-        target_index: usize,
-    ) -> (Vec<AlignmentOperation>, AHashSet<(usize, usize)>) {
-        let mut reversed_operation: Vec<AlignmentOperation> = Vec::new();
-        let mut path = AHashSet::new();
-
-        let mut i = query_index + 1;
-        let mut j = target_index + 1;
-
-        while i > 0 && j > 0 {
-            let (m_score, x_score, y_score) = self.matrix[i][j];
-            let min_score = cmp::min(cmp::min(m_score, x_score), y_score);
-            
-            if (min_score == m_score) && (self.query[i - 1] == self.target[j - 1]) {
-                reversed_operation.push(AlignmentOperation::Match);
-                path.insert((i, j));
-                i -= 1;
-                j -= 1;
-            } else if min_score == x_score {
-                reversed_operation.push(AlignmentOperation::Deletion);
-                i -= 1;
-            } else if min_score == y_score {
-                reversed_operation.push(AlignmentOperation::Insertion);
-                j -= 1;
-            } else { // (min_score == m_score) && (self.query[i - 1] != self.target[j - 1])
-                reversed_operation.push(AlignmentOperation::Subst);
-                path.insert((i, j));
-                i -= 1;
-                j -= 1;
-            }
-        }
-
-        (reversed_operation, path)
-    }
+#[inline]
+pub fn get_penalty(
+    dp_matrix: &DpMatrix,
+    query_index: usize,
+    target_index: usize,
+) -> u32 {
+    let (mp, xp, yp) = dp_matrix.matrix[query_index+1][target_index+1];
+    cmp::min(cmp::min(mp, xp), yp)
 }

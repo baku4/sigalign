@@ -1,30 +1,8 @@
-use crate::{
-    Result, error_msg,
-    init_logger,
-    test_data_path::*,
-};
-use ahash::AHashSet;
-use sigalign::{
-    wrapper::{
-        DefaultAligner, DefaultReference,
-    }, utils::FastaReader, results::{AlignmentResult, AnchorAlignmentResult},
-};
-use log::{info, error};
-use super::{
-    ALIGNER_OPTION,
-    get_cached_semi_global_result_with_dp_matrix,
-    generate_answer_with_dp_matrix,
-};
-use std::{
-    sync::{mpsc, Arc, Mutex},
-    path::PathBuf,
-};
-use std::thread;
+use super::*;
 
-#[test]
-fn generate_all_answers_with_dp_matrix_using_multiple_thread() {
-    let thread_count = 4;
-    
+pub fn generate_all_semi_global_answer_using_multiple_thread(
+    thread_count: usize,
+) {
     init_logger();
     info!("Start to generate semi-global result with DP matrix using threads {}", thread_count);
     

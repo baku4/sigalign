@@ -3,7 +3,7 @@ use std::ops::Sub;
 use crate::{
     Result, error_msg,
     init_logger,
-    test_data_path::*, validate_result::validate_result_with_dp_matrix::generate_answer_with_dp_matrix::get_cached_local_result_with_dp_matrix,
+    test_data_path::*, 
 };
 use ahash::AHashSet;
 use sigalign::{
@@ -13,11 +13,12 @@ use sigalign::{
 };
 use log::{info, error};
 
-mod generate_answer_with_dp_matrix;
-use generate_answer_with_dp_matrix::{
+mod get_answer_with_dp_matrix;
+use get_answer_with_dp_matrix::{
+    get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_matrix,
     get_cached_semi_global_result_with_dp_matrix,
 };
-mod generate_all_answer_with_threads;
+mod generate_all_answer_of_dpm_with_threads;
 
 const ALIGNER_OPTION: (
     u32,
@@ -63,10 +64,10 @@ fn validate_local_mode_with_dp_matrix() {
         info!(" - query label: {}", label);
         if qry_index == qry_count { break };
 
-        let dpm_result = get_cached_local_result_with_dp_matrix(
+        let dpm_result = get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_matrix(
             &query,
             &label,
-            &ref_file,
+            &reference,
             ALIGNER_OPTION.0,
             ALIGNER_OPTION.1,
             ALIGNER_OPTION.2,
@@ -75,6 +76,15 @@ fn validate_local_mode_with_dp_matrix() {
         );
 
         let sigalign_result = local_aligner.align_query(&reference, &query).unwrap();
+
+        println!(
+            "sigalign_result: {:#?}",
+            sigalign_result,
+        );
+        println!(
+            "dpm_result: {:#?}",
+            dpm_result,
+        );
 
         assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
     }

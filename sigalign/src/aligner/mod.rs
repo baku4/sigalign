@@ -74,7 +74,7 @@ use wave_front_pool::{
     WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
 };
 mod regulator;
-use regulator::{AlignmentRegulator};
+pub(crate) use regulator::{AlignmentRegulator};
 pub use regulator::{RegulatorError};
 
 // Aligners by mode
