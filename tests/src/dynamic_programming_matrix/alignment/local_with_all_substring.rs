@@ -56,8 +56,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
                     gap_open_penalty,
                     gap_extend_penalty,
                 );
-                println!("#substring:{}", String::from_utf8(query[query_start_index..query_last_index].to_vec()).unwrap());
-
+                
                 let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result(min_length, max_penalty_per_length);
 
                 adjust_position_of_alignments(
