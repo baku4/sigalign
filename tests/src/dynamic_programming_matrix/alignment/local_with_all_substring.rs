@@ -75,7 +75,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
             let qlen1 = a.position.query.1 - a.position.query.0;
             let qlen2 = b.position.query.1 - b.position.query.0;
             qlen2.cmp(&qlen1)
-                .then(b.position.query.0.cmp(&a.position.query.0))
+                .then(a.position.query.0.cmp(&b.position.query.0))
         });
 
         // Deduplicates
