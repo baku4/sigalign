@@ -42,12 +42,8 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
         sig_reference.fill_buffer(target_index, &mut buffer);
         let target = buffer.request_sequence();
 
-        let mut target_alignment_result: TargetAlignmentResult = TargetAlignmentResult {
-            index: target_index,
-            alignments: Vec::new(),
-        };
-        let mut paths: AHashSet<(u32, u32)> = AHashSet::new();
-
+        // Get anchor alignment results
+        let mut all_anchor_alignment_results = Vec::new();
         let query_length = query.len();
         for substring_length in (1..=query_length).rev() {
             for query_start_index in 0..(query_length+1-substring_length) {
@@ -60,6 +56,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
                     gap_open_penalty,
                     gap_extend_penalty,
                 );
+                println!("#substring:{}", String::from_utf8(query[query_start_index..query_last_index].to_vec()).unwrap());
 
                 let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result(min_length, max_penalty_per_length);
 
@@ -68,16 +65,34 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
                     query_start_index,
                 );
 
-                for anchor_alignment_result in anchor_alignment_results {
-                    let current_paths: AHashSet<(u32, u32)> = get_alignment_paths(&anchor_alignment_result);
-
-                    if paths.is_disjoint(&current_paths) {
-                        paths.extend(&current_paths);
-                        target_alignment_result.alignments.push(anchor_alignment_result);
-                    }
-                }
+                all_anchor_alignment_results.extend(anchor_alignment_results);
             }
         };
+
+        // Sort by
+        //  1. query length - descending
+        //  2. query start index - ascending
+        all_anchor_alignment_results.sort_by(|a, b| {
+            let qlen1 = a.position.query.1 - a.position.query.0;
+            let qlen2 = b.position.query.1 - b.position.query.0;
+            qlen2.cmp(&qlen1)
+                .then(b.position.query.0.cmp(&a.position.query.0))
+        });
+
+        // Deduplicates
+        let mut target_alignment_result: TargetAlignmentResult = TargetAlignmentResult {
+            index: target_index,
+            alignments: Vec::new(),
+        };
+        let mut paths: AHashSet<(u32, u32)> = AHashSet::new();
+        all_anchor_alignment_results.into_iter().for_each(|x| {
+            let current_paths: AHashSet<(u32, u32)> = get_alignment_paths(&x);
+
+            if paths.is_disjoint(&current_paths) {
+                paths.extend(&current_paths);
+                target_alignment_result.alignments.push(x);
+            }
+        });
 
         if target_alignment_result.alignments.len() != 0 {
             target_alignment_results.push(target_alignment_result)
