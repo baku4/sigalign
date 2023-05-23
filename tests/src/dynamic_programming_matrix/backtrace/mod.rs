@@ -1,4 +1,4 @@
-use super::DpMatrix;
+use super::{DpMatrix, Cell, BacktraceMarker};
 use sigalign::results::{
     AlignmentOperations,
     AlignmentOperation, AnchorAlignmentResult, AlignmentPosition,
@@ -11,8 +11,6 @@ use common::{
     parse_the_unique_alignments_and_its_path,
     concat_ops,
     get_alignment_position,
-    cal_penalty,
-    get_penalty,
 };
 mod local;
 use local::parse_valid_local_result;

@@ -1,4 +1,3 @@
-use ahash::AHashSet;
 use sigalign::results::AnchorAlignmentResult;
 
 use super::{

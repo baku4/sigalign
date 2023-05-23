@@ -1,4 +1,4 @@
-use super::DpMatrix;
+use super::{DpMatrix, Cell, BacktraceMarker};
 use ahash::AHashSet;
 use sigalign::results::{AlignmentOperation, AlignmentOperations, AlignmentPosition, AnchorAlignmentResult};
 use std::cmp;
@@ -31,6 +31,7 @@ pub fn parse_the_unique_alignments_and_its_path(
             query_index,
             target_index,
         );
+        
         let length = reversed_operation.len() as u32;
         let operations = concat_ops(reversed_operation);
         let position = get_alignment_position(query_index, target_index, &operations);
@@ -90,40 +91,64 @@ pub fn backtrace_from_the_indices(
     let mut i = query_index + 1;
     let mut j = target_index + 1;
 
-    let last_penalty = {
-        let (m_score, x_score, y_score) = dp_matrix.matrix[i][j];
-        let min_score = cmp::min(cmp::min(m_score, x_score), y_score);
-        min_score
-    };
+    let last_penalty = dp_matrix.dp_mat[i][j].penalty;
+    let mut cell_type = BacktraceMarker::FromDiag;
 
     while i > start_query_index && j > 0 {
-        let (m_score, x_score, y_score) = dp_matrix.matrix[i][j];
-        let min_score = cmp::min(cmp::min(m_score, x_score), y_score);
-        
-        if (min_score == m_score) && (dp_matrix.query[i - 1] == dp_matrix.target[j - 1]) {
-            reversed_operation.push(AlignmentOperation::Match);
-            path.insert((i, j));
-            i -= 1;
-            j -= 1;
-        } else if min_score == x_score {
-            reversed_operation.push(AlignmentOperation::Deletion);
-            i -= 1;
-        } else if min_score == y_score {
-            reversed_operation.push(AlignmentOperation::Insertion);
-            j -= 1;
-        } else { // (min_score == m_score) && (self.query[i - 1] != self.target[j - 1])
-            reversed_operation.push(AlignmentOperation::Subst);
-            path.insert((i, j));
-            i -= 1;
-            j -= 1;
+        match cell_type {
+            BacktraceMarker::FromDiag => {
+                let btm = dp_matrix.dp_mat[i][j].btm;
+                match btm {
+                    BacktraceMarker::FromDiag => {
+                        if dp_matrix.query[i-1] == dp_matrix.target[j-1] {
+                            reversed_operation.push(AlignmentOperation::Match);
+                        } else {
+                            reversed_operation.push(AlignmentOperation::Subst);
+                        }
+                        path.insert((i, j));
+                        i -= 1;
+                        j -= 1;
+                    },
+                    BacktraceMarker::FromDel => {
+                        cell_type = BacktraceMarker::FromDel;
+                    },
+                    BacktraceMarker::FromIns => {
+                        cell_type = BacktraceMarker::FromIns;
+                    },
+                }
+            },
+            BacktraceMarker::FromDel => {
+                reversed_operation.push(AlignmentOperation::Deletion);
+                i -= 1;
+
+                let btm = dp_matrix.del_mat[i][j].btm;
+                match btm {
+                    BacktraceMarker::FromDiag => {
+                        cell_type = BacktraceMarker::FromDiag;
+                    },
+                    _ => {
+                        //
+                    },
+                }
+            },
+            BacktraceMarker::FromIns => {
+                reversed_operation.push(AlignmentOperation::Insertion);
+                j -= 1;
+
+                let btm = dp_matrix.ins_mat[i][j].btm;
+                match btm {
+                    BacktraceMarker::FromDiag => {
+                        cell_type = BacktraceMarker::FromDiag;
+                    },
+                    _ => {
+                        //
+                    },
+                }
+            },
         }
     }
 
-    let start_penalty = {
-        let (m_score, x_score, y_score) = dp_matrix.matrix[i][j];
-        let min_score = cmp::min(cmp::min(m_score, x_score), y_score);
-        min_score
-    };
+    let start_penalty = dp_matrix.dp_mat[i][j].penalty;
 
     (reversed_operation, path, last_penalty - start_penalty)
 }
@@ -178,34 +203,4 @@ pub fn get_alignment_position(
         query: (last_query_index as u32 + 1 - query_length, last_query_index as u32 + 1),
         target: (last_target_index as u32 + 1 - target_length, last_target_index as u32 + 1),
     }
-}
-pub fn cal_penalty(
-    operations: &Vec<AlignmentOperations>,
-    px: u32,
-    po: u32,
-    pe: u32,
-) -> u32 {
-    operations.iter().map(|x| {
-        match x.operation {
-            AlignmentOperation::Match => {
-                0
-            },
-            AlignmentOperation::Subst => {
-                px * x.count
-            },
-            AlignmentOperation::Insertion | AlignmentOperation::Deletion => {
-                pe * x.count + po
-            },
-        }
-    }).sum()
-}
-
-#[inline]
-pub fn get_penalty(
-    dp_matrix: &DpMatrix,
-    query_index: usize,
-    target_index: usize,
-) -> u32 {
-    let (mp, xp, yp) = dp_matrix.matrix[query_index+1][target_index+1];
-    cmp::min(cmp::min(mp, xp), yp)
 }

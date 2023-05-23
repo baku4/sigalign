@@ -12,40 +12,92 @@ pub use alignment::{
     semi_global_with_dpm,
 };
 
+#[derive(Debug, Clone)]
 pub struct DpMatrix {
-    query: Vec<u8>,
     target: Vec<u8>,
-    mismatch_penalty: u32,
-    gap_open_penalty: u32,
-    gap_extend_penalty: u32,
-    matrix: Vec<Vec<(u32, u32, u32)>>,
+    query: Vec<u8>,
+    dp_mat: Vec<Vec<Cell>>,
+    del_mat: Vec<Vec<Cell>>,
+    ins_mat: Vec<Vec<Cell>>,
+}
+#[derive(Debug, Clone)]
+struct Cell {
+    penalty: u32,
+    btm: BacktraceMarker,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum BacktraceMarker {
+    FromDiag,
+    FromDel,
+    FromIns,
 }
 
 #[test]
-fn test_dp_matrix() {
-    let query = b"CTCTACACTACCTGCCTGGCCAGCAGATCCGCCCTGTCTATACTACCTGCCGCTCCTGCGGATCCACCCTGTCTACACTACCTGCCTGTCCAGCAGACCCGCCCTGTCTACACTACCTGCCTGGTCAGTATATCCACCCTATCTACACTACCTGCCTGGCCAGCATATCCGCCCTGTCTACACTACCTGCCAGCCCAGCA";
-    let target = b"GCTTTTCCAGCAGATCCACCCTGTCTACACTACCTGCCTGTCCAGCAGATCAACACTGTCTACACTACCTGCTTTTCCAGCAGATCCACACTGTCTACACTACCTGCTTTTCCAGCAGATCCACCCCGTCTACACTACCTGCCTGGCCAGCATATCCACCCTGTCTACACTACCTGCTTTTCCAGTAGATCTGCCCTATCTACAATACCTGCTTGTCCAGCAGAACCACCCTGTCTATACTACCTGCCTGTCCAGCAGAACCACCCTGTCTATACTACCTGCCTGTCCAGCAGATCCACCCTGTCTACACTACCTGCCTGGCCAGCAGATCCGCCCTGTCTATACTACCTGCCGCTCCAGCAGATCCACCCTGTCTACACTACCTGCCTGTCCAGCAGACCCGCCCTGTCTACACTACCTGCCTGGTCAGTATATCCACCCTATCTACACTACCTGCCTGGCCAGCATATCCGCCCTGTCTACACTACCTGCCAGCCCAGCAGATCCGCCCTGTCTACACTACCTGCCTGGCCAGTAGATCCACGCTATCTACACTACCTGCCTGGCCAGCAGATCCACCCTGTCAACACTACCTGCTTGTCCAGCAGGTCCACACTGTCTACACTACCTGCCTGTCCAGCAGGTGCACCCTATCTACACTACCTGACTGTCCAGCAGATCCACCCTGTCTACACTACCTGCCTGTCCAAAAGATCCACCCTGTCTATATTACCTGCCTATACAGCAGAACTACCCTGTCTACACTACCAGCCTCCCCAGCAGATCCACCCTGTCTATACTACCTGCCTGGCCAGTAGATGCATCCTGTCTTCACTACCTGCTTGTCCAGCAGGTCCACCATGTCTACACTGCCTGCCTGGCCAGCAGATCCACCCTGTCTACACTACCTGCCTGCAAAGCAGATCCACCCTGTCTACACTACCTGGCTGGCCAGTAGATCCACGCTATCTACACTACCTTCCTGTCCAGCAGATCCAAC";
+fn calculation_of_penalty_is_accurate() {
+    use crate::test_data_path::{get_qry_for_val_path, get_ref_for_val_path};
+    use sigalign::utils::FastaReader;
+    use crate::init_logger;
+    use log::info;
 
-    let mismatch_penalty = 4;
-    let gap_open_penalty = 6;
-    let gap_extend_penalty = 2;
-    
-    println!("# Start to generate DpMatrix");
-    let dp_matrix = DpMatrix::new(
-        query.to_vec(),
-        target.to_vec(),
-        mismatch_penalty,
-        gap_open_penalty,
-        gap_extend_penalty,
-    );
-    println!("# Start to parse result");
-    let result = dp_matrix.parse_valid_semi_global_result(
-        50,
-        0.1,
-    );
+    init_logger();
 
-    for (idx, v) in result.iter().enumerate() {
-        println!("# idx: {:?}", idx);
-        println!("{:#?}", v);
+    let qry_count = 10;
+
+    let qry_file = get_qry_for_val_path();
+    let ref_file = get_ref_for_val_path();
+
+    let px = 4;
+    let po = 6;
+    let pe = 2;
+    let ml = 100;
+    let mppl = 0.1;
+
+    for (qry_idx, (label, query)) in FastaReader::from_path(&qry_file).unwrap().enumerate() {
+        if qry_idx == qry_count {
+            break;
+        }
+        info!("Query label: {}", label);
+        let results = semi_global_with_dpm(
+            &query,
+            &ref_file,
+            px,
+            po,
+            pe,
+            ml,
+            mppl,
+        );
+
+        results.0.iter().for_each(|x| {
+            x.alignments.iter().for_each(|y| {
+                let p1 = cal_penalty(&y.operations, px, po, pe);
+                let p2 = y.penalty;
+
+                if p1 != p2 {
+                    println!("query: {}", String::from_utf8(query.clone()).unwrap());
+                    println!("AnchorAlignmentResult:\n{:#?}", y);
+                    panic!("")
+                }
+            });
+        });
     }
+}
+fn cal_penalty(
+    operations: &Vec<AlignmentOperations>,
+    px: u32,
+    po: u32,
+    pe: u32,
+) -> u32 {
+    operations.iter().map(|x| {
+        match x.operation {
+            AlignmentOperation::Match => {
+                0
+            },
+            AlignmentOperation::Subst => {
+                px * x.count
+            },
+            AlignmentOperation::Insertion | AlignmentOperation::Deletion => {
+                pe * x.count + po
+            },
+        }
+    }).sum()
 }
