@@ -101,3 +101,33 @@ fn cal_penalty(
         }
     }).sum()
 }
+
+// #[test]
+// fn test_errored_seq() {
+//     use backtrace::*;
+
+//     let query = b"GCCTAGACAGAAGAATTCCCAGTAACTTCCTTGTGTTGTGTGCATTCAACTCACAGAGTTGAACGTTCCCTTAGACAGAGCAGATTTGAAACACTCTATTTGTGCAATTTGCAAATGTAGATTTCAAGCGCTTTAAGGTCAATGGCAGAAAAGGAAATATCTTCGTTTCAAAACTAGA";
+
+//     let target = b"TTTCTGTTCATAXXXTAGACAGAAGAATTCCCAGTAACTTCCTTGTGTTGTGTGCATTCAACTCACAGAGTTGAACGTTCCCTTAGACAGAGCAGATTTGAAACACTCTATTTGTGCAATTTGCAAATGTAGATTTCAAGCGCTTTAAGGTCAATGGCAGAAAAGGAAATATCTTCGTTTCAAAACTAGAXXXX";
+
+//     let dp_matrix = DpMatrix::new(
+//         query.to_vec(),
+//         target.to_vec(),
+//         4,
+//         6,
+//         2,
+//     );
+
+//     let result = backtrace_from_the_indices(
+//         &dp_matrix,
+//         0,
+//         177,
+//         189,
+//     );
+
+//     let ops = concat_ops(result.0);
+//     println!("ops: {:#?}", ops);
+//     let pos = get_alignment_position(177, 189, &ops);
+//     println!("pos: {:#?}", pos);
+//     println!("pen: {}", result.2);
+// }

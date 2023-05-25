@@ -118,31 +118,33 @@ pub fn backtrace_from_the_indices(
                 }
             },
             BacktraceMarker::FromDel => {
+                let btm = dp_matrix.del_mat[i][j].btm;
                 reversed_operation.push(AlignmentOperation::Deletion);
                 i -= 1;
 
-                let btm = dp_matrix.del_mat[i][j].btm;
                 match btm {
                     BacktraceMarker::FromDiag => {
                         cell_type = BacktraceMarker::FromDiag;
                     },
-                    _ => {
-                        //
+                    BacktraceMarker::FromDel => {
+                        cell_type = BacktraceMarker::FromDel;
                     },
+                    _ => panic!(""),
                 }
             },
             BacktraceMarker::FromIns => {
+                let btm = dp_matrix.ins_mat[i][j].btm;
                 reversed_operation.push(AlignmentOperation::Insertion);
                 j -= 1;
 
-                let btm = dp_matrix.ins_mat[i][j].btm;
                 match btm {
                     BacktraceMarker::FromDiag => {
                         cell_type = BacktraceMarker::FromDiag;
                     },
-                    _ => {
-                        //
+                    BacktraceMarker::FromIns => {
+                        cell_type = BacktraceMarker::FromIns;
                     },
+                    _ => panic!(""),
                 }
             },
         }

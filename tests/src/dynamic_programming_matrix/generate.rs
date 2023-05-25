@@ -22,12 +22,12 @@ impl DpMatrix {
         let mut dp_mat = vec![vec![Cell::new(); len2+1]; len1+1];
         let mut del_mat = vec![vec![Cell::new(); len2+1]; len1+1];
         let mut ins_mat = vec![vec![Cell::new(); len2+1]; len1+1];
-        for i in 1..=len1 {
-            ins_mat[i][0].penalty = gap_open_penalty;
+        for i in 0..=len1 {
+            ins_mat[i][0].penalty = u32::MAX >> 1;
             del_mat[i][0].penalty = u32::MAX >> 1;
         }
-        for j in 1..=len2 {
-            del_mat[0][j].penalty = gap_open_penalty;
+        for j in 0..=len2 {
+            del_mat[0][j].penalty = u32::MAX >> 1;
             ins_mat[0][j].penalty = u32::MAX >> 1;
         }
         
@@ -61,16 +61,18 @@ impl DpMatrix {
                     }
                 };
                 // DP
-                let p_from_diag = {
+                let (p_from_diag, is_match) = {
                     let p_from_dp = dp_mat[i-1][j-1].penalty;
-                    p_from_dp + if query[i-1] == target[j-1] {
-                        0
+                    if query[i-1] == target[j-1] {
+                        (p_from_dp, true)
                     } else {
-                        mismatch_penalty
+                        (p_from_dp + mismatch_penalty, false)
                     }
                 };
                 let min_p = p_from_diag.min(p_from_ins.min(p_from_del));
-                let btm = if min_p == p_from_del {
+                let btm = if (min_p == p_from_diag) && is_match {
+                    BacktraceMarker::FromDiag
+                } else if min_p == p_from_del {
                     BacktraceMarker::FromDel
                 } else if min_p == p_from_ins {
                     BacktraceMarker::FromIns
@@ -90,75 +92,3 @@ impl DpMatrix {
         }
     }
 }
-
-// impl DpMatrix {
-//     pub fn new(
-//         query: Vec<u8>,
-//         target: Vec<u8>,
-//         mismatch_penalty: u32,
-//         gap_open_penalty: u32,
-//         gap_extend_penalty: u32,
-//     ) -> Self {
-//         let m = query.len() + 1;
-//         let n = target.len() + 1;
-    
-//         let mut dp = vec![
-//             vec![(
-//                 0,
-//                 u32::MAX >> 1,
-//                 u32::MAX >> 1,
-//             ); n]; m
-//         ];
-//         for i in 0..m {
-//             dp[i][0].1 = gap_open_penalty+gap_extend_penalty;
-//         }
-//         for j in 0..n {
-//             dp[0][j].2 = gap_open_penalty+gap_extend_penalty;
-//         }
-
-//         for i in 1..m {
-//             for j in 1..n {
-//                 let diag = if query[i - 1] == target[j - 1] {
-//                     0
-//                 } else {
-//                     mismatch_penalty
-//                 };
-    
-//                 let m_score = dp[i - 1][j - 1].0 + diag;
-//                 let x_score = dp[i - 1][j - 1].1 + diag;
-//                 let y_score = dp[i - 1][j - 1].2 + diag;
-    
-//                 // Match
-//                 dp[i][j].0 = cmp::min(
-//                     cmp::min(m_score, x_score),
-//                     y_score,
-//                 );
-//                 // Deletion
-//                 dp[i][j].1 = cmp::min(
-//                     cmp::min(
-//                         dp[i - 1][j].0 + gap_open_penalty + gap_extend_penalty,
-//                         dp[i - 1][j].1 + gap_extend_penalty,
-//                     ),
-//                     dp[i - 1][j].2 + gap_open_penalty + gap_extend_penalty,
-//                 );
-//                 // Insertion
-//                 dp[i][j].2 = cmp::min(
-//                     cmp::min(
-//                         dp[i][j - 1].0 + gap_open_penalty + gap_extend_penalty,
-//                         dp[i][j - 1].1 + gap_open_penalty + gap_extend_penalty,
-//                     ),
-//                     dp[i][j - 1].2 + gap_extend_penalty,
-//                 );
-//             }
-//         }
-
-//         Self {
-//             query,
-//             target,
-//             mismatch_penalty,
-//             gap_open_penalty,
-//             gap_extend_penalty,
-//             matrix: dp,
-//         }
-//     }
-// }

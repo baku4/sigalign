@@ -77,15 +77,6 @@ fn validate_local_mode_with_dp_matrix() {
 
         let sigalign_result = local_aligner.align_query(&reference, &query).unwrap();
 
-        println!(
-            "sigalign_result: {:#?}",
-            sigalign_result,
-        );
-        println!(
-            "dpm_result: {:#?}",
-            dpm_result,
-        );
-
         assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
     }
 }
