@@ -10,16 +10,18 @@ use super::{
 };
 
 use sigalign_stable::{
-    ReferenceBuilder as StableReferenceBuilder,
-    Reference as StableReference,
-    sequence_storage::InMemoryStorage as StableInMemoryStorage,
-    Aligner as StableAligner,
-    result::FastaAlignmentResult as StableFastaAlignmentResult,
+    wrapper::{
+        DefaultReference as StableDefaultReference,
+        DefaultAligner as StableDefaultAligner,
+    },
+    results::{
+        fasta::FastaAlignmentResult as StableFastaAlignmentResult,
+    },
 };
 
 use super::ANSWER_ALIGNER_OPTION;
-const SEMI_GLOBAL_ANSWER_FILE: &str = "answer_semi_global-v0_2_0-1.json";
-const LOCAL_ANSWER_FILE: &str = "answer_local-v0_2_0-1.json";
+const SEMI_GLOBAL_ANSWER_FILE: &str = "answer_semi_global-v0_3_0-alpha_0.json";
+const LOCAL_ANSWER_FILE: &str = "answer_local-v0_3_0-alpha_0.json";
 
 enum Mode {
     SemiGlobal,
@@ -46,7 +48,7 @@ pub fn get_answer_or_generate() -> Result<[StableFastaAlignmentResult; 2]> {
 }
 fn get_or_make_answer_result(
     cache_file_path: &PathBuf,
-    optional_stable_reference: &mut Option<StableReference<StableInMemoryStorage>>,
+    optional_stable_reference: &mut Option<StableDefaultReference>,
     mode: Mode,
 ) -> Result<StableFastaAlignmentResult> {
     // Make cache file if not exists
@@ -54,9 +56,7 @@ fn get_or_make_answer_result(
         // Prepare reference
         if optional_stable_reference.is_none() {
             let ref_file = get_ref_for_val_path();
-            let mut in_mem_rc_storage = StableInMemoryStorage::new();
-            in_mem_rc_storage.add_fasta_file(ref_file)?;
-            let reference = StableReferenceBuilder::new().build(in_mem_rc_storage)?;
+            let reference = StableDefaultReference::from_fasta_file(&ref_file)?;
             *optional_stable_reference = Some(reference);
         };
         let stable_reference = optional_stable_reference.as_ref().unwrap();
@@ -64,21 +64,21 @@ fn get_or_make_answer_result(
         // Prepare Aligner
         let mut stable_aligner = match mode {
             Mode::SemiGlobal => {
-                let aligner = StableAligner::new_semi_global(
-                    ANSWER_ALIGNER_OPTION.0 as usize,
-                    ANSWER_ALIGNER_OPTION.1 as usize,
-                    ANSWER_ALIGNER_OPTION.2 as usize,
-                    ANSWER_ALIGNER_OPTION.3 as usize,
+                let aligner = StableDefaultAligner::new_semi_global(
+                    ANSWER_ALIGNER_OPTION.0,
+                    ANSWER_ALIGNER_OPTION.1,
+                    ANSWER_ALIGNER_OPTION.2,
+                    ANSWER_ALIGNER_OPTION.3,
                     ANSWER_ALIGNER_OPTION.4,
                 )?;
                 aligner
             },
             Mode::Local => {
-                let aligner = StableAligner::new_local(
-                    ANSWER_ALIGNER_OPTION.0 as usize,
-                    ANSWER_ALIGNER_OPTION.1 as usize,
-                    ANSWER_ALIGNER_OPTION.2 as usize,
-                    ANSWER_ALIGNER_OPTION.3 as usize,
+                let aligner = StableDefaultAligner::new_local(
+                    ANSWER_ALIGNER_OPTION.0,
+                    ANSWER_ALIGNER_OPTION.1,
+                    ANSWER_ALIGNER_OPTION.2,
+                    ANSWER_ALIGNER_OPTION.3,
                     ANSWER_ALIGNER_OPTION.4,
                 )?;
                 aligner
@@ -87,7 +87,10 @@ fn get_or_make_answer_result(
 
         // Perform alignment
         let qry_file = get_qry_for_val_path();
-        let result = stable_aligner.fasta_file_alignment(&stable_reference, &qry_file)?;
+        let result = stable_aligner.align_fasta_file(
+            stable_reference,
+            &qry_file,
+        )?;
 
         // Cache
         save_answer_to_file_as_json(&result, &cache_file_path)?;

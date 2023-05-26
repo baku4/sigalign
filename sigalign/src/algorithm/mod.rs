@@ -19,6 +19,10 @@ use wave_front::{
     BackTraceMarker,
     BackTraceResult,
 };
+mod spare_penalty;
+pub use spare_penalty::{
+    SparePenaltyCalculator,
+};
 mod traversed;
 use traversed::{
     transform_left_additive_position_to_traversed_anchor_index,
@@ -34,10 +38,8 @@ mod semi_global;
 mod local;
 pub use semi_global::{
     semi_global_alignment_algorithm,
-    SemiGlobalSparePenaltyCalculator,
 };
 pub use local::{
     local_alignment_algorithm,
-    LocalSparePenaltyCalculator,
     Vpc,
 };

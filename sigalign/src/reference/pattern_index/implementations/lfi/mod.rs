@@ -68,7 +68,7 @@ impl<B: Block<u32>> PatternIndex for Lfi32<B> {
     }
     fn locate(&self, pattern: &[u8], search_range: &Vec<u32>) -> Vec<PatternLocation> {
         let mut location = self.inner.locate(pattern);
-        location.sort();
+        location.sort_unstable();
         sorted_positions_to_pattern_location(
             &location,
             &self.boundaries,
@@ -110,7 +110,7 @@ impl<B: Block<u64>> PatternIndex for Lfi64<B> {
     }
     fn locate(&self, pattern: &[u8], search_range: &Vec<u32>) -> Vec<PatternLocation> {
         let mut location = self.inner.locate(pattern);
-        location.sort();
+        location.sort_unstable();
         sorted_positions_to_pattern_location(
             &location,
             &self.boundaries,

@@ -10,6 +10,11 @@ pub use sequence_manipulation::{
     reverse_complement_of_rna,
 };
 
+mod functions;
+pub use functions::{
+    calculate_max_pattern_size,
+};
+
 // mod path_reader;
 // pub use path_reader::{
 //     path_to_byte,

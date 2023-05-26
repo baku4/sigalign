@@ -2,14 +2,14 @@ use crate::core::regulators::{
     Penalty, PREC_SCALE,
 };
 #[derive(Debug, Clone)]
-pub struct LocalSparePenaltyCalculator {
+pub struct SparePenaltyCalculator {
     right_spare_penalty_by_pattern_index_from_the_right: Vec<u32>,
     last_pattern_index: u32, // This field is needed to be changed by query
     // (a, b, c, d, min_value) for
     // f(right penalty delta, pattern_index)
     left_coefficients_by_variable: (u32, u32, u32, u32, u32),
 }
-impl LocalSparePenaltyCalculator {
+impl SparePenaltyCalculator {
     pub fn new(
         penalties: &Penalty,
         maximum_scaled_penalty_per_length: u32,

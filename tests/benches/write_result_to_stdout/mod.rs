@@ -4,7 +4,7 @@ use criterion::{
     black_box, Criterion, BenchmarkId,
     PlotConfiguration, AxisScale,
 };
-use sigalign_tests::get_sample_result_of_val_test;
+use sigalign_tests::get_stable_result_of_val_data;
 use sigalign::results::{
     fasta::{
         FastaAlignmentResult,
@@ -18,7 +18,7 @@ use sigalign::results::{
 };
 
 fn get_test_result() -> FastaAlignmentResult {
-    get_sample_result_of_val_test()
+    get_stable_result_of_val_data()
 }
 
 // Bench main

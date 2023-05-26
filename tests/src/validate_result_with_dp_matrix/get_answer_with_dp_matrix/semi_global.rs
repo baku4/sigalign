@@ -1,10 +1,5 @@
-use crate::{
-    test_data_path::*,
-    dynamic_programming_matrix::DpMatrix,
-};
-use log::info;
-use sigalign::results::AlignmentResult;
-use std::{path::PathBuf, ops::Range, io::{Read, Write}};
+use super::*;
+use crate::dynamic_programming_matrix::semi_global_with_dpm;
 
 pub fn get_cached_semi_global_result_with_dp_matrix(
     query: &[u8],
@@ -30,7 +25,7 @@ pub fn get_cached_semi_global_result_with_dp_matrix(
     let result_cache_file = local_tmp_dir.clone().join(result_cache_name);
     if !result_cache_file.exists() {
         info!("DPM generates new result");
-            let result = DpMatrix::semi_global_alignment_query(
+            let result = semi_global_with_dpm(
                 &query,
                 ref_file,
                 mismatch_penalty,
@@ -44,23 +39,4 @@ pub fn get_cached_semi_global_result_with_dp_matrix(
         info!("DPM gets cached result");
     }
     parse_cached_result(&result_cache_file)
-}
-fn save_result_to_file(
-    cache_file: &PathBuf,
-    result: &AlignmentResult,
-) {
-    let mut out_file = std::fs::File::create(cache_file).unwrap();
-    let json = result.to_json();
-    let buf = json.as_bytes();
-    out_file.write_all(buf).unwrap();
-}
-
-fn parse_cached_result(cache_file: &PathBuf) -> AlignmentResult {
-    let mut out_file = std::fs::File::open(cache_file).unwrap();
-
-    let mut json = String::new();
-    out_file.read_to_string(&mut json).unwrap();
-    let result = AlignmentResult::from_json(&json).unwrap();
-
-    result
 }
