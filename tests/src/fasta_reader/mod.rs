@@ -1,3 +1,6 @@
+/*!
+Fasta reader can read various type of FASTA formatted file
+*/
 use super::{Result, error_msg};
 use crate::test_data_path::{
     get_lf_fa_path,

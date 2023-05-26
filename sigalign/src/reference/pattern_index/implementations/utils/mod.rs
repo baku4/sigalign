@@ -10,7 +10,7 @@ pub fn sorted_positions_to_pattern_location<L: SeqLen>(
     pattern_size: u32,
 ) -> Vec<PatternLocation> {
     // TODO: Applying cap is valuable?
-    let mut positions_by_record: AHashMap<u32, Vec<u32>> = AHashMap::new();
+    let mut positions_by_target: AHashMap<u32, Vec<u32>> = AHashMap::new();
 
     let search_range_count = search_range.len();
 
@@ -40,12 +40,12 @@ pub fn sorted_positions_to_pattern_location<L: SeqLen>(
             } else {
                 if (*position + L::from_u32(pattern_size)) <= end {
                     let ref_pos = *position - start;
-                    match positions_by_record.get_mut(&index) {
+                    match positions_by_target.get_mut(&index) {
                         Some(v) => {
                             v.push(ref_pos.as_u32());
                         },
                         None => {
-                            positions_by_record.insert(index, vec![ref_pos.as_u32()]);
+                            positions_by_target.insert(index, vec![ref_pos.as_u32()]);
                         },
                     }
                     break;
@@ -58,7 +58,7 @@ pub fn sorted_positions_to_pattern_location<L: SeqLen>(
         }
     }
 
-    positions_by_record.into_iter().map(|(target_index, positions)| {
+    positions_by_target.into_iter().map(|(target_index, positions)| {
         PatternLocation {
             target_index,
             sorted_positions: positions,

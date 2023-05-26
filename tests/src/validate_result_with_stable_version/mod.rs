@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 // Test if result of current repository == result of stable version of SigAlign
 // Answer is created from the SigAlign of version in `crate`
 use std::fs;
 use std::ops::Sub;
 use std::path::PathBuf;
 use std::io::{Read, Write};
+use std::collections::HashSet;
 
 use crate::{
     Result, error_msg,
@@ -33,7 +33,7 @@ use stable_answer::get_answer_or_generate;
 use result_converter::convert_result_of_stable_version_to_current;
 
 // For bench
-pub fn get_sample_result_of_val_test() -> FastaAlignmentResult {
+pub fn get_stable_result_of_val_data() -> FastaAlignmentResult {
     let [sample_result_of_stable, _] = get_answer_or_generate().unwrap();
     let sample_result = convert_result_of_stable_version_to_current(&sample_result_of_stable);
     sample_result

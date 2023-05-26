@@ -56,11 +56,11 @@ use super::algorithm::{
     local_alignment_algorithm,
     // Structs to be buffered
     //   - common
-    AnchorIndex, WaveFront, Extension,
+    AnchorIndex, WaveFront, Extension, SparePenaltyCalculator,
     //   - local
-    LocalSparePenaltyCalculator, Vpc,
+    Vpc,
     //   - semi global
-    SemiGlobalSparePenaltyCalculator,
+    // None
 };
 
 // Specifications for the aligners
@@ -74,7 +74,7 @@ use wave_front_pool::{
     WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
 };
 mod regulator;
-use regulator::{AlignmentRegulator};
+pub(crate) use regulator::{AlignmentRegulator};
 pub use regulator::{RegulatorError};
 
 // Aligners by mode

@@ -13,17 +13,13 @@ use crate::{
 use super::{
     Anchor, AnchorTable, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
-    Extension,
+    Extension, SparePenaltyCalculator,
     mark_anchor_as_extended,
     mark_traversed_anchors_as_skipped,
     transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
 
-mod spare_penalty;
-pub use spare_penalty::{
-    SemiGlobalSparePenaltyCalculator,
-};
 mod extend;
 use extend::{
     extend_anchor,
@@ -37,7 +33,7 @@ pub fn semi_global_alignment_algorithm<R: ReferenceInterface>(
     penalties: &Penalty,
     cutoff: &Cutoff,
     // Buffers
-    spare_penalty_calculator: &mut SemiGlobalSparePenaltyCalculator,
+    spare_penalty_calculator: &mut SparePenaltyCalculator,
     wave_front: &mut WaveFront,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
@@ -82,7 +78,7 @@ fn semi_global_alignment_query_to_target(
     penalties: &Penalty,
     cutoff: &Cutoff,
     // Buffers
-    spare_penalty_calculator: &mut SemiGlobalSparePenaltyCalculator,
+    spare_penalty_calculator: &mut SparePenaltyCalculator,
     wave_front: &mut WaveFront,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,

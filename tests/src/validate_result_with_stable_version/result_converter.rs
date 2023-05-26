@@ -1,12 +1,13 @@
 use sigalign_stable::{
-    result::{
-        FastaAlignmentResult as StableFastaAlignmentResult,
-        ReadAlignmentResult as StableReadAlignmentResult,
-        RecordAlignmentResult as StableRecordAlignmentResult,
+    results::{
+        fasta::{
+            ReadAlignmentResult as StableReadAlignmentResult,
+            FastaAlignmentResult as StableFastaAlignmentResult,
+        },
         AlignmentResult as StableAlignmentResult,
         AnchorAlignmentResult as StableAnchorAlignmentResult,
-        AlignmentOperation as StableAlignmentOperations,
-        AlignmentCase as StableAlignmentCase,
+        AlignmentOperations as StableAlignmentOperations,
+        AlignmentOperation as StableAlignmentOperation,
     },
 };
 use sigalign::{
@@ -50,7 +51,7 @@ fn anc_res_to_anc_res(stable_res: &Vec<StableAnchorAlignmentResult>) -> Vec<Anch
             penalty: anc_res.penalty as u32,
             length: anc_res.length as u32,
             position: AlignmentPosition {
-                target: (anc_res.position.record.0 as u32, anc_res.position.record.1 as u32),
+                target: (anc_res.position.target.0 as u32, anc_res.position.target.1 as u32),
                 query: (anc_res.position.query.0 as u32, anc_res.position.query.1 as u32),
             },
             operations: ops_to_ops(&anc_res.operations),
@@ -61,11 +62,11 @@ fn ops_to_ops(stable_ops: &Vec<StableAlignmentOperations>) -> Vec<AlignmentOpera
     stable_ops.iter().map(|x| {
         AlignmentOperations {
             count: x.count,
-            operation: match x.case {
-                StableAlignmentCase::Match => AlignmentOperation::Match,
-                StableAlignmentCase::Subst => AlignmentOperation::Subst,
-                StableAlignmentCase::Insertion => AlignmentOperation::Insertion,
-                StableAlignmentCase::Deletion => AlignmentOperation::Deletion,
+            operation: match x.operation {
+                StableAlignmentOperation::Match => AlignmentOperation::Match,
+                StableAlignmentOperation::Subst => AlignmentOperation::Subst,
+                StableAlignmentOperation::Insertion => AlignmentOperation::Insertion,
+                StableAlignmentOperation::Deletion => AlignmentOperation::Deletion,
             }
         }
     }).collect()

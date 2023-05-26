@@ -13,16 +13,11 @@ use crate::{
 use super::{
     Anchor, AnchorTable, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
-    Extension,
+    Extension, SparePenaltyCalculator,
     mark_anchor_as_extended,
     mark_traversed_anchors_as_skipped,
     transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
-};
-
-mod spare_penalty;
-pub use spare_penalty::{
-    LocalSparePenaltyCalculator,
 };
 mod extend;
 use extend::{
@@ -40,7 +35,7 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     penalties: &Penalty,
     cutoff: &Cutoff,
     // Buffers
-    spare_penalty_calculator: &mut LocalSparePenaltyCalculator,
+    spare_penalty_calculator: &mut SparePenaltyCalculator,
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
@@ -93,7 +88,7 @@ fn local_alignment_query_to_target(
     penalties: &Penalty,
     cutoff: &Cutoff,
     // Buffers
-    spare_penalty_calculator: &mut LocalSparePenaltyCalculator,
+    spare_penalty_calculator: &mut SparePenaltyCalculator,
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,

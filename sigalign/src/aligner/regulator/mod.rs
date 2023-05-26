@@ -4,10 +4,8 @@ use crate::core::regulators::{
 use crate::results::{
     AlignmentResult, AnchorAlignmentResult,
 };
-use num::integer;
-
-
 use thiserror::Error;
+use num::integer::{div_ceil, gcd};
 
 #[derive(Error, Debug)]
 pub enum RegulatorError {
@@ -119,26 +117,34 @@ impl AlignmentRegulator {
         self.pattern_size
     }
 }
-fn calculate_max_pattern_size(cutoff: &Cutoff, min_penalty_for_pattern: &MinPenaltyForPattern) -> u32 {
-    let mut n = 1;
-    loop { // TODO: Optimize
-        let upper_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n)  as f32 - 2_f32).ceil();
-        let lower_bound = ((cutoff.minimum_aligned_length + 4)  as f32 / (2*n + 2)  as f32 - 2_f32).ceil();
-        let max_penalty = (
-            (
-                (
-                    (PREC_SCALE * n * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even))
-                )
-                + 4 * cutoff.maximum_scaled_penalty_per_length
-            ) as f32 / (2 * (n+1) * cutoff.maximum_scaled_penalty_per_length) as f32
-        ).ceil() - 2_f32;
+
+#[inline]
+fn calculate_max_pattern_size(
+    cutoff: &Cutoff,
+    min_penalty_for_pattern: &MinPenaltyForPattern,
+) -> u32 {
+    let mut m = 1;
+    let mut upper_bound = div_ceil(
+        cutoff.minimum_aligned_length + 4,
+        2,
+    ) - 2;
+    loop {
+        let lower_bound = (
+            (cutoff.minimum_aligned_length + 4)  as f32 / (2*m + 2) as f32
+            - 1_f32
+        ).ceil() as u32;
+        let max_penalty = div_ceil(
+            PREC_SCALE * m * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even)
+            + (4 * cutoff.maximum_scaled_penalty_per_length),
+            2 * cutoff.maximum_scaled_penalty_per_length * (m+1)
+        ) - 2;
 
         let pattern_size = max_penalty.min(upper_bound);
-
         if pattern_size >= lower_bound {
             return pattern_size as u32
         }
-        n += 1;
+        m += 1;
+        upper_bound = lower_bound - 1;
     }
 }
 
@@ -167,7 +173,7 @@ impl Penalty {
         }
     }
     fn gcd_of_penalties(&self) -> u32 {
-        integer::gcd(integer::gcd(self.x, self.o), self.e)
+        gcd(gcd(self.x, self.o), self.e)
     }
     fn divide_by_gcd(&mut self, gcd: u32) {
         self.x /= gcd;
