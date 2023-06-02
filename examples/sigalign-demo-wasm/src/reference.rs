@@ -1,15 +1,13 @@
-use sigalign::core::ReferenceInterface;
-use sigalign::sequence_storage::SequenceBuffer;
+use sigalign::{
+    reference::{
+        Reference as SigReference, BufferedPatternSearch as SigReferenceInterface,
+    },
+    wrapper::{
+        DefaultReference,
+    },
+};
 use wasm_bindgen::prelude::*;
 use crate::utils::err_to_js_err;
-
-use super::{
-    SigReference,
-    SigReferenceBuilder,
-    SigInMemoryStorage,
-};
-
-pub(crate) type DefaultReference = SigReference<SigInMemoryStorage>;
 
 #[wasm_bindgen]
 pub struct Reference(DefaultReference);
@@ -17,54 +15,19 @@ pub struct Reference(DefaultReference);
 #[wasm_bindgen]
 impl Reference {
     pub async fn build(
-        klt: Option<usize>,
-        sasr: Option<usize>,
-        use_128_bwt: Option<bool>,
         fasta: &str,
     ) -> Result<Reference, JsError> {
-        // Make Builder
-        let builder = Self::get_builder(klt, sasr, use_128_bwt)?;
-
-        // Make SequenceStorage
-        let mut ss = SigInMemoryStorage::new();
-        ss.add_fasta_bytes(fasta.as_bytes());
-
-        // Build
-        match builder.build(ss) {
+        let inner = DefaultReference::from_fasta_bytes(
+            fasta.as_bytes()
+        );
+        match inner {
             Ok(inner) => {
                 Ok(Self::new(inner))
             },
             Err(err) => {
-                Err(err_to_js_err(err))
+                Err(err_to_js_err(err.into()))
             },
         }
-    }
-    fn get_builder(
-        klt: Option<usize>,
-        sasr: Option<usize>,
-        use_128_bwt: Option<bool>,
-    ) -> Result<SigReferenceBuilder, JsError> {
-        let mut builder = SigReferenceBuilder::new();
-        if let Some(v) = klt {
-            builder = match builder.change_count_array_kmer(v) {
-                Ok(v) => v,
-                Err(err) => return Err(err_to_js_err(err)),
-            };
-        }
-        if let Some(v) = sasr {
-            builder = match builder.change_sampling_ratio(v as u64) {
-                Ok(v) => v,
-                Err(err) => return Err(err_to_js_err(err)),
-            };
-        }
-        if let Some(v) = use_128_bwt {
-            if v {
-                builder = builder.change_bwt_block_size_to_128();
-            } else {
-                builder = builder.change_bwt_block_size_to_64();
-            }
-        }
-        Ok(builder)
     }
     fn new(inner_reference: DefaultReference) -> Self {
         Self(inner_reference)
@@ -76,7 +39,7 @@ impl Reference {
         // self.0.get_allowed_character_list().iter()
         //     .map(|v| v.to_string() )
         //     .collect()
-        self.0.get_allowed_character_list().to_vec()
+        &self.0.inner.valid_characters()
     }
     pub fn record_count(&self) -> usize {
         self.0.total_record_count()

@@ -20,8 +20,8 @@ use sigalign_stable::{
 };
 
 use super::ANSWER_ALIGNER_OPTION;
-const SEMI_GLOBAL_ANSWER_FILE: &str = "answer_semi_global-v0_3_0-alpha_0.json";
-const LOCAL_ANSWER_FILE: &str = "answer_local-v0_3_0-alpha_0.json";
+const SEMI_GLOBAL_ANSWER_FILE: &str = "answer_semi_global-v0_3_0-alpha_1.json";
+const LOCAL_ANSWER_FILE: &str = "answer_local-v0_3_0-alpha_1.json";
 
 enum Mode {
     SemiGlobal,

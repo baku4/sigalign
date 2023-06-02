@@ -10,7 +10,7 @@ use crate::{
 };
 use super::{
     AnchorTable, Anchor, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
+    WaveFront, BackTraceMarker, BackTraceResult,
     Extension,
     SparePenaltyCalculator,
     transform_left_additive_position_to_traversed_anchor_index,

@@ -46,8 +46,16 @@ Pattern locating is necessary for the algorithm. In this algorithm, the sequence
 
 `SequenceStorage` is the storage for all target sequences. `SequenceStorage` is defined as a trait. The implementation details of storing and parsing sequences can be optimized for various scenarios. SigAlign has default implementations of `SequenceStorage`. `InMemoryStorage` is one of them, storing all sequences in memory.
 */
-pub use crate::core::{ReferenceInterface};
-use crate::core::PatternLocation;
+mod sequence_type;
+use sequence_type::SequenceType;
+pub mod pattern_index;
+use pattern_index::{
+    PatternIndex,
+    ConcatenatedSequenceWithBoundaries,
+    PatternIndexBuildError,
+};
+pub mod sequence_storage;
+use sequence_storage::SequenceStorage;
 
 #[derive(Debug)]
 pub struct Reference<I, S> where
@@ -60,33 +68,6 @@ pub struct Reference<I, S> where
     sequence_storage: S,
 }
 
-pub mod sequence_type;
-use sequence_type::SequenceType;
-pub mod pattern_index;
-use pattern_index::{PatternIndex, ConcatenatedSequenceWithBoundaries, PatternIndexBuildError};
-pub mod sequence_storage;
-use sequence_storage::SequenceStorage;
-
-impl<I, S> ReferenceInterface for Reference<I, S> where
-    I: PatternIndex,
-    S: SequenceStorage,
-{
-    type Buffer = S::Buffer;
-
-    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation> {
-        self.pattern_index.locate(pattern, &self.search_range)
-    }
-    fn get_buffer(&self) -> Self::Buffer {
-        self.sequence_storage.get_buffer()
-    }
-    fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer) {
-        self.sequence_storage.fill_buffer(target_index, buffer)
-    }
-    fn is_valid(&self, query: &[u8]) -> bool {
-        self.sequence_type.validate_query(query)
-    }
-}
-
 impl<I, S> Reference<I, S> where
     I: PatternIndex,
     S: SequenceStorage,
@@ -96,8 +77,15 @@ impl<I, S> Reference<I, S> where
         pattern_index_option: I::Option,
     ) -> Result<Self, ReferenceBuildError> {
         let concatenated_sequence_with_boundaries = sequence_storage.get_concatenated_sequence_with_boundaries();
-        let sequence_type = SequenceType::new(&concatenated_sequence_with_boundaries.concatenated_sequence);
-        let pattern_index = I::new(concatenated_sequence_with_boundaries, &sequence_type, pattern_index_option)?;
+        let sequence_type = SequenceType::infer_from_sequence(
+            &concatenated_sequence_with_boundaries.concatenated_sequence
+        );
+        let alignable_sequence = sequence_type.alignable_sequence();
+        let pattern_index = I::new(
+            &alignable_sequence,
+            concatenated_sequence_with_boundaries,
+            pattern_index_option,
+        )?;
         let num_targets = sequence_storage.num_targets();
         let search_range: Vec<u32> = (0..num_targets).collect();
 
@@ -107,19 +95,6 @@ impl<I, S> Reference<I, S> where
             pattern_index,
             sequence_storage,
         })
-    }
-    pub fn from_raw_unchecked(
-        sequence_type: SequenceType,
-        search_range: Vec<u32>,
-        pattern_index: I,
-        sequence_storage: S,
-    ) -> Self {
-        Self {
-            sequence_type,
-            search_range,
-            pattern_index,
-            sequence_storage,
-        }
     }
 }
 
@@ -132,31 +107,10 @@ pub enum ReferenceBuildError {
     IoError(#[from] std::io::Error),
 }
 
-pub mod features;
-
-// // Requirements for inner structures
-// mod requirements;
-// use requirements::{
-//     Serialize,
-//     EstimateSize,
-// };
-// // Common data structures
-// mod commons;
-// pub use commons::{
-//     SequenceType,
-//     JoinedSequence,
-//     PatternFinder,
-// };
-// // Storage of sequences
-// pub mod sequence_storage;
-// pub use sequence_storage::{
-//     SequenceStorage,
-// };
-
-// // Default features of Reference
-// mod feature;
-// pub use feature::{
-//     // For sequence storage
-//     LabelStorage,
-//     RcStorage,
-// };
+// Features
+mod pattern_search;
+mod debug;
+mod set_search_range;
+pub use set_search_range::SetSearchRangeError;
+/// Extensions for [Reference]
+pub mod extensions;

@@ -12,10 +12,9 @@ pub enum RegulatorError {
     #[error("Cutoff is too low to detect the pattern.")]
     LowCutoff,
     #[error("Gap extend penalty only allow positive integer.")]
-    GapExtendPenalty,
+    InvalidGapExtendPenalty,
     #[error("Maximum penalty per length only allow positive value.")]
-    NegativeMPpL,
-
+    InvalidMPpL,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -38,9 +37,9 @@ impl AlignmentRegulator {
         maximum_penalty_per_length: f32,
     ) -> Result<Self, RegulatorError> {
         if gap_extend_penalty == 0 {
-            return Err(RegulatorError::GapExtendPenalty);
+            return Err(RegulatorError::InvalidGapExtendPenalty);
         } else if maximum_penalty_per_length <= 0.0 {
-            return Err(RegulatorError::NegativeMPpL);
+            return Err(RegulatorError::InvalidMPpL);
         }
 
         let penalties = Penalty::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
@@ -51,7 +50,6 @@ impl AlignmentRegulator {
         let pattern_size = &aligner.pattern_size;
         if *pattern_size < MINIMUM_PATTERN_SIZE {
             return Err(RegulatorError::LowCutoff);
-            // error_msg!("Auto calculated pattern size({}) should reach at least {}", pattern_size, MINIMUM_PATTERN_SIZE);
         }
 
         Ok(aligner)
@@ -79,14 +77,6 @@ impl AlignmentRegulator {
         
         reference_alignment_result
     }
-    /// Get penalties
-    pub fn get_penalties(&self) -> [u32; 3] {
-        [
-            self.penalties.x * self.gcd_for_compression,
-            self.penalties.o * self.gcd_for_compression,
-            self.penalties.e * self.gcd_for_compression,
-        ]
-    }
     /// Get mismatch penalty
     pub fn get_mismatch_penalty(&self) -> u32 {
         self.penalties.x * self.gcd_for_compression
@@ -99,16 +89,11 @@ impl AlignmentRegulator {
     pub fn get_gap_extend_penalty(&self) -> u32 {
         self.penalties.e * self.gcd_for_compression
     }
-    /// Get similarity cutoff
-    pub fn get_similarity_cutoff(&self) -> (u32, f32) {
-        (
-            self.cutoff.minimum_aligned_length,
-            (self.cutoff.maximum_scaled_penalty_per_length * self.gcd_for_compression) as f32 / PREC_SCALE as f32,
-        )
-    }
+    /// Get minimum aligned length
     pub fn get_minimum_aligned_length(&self) -> u32 {
         self.cutoff.minimum_aligned_length
     }
+    /// Get maximum penalty per length
     pub fn get_maximum_penalty_per_length(&self) -> f32 {
         (self.cutoff.maximum_scaled_penalty_per_length * self.gcd_for_compression) as f32 / PREC_SCALE as f32
     }

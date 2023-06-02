@@ -1,4 +1,7 @@
-use super::{AlignerInterface, DefaultAligner, SelfDescAligner};
+use super::{
+    DefaultAligner,
+    SelfDescAligner,
+};
 
 impl std::fmt::Debug for DefaultAligner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

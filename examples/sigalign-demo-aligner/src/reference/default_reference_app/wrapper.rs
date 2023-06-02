@@ -5,19 +5,18 @@ use std::time::Instant;
 use sigalign::{
     reference::{
         Reference,
-        sequence_type::SequenceType,
         pattern_index::{
             PatternLocation,
             PatternIndex,
             ConcatenatedSequenceWithBoundaries,
             PatternIndexBuildError,
-            implementations::lfi::{Lfi32B2V64, Lfi32B3V64, LfiOption},
+            lfi::{Lfi32B2V64, Lfi32B3V64, LfiOption},
         },
         sequence_storage::{
             SequenceStorage,
-            implementations::InMemoryStorage,
+            in_memory::InMemoryStorage,
         },
-        features::Serialize,
+        extensions::Serialize,
     },
     utils::FastaReader,
 };
@@ -41,18 +40,18 @@ impl PatternIndex for LfiWrapper {
     type Option = LfiOption;
 
     fn new(
+        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
-        sequence_type: &SequenceType,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError> {
-        let chr_count = sequence_type.valid_characters().len();
+        let chr_count = alignable_sequence.len();
         if chr_count <= 4 {
             Ok(Self::B2(
-                Lfi32B2V64::new(concatenated_sequence_with_boundaries, sequence_type, option)?
+                Lfi32B2V64::new(alignable_sequence, concatenated_sequence_with_boundaries, option)?
             ))
         } else if chr_count <= 8 {
             Ok(Self::B3(
-                Lfi32B3V64::new(concatenated_sequence_with_boundaries, sequence_type, option)?
+                Lfi32B3V64::new(alignable_sequence, concatenated_sequence_with_boundaries, option)?
             ))
         } else {
             Err(
