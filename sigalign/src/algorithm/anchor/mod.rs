@@ -1,5 +1,5 @@
 use crate::core::{
-    ReferenceInterface,
+    BufferedPatternSearch,
 };
 use ahash::AHashMap;
 
@@ -30,7 +30,7 @@ pub struct AnchorTable(
 pub type AnchorIndex = (u32, u32);
 
 impl AnchorTable {
-    pub fn new_by_target_index<R: ReferenceInterface>(
+    pub fn new_by_target_index<R: BufferedPatternSearch>(
         reference: &R,
         query: &[u8],
         pattern_size: u32,
@@ -125,8 +125,8 @@ impl Anchor {
             let right_target_position = right_anchor_position.target_position;
 
             match (left_anchor_position.target_position + pattern_size).checked_sub(right_target_position) {
-                Some(record_position_gap) => {
-                    if record_position_gap == 0 {
+                Some(target_position_gap) => {
+                    if target_position_gap == 0 {
                         let right_pattern_count = right_anchor_position.pattern_count;
                         left_anchor_position.pattern_count += right_pattern_count;
 

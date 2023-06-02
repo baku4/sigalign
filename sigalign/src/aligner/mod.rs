@@ -17,94 +17,114 @@ The `Aligner` has two modes:
            ```text
            QUERY : -------------
                        |||||||||
-           RECORD:     -------------
+           TARGET:     -------------
            ```
          * Case 2
            ```text
            QUERY :     -------------
                        |||||||||
-           RECORD: -------------
+           TARGET: -------------
            ```
          * Case 3
            ```text
            QUERY : -------------
                       |||||||
-           RECORD:    -------
+           TARGET:    -------
            ```
          * Case 4
            ```text
            QUERY :    -------
                       |||||||
-           RECORD: -------------
+           TARGET: -------------
            ```
   2. Local algorithm
-     - The alignment can include only parts of the record and query sequence.
+     - The alignment can include only parts of the target and query sequence.
        For example:
          ```text
          QUERY : ----------------
                      |||||||
-         RECORD:    ----------------
+         TARGET:    ----------------
          ```
      - The result is the same as the semi-global alignments of all substrings in the query sequence.
 */
-use crate::core::ReferenceInterface;
 use crate::results::AlignmentResult;
-
-use super::algorithm::{
-    // Algorithms
-    semi_global_alignment_algorithm,
-    local_alignment_algorithm,
-    // Structs to be buffered
-    //   - common
-    AnchorIndex, WaveFront, Extension, SparePenaltyCalculator,
-    //   - local
-    Vpc,
-    //   - semi global
-    // None
+use crate::reference::{
+    Reference,
+    pattern_index::PatternIndex,
+    sequence_storage::SequenceStorage,
 };
 
-// Specifications for the aligners
-mod allocation_strategy;
-pub use allocation_strategy::{
-    AllocationStrategy, LinearStrategy, DoublingStrategy,
-};
-use allocation_strategy::QueryLengthChecker;
-mod wave_front_pool;
-use wave_front_pool::{
-    WaveFrontPool, SingleWaveFrontPool, DoubleWaveFrontPool,
-};
+// Internal structures for Aligner
 mod regulator;
-pub(crate) use regulator::{AlignmentRegulator};
-pub use regulator::{RegulatorError};
+pub(crate) use regulator::AlignmentRegulator;
+pub use regulator::RegulatorError;
+pub mod allocation_strategy;
+use allocation_strategy::{
+    QueryLengthChecker,
+    AllocationStrategy,
+};
+pub mod mode;
+use mode::AlignmentMode;
 
-// Aligners by mode
-mod local;
-mod semi_global;
-pub use local::LocalAligner;
-pub use semi_global::SemiGlobalAligner;
+pub struct Aligner<M, A> where
+    M: AlignmentMode,
+    A: AllocationStrategy,
+{
+    pub(crate) regulator: AlignmentRegulator,
+    pub(crate) query_length_checker: QueryLengthChecker<A>,
+    pub(crate) mode: M,
+}
 
-pub trait AlignerInterface: Sized {
-    fn new(
+impl<M, A> Aligner<M, A> where
+    M: AlignmentMode,
+    A: AllocationStrategy,
+{
+    pub fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
         gap_extend_penalty: u32,
         minimum_aligned_length: u32,
         maximum_penalty_per_length: f32,
-    ) -> Result<Self, RegulatorError>;
-    fn alignment<R: ReferenceInterface>(
-        &mut self,
-        reference: &R,
-        sequence_buffer: &mut R::Buffer,
-        query: &[u8],
-    ) -> AlignmentResult;
+    ) -> Result<Self, RegulatorError> {
+        let regulator = AlignmentRegulator::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
+        let query_length_checker = QueryLengthChecker::new();
+        let query_length = query_length_checker.get_allocated_length();
 
-    fn get_mismatch_penalty(&self) -> u32;
-    fn get_gap_open_penalty(&self) -> u32;
-    fn get_gap_extend_penalty(&self) -> u32;
-    fn get_minimum_aligned_length(&self) -> u32;
-    fn get_maximum_penalty_per_length(&self) -> f32;
-    fn get_pattern_size(&self) -> u32;
+        let mode = M::new(
+            query_length,
+            &regulator,
+        );
+
+        Ok(Self {
+            regulator,
+            query_length_checker,
+            mode,
+        })
+    }
+    pub fn alignment<I: PatternIndex, S: SequenceStorage> (
+        &mut self,
+        reference: &Reference<I, S>,
+        sequence_buffer: &mut S::Buffer,
+        query: &[u8],
+    ) -> AlignmentResult {
+        if let Some(required_query_length) = self.query_length_checker.optional_length_to_be_allocated(query.len() as u32) {
+            self.mode.allocate_space(
+                required_query_length,
+                &self.regulator,
+            );
+        }
+        
+        let reference_alignment_result = self.mode.run_algorithm(
+            reference,
+            sequence_buffer,
+            query,
+            &self.regulator,
+        );
+
+        self.regulator.result_of_uncompressed_penalty(reference_alignment_result)
+    }
 }
 
-// Features
-mod features;
+mod debug;
+mod alignments;
+pub use alignments::AlignmentError;

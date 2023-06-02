@@ -5,12 +5,12 @@ use crate::{
         },
     },
     results::{
-        AlignmentOperation, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations,
+        AlignmentPosition, AlignmentOperations,
     }
 };
 use super::{
     AnchorTable, Anchor, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
+    WaveFront, WaveFrontScore, BackTraceMarker,
     Extension, SparePenaltyCalculator,
     transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,

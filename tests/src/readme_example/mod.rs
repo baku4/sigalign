@@ -14,7 +14,7 @@ fn quick_start() {
     let reference = DefaultReference::from_fasta_bytes(fasta).unwrap();
 
     // (2) Make `Aligner`
-    let mut aligner = DefaultAligner::new_local(
+    let mut aligner = DefaultAligner::new(
         4,   // Mismatch penalty
         6,   // Gap-open penalty
         2,   // Gap-extend penalty

@@ -1,15 +1,3 @@
-use sigalign::{
-    Reference as SigReference,
-    ReferenceBuilder as SigReferenceBuilder,
-    Aligner as SigAligner,
-    sequence_storage::{
-        InMemoryStorage as SigInMemoryStorage,
-    },
-    result::{
-        AlignmentLabeledResult,
-    },
-};
-
 mod reference;
 mod result;
 mod aligner;

@@ -1,15 +1,14 @@
 use crate::{
     core::PatternLocation,
     reference::{
-        sequence_type::SequenceType,
         pattern_index::{
             PatternIndex, PatternIndexBuildError, ConcatenatedSequenceWithBoundaries,
-            implementations::lfi::{
+            lfi::{
                 Lfi32B2V64, Lfi32B3V64, Lfi32B4V64, Lfi32B5V64,
                 LfiOption,
             },
         },
-        features::Serialize,
+        extensions::Serialize,
     }
 };
 
@@ -19,44 +18,40 @@ pub enum LfiWrapper {
     B4(Lfi32B4V64),
     B5(Lfi32B5V64),
 }
-impl LfiWrapper {
-    pub fn new_with_default_option(
-        concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
-        sequence_type: &SequenceType,
-    ) -> Result<Self, PatternIndexBuildError> {
-        // Gen option for Lfi
-        let chrs = sequence_type.valid_characters();
-        let chr_count = chrs.len();
+pub struct LfiWrapperOption;
+impl LfiWrapperOption {
+    pub fn translate_to_lfi_option(self, alignable_sequence: &[u8]) -> LfiOption {
+        let chr_count = alignable_sequence.len();
         let lookup_table_size = calculate_lookup_table_kmer_size(chr_count);
-        let option = LfiOption {
+        LfiOption {
             suffix_array_sampling_ratio: 1,
             lookup_table_kmer_size: lookup_table_size,
-        };
-        Self::new(concatenated_sequence_with_boundaries, sequence_type, option)
+        }
     }
 }
+
 impl PatternIndex for LfiWrapper {
-    type Option = LfiOption;
+    type Option = LfiWrapperOption;
 
     fn new(
+        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
-        sequence_type: &SequenceType,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError> {
-        // Gen option for Lfi
-        let chrs = sequence_type.valid_characters();
-        let chr_count = chrs.len();
+        let lfi_option = option.translate_to_lfi_option(alignable_sequence);
+        let chr_count = alignable_sequence.len();
+
         if chr_count <= 4 {
-            let inner = Lfi32B2V64::new(concatenated_sequence_with_boundaries, &sequence_type, option)?;
+            let inner = Lfi32B2V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B2(inner))
         } else if chr_count <= 8 {
-            let inner = Lfi32B3V64::new(concatenated_sequence_with_boundaries, &sequence_type, option)?;
+            let inner = Lfi32B3V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B3(inner))
         } else if chr_count <= 16 {
-            let inner = Lfi32B4V64::new(concatenated_sequence_with_boundaries, &sequence_type, option)?;
+            let inner = Lfi32B4V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B4(inner))
         } else if chr_count <= 32 {
-            let inner = Lfi32B5V64::new(concatenated_sequence_with_boundaries, &sequence_type, option)?;
+            let inner = Lfi32B5V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B5(inner))
         } else {
             Err(PatternIndexBuildError::OverMaximumCharacters { max: 32, input: chr_count as u32 })

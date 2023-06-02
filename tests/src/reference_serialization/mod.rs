@@ -1,7 +1,7 @@
 use crate::test_data_path::get_lf_fa_path;
 use sigalign::{
     wrapper::DefaultReference,
-    reference::features::Serialize,
+    reference::extensions::Serialize,
 };
 use std::io::Cursor;
 

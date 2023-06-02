@@ -19,11 +19,10 @@ use crate::{
     }
 };
 use sigalign::{
-    reference::{ReferenceInterface},
     aligner::{
-        AlignerInterface,
-        LocalAligner,
-        LinearStrategy,
+        Aligner,
+        mode::LocalMode,
+        allocation_strategy::LinearStrategy,
     },
     results::{
         AlignmentResult,
@@ -34,7 +33,7 @@ use sigalign::{
     },
     utils::{FastaReader, reverse_complement_of_dna},
 };
-type SigAligner = LocalAligner<LinearStrategy>;
+type SigAligner = Aligner<LocalMode, LinearStrategy>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -180,7 +179,7 @@ impl AlignmentConfig {
 
             // Alignment
             let start = Instant::now();
-            let mut sequence_buffer = reference.get_buffer();
+            let mut sequence_buffer = reference.get_sequence_buffer();
             let fasta_reader = FastaReader::from_path(&self.input_fasta_pathbuf).unwrap();
             fasta_reader.for_each(|(label, query)| {
                 // (1) Original Query

@@ -6,7 +6,12 @@ use sigalign::{
     results::{AlignmentResult, AlignmentOperation, AnchorAlignmentResult, TargetAlignmentResult},
     wrapper::{
         DefaultReference, DefaultAligner,
-    }, utils::{FastaReader, calculate_max_pattern_size}, reference::{self, Reference, ReferenceInterface, sequence_storage::SequenceBuffer},
+    },
+    utils::{FastaReader, calculate_max_pattern_size},
+    reference::{
+        Reference,
+        sequence_storage::SequenceBuffer,
+    },
 };
 use ahash::AHashSet;
 use std::path::PathBuf;
@@ -21,7 +26,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
     max_penalty_per_length: f32,
 ) -> AlignmentResult {
     // Init
-    let mut buffer = sig_reference.get_buffer();
+    let mut buffer = sig_reference.get_sequence_buffer();
     let mut target_alignment_results = Vec::new();
     // Cal pattern size
     let pattern_size = calculate_max_pattern_size(
@@ -39,8 +44,8 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
     );
     // Align
     for target_index in target_indices {
-        sig_reference.fill_buffer(target_index, &mut buffer);
-        let target = buffer.request_sequence();
+        sig_reference.fill_sequence_buffer(target_index, &mut buffer);
+        let target = buffer.buffered_sequence();
 
         // Get anchor alignment results
         let mut all_anchor_alignment_results = Vec::new();

@@ -1,7 +1,16 @@
 use crate::core::regulators::{
     Penalty, PREC_SCALE,
 };
+/**
+`SparePenaltyCalculator` is a structure designed for rapid spare penalty calculation. 
 
+⚠️ Important: This struct prioritizes speed over safety checks. For safe usage:
+1. Instantiate once per regulator using `new`.
+2. On increasing the maximum possible length of the query, invoke `precalculate_right_spare_penalty` to update right spare penalties.
+3. `change_last_pattern_index` must be invoked for every new query to update the `last_pattern_index`.
+
+Failure to follow these usage rules could lead to unexpected behavior.
+*/
 #[derive(Debug, Clone)]
 pub struct SparePenaltyCalculator {
     precalculated_right_spare_penalty: Vec<u32>,

@@ -1,18 +1,18 @@
 use crate::{
     core::{
-        ReferenceInterface, SequenceBuffer,
+        BufferedPatternSearch, SequenceBuffer,
         regulators::{
             Penalty, Cutoff,
         }
     },
     results::{
         AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult,
-        AlignmentPosition, AlignmentOperations,
+        AlignmentOperations,
     },
 };
 use super::{
     Anchor, AnchorTable, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker, BackTraceResult,
+    WaveFront, WaveFrontScore, BackTraceMarker,
     Extension, SparePenaltyCalculator,
     mark_anchor_as_extended,
     mark_traversed_anchors_as_skipped,
@@ -27,15 +27,16 @@ pub use extend::{
     Vpc,
 };
 
-pub fn local_alignment_algorithm<R: ReferenceInterface>(
-    reference: &R,
-    sequence_buffer: &mut R::Buffer,
+#[inline]
+pub fn local_alignment_algorithm<S: BufferedPatternSearch>(
+    buffered_pattern_searcher: &S,
+    sequence_buffer: &mut S::Buffer,
     query: &[u8],
     pattern_size: u32,
     penalties: &Penalty,
     cutoff: &Cutoff,
-    // Buffers
     spare_penalty_calculator: &mut SparePenaltyCalculator,
+    // Buffers
     left_wave_front: &mut WaveFront,
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
@@ -44,11 +45,11 @@ pub fn local_alignment_algorithm<R: ReferenceInterface>(
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
 ) -> AlignmentResult {
-    let mut anchor_table_map = AnchorTable::new_by_target_index(reference, query, pattern_size);
+    let mut anchor_table_map = AnchorTable::new_by_target_index(buffered_pattern_searcher, query, pattern_size);
 
     let target_alignment_results: Vec<TargetAlignmentResult> = anchor_table_map.iter_mut().filter_map(|(target_index, anchor_table)| {
-        reference.fill_buffer(*target_index, sequence_buffer);
-        let target = sequence_buffer.request_sequence();
+        buffered_pattern_searcher.fill_buffer(*target_index, sequence_buffer);
+        let target = sequence_buffer.buffered_sequence();
         let anchor_alignment_results = local_alignment_query_to_target(
             anchor_table,
             pattern_size,

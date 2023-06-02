@@ -1,5 +1,5 @@
 use ahash::AHashSet;
-use sigalign::{wrapper::DefaultReference, reference::ReferenceInterface};
+use sigalign::{wrapper::DefaultReference};
 
 pub fn target_indices_having_matched_pattern(
     query: &[u8],
@@ -12,7 +12,7 @@ pub fn target_indices_having_matched_pattern(
         let start_index = pattern_size as usize * pattern_index;
         let last_index = start_index + pattern_size as usize;
         let pattern = &query[start_index..last_index];
-        let pattern_location = sig_reference.locate(pattern);
+        let pattern_location = sig_reference.locate_pattern(pattern);
         for v in pattern_location {
             target_index_set.insert(v.target_index);
         }

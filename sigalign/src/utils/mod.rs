@@ -14,9 +14,3 @@ mod functions;
 pub use functions::{
     calculate_max_pattern_size,
 };
-
-// mod path_reader;
-// pub use path_reader::{
-//     path_to_byte,
-//     byte_to_pathbuf,
-// };

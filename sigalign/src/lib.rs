@@ -1,11 +1,12 @@
+// Fundamentals
 mod core;
 mod algorithm;
+pub mod results;
 
 // Implementations
 pub mod reference;
 pub mod aligner;
-pub mod wrapper;
-// Alignment results
-pub mod results;
+
 // Utilities
+pub mod wrapper;
 pub mod utils;
