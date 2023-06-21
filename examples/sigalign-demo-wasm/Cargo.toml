@@ -18,3 +18,4 @@ rand = "0.8.5"
 serde = "1.0.127"
 serde_json = "1.0.68"
 getrandom = { version = "0.2.9", features = ["js"] }
+ahash = "0.8.3"

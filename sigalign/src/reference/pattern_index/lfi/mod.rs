@@ -178,3 +178,20 @@ impl<B: Block<u64>> Serialize for Lfi64<B> {
         Ok(Self { inner, boundaries })
     }
 }
+//  - EstimateSize
+use crate::reference::extensions::EstimateSize;
+
+impl<B: Block<u32>> EstimateSize for Lfi32<B> {
+    fn serialized_size(&self) -> usize {
+        self.inner.to_be_saved_size()
+        + self.boundaries.to_be_saved_size()
+    }
+}
+impl<B: Block<u64>> EstimateSize for Lfi64<B> {
+    fn serialized_size(&self) -> usize {
+        // inner
+        self.inner.to_be_saved_size()
+        // boundaries
+        + self.boundaries.to_be_saved_size()
+    }
+}

@@ -1,22 +1,26 @@
 use wasm_bindgen::prelude::*;
 
 use super::{
-    SigAligner,
-    Reference,
     AlignmentResult,
+    Reference,
+};
+use sigalign::{
+    wrapper::{
+        DefaultAligner,
+    },
 };
 
 // Aligner
 #[wasm_bindgen]
 pub struct Aligner {
-    px: usize,
-    po: usize,
-    pe: usize,
-    ml: usize,
+    px: u32,
+    po: u32,
+    pe: u32,
+    ml: u32,
     mppl: f32,
     is_local: bool,
-    pattern_size: usize,
-    inner: SigAligner,
+    pattern_size: u32,
+    inner: DefaultAligner,
 }
 
 #[wasm_bindgen]
@@ -24,16 +28,16 @@ impl Aligner {
     #[wasm_bindgen(constructor)]
     pub fn new(
         is_local: bool,
-        mismatch_penalty: usize,
-        gap_open_penalty: usize,
-        gap_extend_penalty: usize,
-        minimum_aligned_length: usize,
+        mismatch_penalty: u32,
+        gap_open_penalty: u32,
+        gap_extend_penalty: u32,
+        minimum_aligned_length: u32,
         maximum_penalty_per_length: f32,
     ) -> Result<Aligner, JsError> {
         let inner = if is_local {
-            SigAligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)
+            DefaultAligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)
         } else {
-            SigAligner::new_semi_global(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)
+            DefaultAligner::new_semi_global(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)
         };
 
         match inner {
@@ -60,36 +64,29 @@ impl Aligner {
         query: &str,
         reference: &Reference,
     ) -> Result<AlignmentResult, JsError> {
-        let alignment_result = self.inner.query_labeled_alignment(
+        let alignment_result = self.inner.align_query_labeled(
             reference.as_ref(),
             query.as_bytes(),
         );
-        match alignment_result {
-            Ok(inner_result) => {
-                Ok(AlignmentResult::new(inner_result))
-            },
-            Err(err) => {
-                Err(JsError::new(&format!("{}", err)))
-            },
-        }
+        Ok(AlignmentResult::new(alignment_result))
     }
     pub fn drop(self) {
         drop(self)
     }
     #[wasm_bindgen(getter)]
-    pub fn px(&self) -> usize {
+    pub fn px(&self) -> u32 {
         self.px
     }
     #[wasm_bindgen(getter)]
-    pub fn po(&self) -> usize {
+    pub fn po(&self) -> u32 {
         self.po
     }
     #[wasm_bindgen(getter)]
-    pub fn pe(&self) -> usize {
+    pub fn pe(&self) -> u32 {
         self.pe
     }
     #[wasm_bindgen(getter)]
-    pub fn ml(&self) -> usize {
+    pub fn ml(&self) -> u32 {
         self.ml
     }
     #[wasm_bindgen(getter)]
@@ -101,7 +98,7 @@ impl Aligner {
         self.is_local
     }
     #[wasm_bindgen(getter)]
-    pub fn pattern_size(&self) -> usize {
+    pub fn pattern_size(&self) -> u32 {
         self.pattern_size
     }
     pub fn get_status(&self) -> AlignerStatus {
@@ -119,11 +116,11 @@ impl Aligner {
 
 #[wasm_bindgen]
 pub struct AlignerStatus {
-    pub px: usize,
-    pub po: usize,
-    pub pe: usize,
-    pub ml: usize,
+    pub px: u32,
+    pub po: u32,
+    pub pe: u32,
+    pub ml: u32,
     pub mppl: f32,
     pub is_local: bool,
-    pub pattern_size: usize,
+    pub pattern_size: u32,
 }

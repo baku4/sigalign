@@ -1,6 +1,7 @@
 use sigalign::{
     reference::{
-        Reference as SigReference, BufferedPatternSearch as SigReferenceInterface,
+        sequence_storage::SequenceBuffer,
+        extensions::EstimateSize,
     },
     wrapper::{
         DefaultReference,
@@ -8,9 +9,13 @@ use sigalign::{
 };
 use wasm_bindgen::prelude::*;
 use crate::utils::err_to_js_err;
+use ahash::AHashSet;
 
 #[wasm_bindgen]
-pub struct Reference(DefaultReference);
+pub struct Reference {
+    inner: DefaultReference,
+    sorted_characters_in_targets: Vec<u8>,
+}
 
 #[wasm_bindgen]
 impl Reference {
@@ -22,53 +27,54 @@ impl Reference {
         );
         match inner {
             Ok(inner) => {
-                Ok(Self::new(inner))
+                let characters_in_targets = Self::get_sorted_characters_in_targets_from_reference(&inner);
+                Ok(Self::new(inner, characters_in_targets))
             },
             Err(err) => {
                 Err(err_to_js_err(err.into()))
             },
         }
     }
-    fn new(inner_reference: DefaultReference) -> Self {
-        Self(inner_reference)
+    fn get_sorted_characters_in_targets_from_reference(inner_reference: &DefaultReference) -> Vec<u8> {
+        let mut set = AHashSet::new();
+        let mut sequence_buffer = inner_reference.get_sequence_buffer();
+        for target_index in 0..inner_reference.num_targets() {
+            inner_reference.fill_sequence_buffer(target_index, &mut sequence_buffer);
+            set.extend(sequence_buffer.buffered_sequence());
+        }
+        let mut vec: Vec<u8> = set.into_iter().collect();
+        vec.sort_unstable();
+        vec
+    }
+    fn new(
+        inner: DefaultReference,
+        sorted_characters_in_targets: Vec<u8>,
+    ) -> Self {
+        Self {
+            inner,
+            sorted_characters_in_targets,
+        }
+    }
+    pub(crate) fn get_sorted_characters_in_targets(&self) -> Vec<u8> {
+        self.sorted_characters_in_targets.clone()
     }
     pub fn drop(self) {
         drop(self)
     }
-    pub fn allowed_characters(&self) -> Vec<u8> {
-        // self.0.get_allowed_character_list().iter()
-        //     .map(|v| v.to_string() )
-        //     .collect()
-        &self.0.inner.valid_characters()
+    pub fn target_count(&self) -> u32 {
+        self.inner.num_targets()
     }
-    pub fn record_count(&self) -> usize {
-        self.0.total_record_count()
-    }
-    pub fn get_record_sequence(&self, record_index: usize) -> Vec<u8> {
-        let mut buffer = self.0.get_buffer();
-        self.0.fill_buffer(record_index, &mut buffer);
-        let sequence = buffer.request_sequence();
+    pub fn get_target_sequence(&self, target_index: u32) -> Vec<u8> {
+        let mut buffer = self.inner.get_sequence_buffer();
+        self.inner.fill_sequence_buffer(target_index, &mut buffer);
+        let sequence = buffer.buffered_sequence();
         sequence.to_vec()
     } 
     pub fn get_status(&self) -> ReferenceStatus {
-        let total_records = self.record_count();
-        let is_nucleotide = self.0.get_whether_text_type_is_nucleotide();
-        let have_noise = self.0.get_noise_character_of_text_type().is_some();
-        let supported_sequences = String::from_utf8(
-            self.allowed_characters()
-        ).unwrap();
-        let klt = self.0.get_lookup_table_kmer_size();
-        let sasr = self.0.get_suffix_array_sampling_ratio() as usize;
-        let bwt_block_size = self.0.get_size_of_bwt_block();
-        let est_byte_size = self.0.size_of();
+        let target_count = self.target_count();
+        let est_byte_size = self.inner.serialized_size();
         ReferenceStatus {
-            total_records,
-            is_nucleotide,
-            have_noise,
-            supported_sequences,
-            klt,
-            sasr,
-            bwt_block_size,
+            target_count,
             est_byte_size,
         }
     }
@@ -76,22 +82,12 @@ impl Reference {
 
 impl AsRef<DefaultReference> for Reference {
     fn as_ref(&self) -> &DefaultReference {
-        &self.0
+        &self.inner
     }
 }
 
 #[wasm_bindgen]
 pub struct ReferenceStatus {
-    pub total_records: usize,
-    // Sequence type
-    pub is_nucleotide: bool,
-    pub have_noise: bool,
-    #[wasm_bindgen(getter_with_clone)]
-    pub supported_sequences: String,
-    // Compression level
-    pub klt: usize,
-    pub sasr: usize,
-    pub bwt_block_size: usize,
-    // Estimated Size
+    pub target_count: u32,
     pub est_byte_size: usize,
 }

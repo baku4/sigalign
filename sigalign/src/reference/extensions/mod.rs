@@ -10,6 +10,9 @@ use super::{
 };
 
 mod io;
-pub use io::Serialize;
+pub use io::{
+    Serialize,
+    EstimateSize,
+};
 mod label;
 pub use label::LabelStorage;

@@ -15,21 +15,21 @@ pub fn get_sample_query(
     let po = aligner.po();
     let pe = aligner.pe();
     let ml = aligner.ml();
-    let mppl = aligner.mppl();
-    let record_count = reference.record_count();
-    let allowed_chr_list = reference.allowed_characters();
+    let mpl = aligner.mppl();
+    let target_count = reference.target_count();
+    let allowed_chr_list = reference.get_sorted_characters_in_targets();
 
     let mut rng = rand::thread_rng();
 
-    let mut rec_idx_list: Vec<usize> = (0..record_count).collect();
+    let mut rec_idx_list: Vec<u32> = (0..target_count).collect();
     rec_idx_list.shuffle(&mut rng);
 
     // Get record seq
     for rec_idx in rec_idx_list {
-        let rec_seq = reference.get_record_sequence(rec_idx);
+        let rec_seq = reference.get_target_sequence(rec_idx);
         let rec_len = rec_seq.len();
         
-        if rec_len < ml {
+        if rec_len < ml as usize {
             continue
         }
 
@@ -48,7 +48,7 @@ pub fn get_sample_query(
         ].to_vec();
 
         // Mutate query
-        let max_pen = (mppl * qry_len as f32).floor() as usize;
+        let max_pen = (mpl * qry_len as f32).floor() as u32;
         let mut curr_pen = 0;
         let mut subst_count = 0;
         let mut indel_count = 0;
