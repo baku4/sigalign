@@ -1,9 +1,10 @@
 use super::{Reference, Aligner};
 
-mod error;
-mod sample_query;
-mod sample_target;
+mod error_handling;
+mod sequence_sampling;
 
-pub(crate) use error::err_to_js_err;
-pub use sample_query::get_sample_query;
-pub use sample_target::get_sample_target_as_fasta_string;
+pub(crate) use error_handling::err_to_js_err;
+pub use sequence_sampling::{
+    get_sample_target_as_fasta_string,
+    get_sample_query,
+};

@@ -41,3 +41,19 @@ impl<I, S> Serialize for Reference<I, S> where
         })
     }
 }
+
+/// Provides an estimate of the size of the object when saved.
+pub trait EstimateSize {
+    fn serialized_size(&self) -> usize;
+}
+
+impl<I, S> EstimateSize for Reference<I, S> where
+    I: PatternIndex + EstimateSize,
+    S: SequenceStorage + EstimateSize,
+{
+    fn serialized_size(&self) -> usize {
+        (self.search_range.len() * std::mem::size_of::<u32>())
+        + self.sequence_storage.serialized_size()
+        + self.pattern_index.serialized_size()
+    }
+}

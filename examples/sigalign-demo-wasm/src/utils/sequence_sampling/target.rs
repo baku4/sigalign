@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::*;
 use rand::prelude::*;
 
+use super::NUCLEOTIDES;
+
 const MIN_STEM_LEN: usize = 300;
 const MAX_STEM_LEN: usize = 400;
 const MIN_EDGE_LEN: usize = 0;
@@ -50,7 +52,6 @@ fn get_random_seq(rng: &mut ThreadRng, seq_len: usize) -> String {
     String::from_utf8(seq).unwrap()
 }
 
-const NUCLEOTIDES: [u8; 4] = [b'A', b'C', b'G', b'T'];
 #[inline]
 fn get_random_chr(rng: &mut ThreadRng) -> u8 {
     NUCLEOTIDES[rng.gen_range(0..NUCLEOTIDES.len())]

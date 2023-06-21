@@ -2,6 +2,11 @@ use super::{
     SequenceStorage, SequenceBuffer,
     ConcatenatedSequenceWithBoundaries,
 };
+use crate::reference::extensions::{
+    Serialize,
+    EstimateSize,
+    LabelStorage,
+};
 use crate::utils::{FastaReader, reverse_complement_of_dna};
 
 // mod reverse_complement;
@@ -22,7 +27,6 @@ pub struct InMemoryBuffer {
     pointer: *const u8,
     len: usize,
 }
-
 
 // Sequence Storage
 impl SequenceStorage for InMemoryStorage {
@@ -181,86 +185,18 @@ impl InMemoryStorage {
         let seq = buffer.buffered_sequence().to_vec();
         Some(seq)
     }
-    // pub fn get_label_safely(&self, target_index: usize) -> Option<String> {
-    //     if target_index >= self.target_count {
-    //         return None
-    //     }
-        
-    //     Some(self.label_of_record(target_index))
-    // }
+    pub fn get_label_safely(&self, target_index: u32) -> Option<String> {
+        if target_index as usize >= self.target_count {
+            return None
+        }
+        Some(self.label_of_target_unchecked(target_index))
+    }
 }
 
-mod features;
+// Features
+mod io;
+mod label;
 
-
-// Label Storage
-// impl LabelStorage for InMemoryStorage {
-//     fn label_of_record(&self, record_index: usize) -> String {
-//         String::from(&self.combined_label[
-//             self.label_index[record_index]..self.label_index[record_index+1]
-//         ])
-//     }
-// }
-
-// use crate::{EndianType};
-// use byteorder::{ReadBytesExt, WriteBytesExt};
-// // Serializable
-// impl Serialize for InMemoryStorage {
-//     fn save_to<W>(&self, mut writer: W) -> Result<()> where
-//         W: std::io::Write
-//     {
-//         // 1. Write record_count
-//         writer.write_u64::<EndianType>(self.target_count as u64)?;
-//         // 2. Write combined_sequence
-//         self.concatenated_sequence.save_to(&mut writer)?;
-//         // 3. Write sequence_index
-//         self.sequence_index.save_to(&mut writer)?;
-//         // 4. Write combined_label
-//         let combined_label_byte = self.combined_label.as_bytes();
-//         combined_label_byte.save_to(&mut writer)?;
-//         // 5. Write label_index
-//         self.label_index.save_to(&mut writer)?;
-
-//         Ok(())
-//     }
-//     fn load_from<R>(mut reader: R) -> Result<Self> where
-//         R: std::io::Read,
-//         Self: Sized,
-//     {
-//         // 1. Read record_count
-//         let record_count = reader.read_u64::<EndianType>()? as usize;
-//         // 2. Read combined_sequence
-//         let combined_sequence = Vec::load_from(&mut reader)?;
-//         // 3. Read sequence_index
-//         let sequence_index = Vec::load_from(&mut reader)?;
-//         // 4. Read combined_label
-//         let combined_label_byte = Vec::<u8>::load_from(&mut reader)?;
-//         let combined_label = unsafe {
-//             String::from_utf8_unchecked(combined_label_byte)
-//         };
-//         // 5. Read label_index
-//         let label_index = Vec::load_from(&mut reader)?;
-
-//         Ok(Self {
-//             target_count: record_count,
-//             concatenated_sequence: combined_sequence,
-//             sequence_index,
-//             combined_label,
-//             label_index,
-//         })
-//     }
-// }
-
-// // SizeAware
-// impl EstimateSize for InMemoryStorage {
-//     fn size_of(&self) -> usize {
-//         8 // record_count
-//         + self.concatenated_sequence.size_of() // combined_sequence
-//         + self.sequence_index.size_of() // sequence_index
-//         + self.combined_label.as_bytes().size_of() // combined_label
-//         + self.label_index.size_of() // label_index
-//     }
-// }
 
 // // Divisible
 // impl Divide for InMemoryStorage {

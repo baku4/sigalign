@@ -81,3 +81,6 @@ impl<M, A> Aligner<M, A> where
         )
     }
 }
+
+// Features
+mod labeled;

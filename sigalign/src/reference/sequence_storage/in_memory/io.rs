@@ -1,5 +1,8 @@
-use crate::reference::extensions::Serialize;
-use super::{InMemoryStorage};
+use super::{
+    InMemoryStorage,
+    Serialize,
+    EstimateSize,
+};
 
 
 use crate::core::{EndianType, ReadBytesExt, WriteBytesExt};
@@ -35,5 +38,19 @@ impl Serialize for InMemoryStorage {
             concatenated_label,
             label_index,
         })
+    }
+}
+impl EstimateSize for InMemoryStorage {
+    fn serialized_size(&self) -> usize {
+        // target_count
+        std::mem::size_of::<u64>()
+        // concatenated_sequence
+        + self.concatenated_sequence.to_be_saved_size()
+        // sequence_index
+        + self.sequence_index.to_be_saved_size()
+        // concatenated_label
+        + self.concatenated_label.as_bytes().to_be_saved_size()
+        // label_index
+        + self.label_index.to_be_saved_size()
     }
 }

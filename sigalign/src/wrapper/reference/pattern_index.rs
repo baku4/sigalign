@@ -8,7 +8,10 @@ use crate::{
                 LfiOption,
             },
         },
-        extensions::Serialize,
+        extensions::{
+            Serialize,
+            EstimateSize,
+        },
     },
     utils::get_unique_characters_of_sequence,
 };
@@ -135,6 +138,17 @@ impl Serialize for LfiWrapper {
             _ => {
                 Err((std::io::ErrorKind::InvalidData).into())
             },
+        }
+    }
+}
+impl EstimateSize for LfiWrapper {
+    fn serialized_size(&self) -> usize {
+        std::mem::size_of::<u64>()
+        + match self {
+            Self::B2(v) => v.serialized_size(),
+            Self::B3(v) => v.serialized_size(),
+            Self::B4(v) => v.serialized_size(),
+            Self::B5(v) => v.serialized_size(),
         }
     }
 }
