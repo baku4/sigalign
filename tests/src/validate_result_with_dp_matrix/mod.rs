@@ -1,3 +1,5 @@
+// TODO: Test function for deduplicate
+
 use std::ops::Sub;
 
 use crate::{
@@ -64,18 +66,25 @@ fn validate_local_mode_with_dp_matrix() {
         info!(" - query label: {}", label);
         if qry_index == qry_count { break };
 
-        let dpm_result = get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_matrix(
-            &query,
-            &label,
-            &reference,
-            ALIGNER_OPTION.0,
-            ALIGNER_OPTION.1,
-            ALIGNER_OPTION.2,
-            ALIGNER_OPTION.3,
-            ALIGNER_OPTION.4,
-        );
+        let dpm_result = {
+            let res = get_cached_local_all_substring_to_pattern_matched_targets_result_with_dp_matrix(
+                &query,
+                &label,
+                &reference,
+                ALIGNER_OPTION.0,
+                ALIGNER_OPTION.1,
+                ALIGNER_OPTION.2,
+                ALIGNER_OPTION.3,
+                ALIGNER_OPTION.4,
+            );
+            if res.is_none() {
+                continue;
+            } else {
+                res.unwrap()
+            }
+        };
 
-        let sigalign_result = local_aligner.align_query(&reference, &query).unwrap();
+        let sigalign_result = local_aligner.align_query(&reference, &query);
 
         assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
     }
@@ -110,18 +119,25 @@ fn validate_semi_global_mode_with_dp_matrix() {
         info!(" - query label: {}", label);
         if qry_index == qry_count { break };
 
-        let dpm_result = get_cached_semi_global_result_with_dp_matrix(
-            &query,
-            &label,
-            &ref_file,
-            ALIGNER_OPTION.0,
-            ALIGNER_OPTION.1,
-            ALIGNER_OPTION.2,
-            ALIGNER_OPTION.3,
-            ALIGNER_OPTION.4,
-        );
+        let dpm_result = {
+            let res = get_cached_semi_global_result_with_dp_matrix(
+                &query,
+                &label,
+                &ref_file,
+                ALIGNER_OPTION.0,
+                ALIGNER_OPTION.1,
+                ALIGNER_OPTION.2,
+                ALIGNER_OPTION.3,
+                ALIGNER_OPTION.4,
+            );
+            if res.is_none() {
+                continue;
+            } else {
+                res.unwrap()
+            }
+        };
 
-        let sigalign_result = semi_global_aligner.align_query(&reference, &query).unwrap();
+        let sigalign_result = semi_global_aligner.align_query(&reference, &query);
 
         assert_sigalign_result_includes_the_dpm_result(&sigalign_result, &dpm_result);
     }

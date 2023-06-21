@@ -1,8 +1,9 @@
+use crate::utils::get_unique_characters_of_sequence;
 use super::{
     PatternIndex, PatternLocation, ConcatenatedSequenceWithBoundaries,
     PatternIndexBuildError,
     utils::{
-        sorted_positions_to_pattern_location
+        sorted_positions_to_pattern_location,
     },
 };
 use lt_fm_index::{
@@ -25,18 +26,36 @@ pub struct Lfi64<B: Block<u64>> {
 pub struct LfiOption {
     pub suffix_array_sampling_ratio: u64,
     pub lookup_table_kmer_size: u32,
+    pub use_safe_guard: bool,
+}
+impl LfiOption {
+    pub fn new(
+        suffix_array_sampling_ratio: u64,
+        lookup_table_kmer_size: u32,
+        use_safe_guard: bool,
+    ) -> Self {
+        Self {
+            suffix_array_sampling_ratio,
+            lookup_table_kmer_size,
+            use_safe_guard,
+        }
+    }
 }
 
 impl<B: Block<u32>> PatternIndex for Lfi32<B> {
     type Option = LfiOption;
 
     fn new(
-        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError> {
-        let mut valid_characters: Vec<Vec<u8>> = alignable_sequence.into_iter().map(|v| vec![*v]).collect();
-        valid_characters.pop(); // Remove last character
+        let unique_sequence = get_unique_characters_of_sequence(
+            &concatenated_sequence_with_boundaries.concatenated_sequence
+        );
+        let mut valid_characters: Vec<Vec<u8>> = unique_sequence.into_iter().map(|v| vec![v]).collect();
+        if !option.use_safe_guard {
+            valid_characters.pop(); // Remove last character
+        }
         let characters_by_index: Vec<&[u8]> = valid_characters.iter()
             .map(|v| v.as_slice())
             .collect();
@@ -60,7 +79,7 @@ impl<B: Block<u32>> PatternIndex for Lfi32<B> {
                 })
             },
             Err(err) => {
-                Err(PatternIndexBuildError::Option(format!("{}", err)))
+                Err(PatternIndexBuildError::InvalidOption(format!("{}", err)))
             },
         }
     }
@@ -79,12 +98,16 @@ impl<B: Block<u64>> PatternIndex for Lfi64<B> {
     type Option = LfiOption;
 
     fn new(
-        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError> {
-        let mut valid_characters: Vec<Vec<u8>> = alignable_sequence.into_iter().map(|v| vec![*v]).collect();
-        valid_characters.pop(); // Remove last character
+        let unique_sequence = get_unique_characters_of_sequence(
+            &concatenated_sequence_with_boundaries.concatenated_sequence
+        );
+        let mut valid_characters: Vec<Vec<u8>> = unique_sequence.into_iter().map(|v| vec![v]).collect();
+        if !option.use_safe_guard {
+            valid_characters.pop(); // Remove last character
+        }
         let characters_by_index: Vec<&[u8]> = valid_characters.iter()
             .map(|v| v.as_slice())
             .collect();
@@ -101,7 +124,7 @@ impl<B: Block<u64>> PatternIndex for Lfi64<B> {
                 })
             },
             Err(err) => {
-                Err(PatternIndexBuildError::Option(format!("{}", err)))
+                Err(PatternIndexBuildError::InvalidOption(format!("{}", err)))
             },
         }
     }

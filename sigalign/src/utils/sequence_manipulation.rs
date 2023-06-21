@@ -26,3 +26,13 @@ pub fn reverse_complement_of_dna(sequence: &[u8]) -> Vec<u8> {
 pub fn reverse_complement_of_rna(sequence: &[u8]) -> Vec<u8> {
     sequence.iter().rev().map(|&character| RNA_COMP_MAP[character as usize]).collect()
 }
+#[inline]
+pub fn get_unique_characters_of_sequence(sequence: &[u8]) -> Vec<u8> {
+    let mut table = [false; 256];
+    for chr in sequence {
+        table[*chr as usize] = true;
+    }
+    table.iter().enumerate().filter_map(|(idx, c)| {
+        if *c { Some(idx as u8) } else { None }
+    }).collect()
+}

@@ -8,9 +8,6 @@ pub mod test_data_path;
 pub mod random_text_and_pattern;
 // DP matrix to generate the answer result (NEW)
 pub mod dynamic_programming_matrix;
-// Aligner to validate the result (DEP)
-// mod dp_based_aligner;
-// pub use dp_based_aligner::DpBasedAligner;
 // Logger
 mod logger;
 use logger::init_logger;

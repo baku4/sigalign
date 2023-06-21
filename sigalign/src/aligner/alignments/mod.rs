@@ -28,13 +28,10 @@ impl<M, A> Aligner<M, A> where
         &mut self,
         reference: &Reference<I, S>,
         query: &[u8],
-    ) -> Result<AlignmentResult, AlignmentError> {
-        if !reference.is_alignable(query) {
-            return Err(AlignmentError::UnsupportedQuery)
-        }
+    ) -> AlignmentResult {
         let mut sequence_buffer = reference.get_sequence_buffer();
         let result = self.alignment(reference, &mut sequence_buffer, query);
-        Ok(result)
+        result
     }
     // FASTA
     pub fn align_fasta_file<I, S, P> (
@@ -69,20 +66,16 @@ impl<M, A> Aligner<M, A> where
         let mut sequence_buffer = reference.get_sequence_buffer();
         FastaAlignmentResult(
             fasta_reader.into_iter().filter_map(|(label, query)| {
-                if reference.is_alignable(&query) {
-                    let result = self.alignment(reference, &mut sequence_buffer, &query);
-                    if result.0.len() == 0 {
-                        None
-                    } else {
-                        Some(
-                            ReadAlignmentResult {
-                                read: label,
-                                result: result,
-                            }
-                        )
-                    }
-                } else {
+                let result = self.alignment(reference, &mut sequence_buffer, &query);
+                if result.0.len() == 0 {
                     None
+                } else {
+                    Some(
+                        ReadAlignmentResult {
+                            read: label,
+                            result: result,
+                        }
+                    )
                 }
             }).collect()
         )

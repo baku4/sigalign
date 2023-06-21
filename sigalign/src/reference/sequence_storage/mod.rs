@@ -1,5 +1,5 @@
 /*!
-The storage of sequences
+Provides the `SequenceStorage` and its basic implementations.
 */
 
 pub use crate::core::SequenceBuffer;

@@ -9,7 +9,8 @@ use crate::{
             },
         },
         extensions::Serialize,
-    }
+    },
+    utils::get_unique_characters_of_sequence,
 };
 
 pub enum LfiWrapper {
@@ -26,6 +27,7 @@ impl LfiWrapperOption {
         LfiOption {
             suffix_array_sampling_ratio: 1,
             lookup_table_kmer_size: lookup_table_size,
+            use_safe_guard: true,
         }
     }
 }
@@ -34,27 +36,28 @@ impl PatternIndex for LfiWrapper {
     type Option = LfiWrapperOption;
 
     fn new(
-        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError> {
-        let lfi_option = option.translate_to_lfi_option(alignable_sequence);
-        let chr_count = alignable_sequence.len();
+        let unique_characters = get_unique_characters_of_sequence(&concatenated_sequence_with_boundaries.concatenated_sequence);
 
-        if chr_count <= 4 {
-            let inner = Lfi32B2V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
+        let lfi_option = option.translate_to_lfi_option(&unique_characters);
+        let chr_count = unique_characters.len();
+
+        if chr_count <= 3 {
+            let inner = Lfi32B2V64::new(concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B2(inner))
-        } else if chr_count <= 8 {
-            let inner = Lfi32B3V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
+        } else if chr_count <= 7 {
+            let inner = Lfi32B3V64::new(concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B3(inner))
-        } else if chr_count <= 16 {
-            let inner = Lfi32B4V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
+        } else if chr_count <= 15 {
+            let inner = Lfi32B4V64::new(concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B4(inner))
-        } else if chr_count <= 32 {
-            let inner = Lfi32B5V64::new(alignable_sequence, concatenated_sequence_with_boundaries, lfi_option)?;
+        } else if chr_count <= 31 {
+            let inner = Lfi32B5V64::new(concatenated_sequence_with_boundaries, lfi_option)?;
             Ok(Self::B5(inner))
         } else {
-            Err(PatternIndexBuildError::OverMaximumCharacters { max: 32, input: chr_count as u32 })
+            Err(PatternIndexBuildError::OverMaximumCharacters { max: 31, input: chr_count as u32 })
         }
     }
     fn locate(&self, pattern: &[u8], search_range: &Vec<u32>) -> Vec<PatternLocation> {

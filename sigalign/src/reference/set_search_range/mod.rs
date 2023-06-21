@@ -5,7 +5,7 @@ use super::{
 };
 
 use thiserror::Error;
-/// An error that occurs when setting the search range.
+/// Defines the potential errors when attempting to set the search range.
 #[derive(Debug, Error)]
 pub enum SetSearchRangeError {
     #[error("Target index cannot be empty")]
@@ -18,6 +18,9 @@ impl<I, S> Reference<I, S> where
     I: PatternIndex,
     S: SequenceStorage,
 {
+    pub fn get_search_range(&self) -> &[u32] {
+        &self.search_range
+    }
     pub fn set_search_range(&mut self, mut target_index: Vec<u32>) -> Result<(), SetSearchRangeError> {
         target_index.sort_unstable();
         let last_record_index = match target_index.last() {
