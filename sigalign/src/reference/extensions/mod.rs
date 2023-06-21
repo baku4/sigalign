@@ -1,6 +1,10 @@
+/*!
+Supplementary functionalities for the `Reference`.
+
+This module houses auxiliary features that can be utilized by `Reference` given the proper implementation by `SequenceStorage` or `PatternIndex`. For instance, if both `SequenceStorage` and `PatternIndex` support the [Serialize] trait, a `Reference` defined by these implementations can benefit from serialization and deserialization.
+*/
 use super::{
     Reference,
-    SequenceType,
     PatternIndex,
     SequenceStorage,
 };

@@ -71,15 +71,14 @@ fn accurate_pattern_location_in_pattern_index() {
         boundaries,
     };
 
-    let alignable_sequence: Vec<u8> = {
-        let set: AHashSet<u8> = concated_text.iter().cloned().collect();
-        set.iter().cloned().collect()
-    };
     // Pattern index
     let pattern_index = Lfi32B2V64::new(
-        &alignable_sequence,
         concatenated_sequence_with_boundaries,
-        LfiOption { suffix_array_sampling_ratio: 1, lookup_table_kmer_size: 2 },
+        LfiOption {
+            suffix_array_sampling_ratio: 1,
+            lookup_table_kmer_size: 2,
+            use_safe_guard: true,
+        },
     ).unwrap();
     let search_range: Vec<u32> = (0..text_lengths.len()).map(|x| x as u32).collect();
     

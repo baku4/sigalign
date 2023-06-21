@@ -1,53 +1,111 @@
 /*!
-A database for multiple targeted sequences.
-# Reference
+Provides the `Reference` struct, a database for multiple targeted sequences.
+
 ## Features
 
-`Reference` has two main features:
-  1. Retrieve the target sequence by index.
-  2. Locate the exact matching pattern in all target sequences.
+- The `Reference` struct operates as a central repository for multiple target sequences, primarily for use by the `Aligner` to perform alignments.
+- During alignment, `Reference` remains immutable. It manages sequences through the `SequenceBuffer` defined in `SequenceStorage`.
+- The search range for the `Reference` can be tailored to specific needs.
 
-### 1. Retrieving the sequence
+## Architecture
 
-`Reference` is immutable to be safely shared between multiple threads. To accomplish immutability, retrieving the sequence is processed outside of the `Reference` through the following steps:
-  1. Get the sequence buffer (typically done by the `Aligner`).
-  2. Fill the sequence into the buffer.
-  3. Request the sequence from the buffer.
+The `Reference` encapsulates types conforming to the `SequenceStorage` and `PatternIndex` traits. Construction of a `Reference` requires specification of structs that implement these traits. While SigAlign offers default implementations in the 'sequence_storage' and 'pattern_index' modules, custom implementations are supported.
 
-The implementation of getting, filling, and requesting sequences can vary depending on use cases. Therefore, the `SequenceStorage` that handles the sequences is a `trait` instead of a `struct`.
+Upon the `Reference` structure's creation, direct access to `SequenceStorage` and `PatternIndex` implementations is restricted, with management handled by the `Aligner`.
 
-### 2. Locating the pattern
+### Trait `SequenceStorage`
 
-Pattern locating is necessary for the algorithm. In this algorithm, the sequence is divided into several patterns, and each pattern is located in all target sequences. Locating is the process of getting the index of the target sequence, which exactly matches the pattern. `PatternIndex` is responsible for this task using `FmIndex`.
+`SequenceStorage` is responsible for returning a target sequence when provided with its index. SigAlign remains agnostic to the storage and retrieval methods for sequences; these could be held in memory, stored in a file, or located in a remote physical location accessible over a network.
 
-## Fields
+`SequenceStorage` is designed to fetch a target sequence based on a given target index. SigAlign remains indifferent to the sequence storage and retrieval methods, which could be memory, file-based, or located in a remote physical space connected over a network.
 
-`Reference` has four fields:
-  1. `SequenceType`
-  2. `PatternIndex`
-  3. `SearchRange`
-  4. `SequenceStorage`
+### Trait `PatternIndex`
 
-### 1. SequenceType
+`PatternIndex` accepts pattern bytes and returns the indices of the targets exactly matching the pattern. The performance of `PatternIndex` significantly influences overall performance, and it can vary widely based on implementation details. Thus, `PatternIndex` should be defined differently according to use cases, considering factors like the maximum number of character types that can be indexed, the length of the targets, and the characteristics of the input query.
 
-`SequenceType` defines valid sequences. To compress the index and accelerate pattern locating, `Reference` creates an index only with the input character set. `SequenceType` stores the input characters and checks whether a sequence is indexed or not.
+## Usage
 
-### 2. PatternIndex
+### (1) Constructing `Reference` with `SequenceStorage`
 
-`PatternIndex` locates the exact matching pattern in all sequences. This is defined as a trait. In early versions of SigAlign, `PatternIndex` was a solid struct, but some issues arose:
-  1. The performance of `PatternIndex` accounted for a large portion of the overall performance, especially for short queries.
-  2. The inner structure of `PatternIndex` changed frequently. `LtFmIndex`, a Rust crate for pattern matching used in SigAlign, is actively being developed.
+```rust
+use sigalign::reference::{
+    Reference,
+    sequence_storage::in_memory::InMemoryStorage,
+    pattern_index::lfi::{Lfi32B2V64, LfiOption},
+};
 
-### 3. SearchRange
+// (1) Define the SequenceStorage
+let mut sequence_storage = InMemoryStorage::new();
+sequence_storage.add_target(
+    "target_1",
+    b"AAAA...AAA",
+);
+sequence_storage.add_target(
+    "target_2",
+    b"CCCC...CCC",
+);
 
-`SearchRange` is the **sorted** index of target sequences. This can be modified after building the reference. Adjusting the search range is useful when a large reference is built and used in cases that only need a subset of the reference without rebuilding the reference subset.
+// (2) Set options for PatternIndex
+let pattern_index_option = LfiOption::new(2, 4, true);
 
-### 4. SequenceStorage
+// (3) Construct Reference
+let reference = Reference::<Lfi32B2V64, InMemoryStorage>::new(
+    sequence_storage,
+    pattern_index_option,
+).unwrap();
+```
 
-`SequenceStorage` is the storage for all target sequences. `SequenceStorage` is defined as a trait. The implementation details of storing and parsing sequences can be optimized for various scenarios. SigAlign has default implementations of `SequenceStorage`. `InMemoryStorage` is one of them, storing all sequences in memory.
+### (2) Performing Alignment
+
+#### Use `Aligner`
+
+```rust
+let result = aligner.align_query(
+    &reference,
+    b"AA...CC",
+);
+
+let result = aligner.align_fasta_file(
+    &reference,
+    "FASTA_FILE_PATH",
+);
+```
+
+#### Directly manipulate `SequenceBuffer`
+
+```rust
+let mut sequence_buffer = reference.get_sequence_buffer();
+for query in [b"AA...CC", b"GG...TT"] {
+    aligner.alignment(
+        &reference,
+        &mut sequence_buffer,
+        query,
+    );
+}
+```
+
+### (3) Additional Features
+
+#### Adjusting search range
+
+```rust
+let mut reference = reference;
+// Perform alignment only on targets with index 0 and 1
+reference.set_search_range(vec![0, 1]).unwrap();
+```
+
+#### Saving and Loading `Reference`
+
+```rust
+use sigalign::reference::extensions::Serialize;
+// Save
+reference.save_to(&mut buffer).unwrap();
+// Load
+let reference = Reference::<Lfi32B2V64, InMemoryStorage>::load_from(&buffer[..]).unwrap();
+```
 */
-mod sequence_type;
-use sequence_type::SequenceType;
+// mod sequence_type;
+// use sequence_type::SequenceType;
 pub mod pattern_index;
 use pattern_index::{
     PatternIndex,
@@ -57,12 +115,12 @@ use pattern_index::{
 pub mod sequence_storage;
 use sequence_storage::SequenceStorage;
 
+/// A database for multiple targeted sequences.
 #[derive(Debug)]
 pub struct Reference<I, S> where
     I: PatternIndex,
     S: SequenceStorage,
 {
-    sequence_type: SequenceType,
     search_range: Vec<u32>,
     pattern_index: I,
     sequence_storage: S,
@@ -77,12 +135,7 @@ impl<I, S> Reference<I, S> where
         pattern_index_option: I::Option,
     ) -> Result<Self, ReferenceBuildError> {
         let concatenated_sequence_with_boundaries = sequence_storage.get_concatenated_sequence_with_boundaries();
-        let sequence_type = SequenceType::infer_from_sequence(
-            &concatenated_sequence_with_boundaries.concatenated_sequence
-        );
-        let alignable_sequence = sequence_type.alignable_sequence();
         let pattern_index = I::new(
-            &alignable_sequence,
             concatenated_sequence_with_boundaries,
             pattern_index_option,
         )?;
@@ -90,7 +143,6 @@ impl<I, S> Reference<I, S> where
         let search_range: Vec<u32> = (0..num_targets).collect();
 
         Ok(Self {
-            sequence_type,
             search_range,
             pattern_index,
             sequence_storage,
@@ -99,6 +151,7 @@ impl<I, S> Reference<I, S> where
 }
 
 use thiserror::Error;
+/// Enumerates possible errors encountered when constructing a `Reference`.
 #[derive(Debug, Error)]
 pub enum ReferenceBuildError {
     #[error(transparent)]
@@ -112,5 +165,5 @@ mod pattern_search;
 mod debug;
 mod set_search_range;
 pub use set_search_range::SetSearchRangeError;
-/// Extensions for [Reference]
+// Extensions
 pub mod extensions;

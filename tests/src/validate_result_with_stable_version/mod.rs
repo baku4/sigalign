@@ -158,7 +158,7 @@ fn print_the_first_alignment_result_for_semi_global() {
         let mut one_semi_global_result_of_current = semi_global_aligner.align_query(
             &reference,
             &one_query.1,
-        ).unwrap();
+        );
         one_semi_global_result_of_current.0.sort_by_key(|x| x.index);
         
         info!("Alignment of local mode is done");
@@ -259,7 +259,7 @@ fn print_the_first_alignment_result_for_local() {
         let mut one_local_result_of_current = local_aligner.align_query(
             &reference,
             &one_query.1,
-        ).unwrap();
+        );
         one_local_result_of_current.0.sort_by_key(|x| x.index);
         
         info!("Alignment of local mode is done");

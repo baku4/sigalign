@@ -1,10 +1,13 @@
+/*!
+Provides the `PatternIndex` and its basic implementations.
+*/
+
 pub use crate::core::PatternLocation;
 
 pub trait PatternIndex: Sized {
     type Option;
 
     fn new(
-        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError>;
@@ -31,19 +34,27 @@ pub struct ConcatenatedSequenceWithBoundaries {
 }
 
 use thiserror::Error;
+/// Enumerates possible errors encountered when constructing a `PatternIndex`.
 #[derive(Debug, Error)]
 pub enum PatternIndexBuildError {
+    /// Triggered when sequence length exceeds the maximum allowable capacity.
     #[error("Sequence length is over the maximum capacity {0}")]
     SequenceLengthOver(u64), // Maximum capacity
+
+    /// Triggered when unsupported sequence types are encountered.
     #[error("Unsupported sequence types: {0}")]
     UnsupportedSequenceType(String), // Concatenated unsupported sequence
+
+    /// Triggered when input characters exceed the maximum limit that the `PatternIndex` can index.
     #[error("Pattern index can make index of {max} characters, input is {input}")]
     OverMaximumCharacters{
         max: u32,    // The maximum number of characters that PatternIndex can index
         input: u32,  // Input characters
     },
+
+    /// Triggered when the invalid option is passed.
     #[error("Error in option: {0}")]
-    Option(String), // Error message
+    InvalidOption(String), // Error message
 }
 
 // Implementations for [PatternIndex]

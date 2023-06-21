@@ -67,8 +67,8 @@ impl InMemoryStorage {
     }
     pub fn add_target(
         &mut self,
-        sequence: &[u8],
         label: &str,
+        sequence: &[u8],
     ) {
         self.target_count += 1;
         self.concatenated_sequence.extend_from_slice(sequence);
@@ -91,7 +91,7 @@ impl InMemoryStorage {
         R: std::io::Read,
     {
         fasta_reader.for_each(|(label, sequence)| {
-            self.add_target(&sequence, &label);
+            self.add_target(&label, &sequence);
         });
     }
     pub fn to_reverse_complement(&self) -> Self {

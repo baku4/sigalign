@@ -1,51 +1,102 @@
 /*!
-An alignment executor that performs sequence alignment.
-# Aligner
-The `Aligner` receives two values: (1) the query sequence, and (2) the reference struct, and returns the alignment result.
+Provides the `Aligner` struct, an alignment worker that performs sequence alignment.
 
-The `Aligner` is responsible for managing the workspace required for alignment:
-  - It has a cache for alignment extension.
-    - The size of the cache is proportional to the square of the query length.
-    - The semi-global mode uses about half of the cache compared to the local mode for the same query length.
-  - It automatically controls the sequence buffer when a reference is passed.
-## Mode
-The `Aligner` has two modes:
-  1. Semi-global algorithm
-     - At each end of the alignment, either the query or the reference is fully consumed.
-       For example:
-         * Case 1
-           ```text
-           QUERY : -------------
-                       |||||||||
-           TARGET:     -------------
-           ```
-         * Case 2
-           ```text
-           QUERY :     -------------
-                       |||||||||
-           TARGET: -------------
-           ```
-         * Case 3
-           ```text
-           QUERY : -------------
-                      |||||||
-           TARGET:    -------
-           ```
-         * Case 4
-           ```text
-           QUERY :    -------
-                      |||||||
-           TARGET: -------------
-           ```
-  2. Local algorithm
-     - The alignment can include only parts of the target and query sequence.
-       For example:
-         ```text
-         QUERY : ----------------
-                     |||||||
-         TARGET:    ----------------
-         ```
-     - The result is the same as the semi-global alignments of all substrings in the query sequence.
+## Features
+
+- The `Aligner` conducts sequence alignment, given a query sequence and a `Reference`.
+- The creation of an `Aligner` is regulated by alignment parameters: (1) penalties and (2) similarity cutoffs.
+- The `Aligner` maintains a reusable workspace, allocating and managing the necessary space for alignment based on the alignment parameters and the length of the query.
+
+## Architecture
+
+The `Aligner` is characterized by two traits: `Mode` and `AllocationStrategy`.
+
+### trait `Mode`
+
+The alignment mode in bioinformatics dictates how sequences are compared and aligned. SigAlign supports two modes: semi-global and local.
+
+In the semi-global mode, either the query or the reference sequence is completely consumed at each alignment end.
+
+For instance:
+
+- Case 1
+```text
+QUERY : -------------
+            |||||||||
+TARGET:     -------------
+```
+- Case 2
+```text
+QUERY :     -------------
+            |||||||||
+TARGET: -------------
+```
+- Case 3
+```text
+QUERY : -------------
+          |||||||
+TARGET:   -------
+```
+- Case 4
+```text
+QUERY :   -------
+          |||||||
+TARGET: -------------
+```
+
+In the local mode, the alignment may include only parts of the target and query sequence.
+
+For example: 
+```text
+QUERY : ----------------
+               |||||||
+TARGET:    ----------------
+```
+
+The `Mode` trait is integral to SigAlign's core algorithm, and it is pre-defined with these two modes, not intended for user customization.
+
+### trait `AllocationStrategy`
+
+`AllocationStrategy` determines the strategy for allocating memory for alignment. The memory requirement correlates with the maximum length of the query. For example, if space for aligning a 200-length query is allocated, aligning a 400-length query would require additional allocation. However, if space for a 400-length query is already allocated, it can cover a 200-length query.
+
+`AllocationStrategy` defines the functions necessary for calculating the required space, providing a cap to each strategy as these functions can negatively impact performance if frequently called. For example, LinearStrategy allocates input query length plus a fixed size space, whereas DoublingStrategy allocates approximately twice the needed space. Users can define the `AllocationStrategy` that best suits their requirements.
+
+## Usage
+
+### (1) Initialize `Aligner`
+```rust
+let mut aligner = Aligner::<LocalMode, LinearStrategy>::new(
+    4,   // mismatch_penalty,
+    6,   // gap_open_penalty,
+    2,   // gap_extend_penalty,
+    50,  // minimum_aligned_length,
+    0.1, // maximum_penalty_per_length,
+).unwrap();
+```
+
+### (2) Perform Alignment
+#### Using `SequenceBuffer` (Lowest level)
+```rust
+let mut sequence_buffer = reference.get_sequence_buffer();
+for query in [b"AA...CC", b"GG...TT"] {
+    aligner.alignment(
+        &reference,
+        &mut sequence_buffer,
+        query,
+    );
+}
+```
+#### Using built-in methods
+```rust
+let result: AlignmentResult = aligner.align_query(
+    &reference,
+    b"AA..TT",
+);
+let result: FastaAlignmentResult = aligner.align_fasta_file(
+    &reference,
+    "FASTA_FILE_PATH",
+).unwrap();
+```
 */
 use crate::results::AlignmentResult;
 use crate::reference::{

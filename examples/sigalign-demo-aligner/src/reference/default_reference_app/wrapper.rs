@@ -18,10 +18,11 @@ use sigalign::{
         },
         extensions::Serialize,
     },
-    utils::FastaReader,
+    utils::{
+        FastaReader,
+        get_unique_characters_of_sequence,
+    },
 };
-
-mod lfi_wrapper;
 
 pub struct SigReferenceWrapper {
     pub inner: Reference<LfiWrapper, InMemoryStorage>,
@@ -40,18 +41,18 @@ impl PatternIndex for LfiWrapper {
     type Option = LfiOption;
 
     fn new(
-        alignable_sequence: &[u8],
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
         option: Self::Option,
     ) -> Result<Self, PatternIndexBuildError> {
-        let chr_count = alignable_sequence.len();
+        let unique_characters = get_unique_characters_of_sequence(&concatenated_sequence_with_boundaries.concatenated_sequence);
+        let chr_count = unique_characters.len();
         if chr_count <= 4 {
             Ok(Self::B2(
-                Lfi32B2V64::new(alignable_sequence, concatenated_sequence_with_boundaries, option)?
+                Lfi32B2V64::new(concatenated_sequence_with_boundaries, option)?
             ))
         } else if chr_count <= 8 {
             Ok(Self::B3(
-                Lfi32B3V64::new(alignable_sequence, concatenated_sequence_with_boundaries, option)?
+                Lfi32B3V64::new(concatenated_sequence_with_boundaries, option)?
             ))
         } else {
             Err(
@@ -129,7 +130,7 @@ impl SigReferenceWrapper {
                 let mut current_size = 0;
                 for (label, seq) in fasta_reader {
                     if current_size + seq.len() <= maximum_size {
-                        ss.add_target(&seq, &label);
+                        ss.add_target(&label, &seq);
                         current_size += seq.len();
                     } else {
                         let mut to_swap_ss = InMemoryStorage::new();
@@ -138,7 +139,7 @@ impl SigReferenceWrapper {
                             to_swap_ss.append_reverse_complement();
                         }
                         sss.push(to_swap_ss);
-                        ss.add_target(&seq, &label);
+                        ss.add_target(&label, &seq);
                         current_size = seq.len();
                     }
                 }
@@ -162,6 +163,7 @@ impl SigReferenceWrapper {
             LfiOption {
                 suffix_array_sampling_ratio: sasr,
                 lookup_table_kmer_size: ltks as u32,
+                use_safe_guard: false,
             }
         };
         let reference = InnerReference::new(

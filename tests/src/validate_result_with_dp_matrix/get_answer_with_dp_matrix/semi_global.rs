@@ -10,7 +10,7 @@ pub fn get_cached_semi_global_result_with_dp_matrix(
     gap_extend_penalty: u32,
     min_length: u32,
     max_penalty_per_length: f32,
-) -> AlignmentResult {
+) -> Option<AlignmentResult> {
     let local_tmp_dir = get_local_tmp_dir().unwrap();
     let result_cache_name = format!(
         "DPM_SG_{}_{}_{}_{}_{}_{}_{}.json",
@@ -38,5 +38,5 @@ pub fn get_cached_semi_global_result_with_dp_matrix(
     } else {
         info!("DPM gets cached result");
     }
-    parse_cached_result(&result_cache_file)
+    Some(parse_cached_result(&result_cache_file))
 }
