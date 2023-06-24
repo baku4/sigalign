@@ -1,13 +1,5 @@
 use crate::{
-    core::PatternLocation,
     reference::{
-        pattern_index::{
-            PatternIndex, PatternIndexBuildError, ConcatenatedSequenceWithBoundaries,
-            lfi::{
-                Lfi32B2V64, Lfi32B3V64, Lfi32B4V64, Lfi32B5V64,
-                LfiOption,
-            },
-        },
         extensions::{
             Serialize,
             EstimateSize,
@@ -16,27 +8,41 @@ use crate::{
     utils::get_unique_characters_of_sequence,
 };
 
-pub enum LfiWrapper {
+use super::{
+    PatternIndex, PatternLocation, ConcatenatedSequenceWithBoundaries,
+    PatternIndexBuildError,
+    Lfi32B2V64, Lfi32B3V64, Lfi32B4V64, Lfi32B5V64,
+    LfiOption,
+};
+
+pub enum DynamicLfi {
     B2(Lfi32B2V64),
     B3(Lfi32B3V64),
     B4(Lfi32B4V64),
     B5(Lfi32B5V64),
 }
-pub struct LfiWrapperOption;
-impl LfiWrapperOption {
-    pub fn translate_to_lfi_option(self, alignable_sequence: &[u8]) -> LfiOption {
+#[derive(Debug, Clone)]
+pub struct DynamicLfiOption {
+    pub suffix_array_sampling_ratio: u64,
+    pub max_lookup_table_byte_size: usize,
+}
+impl DynamicLfiOption {
+    fn translate_to_lfi_option(self, alignable_sequence: &[u8]) -> LfiOption {
         let chr_count = alignable_sequence.len();
-        let lookup_table_size = calculate_lookup_table_kmer_size(chr_count);
+        let lookup_table_size = calculate_lookup_table_kmer_size_using_safe_guard(
+            chr_count,
+            self.max_lookup_table_byte_size,
+        );
         LfiOption {
-            suffix_array_sampling_ratio: 1,
+            suffix_array_sampling_ratio: self.suffix_array_sampling_ratio,
             lookup_table_kmer_size: lookup_table_size,
             use_safe_guard: true,
         }
     }
 }
 
-impl PatternIndex for LfiWrapper {
-    type Option = LfiWrapperOption;
+impl PatternIndex for DynamicLfi {
+    type Option = DynamicLfiOption;
 
     fn new(
         concatenated_sequence_with_boundaries: ConcatenatedSequenceWithBoundaries,
@@ -73,20 +79,23 @@ impl PatternIndex for LfiWrapper {
     }
 }
 
-/// Calculate the kmer size that makes the lookup table smaller than 5Mb.
-/// Maximum is 14
-fn calculate_lookup_table_kmer_size(chr_count: usize) -> u32 {
-    for v in 1..23 {
-        let estimated_byte_size_of_lt = chr_count.pow(v);
-        if estimated_byte_size_of_lt >= 5242880 { // 5Mb
+/// Calculate the kmer size that makes the lookup table.
+fn calculate_lookup_table_kmer_size_using_safe_guard(
+    chr_count: usize,
+    maximum_byte_size: usize,
+) -> u32 {
+    let max_cap = 50;
+    for v in 1..=max_cap {
+        let estimated_byte_size_of_lt = (chr_count+1).pow(v);
+        if estimated_byte_size_of_lt >= maximum_byte_size {
             return v - 1
         }
     }
-    22 // value of 2
+    max_cap
 }
 
 use crate::core::{EndianType, WriteBytesExt, ReadBytesExt};
-impl Serialize for LfiWrapper {
+impl Serialize for DynamicLfi {
     fn save_to<W>(&self, mut writer: W) -> Result<(), std::io::Error> where
         W: std::io::Write
     {
@@ -141,7 +150,7 @@ impl Serialize for LfiWrapper {
         }
     }
 }
-impl EstimateSize for LfiWrapper {
+impl EstimateSize for DynamicLfi {
     fn serialized_size(&self) -> usize {
         std::mem::size_of::<u64>()
         + match self {
@@ -152,7 +161,7 @@ impl EstimateSize for LfiWrapper {
         }
     }
 }
-impl LfiWrapper {
+impl DynamicLfi {
     // MAGIC NUMBERS: FNV1A32 hash value of
     // LtFmIndexPosition32Block2Vector64: 956ed7f2
     const B2_MAGIC_NUMBER: u64 = 2507069426;
