@@ -64,8 +64,8 @@ pub enum AlignmentOperation {
     Deletion,
 }
 
-pub mod fasta;
 pub mod labeled;
+pub mod fasta;
 mod to_json;
 
 // Features

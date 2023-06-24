@@ -10,6 +10,12 @@ use lt_fm_index::{
     LtFmIndex, Block, blocks,
 };
 
+mod dynamic;
+pub use dynamic::{
+    DynamicLfi,
+    DynamicLfiOption,
+};
+
 pub type Lfi32B2V64 = Lfi32<blocks::Block2<u64>>;
 pub type Lfi32B3V64 = Lfi32<blocks::Block3<u64>>;
 pub type Lfi32B4V64 = Lfi32<blocks::Block4<u64>>;
@@ -23,6 +29,7 @@ pub struct Lfi64<B: Block<u64>> {
     inner: LtFmIndex<u64, B>,
     boundaries: Vec<u64>,
 }
+#[derive(Debug, Clone)]
 pub struct LfiOption {
     pub suffix_array_sampling_ratio: u64,
     pub lookup_table_kmer_size: u32,

@@ -67,7 +67,7 @@ impl<M, A> Aligner<M, A> where
         FastaAlignmentResult(
             fasta_reader.into_iter().filter_map(|(label, query)| {
                 let result = self.alignment(reference, &mut sequence_buffer, &query);
-                if result.0.len() == 0 {
+                if result.result_counts() == 0 {
                     None
                 } else {
                     Some(

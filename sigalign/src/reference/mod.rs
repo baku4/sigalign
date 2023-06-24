@@ -123,7 +123,7 @@ pub struct Reference<I, S> where
 {
     search_range: Vec<u32>,
     pattern_index: I,
-    sequence_storage: S,
+    pub(crate) sequence_storage: S,
 }
 
 impl<I, S> Reference<I, S> where
