@@ -59,26 +59,45 @@
       console.log(err);
     })
   }
+  function resetResults() {
+    query = "";
+    alignmentResult = null;
+    errorMsg = null;
+  }
 </script>
 
 <h3 class="header">🛠️ Pass the query</h3>
-<p>
-</p>
-<TextArea
-  bind:value={query}
-  height_rem={4}
-/>
+
+<!-- Query Text Area -->
+{#if alignmentResult === null}
+  <TextArea
+    bind:value={query}
+    height_rem={4}
+  />
+{:else}
+  <div style="margin-top: 1rem;margin-left: 1rem;">Alignment is done.</div>
+{/if}
+
+<!-- Error Log -->
 {#if errorMsg !== null}
   <div class="button-wrapper">
     {@html errorMsg}
   </div>
 {/if}
-<div class="button-wrapper">
-  <button class="default primary" on:click={getSampleQuery}>Get sample query</button>
-</div>
-<div class="button-wrapper">
-  <button class="default primary" on:click={startAlignment}>Start Alignment</button>
-</div>
+
+<!-- Buttons -->
+{#if alignmentResult === null}
+  <div class="button-wrapper">
+    <button class="default primary" on:click={getSampleQuery}>Get sample query</button>
+  </div>
+  <div class="button-wrapper">
+    <button class="default primary" on:click={startAlignment}>Start Alignment</button>
+  </div>
+{:else}
+  <div class="button-wrapper">
+    <button class="default primary" on:click={resetResults}>Reset Results</button>
+  </div>
+{/if}
 
 <style>
   

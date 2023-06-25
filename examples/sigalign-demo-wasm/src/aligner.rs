@@ -17,7 +17,7 @@ pub struct Aligner {
     po: u32,
     pe: u32,
     ml: u32,
-    mppl: f32,
+    mpl: f32,
     is_local: bool,
     pattern_size: u32,
     inner: DefaultAligner,
@@ -27,13 +27,14 @@ pub struct Aligner {
 impl Aligner {
     #[wasm_bindgen(constructor)]
     pub fn new(
-        is_local: bool,
         mismatch_penalty: u32,
         gap_open_penalty: u32,
         gap_extend_penalty: u32,
         minimum_aligned_length: u32,
         maximum_penalty_per_length: f32,
+        is_local: Option<bool>,
     ) -> Result<Aligner, JsError> {
+        let is_local = is_local.unwrap_or(true);
         let inner = if is_local {
             DefaultAligner::new_local(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)
         } else {
@@ -48,7 +49,7 @@ impl Aligner {
                     po: gap_open_penalty,
                     pe: gap_extend_penalty,
                     ml: minimum_aligned_length,
-                    mppl: maximum_penalty_per_length,
+                    mpl: maximum_penalty_per_length,
                     is_local,
                     pattern_size,
                     inner,
@@ -90,8 +91,8 @@ impl Aligner {
         self.ml
     }
     #[wasm_bindgen(getter)]
-    pub fn mppl(&self) -> f32 {
-        self.mppl
+    pub fn mpl(&self) -> f32 {
+        self.mpl
     }
     #[wasm_bindgen(getter)]
     pub fn is_local(&self) -> bool {
@@ -107,9 +108,8 @@ impl Aligner {
             po: self.po,
             pe: self.pe,
             ml: self.ml,
-            mppl: self.mppl,
+            mpl: self.mpl,
             is_local: self.is_local,
-            pattern_size: self.pattern_size,
         }
     }
 }
@@ -120,7 +120,6 @@ pub struct AlignerStatus {
     pub po: u32,
     pub pe: u32,
     pub ml: u32,
-    pub mppl: f32,
+    pub mpl: f32,
     pub is_local: bool,
-    pub pattern_size: u32,
 }

@@ -18,7 +18,7 @@ Two pairs of sequences that look like above + one random one
 */
 #[wasm_bindgen]
 pub fn get_sample_target_as_fasta_string() -> String {
-    let mut record_sequences: Vec<String> = Vec::with_capacity(5);
+    let mut target_sequences: Vec<String> = Vec::with_capacity(5);
 
     let mut rng = rand::thread_rng();
     for _ in 0..2 {
@@ -31,18 +31,18 @@ pub fn get_sample_target_as_fasta_string() -> String {
         let right_edge_len = rng.gen_range(MIN_EDGE_LEN..=MAX_EDGE_LEN);
         let right_edge = get_random_seq(&mut rng, right_edge_len);
 
-        record_sequences.push(left_edge + &stem);
-        record_sequences.push(stem + &right_edge);
+        target_sequences.push(left_edge + &stem);
+        target_sequences.push(stem + &right_edge);
     }
     let seq_len = rng.gen_range(MIN_STEM_LEN+MIN_EDGE_LEN..=MAX_STEM_LEN+MAX_EDGE_LEN);
     let seq = get_random_seq(&mut rng, seq_len);
-    record_sequences.push(seq);
+    target_sequences.push(seq);
     
-    record_sequences.shuffle(&mut rng);
+    target_sequences.shuffle(&mut rng);
 
     format!(
-        ">first_record\n{}\n>second_record\n{}\n>third_record\n{}\n>fourth_record\n{}\n>fifth_record\n{}",
-        record_sequences[0], record_sequences[1], record_sequences[2], record_sequences[3], record_sequences[4]
+        ">first_target\n{}\n>second_target\n{}\n>third_target\n{}\n>fourth_target\n{}\n>fifth_target\n{}",
+        target_sequences[0], target_sequences[1], target_sequences[2], target_sequences[3], target_sequences[4]
     )
 }
 
