@@ -11,7 +11,7 @@
   import init, {
     Reference,
     Aligner,
-    AlignmentResult,
+    type AlignmentResult,
   } from './wasm/sigalign_demo_wasm';
 
   let wasm;
@@ -98,8 +98,9 @@
       ></BuildReference>
     </div>
 
-    
-    
+
+
+
     <h2 class="header">(2) Make <span class="highlight">Aligner</span></h2>
     <p>
       The <span class="highlight">Aligner</span> has a specification for how to align. It performs alignment when query and reference are given, automatically managing the workspace for alignment, which is very small and reusable.

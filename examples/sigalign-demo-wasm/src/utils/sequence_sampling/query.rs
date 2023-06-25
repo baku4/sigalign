@@ -15,13 +15,13 @@ pub fn get_sample_query(
     let po = aligner.po();
     let pe = aligner.pe();
     let ml = aligner.ml();
-    let mpl = aligner.mppl();
-    let target_count = reference.target_count();
+    let mpl = aligner.mpl();
+    let num_targets = reference.num_targets();
     let allowed_chr_list = reference.get_sorted_characters_in_targets();
 
     let mut rng = rand::thread_rng();
 
-    let mut rec_idx_list: Vec<u32> = (0..target_count).collect();
+    let mut rec_idx_list: Vec<u32> = (0..num_targets).collect();
     rec_idx_list.shuffle(&mut rng);
 
     // Get record seq

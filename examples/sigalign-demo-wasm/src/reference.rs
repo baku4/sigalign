@@ -1,15 +1,21 @@
 use sigalign::{
     reference::{
-        sequence_storage::SequenceBuffer,
+        Reference as SigReference,
+        sequence_storage::{
+            SequenceBuffer,
+            in_memory::InMemoryStorage,
+        },
+        pattern_index::{
+            lfi::{DynamicLfi, DynamicLfiOption},
+        },
         extensions::EstimateSize,
-    },
-    wrapper::{
-        DefaultReference,
     },
 };
 use wasm_bindgen::prelude::*;
 use crate::utils::err_to_js_err;
 use ahash::AHashSet;
+
+type DefaultReference = SigReference<DynamicLfi, InMemoryStorage>;
 
 #[wasm_bindgen]
 pub struct Reference {
@@ -21,11 +27,20 @@ pub struct Reference {
 impl Reference {
     pub async fn build(
         fasta: &str,
+        sasr: Option<usize>, // suffix_array_sampling_ratio
+        lts: Option<usize>, // max_lookup_table_size
     ) -> Result<Reference, JsError> {
-        let inner = DefaultReference::from_fasta_bytes(
-            fasta.as_bytes()
-        );
-        match inner {
+        let sasr = sasr.unwrap_or(1) as u64;
+        let lts = lts.unwrap_or(100_000);
+        let pattern_index_option = DynamicLfiOption {
+            suffix_array_sampling_ratio: sasr,
+            max_lookup_table_byte_size: lts,
+        };
+
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta_bytes(fasta.as_bytes());
+        
+        match DefaultReference::new(sequence_storage, pattern_index_option) {
             Ok(inner) => {
                 let characters_in_targets = Self::get_sorted_characters_in_targets_from_reference(&inner);
                 Ok(Self::new(inner, characters_in_targets))
@@ -61,7 +76,7 @@ impl Reference {
     pub fn drop(self) {
         drop(self)
     }
-    pub fn target_count(&self) -> u32 {
+    pub fn num_targets(&self) -> u32 {
         self.inner.num_targets()
     }
     pub fn get_target_sequence(&self, target_index: u32) -> Vec<u8> {
@@ -69,12 +84,12 @@ impl Reference {
         self.inner.fill_sequence_buffer(target_index, &mut buffer);
         let sequence = buffer.buffered_sequence();
         sequence.to_vec()
-    } 
+    }
     pub fn get_status(&self) -> ReferenceStatus {
-        let target_count = self.target_count();
+        let num_targets = self.num_targets();
         let est_byte_size = self.inner.serialized_size();
         ReferenceStatus {
-            target_count,
+            num_targets,
             est_byte_size,
         }
     }
@@ -88,6 +103,6 @@ impl AsRef<DefaultReference> for Reference {
 
 #[wasm_bindgen]
 pub struct ReferenceStatus {
-    pub target_count: u32,
+    pub num_targets: u32,
     pub est_byte_size: usize,
 }
