@@ -13,9 +13,9 @@ use sigalign::wrapper::{
 
 // (1) Build `Reference`
 let fasta =
-br#">record_1
+br#">target_1
 ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA
->record_2
+>target_2
 TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC"#;
 let reference = DefaultReference::from_fasta_bytes(fasta).unwrap();
 
