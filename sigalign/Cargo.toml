@@ -1,16 +1,14 @@
 [package]
 name = "sigalign"
-version = "0.3.0-alpha.1"
+version = "0.3.0"
 authors = ["baku4 <bahkhun@gamil.com>"]
 edition = "2021"
-description = "Pairwise alignment algorithm using gap-affine penalty for nucleotide and amino-acid sequences."
+description = "A Similarity-Guided Pairwise Alignment Algorithm"
 readme = "../README.md"
 repository = "https://github.com/baku4/sigalign/"
 license = "MIT"
 keywords = ["alignment", "nucleotide", "bioinformatics", "bio"]
 categories = ["science"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 num = "0.4.0"
@@ -20,15 +18,14 @@ ahash = "0.8.0"
 byteorder = "1.4.3"
 bytemuck = "1.13.0"
 capwriter = "0.2.0"
-faimm = "0.3.0"
 serde = "1.0.152"
 serde_json = "1.0.93"
 seq_io = "0.3.1"
 
 [dependencies.lt-fm-index]
-version = "0.7.0-alpha.1"
+version = "0.7.0-alpha.2"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.lt-fm-index]
-version = "0.7.0-alpha.1"
+version = "0.7.0-alpha.2"
 features = ["fastbwt"]
 
 [features]
