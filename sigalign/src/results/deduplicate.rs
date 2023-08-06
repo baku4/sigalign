@@ -9,7 +9,7 @@ use super::{
 use ahash::AHashSet;
 
 impl AlignmentResult {
-    pub fn deduplicate(mut self) {
+    pub fn deduplicate(&mut self) {
         let mut paths = AHashSet::new();
         
         self.0.iter_mut().for_each(|v| {

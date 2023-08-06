@@ -88,20 +88,30 @@ impl WaveFront {
         let gap_open_penalty = &penalties.o;
         let gap_extend_penalty = &penalties.e;
 
-        let max_k = self.wave_front_scores[penalty as usize].max_k;
-        let new_components_by_k = &self.wave_front_scores[penalty as usize].components_by_k;
+        let (
+            max_k,
+            num_components,
+            new_components_ptr,
+        ) = {
+            let next_wave_front_score = &mut self.wave_front_scores[penalty as usize];
+            (
+                next_wave_front_score.max_k,
+                next_wave_front_score.components_by_k.len(),
+                next_wave_front_score.components_by_k.as_mut_ptr(),
+            )
+        };
         unsafe {
-            let ptr = new_components_by_k.as_ptr() as *mut u8;
-            let byte_count = new_components_by_k.len() * std::mem::size_of::<Components>();
+            let ptr = new_components_ptr as *mut u8;
+            let byte_count = num_components * std::mem::size_of::<Components>();
             std::ptr::write_bytes(ptr, 0, byte_count);
         }
 
         // (1) From score: s-o-e
         if let Some(pre_score) = penalty.checked_sub(gap_open_penalty + gap_extend_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
-            new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
+            for index_of_k in 0..num_components {
                 let k = index_of_k as i32 - max_k;
-                let new_components_of_k = component as *const Components as *mut Components;
+                let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
                 // 1. Update I from M & M from I
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
                     let pre_m_component = &pre_components.m;
@@ -132,14 +142,49 @@ impl WaveFront {
                         }
                     }
                 }
-            });
+            }
+
+            // current_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
+            //     let k = index_of_k as i32 - max_k;
+            //     let new_components_of_k = component as *const Components as *mut Components;
+            //     // 1. Update I from M & M from I
+            //     if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
+            //         let pre_m_component = &pre_components.m;
+            //         if pre_m_component.bt != BackTraceMarker::Empty {
+            //             // Update I
+            //             unsafe {
+            //                 (*new_components_of_k).i = Component {
+            //                     fr: pre_m_component.fr + 1,
+            //                     deletion_count: pre_m_component.deletion_count,
+            //                     bt: BackTraceMarker::FromM,
+            //                     traversed: false,
+            //                 };
+            //             }
+            //         }
+            //     }
+            //     // 2. Update D from M & M from D
+            //     if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k+1) {
+            //         let pre_m_component = &pre_components.m;
+            //         if pre_m_component.bt != BackTraceMarker::Empty {
+            //             // Update D
+            //             unsafe {
+            //                 (*new_components_of_k).d = Component {
+            //                     fr: pre_m_component.fr,
+            //                     deletion_count: pre_m_component.deletion_count + 1,
+            //                     bt: BackTraceMarker::FromM,
+            //                     traversed: false,
+            //                 };
+            //             }
+            //         }
+            //     }
+            // });
         }
         // (2) From score: s-e
         if let Some(pre_score) = penalty.checked_sub(*gap_extend_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
-            new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
+            for index_of_k in 0..num_components {
                 let k = index_of_k as i32 - max_k;
-                let new_components_of_k = component as *const Components as *mut Components;
+                let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
                 // 1. Update I from I
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
                     let pre_i_component = &pre_components.i;
@@ -175,14 +220,53 @@ impl WaveFront {
                         }
                     }
                 }
-            });
+            }
+            // current_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
+            //     let k = index_of_k as i32 - max_k;
+            //     let new_components_of_k = component as *const Components as *mut Components;
+            //     // 1. Update I from I
+            //     if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
+            //         let pre_i_component = &pre_components.i;
+
+            //         if pre_i_component.bt != BackTraceMarker::Empty {
+            //             // Update I
+            //             unsafe {
+            //                 if (*new_components_of_k).i.bt == BackTraceMarker::Empty || (*new_components_of_k).i.fr < pre_i_component.fr + 1 {
+            //                     (*new_components_of_k).i = Component {
+            //                         fr: pre_i_component.fr + 1,
+            //                         deletion_count: pre_i_component.deletion_count,
+            //                         bt: BackTraceMarker::FromI,
+            //                         traversed: false,
+            //                     };
+            //                 }
+            //             };
+            //         }
+            //     }
+            //     // 2. Update D from D
+            //     if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k+1) {
+            //         let pre_d_component = &pre_components.d;
+            //         if pre_d_component.bt != BackTraceMarker::Empty {
+            //             // Update D
+            //             unsafe {
+            //                 if (*new_components_of_k).d.bt == BackTraceMarker::Empty || (*new_components_of_k).d.fr < pre_d_component.fr {
+            //                     (*new_components_of_k).d = Component {
+            //                         fr: pre_d_component.fr,
+            //                         deletion_count: pre_d_component.deletion_count + 1,
+            //                         bt: BackTraceMarker::FromD,
+            //                         traversed: false,
+            //                     };
+            //                 };
+            //             }
+            //         }
+            //     }
+            // });
         }
         // (3) From score: s-x
         if let Some(pre_score) = penalty.checked_sub(*mismatch_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
-            new_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
+            for index_of_k in 0..num_components {
                 let k = index_of_k as i32 - max_k;
-                let new_components_of_k = component as *const Components as *mut Components;
+                let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
                 // 1. Update M from M
                 let pre_component_index = (pre_wave_front_score.max_k + k) as usize;
 
@@ -222,7 +306,50 @@ impl WaveFront {
                         };
                     }
                 }
-            });
+            }
+            // current_components_by_k.iter().enumerate().for_each(|(index_of_k, component)| {
+            //     let k = index_of_k as i32 - max_k;
+            //     let new_components_of_k = component as *const Components as *mut Components;
+            //     // 1. Update M from M
+            //     let pre_component_index = (pre_wave_front_score.max_k + k) as usize;
+
+            //     if let Some(pre_components) = pre_wave_front_score.components_by_k.get(pre_component_index) {
+            //         let pre_m_component = &pre_components.m;
+            //         // Update M
+            //         unsafe {
+            //             (*new_components_of_k).m = Component {
+            //                 fr: pre_m_component.fr + 1,
+            //                 deletion_count: pre_m_component.deletion_count,
+            //                 bt: BackTraceMarker::FromM,
+            //                 traversed: false,
+            //             };
+            //         }
+            //     }
+            //     unsafe {
+            //         // 2. Update M from I
+            //         if (*new_components_of_k).i.bt != BackTraceMarker::Empty {
+            //             if (*new_components_of_k).m.bt == BackTraceMarker::Empty || (*new_components_of_k).i.fr >= (*new_components_of_k).m.fr {
+            //                 (*new_components_of_k).m = Component {
+            //                     fr: (*new_components_of_k).i.fr,
+            //                     deletion_count: (*new_components_of_k).i.deletion_count,
+            //                     bt: BackTraceMarker::FromI,
+            //                     traversed: false,
+            //                 };
+            //             };
+            //         }
+            //         // 3. Update M from D
+            //         if (*new_components_of_k).d.bt != BackTraceMarker::Empty {
+            //             if (*new_components_of_k).m.bt == BackTraceMarker::Empty || (*new_components_of_k).d.fr >= (*new_components_of_k).m.fr {
+            //                 (*new_components_of_k).m = Component {
+            //                     fr: (*new_components_of_k).d.fr,
+            //                     deletion_count: (*new_components_of_k).d.deletion_count,
+            //                     bt: BackTraceMarker::FromD,
+            //                     traversed: false,
+            //                 };
+            //             };
+            //         }
+            //     }
+            // });
         }
     }
 }
