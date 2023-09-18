@@ -67,6 +67,7 @@ pub enum AlignmentOperation {
 pub mod labeled;
 pub mod fasta;
 mod to_json;
+mod to_sam;
 
 // Features
 mod count_results;
