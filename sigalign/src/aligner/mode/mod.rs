@@ -15,7 +15,7 @@ mod semi_global;
 pub use local::LocalMode;
 pub use semi_global::SemiGlobalMode;
 
-pub trait AlignmentMode {
+pub trait AlignmentMode: Clone {
     fn new(
         initial_query_length: u32,
         regulator: &AlignmentRegulator,

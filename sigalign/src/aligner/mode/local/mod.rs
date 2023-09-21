@@ -22,6 +22,7 @@ use super::{
     WaveFrontPool, DoubleWaveFrontPool,
 };
 
+#[derive(Clone)]
 pub struct LocalMode {
     spare_penalty_calculator: SparePenaltyCalculator,
     wave_front_pool: DoubleWaveFrontPool,

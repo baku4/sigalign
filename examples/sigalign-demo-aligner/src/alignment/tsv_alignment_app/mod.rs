@@ -1,22 +1,19 @@
-use super::{Result, error_msg};
+use super::Result;
 use std::{
     path::PathBuf,
-    time::Instant, fs::File,
+    time::Instant,
     io::{Write, BufWriter, StdoutLock},
 };
 use clap::{
     builder::{Command, Arg},
     arg,
     ArgMatches,
-    ArgGroup,
     value_parser,
 };
 
-use crate::{
-    reference::{
-        SigReferenceWrapper,
-        ReferencePaths,
-    }
+use crate::reference::{
+    SigReferenceWrapper,
+    ReferencePaths,
 };
 use sigalign::{
     aligner::{
@@ -27,7 +24,6 @@ use sigalign::{
     results::{
         AlignmentResult,
         TargetAlignmentResult,
-        AnchorAlignmentResult,
         AlignmentOperations,
         AlignmentOperation,
     },

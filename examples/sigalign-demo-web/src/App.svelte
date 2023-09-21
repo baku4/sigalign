@@ -31,14 +31,17 @@
 <main>
   <div id="title">
     <div class="title_content">
-      <h1>Tour🚀 of <i>SigAlign</i></h1>
-      with simple web app for pairwise alignment
+      <h1><i>SigAlign</i> Showcase</h1>
+      <p>A simple and interactive app to demonstrate the <i>SigAlign</i> in the Browser.</p>
     </div>
   </div>
 
 
   <div class="content">
     <h1>Welcome!</h1>
+    <p>
+      <i>SigAlign</i> is a cutting-edge library designed for pairwise alignment of biological sequences, employing a gap-affine penalty-based scoring scheme and unique similarity cutoffs to reflect the complex nature of biological sequences.
+    </p>
     <p>
       <i>SigAlign</i> is a library for pairwise alignment of biological (nucleotide and amino acid) sequences. Pairwise sequence alignment (PSA) is the process of matching two sequences to identify similarity, and it is a critical step in many bioinformatics and computational biology applications. If you are new to sequence alignment, a quick scratch on <a href="https://en.wikipedia.org/wiki/Sequence_alignment" target="_blank" rel="noreferrer">Wikipedia</a> will be helpful.
     </p>

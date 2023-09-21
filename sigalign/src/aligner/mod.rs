@@ -117,6 +117,7 @@ use allocation_strategy::{
 pub mod mode;
 use mode::AlignmentMode;
 
+#[derive(Clone)]
 pub struct Aligner<M, A> where
     M: AlignmentMode,
     A: AllocationStrategy,

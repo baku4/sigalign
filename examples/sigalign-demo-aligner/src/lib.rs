@@ -1,16 +1,9 @@
-use anyhow::{Result, format_err, bail as error_msg};
+use anyhow::{Result, bail as error_msg};
 
-use clap::{
-    Command,
-};
+use clap::Command;
 
 mod reference;
-use reference::{
-    ReferenceApp,
-    SigReferenceWrapper,
-    ReferencePaths,
-    InnerReference,
-};
+use reference::ReferenceApp;
 
 mod alignment;
 use alignment::AlignmentApp;

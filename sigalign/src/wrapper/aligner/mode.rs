@@ -9,7 +9,7 @@ use crate::aligner::{
     mode::{AlignmentMode, LocalMode, SemiGlobalMode},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SwitchableMode {
     Local(LocalMode),
     SemiGlobal(SemiGlobalMode),

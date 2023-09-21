@@ -20,6 +20,7 @@ use super::{
     WaveFrontPool, SingleWaveFrontPool,
 };
 
+#[derive(Clone)]
 pub struct SemiGlobalMode {
     spare_penalty_calculator: SparePenaltyCalculator,
     wave_front_pool: SingleWaveFrontPool,

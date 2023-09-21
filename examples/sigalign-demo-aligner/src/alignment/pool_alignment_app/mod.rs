@@ -1,42 +1,36 @@
-use super::{Result, error_msg};
+use super::Result;
 use std::{
     path::PathBuf,
-    time::Instant, fs::File,
-    io::Write,
+    time::Instant, io::Write,
 };
 use clap::{
     builder::{Command, Arg},
     arg,
     ArgMatches,
-    ArgGroup,
     ArgAction,
     value_parser,
 };
 
-use crate::{
-    reference::{
-        SigReferenceWrapper,
-        ReferencePaths,
-        InnerReference,
-    }
+use crate::reference::{
+    SigReferenceWrapper,
+    ReferencePaths,
+    InnerReference,
 };
 use sigalign::{
-    reference::{ReferenceInterface},
-    wrapper::{DefaultAligner},
+    aligner::{
+        Aligner,
+        mode::LocalMode,
+        allocation_strategy::LinearStrategy,
+    },
     results::{
+        AlignmentResult,
         TargetAlignmentResult,
-        AnchorAlignmentResult,
         AlignmentOperations,
         AlignmentOperation,
     },
-    aligner::{
-        AlignerInterface,
-        LocalAligner,
-        LinearStrategy,
-    },
     utils::{FastaReader, reverse_complement_of_dna},
 };
-type SigAligner = LocalAligner<LinearStrategy>;
+type SigAligner = Aligner<LocalMode, LinearStrategy>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -300,7 +294,7 @@ impl Worker {
                 };
                 
                 eprintln!("   Worker {} received job: {:?}", id, &input_fasta);
-                let mut sequence_buffer = reference.get_buffer();
+                let mut sequence_buffer = reference.get_sequence_buffer();
                 let fasta_reader = FastaReader::from_path(input_fasta).unwrap();
                 fasta_reader.for_each(|(label, query)| {
                     // (1) Original Query

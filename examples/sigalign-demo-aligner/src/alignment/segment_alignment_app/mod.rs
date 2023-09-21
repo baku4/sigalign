@@ -1,4 +1,4 @@
-use super::{Result, error_msg};
+use super::Result;
 use std::{
     path::PathBuf,
     time::Instant, fs::File,
@@ -11,26 +11,17 @@ use clap::{
     value_parser,
 };
 
-use crate::{
-    reference::{
-        SigReferenceWrapper,
-        ReferencePaths, InnerReference,
-    }
+use crate::reference::{
+    SigReferenceWrapper,
+    ReferencePaths, InnerReference,
 };
 use sigalign::{
-    reference::{
-        ReferenceInterface,
-        Reference,
-        sequence_storage::{
-            SequenceStorage,
-            implementations::InMemoryStorage,
-        },
-    },
     aligner::{
-        AlignerInterface,
-        LocalAligner,
-        LinearStrategy,
+        Aligner,
+        mode::LocalMode,
+        allocation_strategy::LinearStrategy,
     },
+    reference::sequence_storage::in_memory::InMemoryBuffer,
     results::{
         AlignmentResult,
         TargetAlignmentResult,
@@ -40,7 +31,7 @@ use sigalign::{
     },
     utils::{FastaReader, reverse_complement_of_dna},
 };
-type SigAligner = LocalAligner<LinearStrategy>;
+type SigAligner = Aligner<LocalMode, LinearStrategy>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -198,7 +189,7 @@ impl AlignmentConfig {
 
             // Alignment
             let start = Instant::now();
-            let mut sequence_buffer = reference.get_buffer();
+            let mut sequence_buffer = reference.get_sequence_buffer();
             let fasta_reader = FastaReader::from_path(&self.input_fasta_pathbuf).unwrap();
             fasta_reader.for_each(|(label, query)| {
                 // (1) Original Query
@@ -241,7 +232,7 @@ impl AlignmentConfig {
 fn segmented_alignment<D: Direction>(
     aligner: &mut SigAligner,
     reference: &InnerReference,
-    sequence_buffer: &mut <InMemoryStorage as SequenceStorage>::Buffer,
+    sequence_buffer: &mut InMemoryBuffer,
     query: &[u8],
     buf_writer: &mut BufWriter<StdoutLock>,
     itoa_buffer: &mut itoa::Buffer,
