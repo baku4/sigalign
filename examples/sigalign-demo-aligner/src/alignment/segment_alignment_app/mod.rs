@@ -261,12 +261,12 @@ fn segmented_alignment<D: Direction>(
 }
 
 trait Direction {
-    const TAG : u8;
+    const IS_FORWARD : u8;
 }
 struct ForwardDirection;
-impl Direction for ForwardDirection { const TAG : u8 = b'F'; }
+impl Direction for ForwardDirection { const IS_FORWARD : u8 = 1; }
 struct ReverseDirection;
-impl Direction for ReverseDirection { const TAG : u8 = b'R'; }
+impl Direction for ReverseDirection { const IS_FORWARD : u8 = 0; }
 
 #[inline(always)]
 fn write_alignment_result_as_tsv<D: Direction>(
@@ -284,7 +284,7 @@ fn write_alignment_result_as_tsv<D: Direction>(
         anchor_results.into_iter().for_each(|anchor_result| {
             let _ = buf_writer.write(label).unwrap();
             let _ = buf_writer.write(b"\t").unwrap();
-            let _ = buf_writer.write(itoa_buffer.format(D::TAG).as_bytes()).unwrap();
+            let _ = buf_writer.write(itoa_buffer.format(D::IS_FORWARD).as_bytes()).unwrap();
             let _ = buf_writer.write(b"\t").unwrap();
             let _ = buf_writer.write(itoa_buffer.format(*ref_idx).as_bytes()).unwrap();
             let _ = buf_writer.write(b"\t").unwrap();

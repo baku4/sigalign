@@ -306,7 +306,7 @@ impl Worker {
                         }| {
                             anchor_results.into_iter().for_each(|anchor_result| {
                                 let line = format!(
-                                    "{}\tF\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                                    "{}\t1\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
                                     label, ref_idx, record_index, anchor_result.penalty, anchor_result.length,
                                     anchor_result.position.query.0, anchor_result.position.query.1,
                                     anchor_result.position.target.0, anchor_result.position.target.1,
@@ -328,7 +328,7 @@ impl Worker {
                         }| {
                             anchor_results.into_iter().for_each(|anchor_result| {
                                 let line = format!(
-                                    "{}\tR\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+                                    "{}\t0\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
                                     label, ref_idx, record_index, anchor_result.penalty, anchor_result.length,
                                     anchor_result.position.query.0, anchor_result.position.query.1,
                                     anchor_result.position.target.0, anchor_result.position.target.1,
