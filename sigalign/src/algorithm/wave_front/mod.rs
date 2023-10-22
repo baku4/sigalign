@@ -119,7 +119,6 @@ pub struct Component {
     pub fr: i32,
     pub deletion_count: u16,
     pub bt: BackTraceMarker,
-    pub traversed: bool,
 }
 unsafe impl Pod for Component {}
 unsafe impl Zeroable for Component {}
@@ -158,7 +157,6 @@ impl Component {
             fr: 0,
             deletion_count: 0,
             bt: BackTraceMarker::Empty,
-            traversed: false,
         }
     }
     #[inline(always)]
@@ -167,7 +165,6 @@ impl Component {
             fr: first_fr,
             deletion_count: 0,
             bt: BackTraceMarker::Start,
-            traversed: false,
         }
     }
 }

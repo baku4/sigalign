@@ -122,7 +122,6 @@ impl WaveFront {
                                 fr: pre_m_component.fr + 1,
                                 deletion_count: pre_m_component.deletion_count,
                                 bt: BackTraceMarker::FromM,
-                                traversed: false,
                             };
                         }
                     }
@@ -137,7 +136,6 @@ impl WaveFront {
                                 fr: pre_m_component.fr,
                                 deletion_count: pre_m_component.deletion_count + 1,
                                 bt: BackTraceMarker::FromM,
-                                traversed: false,
                             };
                         }
                     }
@@ -197,7 +195,6 @@ impl WaveFront {
                                     fr: pre_i_component.fr + 1,
                                     deletion_count: pre_i_component.deletion_count,
                                     bt: BackTraceMarker::FromI,
-                                    traversed: false,
                                 };
                             }
                         };
@@ -214,7 +211,6 @@ impl WaveFront {
                                     fr: pre_d_component.fr,
                                     deletion_count: pre_d_component.deletion_count + 1,
                                     bt: BackTraceMarker::FromD,
-                                    traversed: false,
                                 };
                             };
                         }
@@ -278,7 +274,6 @@ impl WaveFront {
                             fr: pre_m_component.fr + 1,
                             deletion_count: pre_m_component.deletion_count,
                             bt: BackTraceMarker::FromM,
-                            traversed: false,
                         };
                     }
                 }
@@ -290,7 +285,6 @@ impl WaveFront {
                                 fr: (*new_components_of_k).i.fr,
                                 deletion_count: (*new_components_of_k).i.deletion_count,
                                 bt: BackTraceMarker::FromI,
-                                traversed: false,
                             };
                         };
                     }
@@ -301,7 +295,6 @@ impl WaveFront {
                                 fr: (*new_components_of_k).d.fr,
                                 deletion_count: (*new_components_of_k).d.deletion_count,
                                 bt: BackTraceMarker::FromD,
-                                traversed: false,
                             };
                         };
                     }
