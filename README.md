@@ -1,7 +1,7 @@
 <div align="center">
 	<h1><code>SigAlign</code></h1>
 	<p>
-		A <b>Si</b>milarity-<b>G</b>uided Pairwise <b>Align</b>ment Algorithm
+		A <b>Si</b>milarity-<b>G</b>uided <b>Align</b>ment Algorithm
 	</p>
 	<p>
 		<a href="https://github.com/baku4/sigalign/" target="_blank"><img alt="License" src="https://img.shields.io/github/license/baku4/sigalign?style=flat-square"></a>
@@ -140,6 +140,15 @@ TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC`;
 run();
 ```
 - To gain further insight into web-based implementation of SigAlign, visit the SigAlign [tour page](https://baku4.github.io/sigalign/). This page utilizes the WASM wrapper exemplified above.
+
+## Compiler Version Compatibility Issue
+As of the latest updates, it appears that our library has encountered a compilation error on Rust versions newer than `rustc` 1.69.0. The functions within the `sigalign::algorithm::anchor::unsafe_masking` module are not being compiled with the latest compiler. Preliminary investigation suggests that this issue stems from a compiler error.
+
+We are actively working to address this and ensure compatibility with the latest Rust compiler. In the meantime, to resolve this issue, we recommend manually setting the `rustc` version to 1.69.0:
+
+```bash
+rustup override set 1.69.0
+```
 
 ## License
 
