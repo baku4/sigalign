@@ -8,6 +8,7 @@
 		<a href="https://crates.io/crates/sigalign/" target="_blank"><img alt="Crates.io" src="https://img.shields.io/crates/v/sigalign.svg?style=flat-square"></a>
 		<a href="https://docs.rs/sigalign/latest/"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
 		<a href="https://pypi.org/project/sigalign/" target="_blank"><img alt="PyPI" src="https://img.shields.io/pypi/v/sigalign?style=flat-square"></a>
+        <a href="https://zenodo.org/doi/10.5281/zenodo.10049388"><img src="https://zenodo.org/badge/378021672.svg" alt="DOI"></a>
 	</p>
 </div>
 
