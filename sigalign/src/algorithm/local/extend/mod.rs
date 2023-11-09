@@ -23,7 +23,7 @@ pub use valid_position_candidate::Vpc;
 #[inline]
 pub fn extend_anchor(
     anchor_table: &AnchorTable,
-    anchor: &Anchor,
+    anchor_index: AnchorIndex,
     pattern_index: u32,
     pattern_size: &u32,
     spare_penalty_calculator: &SparePenaltyCalculator,
@@ -41,7 +41,8 @@ pub fn extend_anchor(
     extension_buffer: &mut Vec<Extension>,
 ) {
     // 1. Init
-    // 1.1. Define the range of sequence to extend
+    let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
+    // 1.1. Define the range of sequence to extend    
     let pattern_count = anchor.pattern_count;
     let anchor_size = pattern_count * pattern_size;
 

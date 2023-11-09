@@ -109,15 +109,18 @@ fn local_alignment_query_to_target(
     );
     //   - Create vector of results
     let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
-    
-    anchor_table.0.iter().enumerate().for_each(|(pattern_index, anchors_of_pattern)| {
-        anchors_of_pattern.iter().enumerate().for_each(|(anchor_index_in_pattern, current_anchor)| {
-            if !*current_anchor.skipped.borrow() {
-                // (1) Extend the current anchor
-                if !*current_anchor.extended.borrow() {
+
+    (0..anchor_table.0.len()).for_each(|pattern_index| {
+        (0..anchor_table.0[pattern_index].len()).for_each(|anchor_index_in_pattern| {
+            let (skipped, extended) = {
+                let anchor = &anchor_table.0[pattern_index][anchor_index_in_pattern];
+                (anchor.skipped, anchor.extended)
+            };
+            if !skipped {
+                if !extended {
                     extend_anchor(
                         &anchor_table,
-                        current_anchor,
+                        (pattern_index as u32, anchor_index_in_pattern as u32),
                         pattern_index as u32,
                         &pattern_size,
                         &spare_penalty_calculator,
@@ -133,25 +136,26 @@ fn local_alignment_query_to_target(
                         traversed_anchor_index_buffer,
                         extension_buffer,
                     );
-                    mark_anchor_as_extended(
-                        current_anchor,
-                        extension_buffer.len() as u32 - 1,
-                    );
+                    let current_anchor = &mut anchor_table.0[pattern_index][anchor_index_in_pattern];
+                    current_anchor.extended = true;
+                    current_anchor.extension_index = extension_buffer.len() as u32 - 1;
                 }
-    
+                let extension_index_of_current_anchor = anchor_table.0[pattern_index][anchor_index_in_pattern].extension_index as usize;
+
                 // (2) Check the all right traversed anchors
-                let right_traversed_anchor_index_range = extension_buffer[
-                    *current_anchor.extension_index.borrow() as usize
-                ].right_traversed_anchor_range;
+                let right_traversed_anchor_index_range = extension_buffer[extension_index_of_current_anchor].right_traversed_anchor_range;
                 (right_traversed_anchor_index_range.0..right_traversed_anchor_index_range.1).for_each(|idx: u32| {
                     let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
-                    let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
-                    if !*traversed_anchor.skipped.borrow() {
+                    let (traversed_skipped, traversed_extended) = {
+                        let anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
+                        (anchor.skipped, anchor.extended)
+                    };
+                    if !traversed_skipped {
                         // Extend if not extended
-                        if !*traversed_anchor.extended.borrow() {
+                        if !traversed_extended {
                             extend_anchor(
                                 &anchor_table,
-                                traversed_anchor,
+                                traversed_anchor_index,
                                 traversed_anchor_index.0,
                                 &pattern_size,
                                 &spare_penalty_calculator,
@@ -167,13 +171,17 @@ fn local_alignment_query_to_target(
                                 traversed_anchor_index_buffer,
                                 extension_buffer,
                             );
-                            mark_anchor_as_extended(
-                                traversed_anchor,
-                                extension_buffer.len() as u32 - 1,
-                            );
+                            let traversed_anchor = &mut anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
+                            traversed_anchor.extended = true;
+                            traversed_anchor.extension_index = extension_buffer.len() as u32 - 1;
+                            // mark_anchor_as_extended(
+                            //     traversed_anchor,
+                            //     extension_buffer.len() as u32 - 1,
+                            // );
                         }
+                        let extension_index_of_traversed_anchor = anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize].extension_index as usize;
                         let extension_of_traversed_anchor = &extension_buffer[
-                            *traversed_anchor.extension_index.borrow() as usize
+                            extension_index_of_traversed_anchor
                         ];
                         let left_traversed_anchor_index_range = extension_of_traversed_anchor.left_traversed_anchor_range;
                         
@@ -188,15 +196,15 @@ fn local_alignment_query_to_target(
                         );
                     }
                 });
-    
+
                 // (3) Output result
                 let extension_of_current_anchor = &extension_buffer[
-                    *current_anchor.extension_index.borrow() as usize
+                    extension_index_of_current_anchor
                 ];
                 if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
                     let result = extension_of_current_anchor.parse_anchor_alignment_result(operations_buffer);
                     anchor_alignment_results.push(result);
-                }
+                }   
             }
         });
     });

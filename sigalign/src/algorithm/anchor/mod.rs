@@ -20,9 +20,9 @@ If the locations of consecutive patterns are ungapped -> merge to one Anchor
 pub struct Anchor {
     pub target_position: u32,
     pub pattern_count: u32,
-    pub extension_index: RefCell<u32>,
-    pub extended: RefCell<bool>,
-    pub skipped: RefCell<bool>,
+    pub extension_index: u32,
+    pub extended: bool,
+    pub skipped: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorTable(
@@ -103,9 +103,9 @@ impl Anchor {
             Self {
                 target_position: pos,
                 pattern_count: 1,
-                extension_index: RefCell::new(0),
-                extended: RefCell::new(false),
-                skipped: RefCell::new(false),
+                extension_index: 0,
+                extended: false,
+                skipped: false,
             }
         }).collect()
     }

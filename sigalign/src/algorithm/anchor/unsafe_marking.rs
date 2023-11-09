@@ -7,16 +7,16 @@ use std::cmp::Ordering;
 
 #[inline(always)]
 pub fn mark_anchor_as_extended(
-    anchor: &Anchor,
+    anchor: &mut Anchor,
     extension_index: u32,
 ) {
-    anchor.extended.replace(true);
-    anchor.extension_index.replace(extension_index);
+    anchor.extended = true;
+    anchor.extension_index = extension_index;
 }
 
 #[inline]
 pub fn mark_traversed_anchors_as_skipped(
-    anchor_table: &AnchorTable,
+    anchor_table: &mut AnchorTable,
     traversed_anchor_index_buffer: &Vec<AnchorIndex>,
     // of current anchor
     current_anchor_index: (u32, u32),
@@ -117,9 +117,9 @@ fn cmp_anchor_index(
 
 #[inline(always)]
 fn mark_anchor_as_skipped(
-    anchor_table: &AnchorTable,
+    anchor_table: &mut AnchorTable,
     anchor_index_ptr: *const AnchorIndex,
 ) {
     let (i1, i2) = unsafe { *anchor_index_ptr };
-    anchor_table.0[i1 as usize][i2 as usize].skipped.replace(true);
+    anchor_table.0[i1 as usize][i2 as usize].skipped = true;
 }
