@@ -112,9 +112,9 @@ fn local_alignment_query_to_target(
     
     anchor_table.0.iter().enumerate().for_each(|(pattern_index, anchors_of_pattern)| {
         anchors_of_pattern.iter().enumerate().for_each(|(anchor_index_in_pattern, current_anchor)| {
-            if !current_anchor.skipped {
+            if !*current_anchor.skipped.borrow() {
                 // (1) Extend the current anchor
-                if !current_anchor.extended {
+                if !*current_anchor.extended.borrow() {
                     extend_anchor(
                         &anchor_table,
                         current_anchor,
@@ -141,14 +141,14 @@ fn local_alignment_query_to_target(
     
                 // (2) Check the all right traversed anchors
                 let right_traversed_anchor_index_range = extension_buffer[
-                    current_anchor.extension_index as usize
+                    *current_anchor.extension_index.borrow() as usize
                 ].right_traversed_anchor_range;
                 (right_traversed_anchor_index_range.0..right_traversed_anchor_index_range.1).for_each(|idx: u32| {
                     let traversed_anchor_index = traversed_anchor_index_buffer[idx as usize];
                     let traversed_anchor = &anchor_table.0[traversed_anchor_index.0 as usize][traversed_anchor_index.1 as usize];
-                    if !traversed_anchor.skipped {
+                    if !*traversed_anchor.skipped.borrow() {
                         // Extend if not extended
-                        if !traversed_anchor.extended {
+                        if !*traversed_anchor.extended.borrow() {
                             extend_anchor(
                                 &anchor_table,
                                 traversed_anchor,
@@ -173,7 +173,7 @@ fn local_alignment_query_to_target(
                             );
                         }
                         let extension_of_traversed_anchor = &extension_buffer[
-                            traversed_anchor.extension_index as usize
+                            *traversed_anchor.extension_index.borrow() as usize
                         ];
                         let left_traversed_anchor_index_range = extension_of_traversed_anchor.left_traversed_anchor_range;
                         
@@ -191,7 +191,7 @@ fn local_alignment_query_to_target(
     
                 // (3) Output result
                 let extension_of_current_anchor = &extension_buffer[
-                    current_anchor.extension_index as usize
+                    *current_anchor.extension_index.borrow() as usize
                 ];
                 if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
                     let result = extension_of_current_anchor.parse_anchor_alignment_result(operations_buffer);

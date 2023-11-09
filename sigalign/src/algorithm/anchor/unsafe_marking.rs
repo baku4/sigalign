@@ -10,10 +10,8 @@ pub fn mark_anchor_as_extended(
     anchor: &Anchor,
     extension_index: u32,
 ) {
-    unsafe {
-        std::ptr::write(&anchor.extended as *const bool as *mut bool, true);
-        std::ptr::write(&anchor.extension_index as *const u32 as *mut u32, extension_index);
-    };
+    anchor.extended.replace(true);
+    anchor.extension_index.replace(extension_index);
 }
 
 #[inline]
@@ -122,11 +120,6 @@ fn mark_anchor_as_skipped(
     anchor_table: &AnchorTable,
     anchor_index_ptr: *const AnchorIndex,
 ) {
-    unsafe {
-        let (i1, i2) = *anchor_index_ptr;
-        std::ptr::write(
-            &anchor_table.0[i1 as usize][i2 as usize].skipped as *const bool as *mut bool,
-            true,
-        );
-    }
+    let (i1, i2) = unsafe { *anchor_index_ptr };
+    anchor_table.0[i1 as usize][i2 as usize].skipped.replace(true);
 }
