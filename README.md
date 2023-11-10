@@ -8,7 +8,7 @@
 		<a href="https://crates.io/crates/sigalign/" target="_blank"><img alt="Crates.io" src="https://img.shields.io/crates/v/sigalign.svg?style=flat-square"></a>
 		<a href="https://docs.rs/sigalign/latest/"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
 		<a href="https://pypi.org/project/sigalign/" target="_blank"><img alt="PyPI" src="https://img.shields.io/pypi/v/sigalign?style=flat-square"></a>
-        <a href="https://zenodo.org/doi/10.5281/zenodo.10049388"><img src="https://zenodo.org/badge/378021672.svg" alt="DOI"></a>
+        <a href="https://zenodo.org/doi/10.5281/zenodo.10049388"><img src="https://img.shields.io/badge/DOI-10.5281/zenodo.10049388-blue?style=flat-square" alt="DOI"></a>
 	</p>
 </div>
 
@@ -141,15 +141,6 @@ TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC`;
 run();
 ```
 - To gain further insight into web-based implementation of SigAlign, visit the SigAlign [tour page](https://baku4.github.io/sigalign/). This page utilizes the WASM wrapper exemplified above.
-
-## Compiler Version Compatibility Issue
-As of the latest updates, it appears that our library has encountered a compilation error on Rust versions newer than `rustc` 1.69.0. The functions within the `sigalign::algorithm::anchor::unsafe_masking` module are not being compiled with the latest compiler. Preliminary investigation suggests that this issue stems from a compiler error.
-
-We are actively working to address this and ensure compatibility with the latest Rust compiler. In the meantime, to resolve this issue, we recommend manually setting the `rustc` version to 1.69.0:
-
-```bash
-rustup override set 1.69.0
-```
 
 ## License
 
