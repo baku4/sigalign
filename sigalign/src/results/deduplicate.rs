@@ -30,10 +30,13 @@ impl TargetAlignmentResult {
             cmp_anchor_alignment_result(a, b)
         });
 
-        let temporary_vec = std::mem::replace(
-            &mut self.alignments,
-            Vec::new(),
-        );
+        let temporary_vec = std::mem::take(&mut self.alignments);
+        // - Same as 
+        // let temporary_vec = std::mem::replace(
+        //     &mut self.alignments,
+        //     Vec::new(),
+        // );
+        
         self.alignments = temporary_vec.into_iter().filter(|v| {
             let path = v.get_path();
             if paths.is_disjoint(&path) {

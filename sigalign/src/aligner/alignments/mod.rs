@@ -30,8 +30,7 @@ impl<M, A> Aligner<M, A> where
         query: &[u8],
     ) -> AlignmentResult {
         let mut sequence_buffer = reference.get_sequence_buffer();
-        let result = self.alignment(reference, &mut sequence_buffer, query);
-        result
+        self.alignment(reference, &mut sequence_buffer, query)
     }
     // FASTA
     pub fn align_fasta_file<I, S, P> (

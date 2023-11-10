@@ -2,9 +2,7 @@ use crate::utils::get_unique_characters_of_sequence;
 use super::{
     PatternIndex, PatternLocation, ConcatenatedSequenceWithBoundaries,
     PatternIndexBuildError,
-    utils::{
-        sorted_positions_to_pattern_location,
-    },
+    utils::sorted_positions_to_pattern_location,
 };
 use lt_fm_index::{
     LtFmIndex, Block, blocks,
@@ -121,7 +119,7 @@ impl<B: Block<u64>> PatternIndex for Lfi64<B> {
         match LtFmIndex::build(
             concatenated_sequence_with_boundaries.concatenated_sequence,
             &characters_by_index,
-            option.suffix_array_sampling_ratio as u64,
+            option.suffix_array_sampling_ratio,
             option.lookup_table_kmer_size,
         ) {
             Ok(v) => {
