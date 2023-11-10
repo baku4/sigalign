@@ -11,21 +11,16 @@ use crate::{
     },
 };
 use super::{
-    Anchor, AnchorTable, AnchorIndex,
+    AnchorTable, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker,
     Extension, SparePenaltyCalculator,
-    mark_anchor_as_extended,
     mark_traversed_anchors_as_skipped,
     transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
 mod extend;
-use extend::{
-    extend_anchor,
-};
-pub use extend::{
-    Vpc,
-};
+use extend::extend_anchor;
+pub use extend::Vpc;
 
 #[inline]
 pub fn local_alignment_algorithm<S: BufferedPatternSearch>(
@@ -54,9 +49,9 @@ pub fn local_alignment_algorithm<S: BufferedPatternSearch>(
             anchor_table,
             pattern_size,
             target,
-            &query,
-            &penalties,
-            &cutoff,
+            query,
+            penalties,
+            cutoff,
             spare_penalty_calculator,
             left_wave_front,
             right_wave_front,
@@ -67,7 +62,7 @@ pub fn local_alignment_algorithm<S: BufferedPatternSearch>(
             extension_buffer,
         );
 
-        if anchor_alignment_results.len() == 0 {
+        if anchor_alignment_results.is_empty() {
             None
         } else {
             Some(TargetAlignmentResult {
@@ -119,11 +114,10 @@ fn local_alignment_query_to_target(
             if !skipped {
                 if !extended {
                     extend_anchor(
-                        &anchor_table,
+                        anchor_table,
                         (pattern_index as u32, anchor_index_in_pattern as u32),
-                        pattern_index as u32,
                         &pattern_size,
-                        &spare_penalty_calculator,
+                        spare_penalty_calculator,
                         target,
                         query,
                         penalties,
@@ -154,11 +148,10 @@ fn local_alignment_query_to_target(
                         // Extend if not extended
                         if !traversed_extended {
                             extend_anchor(
-                                &anchor_table,
+                                anchor_table,
                                 traversed_anchor_index,
-                                traversed_anchor_index.0,
                                 &pattern_size,
-                                &spare_penalty_calculator,
+                                spare_penalty_calculator,
                                 target,
                                 query,
                                 penalties,

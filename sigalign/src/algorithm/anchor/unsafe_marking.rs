@@ -1,20 +1,10 @@
 use super::{
-    Anchor,
     AnchorTable,
     AnchorIndex,
 };
 use std::cmp::Ordering;
 
 #[inline(always)]
-pub fn mark_anchor_as_extended(
-    anchor: &mut Anchor,
-    extension_index: u32,
-) {
-    anchor.extended = true;
-    anchor.extension_index = extension_index;
-}
-
-#[inline]
 pub fn mark_traversed_anchors_as_skipped(
     anchor_table: &mut AnchorTable,
     traversed_anchor_index_buffer: &Vec<AnchorIndex>,

@@ -5,8 +5,8 @@ use ahash::AHashMap;
 #[inline(always)]
 pub fn sorted_positions_to_pattern_location<L: SeqLen>(
     sorted_positions: &Vec<L>,
-    boundaries: &Vec<L>,
-    search_range: &Vec<u32>,
+    boundaries: &[L],
+    search_range: &[u32],
     pattern_size: u32,
 ) -> Vec<PatternLocation> {
     // TODO: Applying cap is valuable?
@@ -37,23 +37,21 @@ pub fn sorted_positions_to_pattern_location<L: SeqLen>(
                 left = mid + 1;
             } else if start > *position {
                 right = mid;
-            } else {
-                if (*position + L::from_u32(pattern_size)) <= end {
-                    let ref_pos = *position - start;
-                    match positions_by_target.get_mut(&index) {
-                        Some(v) => {
-                            v.push(ref_pos.as_u32());
-                        },
-                        None => {
-                            positions_by_target.insert(index, vec![ref_pos.as_u32()]);
-                        },
-                    }
-                    break;
-                } else {
-                    break;
+            } else if (*position + L::from_u32(pattern_size)) <= end {
+                let ref_pos = *position - start;
+                match positions_by_target.get_mut(&index) {
+                    Some(v) => {
+                        v.push(ref_pos.as_u32());
+                    },
+                    None => {
+                        positions_by_target.insert(index, vec![ref_pos.as_u32()]);
+                    },
                 }
+                break;
+            } else {
+                break;
             }
-
+            
             size = right - left;
         }
     }

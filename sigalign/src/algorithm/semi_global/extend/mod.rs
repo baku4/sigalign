@@ -1,15 +1,13 @@
 use crate::{
-    core::{
-        regulators::{
-            Penalty, Cutoff, PREC_SCALE,
-        },
+    core::regulators::{
+        Penalty, Cutoff, PREC_SCALE,
     },
     results::{
         AlignmentPosition, AlignmentOperations,
-    }
+    },
 };
 use super::{
-    AnchorTable, Anchor, AnchorIndex,
+    AnchorTable, AnchorIndex,
     WaveFront, BackTraceMarker, BackTraceResult,
     Extension,
     SparePenaltyCalculator,
@@ -35,7 +33,6 @@ pub struct SemiGlobalExtension {
 pub fn extend_anchor(
     anchor_table: &AnchorTable,
     anchor_index: AnchorIndex,
-    pattern_index: u32,
     pattern_size: &u32,
     spare_penalty_calculator: &SparePenaltyCalculator,
     target: &[u8],
@@ -57,7 +54,7 @@ pub fn extend_anchor(
     let left_target_end_index = anchor.target_position;
     let right_target_start_index = left_target_end_index + anchor_size;
 
-    let left_query_end_index = pattern_index * pattern_size;
+    let left_query_end_index = anchor_index.0 * pattern_size;
     let right_query_start_index = left_query_end_index + anchor_size;
 
     // 2. Extend to the right
@@ -65,7 +62,7 @@ pub fn extend_anchor(
     let right_target_slice = &target[right_target_start_index as usize..];
     let right_query_slice = &query[right_query_start_index as usize..];
     // 2.2. Calculate the left spare penalty
-    let right_spare_penalty = spare_penalty_calculator.get_right_spare_penalty(pattern_index);
+    let right_spare_penalty = spare_penalty_calculator.get_right_spare_penalty(anchor_index.0);
     // 2.3. Extend the side with wave front
     wave_front.align_right_to_end_point(
         right_target_slice,
@@ -88,7 +85,7 @@ pub fn extend_anchor(
         transform_right_additive_position_to_traversed_anchor_index(
             anchor_table,
             traversed_anchor_index_buffer,
-            pattern_index,
+            anchor_index.0,
             left_target_end_index,
             right_traversed_anchor_range,
             *pattern_size,
@@ -104,7 +101,7 @@ pub fn extend_anchor(
             left_side_operation_range: (0, 0),
             left_traversed_anchor_range: (0, 0),
             right_side_operation_range: (0, 0),
-            right_traversed_anchor_range: right_traversed_anchor_range,
+            right_traversed_anchor_range,
         };
         extension_buffer.push(incomplete_extension);
 
@@ -121,7 +118,7 @@ pub fn extend_anchor(
     transform_right_additive_position_to_traversed_anchor_index(
         anchor_table,
         traversed_anchor_index_buffer,
-        pattern_index,
+        anchor_index.0,
         left_target_end_index,
         right_back_trace_result.traversed_anchor_range,
         *pattern_size,
@@ -139,7 +136,7 @@ pub fn extend_anchor(
         };
         spare_penalty_calculator.get_left_spare_penalty(
             max_scaled_penalty_delta_of_right,
-            pattern_index,
+            anchor_index.0,
         )
     };
     // 3.3. Extend the side with wave front
@@ -163,7 +160,7 @@ pub fn extend_anchor(
         transform_left_additive_position_to_traversed_anchor_index(
             anchor_table,
             traversed_anchor_index_buffer,
-            pattern_index,
+            anchor_index.0,
             left_target_end_index,
             left_traversed_anchor_range,
         );
@@ -176,7 +173,7 @@ pub fn extend_anchor(
             penalty: 0,
             length: 0,
             left_side_operation_range: (0, 0),
-            left_traversed_anchor_range: left_traversed_anchor_range,
+            left_traversed_anchor_range,
             right_side_operation_range: (0, 0),
             right_traversed_anchor_range: right_back_trace_result.traversed_anchor_range,
         };
@@ -194,7 +191,7 @@ pub fn extend_anchor(
     transform_left_additive_position_to_traversed_anchor_index(
         anchor_table,
         traversed_anchor_index_buffer,
-        pattern_index,
+        anchor_index.0,
         left_target_end_index,
         left_back_trace_result.traversed_anchor_range,
     );

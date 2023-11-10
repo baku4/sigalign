@@ -5,10 +5,7 @@ use anchor::{
     AnchorTable,
 };
 pub use anchor::AnchorIndex;
-use anchor::{
-    mark_anchor_as_extended,
-    mark_traversed_anchors_as_skipped,
-};
+use anchor::mark_traversed_anchors_as_skipped;
 mod wave_front;
 use wave_front::{
     WaveFrontScore,
@@ -29,9 +26,7 @@ pub use extension::Extension;
 // Alignment algorithms
 mod semi_global;
 mod local;
-pub use semi_global::{
-    semi_global_alignment_algorithm,
-};
+pub use semi_global::semi_global_alignment_algorithm;
 pub use local::{
     local_alignment_algorithm,
     Vpc,

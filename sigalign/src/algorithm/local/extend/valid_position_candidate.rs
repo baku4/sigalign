@@ -77,10 +77,8 @@ impl WaveFront {
                     }
                 }
                 // PD
-                if pd_index_to_insert == 0 {
-                    if vpc_in_vector.scaled_penalty_delta > scaled_penalty_delta {
-                        pd_index_to_insert = index + 1;
-                    }
+                if pd_index_to_insert == 0 && vpc_in_vector.scaled_penalty_delta > scaled_penalty_delta {
+                    pd_index_to_insert = index + 1;
                 }
                 if ql_index_to_insert != 0 && pd_index_to_insert != 0 {
                     break;
@@ -113,18 +111,16 @@ impl WaveFront {
                                 component_index: comp_index,
                             },
                         );
-                    } else {
-                        if vpc_buffer[ql_index_to_insert].scaled_penalty_delta < scaled_penalty_delta {
-                            vpc_buffer.insert(
-                                pd_index_to_insert,
-                                Vpc {
-                                    query_length: max_query_length,
-                                    scaled_penalty_delta,
-                                    penalty: penalty as u32,
-                                    component_index: comp_index,
-                                },
-                            );
-                        }
+                    } else if vpc_buffer[ql_index_to_insert].scaled_penalty_delta < scaled_penalty_delta {
+                        vpc_buffer.insert(
+                            pd_index_to_insert,
+                            Vpc {
+                                query_length: max_query_length,
+                                scaled_penalty_delta,
+                                penalty: penalty as u32,
+                                component_index: comp_index,
+                            },
+                        );
                     }
                 }
             }

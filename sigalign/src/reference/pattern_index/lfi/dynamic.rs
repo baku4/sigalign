@@ -1,9 +1,7 @@
 use crate::{
-    reference::{
-        extensions::{
-            Serialize,
-            EstimateSize,
-        },
+    reference::extensions::{
+        Serialize,
+        EstimateSize,
     },
     utils::get_unique_characters_of_sequence,
 };

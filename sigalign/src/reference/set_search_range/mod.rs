@@ -27,9 +27,9 @@ impl<I, S> Reference<I, S> where
             Some(v) => v,
             None => return Err(SetSearchRangeError::EmptyIndexError),
         };
-        let total_target_count = self.sequence_storage.num_targets() as u32;
+        let total_target_count = self.sequence_storage.num_targets();
         if total_target_count < *last_record_index {
-            return Err(SetSearchRangeError::IndexOutOfRangeError);
+            Err(SetSearchRangeError::IndexOutOfRangeError)
         } else {
             self.set_search_range_unchecked(target_index);
             Ok(())
