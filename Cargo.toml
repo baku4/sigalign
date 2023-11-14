@@ -6,6 +6,7 @@ members = [
     "tests",
     "examples/sigalign-demo-aligner",
     "examples/sigalign-demo-wasm",
+    "examples/sigalign-demo-clustering",
 ]
 exclude = [
     "examples/sigalign-demo-web",
