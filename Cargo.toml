@@ -4,7 +4,7 @@ members = [
     "sigalign",
     "sigalign-py",
     "tests",
-    "examples/sigalign-demo-aligner",
+    "examples/sigalign-demo-binary",
     "examples/sigalign-demo-wasm",
 ]
 exclude = [

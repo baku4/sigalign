@@ -1,19 +1,19 @@
 # Examples
 
-## `sigalign-demo-aligner`
+## `sigalign-demo-binary`
 
 The binary implementation of *SigAlign*
 
 * build
 
     ```bash
-    cargo build -p sigalign-demo-aligner --release
+    cargo build -p sigalign-demo-binary --release
     ```
 
 * get `help` about sub commands
 
     ```bash
-    sigalign-demo-aligner
+    sigalign-demo-binary
     ```
 
 ## `sigalign-py-in-jupyter`

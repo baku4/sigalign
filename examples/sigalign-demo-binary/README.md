@@ -1,14 +1,14 @@
 # *SigAlign*'s demo binary implementation
 ## Build
 ```bash
-cargo build -p sigalign-demo-aligner --release
+cargo build -p sigalign-demo-binary --release
 ```
 ## Run `help` commands to get usage
-* `sigalign-demo-aligner --help`
+* `sigalign-demo-binary --help`
     ```
     Binary demo implementation
 
-    Usage: sigalign-demo-aligner <COMMAND>
+    Usage: sigalign-demo-binary <COMMAND>
 
     Commands:
     reference  Generate reference file
@@ -19,11 +19,11 @@ cargo build -p sigalign-demo-aligner --release
     -h, --help     Print help information
     -V, --version  Print version information
     ```
-* `sigalign-demo-aligner reference --help`
+* `sigalign-demo-binary reference --help`
     ```
     Generate reference file
 
-    Usage: sigalign-demo-aligner reference [OPTIONS] --input <FILE> --output <FILE>
+    Usage: sigalign-demo-binary reference [OPTIONS] --input <FILE> --output <FILE>
 
     Options:
     -i, --input <FILE>   Input FASTA path
@@ -37,11 +37,11 @@ cargo build -p sigalign-demo-aligner --release
     -h, --help           Print help information
     -V, --version        Print version information
     ```
-* `sigalign-demo-aligner alignment --help`
+* `sigalign-demo-binary alignment --help`
     ```
     Alignment with FASTA file
 
-    Usage: sigalign-demo-aligner alignment --input <FILE> --reference <FILE> --output <FILE> --penalties <INT> <INT> <INT> --cutoffs <INT> <FLOAT> <--semiglobal|--local>
+    Usage: sigalign-demo-binary alignment --input <FILE> --reference <FILE> --output <FILE> --penalties <INT> <INT> <INT> --cutoffs <INT> <FLOAT> <--semiglobal|--local>
 
     Options:
     -s, --semiglobal                   Use semi-global algorithm

@@ -12,7 +12,7 @@ pub struct Application;
 
 impl Application {
     pub fn run() {
-        let app = Command::new("sigalign-demo-aligner")
+        let app = Command::new("sigalign-demo-binary")
             .version("0.1.0")
             .author("baku <bahkhun@gmail.com>")
             .about("Binary demo implementation")

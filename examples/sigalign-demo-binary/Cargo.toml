@@ -1,5 +1,5 @@
 [package]
-name = "sigalign-demo-aligner"
+name = "sigalign-demo-binary"
 version = "0.1.0"
 authors = ["baku4 <bahkhun@gmail.com>"]
 edition = "2018"
