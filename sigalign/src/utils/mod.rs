@@ -1,8 +1,8 @@
 /*!
 Utilities.
 */ 
-mod file_reader;
-pub use file_reader::FastaReader;
+// mod file_reader;
+// pub use file_reader::FastaReader;
 
 mod sequence_manipulation;
 pub use sequence_manipulation::{
