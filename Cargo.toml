@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
+    "sigalign-core",
+    "sigalign-impl",
+    "sigalign-utils",
     "sigalign",
     "sigalign-py",
     "tests",

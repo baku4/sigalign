@@ -20,7 +20,6 @@ bytemuck = "1.13.0"
 capwriter = "0.2.0"
 serde = "1.0.152"
 serde_json = "1.0.93"
-seq_io = "0.3.1"
 
 [dependencies.lt-fm-index]
 version = "0.7.0-alpha.2"
