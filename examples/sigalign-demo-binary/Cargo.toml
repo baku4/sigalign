@@ -2,21 +2,20 @@
 name = "sigalign-demo-binary"
 version = "0.1.0"
 authors = ["baku4 <bahkhun@gmail.com>"]
-edition = "2018"
+edition = "2021"
 description = "Binary implementation"
 
 [dependencies]
 sigalign = { path = "../../sigalign", features = ["short_key"] }
 anyhow = "1.0.44"
-clap = "4.0.26"
+clap = "4.4.8"
 log = "0.4.14"
 env_logger = "0.9.0"
 itoa = "1.0.6"
+flate2 = "1.0.28"
 
 [features]
 default = []   # Print TSV formatted output to stdout.
 # Change the alignment method
 segment = []   # Align segmented query and join it later
 thread = []    # Align multiple query files using worker thread. Output is TSV to stdout
-# Change the reference type
-idx_fa = []   # Use indexed fasta as sequence storage.

@@ -1,7 +1,8 @@
-use crate::{Result, error_msg};
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Instant;
+
+use crate::core::{Result, error_msg};
 use sigalign::{
     reference::{
         Reference,
@@ -35,7 +36,7 @@ impl AsRef<InnerReference> for SigReferenceWrapper {
 pub type InnerReference = Reference<LfiWrapper, InMemoryStorage>;
 pub enum LfiWrapper {
     B2(Lfi32B2V64),
-    B3(Lfi32B3V64),
+    B3(Lfi32B3V64), 
 }
 impl PatternIndex for LfiWrapper {
     type Option = LfiOption;

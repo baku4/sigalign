@@ -1,5 +1,6 @@
-use super::{Result, error_msg};
 use std::path::PathBuf;
+
+use crate::core::{Result, error_msg};
 
 #[derive(Debug, Clone)]
 pub struct ReferencePaths(

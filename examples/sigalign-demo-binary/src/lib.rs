@@ -1,7 +1,7 @@
-use anyhow::{Result, bail as error_msg};
-
 use clap::Command;
 
+mod core;
+mod utils;
 mod reference;
 use reference::ReferenceApp;
 

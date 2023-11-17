@@ -1,4 +1,4 @@
-use super::Result;
+use crate::core::Result;
 
 #[cfg(not(any(
     feature = "segment",
