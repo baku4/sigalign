@@ -1,22 +1,21 @@
 // Extension for serialization
 #[cfg(target_endian = "little")]
-pub(crate) type EndianType = byteorder::LittleEndian;
+pub type EndianType = byteorder::LittleEndian;
 #[cfg(target_endian = "big")]
-pub(crate) type EndianType = byteorder::BigEndian;
-pub(crate) use byteorder::{ReadBytesExt, WriteBytesExt};
+pub type EndianType = byteorder::BigEndian;
 
 pub mod regulators;
 pub mod sequence;
 
-/// `BufferedPatternSearch` represents types that can perform pattern searches within a buffered sequence.
+/// `BufferedPatternLocator` represents types that can perform pattern searches within a buffered sequence.
 ///
 /// This trait serves two main purposes:
 ///   - It provides pattern locations for algorithms.
-///   - It acts as an interface between `Aligner` and `Reference` structs.
-pub trait BufferedPatternSearch {
+///   - It can help the algorithm can be defined without knowing the exact type of the `Reference` struct.
+pub trait BufferedPatternLocator {
     type Buffer: SequenceBuffer;
 
-    fn locate(&self, pattern: &[u8]) -> Vec<PatternLocation>;
+    fn locate(&self, pattern: &[u8], sorted_target_indices: &[u32]) -> Vec<PatternLocation>;
     fn fill_buffer(&self, target_index: u32, buffer: &mut Self::Buffer);
 }
 

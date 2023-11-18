@@ -1,4 +1,4 @@
-use crate::core::BufferedPatternSearch;
+use crate::core::BufferedPatternLocator;
 use ahash::AHashMap;
 
 mod unsafe_marking;
@@ -25,9 +25,11 @@ pub struct AnchorTable(
 pub type AnchorIndex = (u32, u32);
 
 impl AnchorTable {
-    pub fn new_by_target_index<R: BufferedPatternSearch>(
-        reference: &R,
+    #[inline]
+    pub fn new_by_target_index<L: BufferedPatternLocator>(
+        pattern_locater: &L,
         query: &[u8],
+        sorted_target_indices: &[u32],
         pattern_size: u32,
     ) -> AHashMap<u32, Self> {
         let qry_len = query.len();
@@ -39,7 +41,7 @@ impl AnchorTable {
             let qry_pos = pattern_index * pattern_size as usize;
             let pattern = &query[qry_pos..qry_pos+pattern_size as usize];
             
-            let pattern_locations = reference.locate(pattern);
+            let pattern_locations = pattern_locater.locate(pattern, sorted_target_indices);
 
             pattern_locations.into_iter().for_each(|pattern_location| {
                 match anchor_table_by_target_index.get_mut(&pattern_location.target_index) {

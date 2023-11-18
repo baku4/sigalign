@@ -13,8 +13,8 @@ use crate::results::{
 };
 use crate::reference::{
     Reference,
-    pattern_index::PatternIndex,
-    sequence_storage::SequenceStorage,
+    PatternIndex,
+    SequenceStorage,
 };
 use super::{
     AlignmentRegulator,
