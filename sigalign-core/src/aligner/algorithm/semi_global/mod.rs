@@ -1,39 +1,33 @@
 use crate::algorithm::{
     // Algorithms
-    local_alignment_algorithm,
+    semi_global_alignment_algorithm,
     // Structs to be buffered
     //   - common
     AnchorIndex, Extension, SparePenaltyCalculator,
-    //   - local
-    Vpc,
 };
 use crate::results::{
     AlignmentResult,
     AlignmentOperations,
 };
 use crate::reference::{
-    Reference,
-    PatternIndex,
-    SequenceStorage,
+    Reference, PatternIndex, SequenceStorage,
 };
 use super::{
+    Algorithm,
     AlignmentRegulator,
-    AlignmentMode,
-    WaveFrontPool, DoubleWaveFrontPool,
+    WaveFrontPool, SingleWaveFrontPool,
 };
 
 #[derive(Clone)]
-pub struct LocalMode {
+pub struct SemiGlobal {
     spare_penalty_calculator: SparePenaltyCalculator,
-    wave_front_pool: DoubleWaveFrontPool,
+    wave_front_pool: SingleWaveFrontPool,
     // Buffers
-    left_vpc_buffer: Vec<Vpc>,
-    right_vpc_buffer: Vec<Vpc>,
     traversed_anchor_index_buffer: Vec<AnchorIndex>,
     operations_buffer: Vec<AlignmentOperations>,
     extension_buffer: Vec<Extension>,
 }
-impl AlignmentMode for LocalMode {
+impl Algorithm for SemiGlobal {
     fn new(
         initial_query_length: u32,
         regulator: &AlignmentRegulator,
@@ -44,8 +38,7 @@ impl AlignmentMode for LocalMode {
             regulator.pattern_size,
             initial_query_length / regulator.pattern_size,
         );
-
-        let wave_front_pool = DoubleWaveFrontPool::new(
+        let wave_front_pool = SingleWaveFrontPool::new(
             initial_query_length,
             &regulator.penalties,
             &regulator.cutoff,
@@ -53,12 +46,11 @@ impl AlignmentMode for LocalMode {
         Self {
             spare_penalty_calculator,
             wave_front_pool,
-            left_vpc_buffer: Vec::new(),
-            right_vpc_buffer: Vec::new(),
             traversed_anchor_index_buffer: Vec::new(),
             operations_buffer: Vec::new(),
             extension_buffer: Vec::new(),
         }
+
     }
     fn allocate_space(
         &mut self,
@@ -80,8 +72,6 @@ impl AlignmentMode for LocalMode {
     fn reset_buffers(
         &mut self,
     ) {
-        self.left_vpc_buffer = Vec::new();
-        self.right_vpc_buffer = Vec::new();
         self.traversed_anchor_index_buffer = Vec::new();
         self.operations_buffer = Vec::new();
         self.extension_buffer = Vec::new();
@@ -92,20 +82,19 @@ impl AlignmentMode for LocalMode {
         reference: &Reference<I, S>,
         sequence_buffer: &mut S::Buffer,
         query: &[u8],
+        sorted_target_indices: &[u32],
         regulator: &AlignmentRegulator,
     ) -> AlignmentResult {
-        local_alignment_algorithm(
+        semi_global_alignment_algorithm(
             reference,
             sequence_buffer,
             query,
+            sorted_target_indices,
             regulator.pattern_size,
             &regulator.penalties,
             &regulator.cutoff,
             &mut self.spare_penalty_calculator,
-            &mut self.wave_front_pool.wave_front_1,
-            &mut self.wave_front_pool.wave_front_2,
-            &mut self.left_vpc_buffer,
-            &mut self.right_vpc_buffer,
+            &mut self.wave_front_pool.wave_front,
             &mut self.traversed_anchor_index_buffer,
             &mut self.operations_buffer,
             &mut self.extension_buffer,
@@ -113,8 +102,8 @@ impl AlignmentMode for LocalMode {
     }
 }
 
-impl std::fmt::Debug for LocalMode {
+impl std::fmt::Debug for SemiGlobal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "LocalMode")
+        write!(f, "SemiGlobal")
     }
 }

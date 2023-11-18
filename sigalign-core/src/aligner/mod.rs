@@ -1,104 +1,3 @@
-/*!
-Provides the `Aligner` struct, an alignment worker that performs sequence alignment.
-
-## Features
-
-- The `Aligner` conducts sequence alignment, given a query sequence and a `Reference`.
-- The creation of an `Aligner` is regulated by alignment parameters: (1) penalties and (2) similarity cutoffs.
-- The `Aligner` maintains a reusable workspace, allocating and managing the necessary space for alignment based on the alignment parameters and the length of the query.
-
-## Architecture
-
-The `Aligner` is characterized by two traits: `Mode` and `AllocationStrategy`.
-
-### trait `Mode`
-
-The alignment mode in bioinformatics dictates how sequences are compared and aligned. SigAlign supports two modes: semi-global and local.
-
-In the semi-global mode, either the query or the reference sequence is completely consumed at each alignment end.
-
-For instance:
-
-- Case 1
-```text
-QUERY : -------------
-            |||||||||
-TARGET:     -------------
-```
-- Case 2
-```text
-QUERY :     -------------
-            |||||||||
-TARGET: -------------
-```
-- Case 3
-```text
-QUERY : -------------
-          |||||||
-TARGET:   -------
-```
-- Case 4
-```text
-QUERY :   -------
-          |||||||
-TARGET: -------------
-```
-
-In the local mode, the alignment may include only parts of the target and query sequence.
-
-For example: 
-```text
-QUERY : ----------------
-               |||||||
-TARGET:    ----------------
-```
-
-The `Mode` trait is integral to SigAlign's core algorithm, and it is pre-defined with these two modes, not intended for user customization.
-
-### trait `AllocationStrategy`
-
-`AllocationStrategy` determines the strategy for allocating memory for alignment. The memory requirement correlates with the maximum length of the query. For example, if space for aligning a 200-length query is allocated, aligning a 400-length query would require additional allocation. However, if space for a 400-length query is already allocated, it can cover a 200-length query.
-
-`AllocationStrategy` defines the functions necessary for calculating the required space, providing a cap to each strategy as these functions can negatively impact performance if frequently called. For example, LinearStrategy allocates input query length plus a fixed size space, whereas DoublingStrategy allocates approximately twice the needed space. Users can define the `AllocationStrategy` that best suits their requirements.
-
-## Usage
-
-### (1) Initialize `Aligner`
-```rust
-let mut aligner = Aligner::<LocalMode, LinearStrategy>::new(
-    4,   // mismatch_penalty,
-    6,   // gap_open_penalty,
-    2,   // gap_extend_penalty,
-    50,  // minimum_aligned_length,
-    0.1, // maximum_penalty_per_length,
-).unwrap();
-```
-
-### (2) Perform Alignment
-#### Using `SequenceBuffer` (Lowest level)
-```rust
-let mut sequence_buffer = reference.get_sequence_buffer();
-for query in [b"AA...CC", b"GG...TT"] {
-    aligner.alignment(
-        &reference,
-        &mut sequence_buffer,
-        query,
-    );
-}
-```
-#### Using built-in methods
-```rust
-let result: AlignmentResult = aligner.align_query(
-    &reference,
-    b"AA..TT",
-);
-let result: FastaAlignmentResult = aligner.align_fasta_file(
-    &reference,
-    "FASTA_FILE_PATH",
-).unwrap();
-```
-*/
-
 use crate::results::AlignmentResult;
 use crate::reference::{
     Reference, PatternIndex, SequenceStorage,
@@ -113,22 +12,22 @@ use allocation_strategy::{
     QueryLengthChecker,
     AllocationStrategy,
 };
-pub mod mode;
-use mode::AlignmentMode;
+pub mod algorithm;
+use algorithm::Algorithm;
 
 #[derive(Clone)]
-pub struct Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
+pub struct Aligner<A, L> where
+    A: Algorithm,
+    L: AllocationStrategy,
 {
     pub(crate) regulator: AlignmentRegulator,
-    pub(crate) query_length_checker: QueryLengthChecker<A>,
-    pub(crate) mode: M,
+    pub(crate) query_length_checker: QueryLengthChecker<L>,
+    pub(crate) algorithm: A,
 }
 
-impl<M, A> Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
+impl<A, L> Aligner<A, L> where
+    A: Algorithm,
+    L: AllocationStrategy,
 {
     pub fn new(
         mismatch_penalty: u32,
@@ -141,7 +40,7 @@ impl<M, A> Aligner<M, A> where
         let query_length_checker = QueryLengthChecker::new();
         let query_length = query_length_checker.get_allocated_length();
 
-        let mode = M::new(
+        let algorithm = A::new(
             query_length,
             &regulator,
         );
@@ -149,26 +48,29 @@ impl<M, A> Aligner<M, A> where
         Ok(Self {
             regulator,
             query_length_checker,
-            mode,
+            algorithm,
         })
     }
+    /// Low-level alignment function
     pub fn alignment<I: PatternIndex, S: SequenceStorage> (
         &mut self,
         reference: &Reference<I, S>,
         sequence_buffer: &mut S::Buffer,
         query: &[u8],
+        sorted_target_indices: &[u32],
     ) -> AlignmentResult {
         if let Some(required_query_length) = self.query_length_checker.optional_length_to_be_allocated(query.len() as u32) {
-            self.mode.allocate_space(
+            self.algorithm.allocate_space(
                 required_query_length,
                 &self.regulator,
             );
         }
         
-        let reference_alignment_result = self.mode.run_algorithm(
+        let reference_alignment_result = self.algorithm.run_algorithm(
             reference,
             sequence_buffer,
             query,
+            sorted_target_indices,
             &self.regulator,
         );
 

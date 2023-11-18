@@ -1,34 +1,33 @@
 use crate::{
     results::labeled::LabeledAlignmentResult,
     reference::{
-        Reference,
-        pattern_index::PatternIndex,
-        sequence_storage::SequenceStorage,
+        Reference, PatternIndex, SequenceStorage,
         extensions::LabelStorage,
     },
 };
 use super::{
     Aligner,
-    AlignmentMode,
+    Algorithm,
     AllocationStrategy,
     AlignmentError,
 };
 
-impl<M, A> Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
+impl<A, L> Aligner<A, L> where
+    A: Algorithm,
+    L: AllocationStrategy,
 {
     // Query
     pub fn align_query_labeled<I, S> (
         &mut self,
         reference: &Reference<I, S>,
         query: &[u8],
+        sorted_target_indices: &[u32],
     ) -> LabeledAlignmentResult where
         I: PatternIndex,
         S: SequenceStorage + LabelStorage,
     {
         let mut sequence_buffer = reference.get_sequence_buffer();
-        let result = self.alignment(reference, &mut sequence_buffer, query);
+        let result = self.alignment(reference, &mut sequence_buffer, query, sorted_target_indices);
         result.to_labeled_result_unchecked(reference)
     }
     // FASTA

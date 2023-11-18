@@ -201,7 +201,7 @@ pub fn extend_anchor(
     let mut length = left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension;
     //   - if invalid: mark the length as 0
     if (
-        length < cutoff.minimum_aligned_length
+        length < cutoff.minimum_length
     ) || (
         penalty * PREC_SCALE > cutoff.maximum_scaled_penalty_per_length * length
     ) {

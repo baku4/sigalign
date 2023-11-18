@@ -1,14 +1,9 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+// References
+pub mod pattern_index;
+pub mod sequence_storage;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// Aligner
+pub mod allocation_strategy;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+mod core;
+mod utils;

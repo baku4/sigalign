@@ -111,11 +111,12 @@ mod sequence_storage;
 // Implementations
 mod pattern_locate; // Implements the `BufferedPatternLocater` trait.
 mod debug;
+// Extensions for additional features
 pub mod extensions;
 
 pub use pattern_index::PatternIndex;
 pub use sequence_storage::SequenceStorage;
-pub use crate::core::SequenceBuffer;
+pub use crate::core::{PatternLocation, SequenceBuffer};
 
 /// A database for multiple target sequences.
 #[derive(Debug)]

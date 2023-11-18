@@ -12,10 +12,10 @@ use wave_front_pool::{
 
 mod local;
 mod semi_global;
-pub use local::LocalMode;
-pub use semi_global::SemiGlobalMode;
+pub use local::Local;
+pub use semi_global::SemiGlobal;
 
-pub trait AlignmentMode: Clone {
+pub trait Algorithm: Clone {
     fn new(
         initial_query_length: u32,
         regulator: &AlignmentRegulator,
@@ -33,6 +33,7 @@ pub trait AlignmentMode: Clone {
         reference: &Reference<I, S>,
         sequence_buffer: &mut S::Buffer,
         query: &[u8],
+        sorted_target_indices: &[u32],
         regulator: &AlignmentRegulator,
     ) -> AlignmentResult;
 }
