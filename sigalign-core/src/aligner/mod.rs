@@ -98,11 +98,10 @@ let result: FastaAlignmentResult = aligner.align_fasta_file(
 ).unwrap();
 ```
 */
+
 use crate::results::AlignmentResult;
 use crate::reference::{
-    Reference,
-    pattern_index::PatternIndex,
-    sequence_storage::SequenceStorage,
+    Reference, PatternIndex, SequenceStorage,
 };
 
 // Internal structures for Aligner

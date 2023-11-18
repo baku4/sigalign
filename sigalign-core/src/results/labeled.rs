@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::reference::{
-    Reference,
-    pattern_index::PatternIndex,
-    sequence_storage::SequenceStorage,
+    Reference, PatternIndex, SequenceStorage,
     extensions::LabelStorage,
 };
 use super::{

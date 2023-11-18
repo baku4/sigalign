@@ -1,12 +1,13 @@
 use std::cmp::Ordering;
 
+use ahash::AHashSet;
+
 use super::{
     AlignmentResult,
     TargetAlignmentResult,
     AnchorAlignmentResult,
     AlignmentOperation, AlignmentPosition,
 };
-use ahash::AHashSet;
 
 impl AlignmentResult {
     pub fn deduplicate(&mut self) {

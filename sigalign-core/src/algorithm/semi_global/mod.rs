@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        BufferedPatternSearch, SequenceBuffer,
+        BufferedPatternLocator, SequenceBuffer,
         regulators::{
             Penalty, Cutoff,
         }
@@ -23,10 +23,11 @@ mod extend;
 use extend::extend_anchor;
 
 #[inline]
-pub fn semi_global_alignment_algorithm<S: BufferedPatternSearch>(
-    buffered_pattern_searcher: &S,
-    sequence_buffer: &mut S::Buffer,
+pub fn semi_global_alignment_algorithm<L: BufferedPatternLocator>(
+    pattern_locater: &L,
+    sequence_buffer: &mut L::Buffer,
     query: &[u8],
+    sorted_target_indices: &[u32],
     pattern_size: u32,
     penalties: &Penalty,
     cutoff: &Cutoff,
@@ -37,9 +38,9 @@ pub fn semi_global_alignment_algorithm<S: BufferedPatternSearch>(
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
 ) -> AlignmentResult {
-    let mut anchor_table_map = AnchorTable::new_by_target_index(buffered_pattern_searcher, query, pattern_size);
+    let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
     let target_alignment_results: Vec<TargetAlignmentResult> = anchor_table_map.iter_mut().filter_map(|(target_index, anchor_table)| {
-        buffered_pattern_searcher.fill_buffer(*target_index, sequence_buffer);
+        pattern_locater.fill_buffer(*target_index, sequence_buffer);
         let target = sequence_buffer.buffered_sequence();
         let anchor_alignment_results = semi_global_alignment_query_to_target(
             anchor_table,

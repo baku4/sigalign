@@ -105,32 +105,27 @@ let reference = Reference::<Lfi32B2V64, InMemoryStorage>::load_from(&buffer[..])
 ```
 */
 
-use thiserror::Error;
-
-mod pattern_search;
+// Internal components
+mod pattern_index;
+mod sequence_storage;
+// Implementations
+mod pattern_locate; // Implements the `BufferedPatternLocater` trait.
 mod debug;
-mod set_search_range;
-pub mod pattern_index;
-pub mod sequence_storage;
 pub mod extensions;
 
-use pattern_index::{
-    PatternIndex,
-    ConcatenatedSequenceWithBoundaries,
-    PatternIndexBuildError,
-};
-use sequence_storage::SequenceStorage;
-pub use set_search_range::SetSearchRangeError;
+pub use pattern_index::PatternIndex;
+pub use sequence_storage::SequenceStorage;
+pub use crate::core::SequenceBuffer;
 
-/// A database for multiple targeted sequences.
+/// A database for multiple target sequences.
 #[derive(Debug)]
 pub struct Reference<I, S> where
     I: PatternIndex,
     S: SequenceStorage,
 {
-    search_range: Vec<u32>,
+    target_boundaries: Vec<u32>,
     pattern_index: I,
-    pub(crate) sequence_storage: S,
+    sequence_storage: S,
 }
 
 impl<I, S> Reference<I, S> where
@@ -140,28 +135,14 @@ impl<I, S> Reference<I, S> where
     pub fn new(
         sequence_storage: S,
         pattern_index_option: I::Option,
-    ) -> Result<Self, ReferenceBuildError> {
-        let concatenated_sequence_with_boundaries = sequence_storage.get_concatenated_sequence_with_boundaries();
-        let pattern_index = I::new(
-            concatenated_sequence_with_boundaries,
-            pattern_index_option,
-        )?;
-        let num_targets = sequence_storage.num_targets();
-        let search_range: Vec<u32> = (0..num_targets).collect();
+    ) -> Result<Self, I::BuildError> {
+        let (concatenated_sequence, target_boundaries) = sequence_storage.get_concatenated_sequence_with_boundaries_of_targets();
+        let pattern_index = I::new(concatenated_sequence, pattern_index_option)?;
 
         Ok(Self {
-            search_range,
+            target_boundaries,
             pattern_index,
             sequence_storage,
         })
     }
-}
-
-/// Enumerates possible errors encountered when constructing a `Reference`.
-#[derive(Debug, Error)]
-pub enum ReferenceBuildError {
-    #[error(transparent)]
-    PatternIndexBuildError(#[from] PatternIndexBuildError),
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
 }
