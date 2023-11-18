@@ -195,7 +195,7 @@ fn local_alignment_query_to_target(
                 let extension_of_current_anchor = &extension_buffer[
                     extension_index_of_current_anchor
                 ];
-                if extension_of_current_anchor.length >= cutoff.minimum_aligned_length {
+                if extension_of_current_anchor.length >= cutoff.minimum_length {
                     let result = extension_of_current_anchor.parse_anchor_alignment_result(operations_buffer);
                     anchor_alignment_results.push(result);
                 }   

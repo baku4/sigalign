@@ -1,22 +1,22 @@
-use super::{Aligner, AlignmentMode, AllocationStrategy};
+use super::{Aligner, Algorithm, AllocationStrategy};
 use std::fmt::Debug;
 
-impl<M, A> Debug for Aligner<M, A> where
-    M: AlignmentMode + Debug,
-    A: AllocationStrategy,
+impl<A, L> Debug for Aligner<A, L> where
+    A: Algorithm + Debug,
+    L: AllocationStrategy,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Aligner")
-            .field("mode", &self.mode)
+            .field("algorithm", &self.algorithm)
             .field("length_checker", &self.query_length_checker)
             .field("regulator", &self.regulator)
             .finish()
     }
 }
 
-impl<M, A> Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
+impl<A, L> Aligner<A, L> where
+    A: Algorithm,
+    L: AllocationStrategy,
 {
     /// Get mismatch penalty
     pub fn get_mismatch_penalty(&self) -> u32 {

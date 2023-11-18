@@ -22,7 +22,7 @@ impl<I, S> Serialize for Reference<I, S> where
     fn save_to<W>(&self, mut writer: W) -> Result<(), Error> where
         W: Write
     {
-        self.search_range.save_to(&mut writer)?;
+        self.target_boundaries.save_to(&mut writer)?;
         self.pattern_index.save_to(&mut writer)?;
         self.sequence_storage.save_to(&mut writer)?;
         Ok(())
@@ -31,11 +31,11 @@ impl<I, S> Serialize for Reference<I, S> where
         R: Read,
         Self: Sized
     {
-        let search_range = Vec::load_from(&mut reader)?;
+        let target_boundaries = Vec::load_from(&mut reader)?;
         let pattern_index = I::load_from(&mut reader)?;
         let sequence_storage = S::load_from(&mut reader)?;
         Ok(Self {
-            search_range,
+            target_boundaries,
             pattern_index,
             sequence_storage,
         })
@@ -52,7 +52,7 @@ impl<I, S> EstimateSize for Reference<I, S> where
     S: SequenceStorage + EstimateSize,
 {
     fn serialized_size(&self) -> usize {
-        (self.search_range.len() * std::mem::size_of::<u32>())
+        (self.target_boundaries.len() * std::mem::size_of::<u32>())
         + self.sequence_storage.serialized_size()
         + self.pattern_index.serialized_size()
     }

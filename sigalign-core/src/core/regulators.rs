@@ -12,7 +12,7 @@ pub struct Penalty {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Cutoff {
-    pub minimum_aligned_length: u32,
+    pub minimum_length: u32,
     pub maximum_scaled_penalty_per_length: u32,
 }
 

@@ -91,7 +91,7 @@ impl AlignmentRegulator {
     }
     /// Get minimum aligned length
     pub fn get_minimum_aligned_length(&self) -> u32 {
-        self.cutoff.minimum_aligned_length
+        self.cutoff.minimum_length
     }
     /// Get maximum penalty per length
     pub fn get_maximum_penalty_per_length(&self) -> f32 {
@@ -110,12 +110,12 @@ fn calculate_max_pattern_size(
 ) -> u32 {
     let mut m = 1;
     let mut upper_bound = div_ceil(
-        cutoff.minimum_aligned_length + 4,
+        cutoff.minimum_length + 4,
         2,
     ) - 2;
     loop {
         let lower_bound = (
-            (cutoff.minimum_aligned_length + 4)  as f32 / (2*m + 2) as f32
+            (cutoff.minimum_length + 4)  as f32 / (2*m + 2) as f32
             - 1_f32
         ).ceil() as u32;
         let max_penalty = div_ceil(
@@ -174,7 +174,7 @@ impl Cutoff {
     }
     fn new_with_scaled_max_ppl(minimum_aligned_length: u32, maximum_penalty_per_scale: u32) -> Self {
         Self {
-            minimum_aligned_length,
+            minimum_length: minimum_aligned_length,
             maximum_scaled_penalty_per_length: maximum_penalty_per_scale,
         }
     }
