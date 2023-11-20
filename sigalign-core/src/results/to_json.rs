@@ -43,12 +43,6 @@ use super::{
     AlignmentResult,
     TargetAlignmentResult,
     AnchorAlignmentResult,
-    // fasta::{
-    //     FastaAlignmentResult,
-    //     ReadAlignmentResult,
-    //     FastaReverseComplementAlignmentResult,
-    //     ReadReverseComplementAlignmentResult,
-    // },
     labeled::{
         LabeledAlignmentResult,
         LabeledTargetAlignmentResult,

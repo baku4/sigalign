@@ -1,6 +1,4 @@
-/// Alignment regulators
-///   - Type is determined by machine's pointer width
-
+//! Alignment regulators
 pub const PREC_SCALE: u32 = 100_000; // Ensuring accuracy to the fourth decimal place.
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

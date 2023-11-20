@@ -14,16 +14,16 @@ pub enum RegulatorError {
     #[error("Gap extend penalty only allow positive integer.")]
     InvalidGapExtendPenalty,
     #[error("Maximum penalty per length only allow positive value.")]
-    InvalidMPpL,
+    InvalidMaxPenaltyPerLength,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlignmentRegulator {
-    pub penalties: Penalty,
-    pub cutoff: Cutoff,
-    pub min_penalty_for_pattern: MinPenaltyForPattern,
-    pub gcd_for_compression: u32,
-    pub pattern_size: u32,
+    pub(crate) penalties: Penalty,
+    pub(crate) cutoff: Cutoff,
+    pub(crate) min_penalty_for_pattern: MinPenaltyForPattern,
+    pub(crate) gcd_for_compression: u32,
+    pub(crate) pattern_size: u32,
 }
 
 const MINIMUM_PATTERN_SIZE: u32 = 4;
@@ -39,7 +39,7 @@ impl AlignmentRegulator {
         if gap_extend_penalty == 0 {
             return Err(RegulatorError::InvalidGapExtendPenalty);
         } else if maximum_penalty_per_length <= 0.0 {
-            return Err(RegulatorError::InvalidMPpL);
+            return Err(RegulatorError::InvalidMaxPenaltyPerLength);
         }
 
         let penalties = Penalty::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
