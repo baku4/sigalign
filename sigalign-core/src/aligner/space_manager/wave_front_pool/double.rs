@@ -1,6 +1,4 @@
-use crate::core::regulators::{
-    Penalty, Cutoff,
-};
+use crate::core::regulators::Penalty;
 use super::{
     WaveFront, WaveFrontPool,
     safe_max_penalty_from_len,
@@ -13,10 +11,10 @@ pub struct DoubleWaveFrontPool {
 impl WaveFrontPool for DoubleWaveFrontPool {
     fn new(
         query_len: u32,
+        maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
-        cutoff: &Cutoff,
     ) -> Self {
-        let max_penalty = safe_max_penalty_from_len(query_len, penalties, cutoff);
+        let max_penalty = safe_max_penalty_from_len(query_len, maximum_scaled_penalty_per_length, penalties);
         let wave_front_1 = WaveFront::new_allocated(penalties, max_penalty as usize);
         let wave_front_2 = wave_front_1.clone();
         Self {
@@ -27,10 +25,10 @@ impl WaveFrontPool for DoubleWaveFrontPool {
     fn allocate(
         &mut self,
         query_length: u32,
+        maximum_scaled_penalty_per_length: u32,
         penalties: &Penalty,
-        cutoff: &Cutoff,
     ) {
-        let max_penalty = safe_max_penalty_from_len(query_length, penalties, cutoff);
+        let max_penalty = safe_max_penalty_from_len(query_length, maximum_scaled_penalty_per_length, penalties);
         let wave_front_1 = WaveFront::new_allocated(penalties, max_penalty as usize); // TODO: not to allocate whole space.
         let wave_front_2 = wave_front_1.clone();
         self.wave_front_1 = wave_front_1;

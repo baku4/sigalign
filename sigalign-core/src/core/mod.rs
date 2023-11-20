@@ -1,11 +1,4 @@
-// Extension for serialization
-#[cfg(target_endian = "little")]
-pub type EndianType = byteorder::LittleEndian;
-#[cfg(target_endian = "big")]
-pub type EndianType = byteorder::BigEndian;
-
 pub mod regulators;
-pub mod sequence;
 
 /// `BufferedPatternLocator` represents types that can perform pattern searches within a buffered sequence.
 ///

@@ -7,14 +7,12 @@ description = "A core crate for sigalign"
 
 [dependencies]
 num = "0.4.0"
-num-traits = "0.2.15"
 thiserror = "1.0.38"
 ahash = "0.8.0"
-byteorder = "1.4.3"
-bytemuck = "1.13.0"
+bytemuck = { version = "1.14.0", features = ["derive"] }
 capwriter = "0.2.0"
-serde = "1.0.152"
-serde_json = "1.0.93"
+serde = { version = "1.0.192", features = ["derive"] }
+serde_json = "1.0.108"
 
 [features]
 short_key = []
