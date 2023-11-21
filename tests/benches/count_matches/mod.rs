@@ -2,12 +2,7 @@ use criterion::{
     black_box, Criterion, BenchmarkId,
     PlotConfiguration, AxisScale,
 };
-use sigalign_tests::get_stable_result_of_val_data;
 use sigalign::results::{
-    fasta::{
-        FastaAlignmentResult,
-        ReadAlignmentResult,
-    },
     AlignmentResult,
     TargetAlignmentResult,
     AnchorAlignmentResult,
