@@ -77,5 +77,5 @@ pub mod reference;
 pub mod aligner;
 
 // Utilities
-pub mod wrapper;
+// pub mod wrapper;
 pub mod utils;
