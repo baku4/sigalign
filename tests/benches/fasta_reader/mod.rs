@@ -11,13 +11,13 @@ use type2::{
     FastaReader2, count_seq_len_with_fasta_readers_2,
 };
 
-use std::{io::Read, path::PathBuf};
-use std::fs::File;
+use std::path::PathBuf;
 
 fn get_test_fasta_path() -> PathBuf {
     use sigalign_tests::test_data_path::get_ref_for_val_path;
 
     let fasta_file = get_ref_for_val_path();
+    
     fasta_file
 }
 
