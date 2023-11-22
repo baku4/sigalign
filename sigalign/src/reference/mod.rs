@@ -1,169 +1,101 @@
-/*!
-Provides the `Reference` struct, a database for multiple targeted sequences.
+use std::fs::File;
+use std::io::Read;
 
-## Features
+use thiserror::Error;
 
-- The `Reference` struct operates as a central repository for multiple target sequences, primarily for use by the `Aligner` to perform alignments.
-- During alignment, `Reference` remains immutable. It manages sequences through the `SequenceBuffer` defined in `SequenceStorage`.
-- The search range for the `Reference` can be tailored to specific needs.
-
-## Architecture
-
-The `Reference` encapsulates types conforming to the `SequenceStorage` and `PatternIndex` traits. Construction of a `Reference` requires specification of structs that implement these traits. While SigAlign offers default implementations in the 'sequence_storage' and 'pattern_index' modules, custom implementations are supported.
-
-Upon the `Reference` structure's creation, direct access to `SequenceStorage` and `PatternIndex` implementations is restricted, with management handled by the `Aligner`.
-
-### Trait `SequenceStorage`
-
-`SequenceStorage` is responsible for returning a target sequence when provided with its index. SigAlign remains agnostic to the storage and retrieval methods for sequences; these could be held in memory, stored in a file, or located in a remote physical location accessible over a network.
-
-`SequenceStorage` is designed to fetch a target sequence based on a given target index. SigAlign remains indifferent to the sequence storage and retrieval methods, which could be memory, file-based, or located in a remote physical space connected over a network.
-
-### Trait `PatternIndex`
-
-`PatternIndex` accepts pattern bytes and returns the indices of the targets exactly matching the pattern. The performance of `PatternIndex` significantly influences overall performance, and it can vary widely based on implementation details. Thus, `PatternIndex` should be defined differently according to use cases, considering factors like the maximum number of character types that can be indexed, the length of the targets, and the characteristics of the input query.
-
-## Usage
-
-### (1) Constructing `Reference` with `SequenceStorage`
-
-```rust
-use sigalign::reference::{
-    Reference,
+use sigalign_core::reference::Reference as RawReference;
+use sigalign_impl::{
+    pattern_index::dynamic_lfi::{
+        DynamicLfi, DynamicLfiOption, LfiBuildError,
+    },
     sequence_storage::in_memory::InMemoryStorage,
-    pattern_index::lfi::{Lfi32B2V64, LfiOption},
 };
 
-// (1) Define the SequenceStorage
-let mut sequence_storage = InMemoryStorage::new();
-sequence_storage.add_target(
-    "target_1",
-    b"AAAA...AAA",
-);
-sequence_storage.add_target(
-    "target_2",
-    b"CCCC...CCC",
-);
+mod io;
+pub use io::ReferenceLoadError;
+// mod debug
 
-// (2) Set options for PatternIndex
-let pattern_index_option = LfiOption::new(2, 4, true);
-
-// (3) Construct Reference
-let reference = Reference::<Lfi32B2V64, InMemoryStorage>::new(
-    sequence_storage,
-    pattern_index_option,
-).unwrap();
-```
-
-### (2) Performing Alignment
-
-#### Use `Aligner`
-
-```rust
-let result = aligner.align_query(
-    &reference,
-    b"AA...CC",
-);
-
-let result = aligner.align_fasta_file(
-    &reference,
-    "FASTA_FILE_PATH",
-);
-```
-
-#### Directly manipulate `SequenceBuffer`
-
-```rust
-let mut sequence_buffer = reference.get_sequence_buffer();
-for query in [b"AA...CC", b"GG...TT"] {
-    aligner.alignment(
-        &reference,
-        &mut sequence_buffer,
-        query,
-    );
-}
-```
-
-### (3) Additional Features
-
-#### Adjusting search range
-
-```rust
-let mut reference = reference;
-// Perform alignment only on targets with index 0 and 1
-reference.set_search_range(vec![0, 1]).unwrap();
-```
-
-#### Saving and Loading `Reference`
-
-```rust
-use sigalign::reference::extensions::Serialize;
-// Save
-reference.save_to(&mut buffer).unwrap();
-// Load
-let reference = Reference::<Lfi32B2V64, InMemoryStorage>::load_from(&buffer[..]).unwrap();
-```
-*/
-// mod sequence_type;
-// use sequence_type::SequenceType;
-pub mod pattern_index;
-use pattern_index::{
-    PatternIndex,
-    ConcatenatedSequenceWithBoundaries,
-    PatternIndexBuildError,
-};
-pub mod sequence_storage;
-use sequence_storage::SequenceStorage;
-
-/// A database for multiple targeted sequences.
-#[derive(Debug)]
-pub struct Reference<I, S> where
-    I: PatternIndex,
-    S: SequenceStorage,
-{
-    search_range: Vec<u32>,
-    pattern_index: I,
-    pub(crate) sequence_storage: S,
+pub struct Reference {
+    raw_reference: RawReference<DynamicLfi, InMemoryStorage>,
 }
 
-impl<I, S> Reference<I, S> where
-    I: PatternIndex,
-    S: SequenceStorage,
-{
-    pub fn new(
-        sequence_storage: S,
-        pattern_index_option: I::Option,
-    ) -> Result<Self, ReferenceBuildError> {
-        let concatenated_sequence_with_boundaries = sequence_storage.get_concatenated_sequence_with_boundaries();
-        let pattern_index = I::new(
-            concatenated_sequence_with_boundaries,
-            pattern_index_option,
-        )?;
-        let num_targets = sequence_storage.num_targets();
-        let search_range: Vec<u32> = (0..num_targets).collect();
-
-        Ok(Self {
-            search_range,
-            pattern_index,
-            sequence_storage,
-        })
+impl AsRef<RawReference<DynamicLfi, InMemoryStorage>> for Reference {
+    fn as_ref(&self) -> &RawReference<DynamicLfi, InMemoryStorage> {
+        &self.raw_reference
     }
 }
 
-use thiserror::Error;
-/// Enumerates possible errors encountered when constructing a `Reference`.
-#[derive(Debug, Error)]
+impl Reference {
+    /* Building Reference */
+    /// ⚠️ This is lowest-level generator for `Reference`, assuming that users have already known about "sigalign-core" and "sigalign-impl" crates.
+    pub fn from_raw(reference: RawReference<DynamicLfi, InMemoryStorage>) -> Self {
+        Self { raw_reference: reference }
+    }
+    pub fn from_fasta<R: Read>(reader: R) -> Result<Self, ReferenceBuildError> {
+        let mut sequence_storage = InMemoryStorage::new();
+        sequence_storage.add_fasta(reader).map_err(|_| ReferenceBuildError::invalid_fasta_record())?;
+        let dynamic_lfi_option = Self::get_option_for_dynamic_lfi(&sequence_storage);
+        let raw_reference = RawReference::new(
+            sequence_storage,
+            dynamic_lfi_option,
+        )?;
+        Ok(Self::from_raw(raw_reference))
+    }
+    pub fn from_fasta_file<P>(path: P) -> Result<Self, ReferenceBuildError> where
+        P: AsRef<std::path::Path> + std::fmt::Debug,
+    {
+        let mut sequence_storage = InMemoryStorage::new();
+        let file = File::open(path)?;
+        sequence_storage.add_fasta(file).map_err(|_| ReferenceBuildError::invalid_fasta_record())?;
+        let dynamic_lfi_option = Self::get_option_for_dynamic_lfi(&sequence_storage);
+        let raw_reference = RawReference::new(
+            sequence_storage,
+            dynamic_lfi_option,
+        )?;
+        Ok(Self::from_raw(raw_reference))
+    }
+    fn get_option_for_dynamic_lfi(sequence_storage: &InMemoryStorage) -> DynamicLfiOption {
+        let total_length = sequence_storage.get_total_length();
+        // Use half of total length as the maximum size of lookup table.
+        // Maximum: 200 Mb (200_000_000)
+        let lookup_table_max_bytes_size = u64::max(
+            200_000_000,
+            (total_length / 2) as u64,
+        );
+        DynamicLfiOption {
+            suffix_array_sampling_ratio: 1,
+            lookup_table_max_bytes_size,
+        }
+    }
+
+    /* Get Information */
+    pub fn get_sequence(&self, target_index: u32) -> Option<Vec<u8>> {
+        self.as_ref().get_sequence_storage().get_sequence_safely(target_index)
+    }
+    pub fn get_label(&self, target_index: u32) -> Option<String> {
+        self.as_ref().get_sequence_storage().get_label_safely(target_index)
+    }
+    pub fn get_num_targets(&self) -> u32 {
+        self.as_ref().num_targets()
+    }
+    pub fn get_total_length(&self) -> u32 {
+        self.as_ref().get_sequence_storage().get_total_length()
+    }
+}
+
+#[derive(Error, Debug)]
 pub enum ReferenceBuildError {
     #[error(transparent)]
-    PatternIndexBuildError(#[from] PatternIndexBuildError),
+    PatternIndexError(#[from] LfiBuildError),
+    #[error("Invalid input: {0}")]
+    InvalidSequence(String),
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 }
 
-// Features
-mod pattern_search;
-mod debug;
-mod set_search_range;
-pub use set_search_range::SetSearchRangeError;
-// Extensions
-pub mod extensions;
+impl ReferenceBuildError {
+    // ID of FASTA record is invalid UTF8.
+    fn invalid_fasta_record() -> Self {
+        Self::InvalidSequence("ID of FASTA record is invalid UTF8".to_string())
+    }
+}

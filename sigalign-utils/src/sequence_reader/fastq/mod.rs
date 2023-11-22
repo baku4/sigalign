@@ -1,4 +1,9 @@
-use std::{io::Read, fs::File, path::Path};
+use std::{
+    io::Read,
+    fs::File,
+    path::Path,
+    str::Utf8Error,
+};
 
 use seq_io::fastq::{
     Reader as SeqIoReader,
@@ -68,10 +73,17 @@ impl<'a> IdRecord for FastqRecord<'a> {
     fn extend_id_buf(&mut self, buf: &mut Vec<u8>) {
         buf.extend(self.record.id_bytes());
     }
+    fn extend_id_string(&mut self, buf: &mut String) -> Result<(), Utf8Error> {
+        buf.push_str(self.record.id()?);
+        Ok(())
+    }
 }
 
 impl<'a> IdRefRecord for FastqRecord<'a> {
     fn id(&self) -> &[u8] {
         self.record.id_bytes()
+    }
+    fn id_str(&self) -> Result<&str, Utf8Error> {
+        self.record.id()
     }
 }

@@ -37,7 +37,6 @@ pub struct LabeledReadAlignmentResult {
 }
 
 // Reverse complementary
-
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct FastaReverseComplementAlignmentResult(

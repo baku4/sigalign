@@ -1,4 +1,4 @@
-use std::{io::Read, fs::File, path::Path};
+use std::{io::{Read, Error}, fs::File, path::Path, str::Utf8Error};
 
 use seq_io::fasta::{
     Reader as SeqIoReader,
@@ -38,16 +38,11 @@ impl<'a, R: Read> FastaReader<R> {
     }
 }
 impl FastaReader<File> {
-    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let reader = SeqIoReader::from_path(path)?;
         Ok(Self {
             reader
         })
-    }
-}
-impl<'a> FastaReader<&'a [u8]> {
-    pub fn from_bytes(bytes: &'a [u8]) -> Self {
-        Self::new(bytes)
     }
 }
 
@@ -61,10 +56,17 @@ impl<'a> IdRecord for FastaRecord<'a> {
     fn extend_id_buf(&mut self, buf: &mut Vec<u8>) {
         buf.extend(self.record.id_bytes());
     }
+    fn extend_id_string(&mut self, buf: &mut String) -> Result<(), Utf8Error> {
+        buf.push_str(self.record.id()?);
+        Ok(())
+    }
 }
 
 impl<'a> IdRefRecord for FastaRecord<'a> {
     fn id(&self) -> &[u8] {
         self.record.id_bytes()
+    }
+    fn id_str(&self) -> Result<&str, Utf8Error> {
+        self.record.id()
     }
 }
