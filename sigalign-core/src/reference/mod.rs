@@ -146,4 +146,10 @@ impl<I, S> Reference<I, S> where
             sequence_storage,
         })
     }
+    pub fn get_sequence_storage(&self) -> &S {
+        &self.sequence_storage
+    }
+    pub fn get_pattern_index(&self) -> &I {
+        &self.pattern_index
+    }
 }
