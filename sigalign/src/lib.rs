@@ -7,4 +7,8 @@ pub use reference::{
     ReferenceLoadError,
 };
 
-// pub mod aligner;
+mod aligner;
+pub use aligner::{
+    Aligner,
+    AlignerBuildError,
+};
