@@ -9,8 +9,6 @@ use num::integer::{div_ceil, gcd};
 
 #[derive(Error, Debug)]
 pub enum RegulatorError {
-    #[error("Cutoff is too low to detect the pattern.")]
-    LowCutoff,
     #[error("Gap extend penalty only allow positive integer.")]
     InvalidGapExtendPenalty,
     #[error("Maximum penalty per length only allow positive value.")]
@@ -26,32 +24,25 @@ pub struct AlignmentRegulator {
     pub(crate) pattern_size: u32,
 }
 
-const MINIMUM_PATTERN_SIZE: u32 = 4;
 impl AlignmentRegulator {
     /// Generate new aligner.
     pub fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
         gap_extend_penalty: u32,
-        minimum_aligned_length: u32,
-        maximum_penalty_per_length: f32,
+        minimum_alignment_length: u32,
+        maximum_penalty_per_alignment_length: f32,
     ) -> Result<Self, RegulatorError> {
         if gap_extend_penalty == 0 {
             return Err(RegulatorError::InvalidGapExtendPenalty);
-        } else if maximum_penalty_per_length <= 0.0 {
+        } else if maximum_penalty_per_alignment_length <= 0.0 {
             return Err(RegulatorError::InvalidMaxPenaltyPerLength);
         }
 
         let penalties = Penalty::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
-        let cutoff = Cutoff::new(minimum_aligned_length, maximum_penalty_per_length);
-
+        let cutoff = Cutoff::new(minimum_alignment_length, maximum_penalty_per_alignment_length);
         let aligner = Self::new_with_penalties_and_cutoff(penalties, cutoff);
-
-        let pattern_size = &aligner.pattern_size;
-        if *pattern_size < MINIMUM_PATTERN_SIZE {
-            return Err(RegulatorError::LowCutoff);
-        }
-
+        
         Ok(aligner)
     }
     fn new_with_penalties_and_cutoff(mut penalties: Penalty, mut cutoff: Cutoff) -> Self {

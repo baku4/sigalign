@@ -1,82 +1,91 @@
-use crate::results::AlignmentResult;
-use crate::reference::{
-    Reference,
-    pattern_index::PatternIndex,
-    sequence_storage::SequenceStorage,
+use thiserror::Error;
+
+use sigalign_core::{
+    reference::Reference as RawReference,
+    aligner::{
+        AlignmentRegulator, RegulatorError,
+        Aligner as RawAligner, LocalAligner, SemiGlobalAligner,
+    }
+};
+use sigalign_impl::{
+    pattern_index::dynamic_lfi::{
+        DynamicLfi, DynamicLfiOption, LfiBuildError,
+    },
+    sequence_storage::in_memory::InMemoryStorage,
+    allocation_strategy::LinearStrategy,
 };
 
-// Internal structures for Aligner
-mod regulator;
-pub(crate) use regulator::AlignmentRegulator;
-pub use regulator::RegulatorError;
-pub mod allocation_strategy;
-use allocation_strategy::{
-    QueryLengthChecker,
-    AllocationStrategy,
-};
-pub mod mode;
-use mode::AlignmentMode;
+mod dynamic_aligner;
+use dynamic_aligner::DynamicAligner;
 
-#[derive(Clone)]
-pub struct Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
-{
-    pub(crate) regulator: AlignmentRegulator,
-    pub(crate) query_length_checker: QueryLengthChecker<A>,
-    pub(crate) mode: M,
+mod alignments;
+
+pub struct Aligner {
+    regulator: AlignmentRegulator,
+    dynamic_aligner: DynamicAligner,
+    target_indices_cache: Vec<u32>,
 }
 
-impl<M, A> Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
-{
+impl Aligner {
+    /* Make new Aligner */
     pub fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
         gap_extend_penalty: u32,
-        minimum_aligned_length: u32,
-        maximum_penalty_per_length: f32,
-    ) -> Result<Self, RegulatorError> {
-        let regulator = AlignmentRegulator::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_aligned_length, maximum_penalty_per_length)?;
-        let query_length_checker = QueryLengthChecker::new();
-        let query_length = query_length_checker.get_allocated_length();
-
-        let mode = M::new(
-            query_length,
-            &regulator,
-        );
+        min_length: u32,
+        max_penalty_per_length: f32,
+        is_local: bool,
+        limit: Option<u32>,
+    ) -> Result<Self, AlignerBuildError> {
+        let regulator = Self::get_regulator(mismatch_penalty, gap_open_penalty, gap_extend_penalty, min_length, max_penalty_per_length)?;
+        let dynamic_aligner = match limit {
+            None => {
+                if is_local {
+                    DynamicAligner::new_local(regulator.clone())
+                } else {
+                    DynamicAligner::new_semi_global(regulator.clone())
+                }
+            },
+            Some(limit) => {
+                if is_local {
+                    DynamicAligner::new_local_with_limit(regulator.clone(), limit)
+                } else {
+                    DynamicAligner::new_semi_global_with_limit(regulator.clone(), limit)
+                }
+            },
+        };
 
         Ok(Self {
             regulator,
-            query_length_checker,
-            mode,
+            dynamic_aligner,
+            target_indices_cache: Vec::new(),
         })
     }
-    pub fn alignment<I: PatternIndex, S: SequenceStorage> (
-        &mut self,
-        reference: &Reference<I, S>,
-        sequence_buffer: &mut S::Buffer,
-        query: &[u8],
-    ) -> AlignmentResult {
-        if let Some(required_query_length) = self.query_length_checker.optional_length_to_be_allocated(query.len() as u32) {
-            self.mode.allocate_space(
-                required_query_length,
-                &self.regulator,
-            );
-        }
-        
-        let reference_alignment_result = self.mode.run_algorithm(
-            reference,
-            sequence_buffer,
-            query,
-            &self.regulator,
-        );
-
-        self.regulator.result_of_uncompressed_penalty(reference_alignment_result)
+    fn get_regulator(
+        mismatch_penalty: u32,
+        gap_open_penalty: u32,
+        gap_extend_penalty: u32,
+        min_length: u32,
+        max_penalty_per_length: f32,
+    ) -> Result<AlignmentRegulator, AlignerBuildError> {
+        let regulator = AlignmentRegulator::new(
+            mismatch_penalty,
+            gap_open_penalty,
+            gap_extend_penalty,
+            min_length,
+            max_penalty_per_length,
+        )?;
+        Ok(regulator)
     }
 }
 
-mod debug;
-mod alignments;
-pub use alignments::AlignmentError;
+#[derive(Debug, Error)]
+pub enum AlignerBuildError {
+    #[error("Invalid regulator: {0}")]
+    InvalidRegulator(#[from] RegulatorError),
+}
+
+// // FIXME: Move to wrapper
+// #[error("Cutoff is too low to detect the pattern.")]
+// LowCutoff,
+// const MINIMUM_PATTERN_SIZE: u32 = 4;
