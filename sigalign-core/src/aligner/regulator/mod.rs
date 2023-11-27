@@ -125,7 +125,7 @@ fn calculate_max_pattern_size(
 }
 
 impl AlignmentResult {
-    fn multiply_gcd(&mut self, gcd: u32) {
+    pub fn multiply_gcd(&mut self, gcd: u32) {
         self.0.iter_mut().for_each(|record_alignment_result| {
             record_alignment_result.alignments.iter_mut().for_each(|alignment_result| {
                 alignment_result.multiply_gcd(gcd);
