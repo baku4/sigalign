@@ -23,6 +23,7 @@ pub trait SingleSpaceManager {
     fn reset(&mut self);
 }
 
+#[derive(Clone)]
 pub struct SingleLocalSpaceManager<A: AllocationStrategy> {
     query_length_checker: QueryLengthChecker<A>,
     pub spare_penalty_calculator: SparePenaltyCalculator,
@@ -92,6 +93,7 @@ impl<A: AllocationStrategy> SingleSpaceManager for SingleLocalSpaceManager<A> {
     }
 }
 
+#[derive(Clone)]
 pub struct SingleSemiGlobalSpaceManager<A: AllocationStrategy> {
     query_length_checker: QueryLengthChecker<A>,
     pub spare_penalty_calculator: SparePenaltyCalculator,

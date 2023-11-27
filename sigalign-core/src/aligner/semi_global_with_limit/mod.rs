@@ -13,6 +13,7 @@ use super::{
     AllocationStrategy,
 };
 
+#[derive(Clone)]
 pub struct SemiGlobalWithLimitAligner<A: AllocationStrategy> {
     regulator: AlignmentRegulator,
     space_manager: SingleSemiGlobalSpaceManager<A>,

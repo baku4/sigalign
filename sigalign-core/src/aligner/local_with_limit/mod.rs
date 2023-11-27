@@ -13,6 +13,7 @@ use super::{
     AllocationStrategy,
 };
 
+#[derive(Clone)]
 pub struct LocalWithLimitAligner<A: AllocationStrategy> {
     regulator: AlignmentRegulator,
     space_manager: SingleLocalSpaceManager<A>,

@@ -1,24 +1,18 @@
 use thiserror::Error;
 
-use sigalign_core::{
-    reference::Reference as RawReference,
-    aligner::{
+use sigalign_core::aligner::{
         AlignmentRegulator, RegulatorError,
-        Aligner as RawAligner, LocalAligner, SemiGlobalAligner,
-    }
-};
-use sigalign_impl::{
-    pattern_index::dynamic_lfi::{
-        DynamicLfi, DynamicLfiOption, LfiBuildError,
-    },
-    sequence_storage::in_memory::InMemoryStorage,
-    allocation_strategy::LinearStrategy,
-};
+    };
 
 mod dynamic_aligner;
 use dynamic_aligner::DynamicAligner;
 
 mod alignments;
+
+mod debug;
+// TODO: mod switch_algorithm;
+
+const MINIMUM_PATTERN_SIZE: u32 = 4;
 
 pub struct Aligner {
     regulator: AlignmentRegulator,
@@ -38,6 +32,10 @@ impl Aligner {
         limit: Option<u32>,
     ) -> Result<Self, AlignerBuildError> {
         let regulator = Self::get_regulator(mismatch_penalty, gap_open_penalty, gap_extend_penalty, min_length, max_penalty_per_length)?;
+        if regulator.get_pattern_size() < MINIMUM_PATTERN_SIZE {
+            return Err(AlignerBuildError::LowCutoff);
+        }
+
         let dynamic_aligner = match limit {
             None => {
                 if is_local {
@@ -83,9 +81,6 @@ impl Aligner {
 pub enum AlignerBuildError {
     #[error("Invalid regulator: {0}")]
     InvalidRegulator(#[from] RegulatorError),
+    #[error("Cutoff is too low to detect the pattern.")]
+    LowCutoff,
 }
-
-// // FIXME: Move to wrapper
-// #[error("Cutoff is too low to detect the pattern.")]
-// LowCutoff,
-// const MINIMUM_PATTERN_SIZE: u32 = 4;

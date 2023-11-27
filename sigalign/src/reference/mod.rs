@@ -13,7 +13,7 @@ use sigalign_impl::{
 
 mod io;
 pub use io::ReferenceLoadError;
-// mod debug
+mod debug;
 
 pub struct Reference {
     raw_reference: RawReference<DynamicLfi, InMemoryStorage>,

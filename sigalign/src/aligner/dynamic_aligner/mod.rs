@@ -10,14 +10,9 @@ use sigalign_core::{
     },
     results::AlignmentResult,
 };
-use sigalign_impl::{
-    pattern_index::dynamic_lfi::{
-        DynamicLfi, DynamicLfiOption, LfiBuildError,
-    },
-    sequence_storage::in_memory::InMemoryStorage,
-    allocation_strategy::LinearStrategy,
-};
+use sigalign_impl::allocation_strategy::LinearStrategy;
 
+#[derive(Clone)]
 pub enum DynamicAligner {
     Local(LocalAligner<LinearStrategy>),
     LocalWithLimit(LocalWithLimitAligner<LinearStrategy>),

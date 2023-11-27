@@ -1,23 +1,36 @@
-use super::{Aligner, AlignmentMode, AllocationStrategy};
 use std::fmt::Debug;
 
-impl<M, A> Debug for Aligner<M, A> where
-    M: AlignmentMode + Debug,
-    A: AllocationStrategy,
-{
+use super::{
+    Aligner, DynamicAligner,
+};
+
+impl Debug for Aligner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Aligner")
-            .field("mode", &self.mode)
-            .field("length_checker", &self.query_length_checker)
+            .field("algorithm", &self.dynamic_aligner.algorithm_string())
             .field("regulator", &self.regulator)
             .finish()
     }
 }
 
-impl<M, A> Aligner<M, A> where
-    M: AlignmentMode,
-    A: AllocationStrategy,
-{
+impl DynamicAligner {
+    fn algorithm_string(&self) -> String {
+        match self {
+            Self::Local(_) => "Local".to_string(),
+            Self::LocalWithLimit(v) => {
+                let limit = v.get_limit();
+                format!("LocalWithLimit({})", limit)
+            },
+            Self::SemiGlobal(_) => "SemiGlobal".to_string(),
+            Self::SemiGlobalWithLimit(v) => {
+                let limit = v.get_limit();
+                format!("SemiGlobalWithLimit({})", limit)
+            },
+        }
+    }
+}
+
+impl Aligner {
     /// Get mismatch penalty
     pub fn get_mismatch_penalty(&self) -> u32 {
         self.regulator.get_mismatch_penalty()
