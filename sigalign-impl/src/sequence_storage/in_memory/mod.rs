@@ -7,7 +7,7 @@ use sigalign_core::reference::{
 use sigalign_utils::sequence_reader::{
     SeqRecord, IdRecord,
     fasta::FastaReader,
-    decompress::{get_gzip_decoder, get_zlib_decoder},
+    decompress::get_gzip_decoder,
 };
 
 // TODO: Debug impl manually

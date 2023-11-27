@@ -35,5 +35,5 @@ pub struct FastaAlignmentResult(
     pub Vec<ReadAlignmentResult>
 );
 
-// pub mod fasta;
-// pub mod to_sam;
+pub mod to_json;
+//TODO: pub mod to_sam;

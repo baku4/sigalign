@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // References
 pub mod pattern_index;
 pub mod sequence_storage;
