@@ -24,6 +24,16 @@ pub fn get_two_line_fa_path() -> PathBuf {
     path.push(TWO_LINE_FILE);
     path
 }
+pub fn get_gzip_compressed_lf_fa_path() -> PathBuf {
+    let mut path = get_lf_fa_path();
+    path.set_extension("fa.gz");
+    path
+}
+pub fn get_zlib_compressed_lf_fa_path() -> PathBuf {
+    let mut path = get_lf_fa_path();
+    path.set_extension("fa.zlib");
+    path
+}
 
 // 
 // (2) For result validation
@@ -58,4 +68,16 @@ pub fn get_local_tmp_dir() -> Result<PathBuf> {
     }
 
     Ok(local_tmp_dir)
+}
+pub fn get_dir_on_tmp_dir(dir_name: &str) -> Result<PathBuf> {
+    let mut path = get_local_tmp_dir()?;
+    path.push(dir_name);
+    if path.exists() {
+        if !path.is_dir() {
+            error_msg!("Local tmp path {:?} is not directory", path)
+        }
+    } else {
+        fs::create_dir(&path)?;
+    }
+    Ok(path)
 }

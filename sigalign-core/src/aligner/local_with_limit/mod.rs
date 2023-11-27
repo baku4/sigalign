@@ -30,7 +30,7 @@ impl<A: AllocationStrategy> Aligner for LocalWithLimitAligner<A> {
     ) -> AlignmentResult {
         self.space_manager.allocate_more_space_if_needed(query.len() as u32, &self.regulator);
 
-        local_alignment_algorithm_with_limit(
+        let mut result = local_alignment_algorithm_with_limit(
             reference,
             sequence_buffer,
             query,
@@ -47,7 +47,9 @@ impl<A: AllocationStrategy> Aligner for LocalWithLimitAligner<A> {
             &mut self.space_manager.operations_buffer,
             &mut self.space_manager.extension_buffer,
             self.limit,
-        )
+        );
+        result.multiply_gcd(self.regulator.gcd_for_compression);
+        result
     }
 }
 

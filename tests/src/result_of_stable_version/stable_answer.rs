@@ -14,9 +14,7 @@ use sigalign_stable::{
         DefaultReference as StableDefaultReference,
         DefaultAligner as StableDefaultAligner,
     },
-    results::{
-        fasta::FastaAlignmentResult as StableFastaAlignmentResult,
-    },
+    results::fasta::FastaAlignmentResult as StableFastaAlignmentResult,
 };
 
 use super::ANSWER_ALIGNER_OPTION;

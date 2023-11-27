@@ -29,7 +29,7 @@ impl<A: AllocationStrategy> Aligner for LocalAligner<A> {
     ) -> AlignmentResult {
         self.space_manager.allocate_more_space_if_needed(query.len() as u32, &self.regulator);
 
-        local_alignment_algorithm(
+        let mut result = local_alignment_algorithm(
             reference,
             sequence_buffer,
             query,
@@ -45,7 +45,9 @@ impl<A: AllocationStrategy> Aligner for LocalAligner<A> {
             &mut self.space_manager.traversed_anchor_index_buffer,
             &mut self.space_manager.operations_buffer,
             &mut self.space_manager.extension_buffer,
-        )
+        );
+        result.multiply_gcd(self.regulator.gcd_for_compression);
+        result
     }
 }
 
