@@ -15,7 +15,7 @@ use type1::*;
 mod type2;
 use type2::*;
 
-use sigalign_tests::random_text_and_pattern::{
+use sigalign_tests::common::random_text_and_pattern::{
     gen_rand_chr_list, gen_rand_text,
 };
 fn get_test_data(

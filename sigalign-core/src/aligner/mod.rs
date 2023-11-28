@@ -34,6 +34,8 @@ pub use semi_global_with_limit::SemiGlobalWithLimitAligner;
 mod semi_global_chaining;
 pub use semi_global_chaining::SemiGlobalChainingAligner;
 
+mod switch_modes;
+
 pub trait Aligner {
     /// Low-level alignment function
     fn alignment<I: PatternIndex, S: SequenceStorage> (

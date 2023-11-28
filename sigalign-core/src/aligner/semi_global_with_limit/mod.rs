@@ -15,9 +15,9 @@ use super::{
 
 #[derive(Clone)]
 pub struct SemiGlobalWithLimitAligner<A: AllocationStrategy> {
-    regulator: AlignmentRegulator,
-    space_manager: SingleSemiGlobalSpaceManager<A>,
-    limit: u32,
+    pub(super) regulator: AlignmentRegulator,
+    pub(super) space_manager: SingleSemiGlobalSpaceManager<A>,
+    pub(super) limit: u32,
 }
 
 impl<A: AllocationStrategy> Aligner for SemiGlobalWithLimitAligner<A> {

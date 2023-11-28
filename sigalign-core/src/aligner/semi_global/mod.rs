@@ -15,8 +15,8 @@ use super::{
 
 #[derive(Clone)]
 pub struct SemiGlobalAligner<A: AllocationStrategy> {
-    regulator: AlignmentRegulator,
-    space_manager: SingleSemiGlobalSpaceManager<A>,
+    pub(super) regulator: AlignmentRegulator,
+    pub(super) space_manager: SingleSemiGlobalSpaceManager<A>,
 }
 
 impl<A: AllocationStrategy> Aligner for SemiGlobalAligner<A> {
