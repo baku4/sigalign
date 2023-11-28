@@ -37,3 +37,5 @@ pub struct FastaAlignmentResult(
 
 pub mod to_json;
 //TODO: pub mod to_sam;
+
+mod count_alignments;

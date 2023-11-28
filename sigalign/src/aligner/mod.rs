@@ -10,7 +10,7 @@ use dynamic_aligner::DynamicAligner;
 mod alignments;
 
 mod debug;
-// TODO: mod switch_algorithm;
+mod switch_algorithm;
 
 const MINIMUM_PATTERN_SIZE: u32 = 4;
 

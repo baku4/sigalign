@@ -14,7 +14,7 @@ use type2::{
 use std::path::PathBuf;
 
 fn get_test_fasta_path() -> PathBuf {
-    use sigalign_tests::test_data_path::get_ref_for_val_path;
+    use sigalign_tests::common::test_data_path::get_ref_for_val_path;
 
     let fasta_file = get_ref_for_val_path();
     

@@ -90,7 +90,7 @@ impl Aligner {
                 &self.target_indices_cache,
                 &query_buffer,
             );
-            if alignment_result.result_counts() != 0 {
+            if alignment_result.count_alignments() != 0 {
                 let labeled_alignment_result = label_the_alignment_result(alignment_result, reference);
                 let read = record.id_str().unwrap_or_default().to_string();
                 let read_alignment_result = ReadAlignmentResult {
@@ -121,7 +121,7 @@ impl Aligner {
                 &self.target_indices_cache,
                 &query_buffer,
             );
-            if alignment_result.result_counts() != 0 {
+            if alignment_result.count_alignments() != 0 {
                 let labeled_alignment_result = label_the_alignment_result(alignment_result, reference);
                 let read = record.id_str().unwrap_or_default().to_string();
                 let read_alignment_result = ReadAlignmentResult {
@@ -139,7 +139,7 @@ impl Aligner {
                 &self.target_indices_cache,
                 &query_buffer,
             );
-            if alignment_result.result_counts() != 0 {
+            if alignment_result.count_alignments() != 0 {
                 let labeled_alignment_result = label_the_alignment_result(alignment_result, reference);
                 let read = record.id_str().unwrap_or_default().to_string();
                 let read_alignment_result = ReadAlignmentResult {

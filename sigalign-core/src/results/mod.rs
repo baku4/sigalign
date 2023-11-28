@@ -68,5 +68,5 @@ pub mod labeled;
 mod to_json;
 
 // Features
-mod count_results;
+mod count_alignments;
 mod deduplicate;

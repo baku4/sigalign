@@ -15,9 +15,9 @@ use super::{
 
 #[derive(Clone)]
 pub struct LocalWithLimitAligner<A: AllocationStrategy> {
-    regulator: AlignmentRegulator,
-    space_manager: SingleLocalSpaceManager<A>,
-    limit: u32,
+    pub(super) regulator: AlignmentRegulator,
+    pub(super) space_manager: SingleLocalSpaceManager<A>,
+    pub(super) limit: u32,
 }
 
 impl<A: AllocationStrategy> Aligner for LocalWithLimitAligner<A> {

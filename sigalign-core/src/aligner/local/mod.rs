@@ -15,8 +15,8 @@ use super::{
 
 #[derive(Clone)]
 pub struct LocalAligner<A: AllocationStrategy> {
-    regulator: AlignmentRegulator,
-    space_manager: SingleLocalSpaceManager<A>,
+    pub(super) regulator: AlignmentRegulator,
+    pub(super) space_manager: SingleLocalSpaceManager<A>,
 }
 
 impl<A: AllocationStrategy> Aligner for LocalAligner<A> {
