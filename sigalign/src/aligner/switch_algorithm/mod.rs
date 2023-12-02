@@ -8,6 +8,7 @@ use sigalign_core::aligner::{
 };
 
 impl Aligner {
+    /// Set the limit of the number of alignments for each query.
     pub fn set_limit(&mut self, limit: Option<u32>) {
         self.dynamic_aligner.set_limit(limit);
     }

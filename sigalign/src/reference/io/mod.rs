@@ -10,11 +10,12 @@ use sigalign_core::reference::{
 use super::Reference;
 
 const PREFIX: &str = "SIGALIGN_REFERENCE";
-const WRAPPER_VERSION: &str = "0.4.0";
+const LOWEST_COMPARABLE_WRAPPER_VERSION: &str = "0.4.0-alpha";
 const CORE_VERSION: &str = "0.1.0";
 const DELIMITER: &str = ":";
 
 impl Reference {
+    /// Save `Reference` to a writer.
     pub fn save_to<W>(&self, mut writer: W) -> Result<(), std::io::Error> where
         W: Write
     {
@@ -23,13 +24,14 @@ impl Reference {
         self.raw_reference.save_to(writer)?;
         Ok(())
     }
+    /// Load `Reference` from a reader.
     pub fn load_from<R>(mut reader: R) -> Result<Self, ReferenceLoadError> where
         R: Read,
         Self: Sized
     {
         let encoded_signature: Vec<u8> = Vec::load_from(&mut reader)?;
         let signatures = Self::get_base64_decoded_signature(&encoded_signature)?;
-        if signatures[0] == PREFIX && signatures[1] == WRAPPER_VERSION && signatures[2] == CORE_VERSION {
+        if signatures[0] == PREFIX && signatures[1] == LOWEST_COMPARABLE_WRAPPER_VERSION && signatures[2] == CORE_VERSION {
             let raw_reference = RawReference::load_from(reader)?;
             Ok(Self::from_raw(raw_reference))
         } else {
@@ -38,7 +40,7 @@ impl Reference {
     }
     fn get_base64_encoded_signature_of_current_version() -> String {
         let engine = Self::get_base64_engine();
-        let combined_signature = [PREFIX, DELIMITER, WRAPPER_VERSION, DELIMITER, CORE_VERSION].concat();
+        let combined_signature = [PREFIX, DELIMITER, LOWEST_COMPARABLE_WRAPPER_VERSION, DELIMITER, CORE_VERSION].concat();
         let mut encoded_signature = String::new();
         engine.encode_string(combined_signature, &mut encoded_signature);
 
@@ -60,6 +62,7 @@ impl Reference {
     }
 }
 
+/// Error for loading `Reference`.
 #[derive(Debug, Error)]
 pub enum ReferenceLoadError {
     #[error("Unknown file format. The file does not appear to be a SigAlign reference file.")]

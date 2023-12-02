@@ -7,13 +7,14 @@ use sigalign_core::aligner::{
 mod dynamic_aligner;
 use dynamic_aligner::DynamicAligner;
 
-mod alignments;
+mod perform_alignments;
+mod switch_algorithm;
 
 mod debug;
-mod switch_algorithm;
 
 const MINIMUM_PATTERN_SIZE: u32 = 4;
 
+/// An alignment executor.
 pub struct Aligner {
     regulator: AlignmentRegulator,
     dynamic_aligner: DynamicAligner,
@@ -22,6 +23,7 @@ pub struct Aligner {
 
 impl Aligner {
     /* Make new Aligner */
+    /// Make a new `Aligner`.
     pub fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
@@ -77,6 +79,7 @@ impl Aligner {
     }
 }
 
+/// Error for building `Aligner`.
 #[derive(Debug, Error)]
 pub enum AlignerBuildError {
     #[error("Invalid regulator: {0}")]

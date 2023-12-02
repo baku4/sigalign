@@ -15,6 +15,7 @@ mod io;
 pub use io::ReferenceLoadError;
 mod debug;
 
+/// A database for multiple target sequences.
 pub struct Reference {
     raw_reference: RawReference<DynamicLfi, InMemoryStorage>,
 }
@@ -31,6 +32,7 @@ impl Reference {
     pub fn from_raw(reference: RawReference<DynamicLfi, InMemoryStorage>) -> Self {
         Self { raw_reference: reference }
     }
+    /// Build `Reference` from a FASTA file (can be read from any `Read`).
     pub fn from_fasta<R: Read>(reader: R) -> Result<Self, ReferenceBuildError> {
         let mut sequence_storage = InMemoryStorage::new();
         sequence_storage.add_fasta(reader).map_err(|_| ReferenceBuildError::invalid_fasta_record())?;
@@ -41,6 +43,7 @@ impl Reference {
         )?;
         Ok(Self::from_raw(raw_reference))
     }
+    /// Build `Reference` from a FASTA file path.
     pub fn from_fasta_file<P>(path: P) -> Result<Self, ReferenceBuildError> where
         P: AsRef<std::path::Path> + std::fmt::Debug,
     {
@@ -69,20 +72,25 @@ impl Reference {
     }
 
     /* Get Information */
+    /// Get the sequence of the target. None if the target index is out of range.
     pub fn get_sequence(&self, target_index: u32) -> Option<Vec<u8>> {
         self.as_ref().get_sequence_storage().get_sequence_safely(target_index)
     }
+    /// Get the label of the target. None if the target index is out of range.
     pub fn get_label(&self, target_index: u32) -> Option<String> {
         self.as_ref().get_sequence_storage().get_label_safely(target_index)
     }
+    /// Get the number of targets.
     pub fn get_num_targets(&self) -> u32 {
         self.as_ref().num_targets()
     }
+    /// Get the total length of all targets (in base pairs).
     pub fn get_total_length(&self) -> u32 {
         self.as_ref().get_sequence_storage().get_total_length()
     }
 }
 
+/// Error for building `Reference`.
 #[derive(Error, Debug)]
 pub enum ReferenceBuildError {
     #[error(transparent)]
