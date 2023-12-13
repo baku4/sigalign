@@ -1,6 +1,6 @@
 [package]
 name = "sigalign"
-version = "0.3.2"
+version = "0.4.0-alpha"
 authors = ["baku4 <bahkhun@gamil.com>"]
 edition = "2021"
 description = "A Similarity-Guided Alignment Algorithm"
@@ -11,9 +11,9 @@ keywords = ["alignment", "nucleotide", "bioinformatics", "bio"]
 categories = ["science"]
 
 [dependencies]
-sigalign-core = { path = "../sigalign-core" }
-sigalign-utils = { path = "../sigalign-utils" }
-sigalign-impl = { path = "../sigalign-impl" }
+sigalign-core = { version = "0.1.0", path = "../sigalign-core" }
+sigalign-utils = { version = "0.1.0", path = "../sigalign-utils" }
+sigalign-impl = { version = "0.1.0", path = "../sigalign-impl" }
 thiserror = "1.0.50"
 base64 = "0.21.5"
 serde = "1.0.152"

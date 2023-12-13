@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["baku4 <bahkhun@gamil.com>"]
 description = "A core crate for sigalign"
+license = "MIT"
 
 [dependencies]
 num = "0.4.0"

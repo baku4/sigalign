@@ -8,3 +8,6 @@ mod utils;
 mod implementations;
 // Tests for sigalign
 mod wrappers;
+
+// Tests for Documentation
+mod documentation;

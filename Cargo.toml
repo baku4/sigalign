@@ -12,7 +12,6 @@ members = [
 ]
 exclude = [
     "examples/sigalign-demo-web",
-    "masking_debug",
 ]
 
 [profile.dev]
