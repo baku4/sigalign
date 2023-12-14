@@ -90,6 +90,42 @@ impl InMemoryStorage {
         }
         Ok(())
     }
+    /// Get filled storages
+    /// Each storage has a total length of at most `max_length`
+    /// !If one record is longer than `max_length`, it will be in a storage of its own
+    pub fn fill_fasta_until_max_length<R: Read>(
+        &mut self,
+        reader: R,
+        max_length: u32,
+    ) -> Result<Vec<Self>, Utf8Error> {
+        let mut filled_storages = Vec::new();
+
+        let mut fasta_reader = FastaReader::new(reader);
+        let mut current_seq_length = self.get_total_length();
+        let mut seq_buffer = Vec::new();
+        
+        while let Some(mut record) = fasta_reader.next() {
+            record.extend_seq_buf(&mut seq_buffer);
+            let new_seq_length = seq_buffer.len() as u32;
+
+            if (current_seq_length != 0) && (current_seq_length + new_seq_length > max_length) {
+                let filled_storage = std::mem::replace(self, Self::new());
+                // Save current storage
+                filled_storages.push(filled_storage);
+                // Reset current storage
+                current_seq_length = 0;
+            }
+
+            // Add record to current storage
+            current_seq_length += new_seq_length;
+            self.target_count += 1;
+            self.concatenated_sequence.append(&mut seq_buffer);
+            self.sequence_index.push(self.concatenated_sequence.len());
+            record.extend_id_string(&mut self.concatenated_label)?;
+            self.label_index.push(self.concatenated_label.len());
+        }
+        Ok(filled_storages)
+    }
     pub fn add_gzip_fasta<R: Read>(&mut self, reader: R) -> Result<(), Utf8Error> {
         let decomp_reader = get_gzip_decoder(reader);
         let mut fasta_reader = FastaReader::new(decomp_reader);
