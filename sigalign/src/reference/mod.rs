@@ -59,11 +59,11 @@ impl Reference {
     }
     fn get_option_for_dynamic_lfi(sequence_storage: &InMemoryStorage) -> DynamicLfiOption {
         let total_length = sequence_storage.get_total_length();
-        // Use half of total length as the maximum size of lookup table.
-        // Maximum: 200 Mb (200_000_000)
-        let lookup_table_max_bytes_size = u64::max(
-            200_000_000,
-            (total_length / 2) as u64,
+        // Use 1/8 of total length as the maximum size of lookup table.
+        // Maximum: 200 MiB
+        let lookup_table_max_bytes_size = u64::min(
+            200 * 1024 * 1024,
+            (total_length / 8) as u64,
         );
         DynamicLfiOption {
             suffix_array_sampling_ratio: 1,
