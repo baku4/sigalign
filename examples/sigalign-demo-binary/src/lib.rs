@@ -1,12 +1,12 @@
-use anyhow::{Result, bail as error_msg};
+use anyhow::{Result, bail as error_msg, anyhow as error};
 
 use clap::Command;
 
 mod reference;
 use reference::ReferenceApp;
 
-// mod alignment;
-// use alignment::AlignmentApp;
+mod alignment;
+use alignment::AlignmentApp;
 
 pub struct Application;
 
@@ -20,8 +20,8 @@ impl Application {
             .arg_required_else_help(true)
             .propagate_version(true)
             .subcommand_required(true)
-            .subcommand(ReferenceApp::get_command().display_order(1));
-            // .subcommand(AlignmentApp::get_command().display_order(2));
+            .subcommand(ReferenceApp::get_command().display_order(1))
+            .subcommand(AlignmentApp::get_command().display_order(2));
         
         let matches = cmd.get_matches();
         
@@ -29,9 +29,9 @@ impl Application {
             Some(("reference", sub_matches)) => {
                 ReferenceApp::run(sub_matches)?;
             },
-            // Some(("alignment", sub_matches)) => {
-            //     AlignmentApp::run(sub_matches)
-            // },
+            Some(("alignment", sub_matches)) => {
+                AlignmentApp::run(sub_matches)?;
+            },
             _ => unreachable!(""),
         }
 

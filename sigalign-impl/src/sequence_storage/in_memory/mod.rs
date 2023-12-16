@@ -179,4 +179,13 @@ impl InMemoryStorage {
     }
 }
 
+impl InMemoryBuffer {
+    pub fn new() -> Self {
+        Self {
+            pointer: std::ptr::null(),
+            len: 0,
+        }
+    }
+}
+
 mod extensions;

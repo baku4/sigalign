@@ -43,7 +43,7 @@ impl ReferenceApp {
         Command::new("reference")
             .about("Generate reference file")
             .arg_required_else_help(true)
-            .arg(arg!(-i --input <FILE>... "Input fasta files")
+            .arg(arg!(-i --input <FILE> "Input fasta files")
                 .display_order(1)
                 .num_args(1..)
                 .value_parser(value_parser!(PathBuf))
@@ -75,7 +75,7 @@ impl ReferenceApp {
         // Build and save reference
         {
             let start = Instant::now();
-            config.build_and_save_references().unwrap();
+            config.build_and_save_references()?;
             eprintln!("Reference built and saved ({} s)", start.elapsed().as_secs_f64());
         };
         
@@ -109,8 +109,25 @@ impl ReferenceConfig {
         let output_file = {
             matches.get_one::<PathBuf>("output").expect("Invalid output file").clone()
         };
-        if !overwrite && output_file.exists() {
-            error_msg!("Output file already exist")
+        if output_file.is_dir() {
+            error_msg!("Output file must be a file")
+        } else {
+            let reference_path_detector = ReferencePathDetector::new(&output_file);
+            let to_clean_up_paths = reference_path_detector.to_clean_up_paths()?;
+            if overwrite {
+                eprintln!("Removing existing reference file(s)");
+                for existing_reference_path in to_clean_up_paths {
+                    eprintln!("  - Removing : {}", existing_reference_path.display());
+                    std::fs::remove_file(existing_reference_path)?;
+                }
+            } else {
+                eprintln!("Checking existing reference file(s)");
+                if to_clean_up_paths.len() > 0 {
+                    error_msg!("Output file already exist")
+                } else {
+                    eprintln!("No existing reference file(s)");
+                }
+            }
         }
 
         // Maximum length of reference
