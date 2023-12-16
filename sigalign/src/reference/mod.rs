@@ -8,7 +8,7 @@ use sigalign_impl::{
     pattern_index::dynamic_lfi::{
         DynamicLfi, DynamicLfiOption, LfiBuildError,
     },
-    sequence_storage::in_memory::InMemoryStorage,
+    sequence_storage::in_memory::{InMemoryStorage, InMemoryBuffer},
 };
 
 mod io;
@@ -18,6 +18,7 @@ mod debug;
 /// A database for multiple target sequences.
 pub struct Reference {
     raw_reference: RawReference<DynamicLfi, InMemoryStorage>,
+    full_sorted_target_indices: Vec<u32>,
 }
 
 impl AsRef<RawReference<DynamicLfi, InMemoryStorage>> for Reference {
@@ -30,7 +31,8 @@ impl Reference {
     /* Building Reference */
     /// ⚠️ This is lowest-level generator for `Reference`, assuming that users have already known about "sigalign-core" and "sigalign-impl" crates.
     pub fn from_raw(reference: RawReference<DynamicLfi, InMemoryStorage>) -> Self {
-        Self { raw_reference: reference }
+        let full_sorted_search_range = (0..reference.num_targets()).collect();
+        Self { raw_reference: reference, full_sorted_target_indices: full_sorted_search_range }
     }
     /// Build `Reference` from a FASTA file (can be read from any `Read`).
     pub fn from_fasta<R: Read>(reader: R) -> Result<Self, ReferenceBuildError> {
@@ -87,6 +89,15 @@ impl Reference {
     /// Get the total length of all targets (in base pairs).
     pub fn get_total_length(&self) -> u32 {
         self.as_ref().get_sequence_storage().get_total_length()
+    }
+
+    /// Get sequence buffer for alignment.
+    pub fn get_sequence_buffer(&self) -> InMemoryBuffer {
+        self.as_ref().get_sequence_buffer()
+    }
+    /// Get the full sorted target indices
+    pub fn get_full_sorted_target_indices(&self) -> &[u32] {
+        &self.full_sorted_target_indices
     }
 }
 

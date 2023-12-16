@@ -15,10 +15,10 @@ mod debug;
 const MINIMUM_PATTERN_SIZE: u32 = 4;
 
 /// An alignment executor.
+#[derive(Clone)]
 pub struct Aligner {
     regulator: AlignmentRegulator,
     dynamic_aligner: DynamicAligner,
-    target_indices_cache: Vec<u32>,
 }
 
 impl Aligner {
@@ -58,7 +58,6 @@ impl Aligner {
         Ok(Self {
             regulator,
             dynamic_aligner,
-            target_indices_cache: Vec::new(),
         })
     }
     fn get_regulator(
