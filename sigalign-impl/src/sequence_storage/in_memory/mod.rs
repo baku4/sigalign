@@ -177,6 +177,28 @@ impl InMemoryStorage {
     pub fn get_total_length(&self) -> u32 {
         self.concatenated_sequence.len() as u32
     }
+    /// Remove all labels
+    /// !Cannot be undone
+    pub fn remove_labels(&mut self) {
+        self.concatenated_label = String::new();
+        self.label_index = vec![0; self.target_count+1];
+    }
+    /// Set sequence to uppercase
+    /// !Cannot be undone
+    pub fn set_sequence_to_uppercase(&mut self) {
+        self.concatenated_sequence.iter_mut().for_each(|v| {
+            *v = v.to_ascii_uppercase();
+        });
+    }
+    /// Make all N bases to "?" (for N is never matched with any other bases).
+    /// !Cannot be undone
+    pub fn make_n_bases_to_question_mark(&mut self) {
+        self.concatenated_sequence.iter_mut().for_each(|v| {
+            if *v == b'N' {
+                *v = b'?';
+            }
+        });
+    }
 }
 
 impl InMemoryBuffer {

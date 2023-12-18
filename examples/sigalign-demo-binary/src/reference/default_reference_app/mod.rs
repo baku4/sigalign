@@ -7,6 +7,7 @@ use std::{
 use clap::{
     Command,
     arg,
+    Arg,
     ArgMatches,
     value_parser,
 };
@@ -55,8 +56,10 @@ impl ReferenceApp {
             .arg(arg!(-w --overwrite  "Overwrite output reference file")
                 .display_order(3)
                 .required(false))
-            .arg(arg!(-m --maxlen [INT] "Maximum length of sequence for each reference file")
+            .arg(Arg::new("maxlen").short('m').long("maxlen")
+                .help("Maximum length of sequence for each reference file")
                 .display_order(4)
+                .value_name("INT")
                 .value_parser(value_parser!(u32))
                 .required(false))
     }
@@ -223,6 +226,7 @@ impl ReferenceConfig {
         write_target_manifest_file(
             &num_targets_in_input_files,
             &num_targets_in_references,
+            self.input_files.as_slice(),
             &reference_path_detector,
         )?;
         eprintln!("Target manifest file saved to {}", reference_path_detector.get_manifest_file_path().display());
@@ -235,6 +239,7 @@ impl ReferenceConfig {
 fn write_target_manifest_file(
     num_targets_in_input_files: &[u32],
     num_targets_in_references: &[u32],
+    input_files: &[PathBuf],
     reference_path_detector: &ReferencePathDetector,
 ) -> Result<()> {
     let mut manifest_file_path = File::create(reference_path_detector.get_manifest_file_path())?;
@@ -248,9 +253,13 @@ fn write_target_manifest_file(
         .map(|(reference_index, target_count)| {
             (0..*target_count).map(move |record_index| (reference_index, record_index))
         }).flatten();
-    writer.write_all("file_index\trecord_index\treference_index\ttarget_index\n".as_bytes()).unwrap();
+    writer.write_all("file_index\tfile_name\trecord_index\treference_index\ttarget_index\n".as_bytes()).unwrap();
     iter_1.zip(iter_2).for_each(|((file_index, record_index), (reference_index, target_index))| {
-        let line = format!("{}\t{}\t{}\t{}\n", file_index, record_index, reference_index, target_index);
+        let file_name = input_files[file_index].file_name().unwrap_or_default().to_str().unwrap_or_default();
+        let line = format!(
+            "{}\t{}\t{}\t{}\t{}\n",
+            file_index, file_name, record_index, reference_index, target_index,
+        );
         writer.write_all(line.as_bytes()).unwrap();
     });
     writer.flush()?;
@@ -259,8 +268,12 @@ fn write_target_manifest_file(
 }
 
 fn get_reference_with_default_option(
-    sequence_storage: InMemoryStorage,
+    mut sequence_storage: InMemoryStorage,
 ) -> Result<Reference> {
+    // Preparing sequence storage
+    sequence_storage.set_sequence_to_uppercase();
+    sequence_storage.make_n_bases_to_question_mark();
+
     let total_length = sequence_storage.get_total_length();
     // Use half of total length as the maximum size of lookup table.
     // Maximum: 200 MiB
@@ -282,7 +295,8 @@ fn get_reference_with_default_option(
 
 fn input_file_extension_is_allowed(path: &PathBuf) -> bool {
     if is_gzip_file(path) {
-        if is_fasta_file(path) {
+        let path_without_gz = path.with_extension("");
+        if is_fasta_file(path_without_gz) {
             return true
         } else {
             return false

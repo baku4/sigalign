@@ -72,7 +72,7 @@ impl AlignmentApp {
                 .display_order(5)
                 .value_parser(value_parser!(u32))
                 .required(false))
-            .arg(arg!(-s --use_semi_global "Use semi-global alignment")
+            .arg(arg!(-s --semi_global "Use semi-global alignment")
                 .display_order(6)
                 .required(false))
             .arg(arg!(-t --thread <INT> "The number of thread")

@@ -85,6 +85,7 @@ impl ThreadPool {
         let mut total_jobs = 0;
         while let Some(mut record) = fasta_reader.next() {
             record.extend_seq_buf(&mut sequence_buffer);
+            set_sequence_to_uppercase(&mut sequence_buffer);
             record.extend_id_string(&mut label_string)?;
             batched_record.push(Record(
                 std::mem::replace(&mut label_string, String::new()),
@@ -225,6 +226,12 @@ impl Worker {
             thread: Some(thread),
         }
     }
+}
+
+fn set_sequence_to_uppercase(sequence: &mut Vec<u8>) {
+    sequence.iter_mut().for_each(|v| {
+        *v = v.to_ascii_uppercase();
+    });
 }
 
 #[inline]
