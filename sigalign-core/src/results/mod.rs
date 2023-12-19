@@ -58,10 +58,10 @@ pub enum AlignmentOperation {
     Match,
     #[cfg_attr(feature = "short_key", serde(rename = "S"))]
     Subst,
-    #[cfg_attr(feature = "short_key", serde(rename = "I"))]
-    Insertion,
     #[cfg_attr(feature = "short_key", serde(rename = "D"))]
     Deletion,
+    #[cfg_attr(feature = "short_key", serde(rename = "I"))]
+    Insertion,
 }
 
 pub mod labeled;

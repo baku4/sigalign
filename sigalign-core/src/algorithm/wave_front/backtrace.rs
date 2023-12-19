@@ -36,7 +36,7 @@ impl WaveFront {
         traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     ) -> BackTraceResult {
         operations_buffer.push(AlignmentOperations {
-            operation: AlignmentOperation::Insertion,
+            operation: AlignmentOperation::Deletion,
             count: 0,
         });
         let operation_start_index = operations_buffer.len() as u32;
@@ -53,7 +53,7 @@ impl WaveFront {
         let mut k = -wave_front_score.max_k + component_index as i32;
         let mut fr = component.fr;
 
-        let total_length = fr as u32 + component.deletion_count as u32;
+        let total_length = fr as u32 + component.insertion_count as u32;
         let total_processed_query = (fr - k) as u32;
         let total_processed_target = fr as u32;
 
@@ -121,7 +121,7 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromI => {
+                        BackTraceMarker::FromD => {
                             // (1) Next penalty
                             // not change
                             // (2) Next k
@@ -129,9 +129,9 @@ impl WaveFront {
                             // (3) Next WFS
                             // not change
                             // (4) Component type
-                            component_type = ComponentType::I;
+                            component_type = ComponentType::D;
                             // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
+                            component = wave_front_score.d_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
@@ -158,7 +158,7 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromD => {
+                        BackTraceMarker::FromI => {
                             // (1) Next penalty
                             // not change
                             // (2) Next k
@@ -166,9 +166,9 @@ impl WaveFront {
                             // (3) Next WFS
                             // not change
                             // (4) Component type
-                            component_type = ComponentType::D;
+                            component_type = ComponentType::I;
                             // (5) Next component
-                            component = wave_front_score.d_component_of_k(k);
+                            component = wave_front_score.i_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
@@ -227,80 +227,13 @@ impl WaveFront {
                     }
                 },
                 /* I */
-                ComponentType::I => {
-                    match component.bt {
-                        BackTraceMarker::FromM => {
-                            // (1) Next penalty
-                            penalty -= penalties.o + penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            component_type = ComponentType::M;
-                            // (5) Next component
-                            component = wave_front_score.m_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            if let Some(
-                                AlignmentOperations {
-                                    operation: AlignmentOperation::Insertion,
-                                    count: last_fr
-                                }) = operations_buffer.last_mut() {
-                                *last_fr += 1;
-                            } else {
-                                operations_buffer.push(
-                                    AlignmentOperations {
-                                        operation: AlignmentOperation::Insertion,
-                                        count: 1,
-                                    }
-                                )
-                            }
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                        _ => { // FROM_I
-                            // (1) Next penalty
-                            penalty -= penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            // not change
-                            // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            if let Some(
-                                AlignmentOperations {
-                                    operation: AlignmentOperation::Insertion,
-                                    count: last_fr
-                                }) = operations_buffer.last_mut() {
-                                *last_fr += 1;
-                            } else {
-                                operations_buffer.push(
-                                    AlignmentOperations {
-                                        operation: AlignmentOperation::Insertion,
-                                        count: 1,
-                                    }
-                                )
-                            }
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                    }
-                },
-                /* D */
                 ComponentType::D => {
                     match component.bt {
                         BackTraceMarker::FromM => {
                             // (1) Next penalty
                             penalty -= penalties.o + penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
@@ -327,11 +260,11 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        _ => { // FROM_D
+                        _ => { // FROM_I
                             // (1) Next penalty
                             penalty -= penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
@@ -360,6 +293,73 @@ impl WaveFront {
                         },
                     }
                 },
+                /* D */
+                ComponentType::I => {
+                    match component.bt {
+                        BackTraceMarker::FromM => {
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            component_type = ComponentType::M;
+                            // (5) Next component
+                            component = wave_front_score.m_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
+                                    count: last_fr
+                                }) = operations_buffer.last_mut() {
+                                *last_fr += 1;
+                            } else {
+                                operations_buffer.push(
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
+                                        count: 1,
+                                    }
+                                )
+                            }
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                        _ => { // FROM_D
+                            // (1) Next penalty
+                            penalty -= penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            // not change
+                            // (5) Next component
+                            component = wave_front_score.i_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
+                                    count: last_fr
+                                }) = operations_buffer.last_mut() {
+                                *last_fr += 1;
+                            } else {
+                                operations_buffer.push(
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
+                                        count: 1,
+                                    }
+                                )
+                            }
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                    }
+                },
             };
         }
     }
@@ -375,7 +375,7 @@ impl WaveFront {
         traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     ) -> BackTraceResult {
         operations_buffer.push(AlignmentOperations {
-            operation: AlignmentOperation::Insertion,
+            operation: AlignmentOperation::Deletion,
             count: 0,
         });
         let operation_start_index = operations_buffer.len() as u32;
@@ -394,7 +394,7 @@ impl WaveFront {
         let mut k = -wave_front_score.max_k + component_index as i32;
         let mut fr = component.fr;
 
-        let total_length = fr as u32 + component.deletion_count as u32 + anchor_size;
+        let total_length = fr as u32 + component.insertion_count as u32 + anchor_size;
         let total_processed_query = (fr - k) as u32 + anchor_size;
         let total_processed_target = fr as u32 + anchor_size;
 
@@ -463,7 +463,7 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromI => {
+                        BackTraceMarker::FromD => {
                             // (1) Next penalty
                             // not change
                             // (2) Next k
@@ -471,9 +471,9 @@ impl WaveFront {
                             // (3) Next WFS
                             // not change
                             // (4) Component type
-                            component_type = ComponentType::I;
+                            component_type = ComponentType::D;
                             // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
+                            component = wave_front_score.d_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
@@ -501,7 +501,7 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromD => {
+                        BackTraceMarker::FromI => {
                             // (1) Next penalty
                             // not change
                             // (2) Next k
@@ -509,9 +509,9 @@ impl WaveFront {
                             // (3) Next WFS
                             // not change
                             // (4) Component type
-                            component_type = ComponentType::D;
+                            component_type = ComponentType::I;
                             // (5) Next component
-                            component = wave_front_score.d_component_of_k(k);
+                            component = wave_front_score.i_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
@@ -570,80 +570,13 @@ impl WaveFront {
                     }
                 },
                 /* I */
-                ComponentType::I => {
-                    match component.bt {
-                        BackTraceMarker::FromM => {
-                            // (1) Next penalty
-                            penalty -= penalties.o + penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            component_type = ComponentType::M;
-                            // (5) Next component
-                            component = wave_front_score.m_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            if let Some(
-                                AlignmentOperations {
-                                    operation: AlignmentOperation::Insertion,
-                                    count: last_fr
-                                }) = operations_buffer.last_mut() {
-                                *last_fr += 1;
-                            } else {
-                                operations_buffer.push(
-                                    AlignmentOperations {
-                                        operation: AlignmentOperation::Insertion,
-                                        count: 1,
-                                    }
-                                )
-                            }
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                        _ => { // FROM_I
-                            // (1) Next penalty
-                            penalty -= penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            // not change
-                            // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            if let Some(
-                                AlignmentOperations {
-                                    operation: AlignmentOperation::Insertion,
-                                    count: last_fr
-                                }) = operations_buffer.last_mut() {
-                                *last_fr += 1;
-                            } else {
-                                operations_buffer.push(
-                                    AlignmentOperations {
-                                        operation: AlignmentOperation::Insertion,
-                                        count: 1,
-                                    }
-                                )
-                            }
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                    }
-                },
-                /* D */
                 ComponentType::D => {
                     match component.bt {
                         BackTraceMarker::FromM => {
                             // (1) Next penalty
                             penalty -= penalties.o + penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
@@ -670,11 +603,11 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        _ => { // FROM_D
+                        _ => { // FROM_I
                             // (1) Next penalty
                             penalty -= penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
@@ -694,6 +627,73 @@ impl WaveFront {
                                 operations_buffer.push(
                                     AlignmentOperations {
                                         operation: AlignmentOperation::Deletion,
+                                        count: 1,
+                                    }
+                                )
+                            }
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                    }
+                },
+                /* D */
+                ComponentType::I => {
+                    match component.bt {
+                        BackTraceMarker::FromM => {
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            component_type = ComponentType::M;
+                            // (5) Next component
+                            component = wave_front_score.m_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
+                                    count: last_fr
+                                }) = operations_buffer.last_mut() {
+                                *last_fr += 1;
+                            } else {
+                                operations_buffer.push(
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
+                                        count: 1,
+                                    }
+                                )
+                            }
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                        _ => { // FROM_D
+                            // (1) Next penalty
+                            penalty -= penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            // not change
+                            // (5) Next component
+                            component = wave_front_score.i_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            if let Some(
+                                AlignmentOperations {
+                                    operation: AlignmentOperation::Insertion,
+                                    count: last_fr
+                                }) = operations_buffer.last_mut() {
+                                *last_fr += 1;
+                            } else {
+                                operations_buffer.push(
+                                    AlignmentOperations {
+                                        operation: AlignmentOperation::Insertion,
                                         count: 1,
                                     }
                                 )

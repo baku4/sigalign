@@ -93,11 +93,11 @@ impl WaveFrontScore {
     pub fn m_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).m
     }
-    pub fn i_component_of_k(&self, k: i32) -> &Component {
-        &self.components_of_k(k).i
-    }
     pub fn d_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).d
+    }
+    pub fn i_component_of_k(&self, k: i32) -> &Component {
+        &self.components_of_k(k).i
     }
     pub fn components_of_k_checked(&self, k: i32) -> Option<&Components> {
         self.components_by_k.get((self.max_k + k) as usize)
@@ -109,15 +109,15 @@ impl WaveFrontScore {
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 pub struct Components {
     pub m: Component,
-    pub i: Component,
     pub d: Component,
+    pub i: Component,
 }
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct Component {
     pub fr: i32,
-    pub deletion_count: u16,
+    pub insertion_count: u16,
     pub bt: BackTraceMarker,
 }
 unsafe impl Pod for Component {}
@@ -128,15 +128,15 @@ pub enum BackTraceMarker {
     Empty = 0,
     Start = 1,
     FromM = 2,
-    FromI = 3,
-    FromD = 4,
+    FromD = 3,
+    FromI = 4,
 }
 impl Default for Components {
     fn default() -> Self {
         Self {
             m: Component::empty(),
-            i: Component::empty(),
             d: Component::empty(),
+            i: Component::empty(),
         }
     }
 }
@@ -144,8 +144,8 @@ impl Components {
     fn new_start_point(first_fr: i32) -> Self {
         Self {
             m: Component::start_point(first_fr),
-            i: Component::empty(),
             d: Component::empty(),
+            i: Component::empty(),
         }
     }
 }
@@ -155,7 +155,7 @@ impl Component {
     fn empty() -> Self {
         Self {
             fr: 0,
-            deletion_count: 0,
+            insertion_count: 0,
             bt: BackTraceMarker::Empty,
         }
     }
@@ -163,7 +163,7 @@ impl Component {
     fn start_point(first_fr: i32) -> Self {
         Self {
             fr: first_fr,
-            deletion_count: 0,
+            insertion_count: 0,
             bt: BackTraceMarker::Start,
         }
     }

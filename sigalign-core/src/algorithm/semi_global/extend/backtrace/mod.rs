@@ -10,8 +10,8 @@ use num::integer::div_rem;
 
 enum ComponentType {
     M,
-    I,
     D,
+    I,
 }
 
 impl WaveFront {
@@ -109,7 +109,7 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromI => {
+                        BackTraceMarker::FromD => {
                             // (1) Next penalty
                             // not change
                             // (2) Next k
@@ -117,9 +117,9 @@ impl WaveFront {
                             // (3) Next WFS
                             // not change
                             // (4) Component type
-                            component_type = ComponentType::I;
+                            component_type = ComponentType::D;
                             // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
+                            component = wave_front_score.d_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
@@ -139,7 +139,7 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromD => {
+                        BackTraceMarker::FromI => {
                             // (1) Next penalty
                             // not change
                             // (2) Next k
@@ -147,9 +147,9 @@ impl WaveFront {
                             // (3) Next WFS
                             // not change
                             // (4) Component type
-                            component_type = ComponentType::D;
+                            component_type = ComponentType::I;
                             // (5) Next component
-                            component = wave_front_score.d_component_of_k(k);
+                            component = wave_front_score.i_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Check traversed
@@ -179,47 +179,6 @@ impl WaveFront {
                         }
                     }
                 },
-                /* I */
-                ComponentType::I => {
-                    match component.bt {
-                        BackTraceMarker::FromM => {
-                            // (1) Next penalty
-                            penalty -= penalties.o + penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            component_type = ComponentType::M;
-                            // (5) Next component
-                            component = wave_front_score.m_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            //  - skip
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                        _ => { // FROM_I
-                            // (1) Next penalty
-                            penalty -= penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            // not change
-                            // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            //  - skip
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                    }
-                },
                 /* D */
                 ComponentType::D => {
                     match component.bt {
@@ -227,7 +186,7 @@ impl WaveFront {
                             // (1) Next penalty
                             penalty -= penalties.o + penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
@@ -245,13 +204,54 @@ impl WaveFront {
                             // (1) Next penalty
                             penalty -= penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
                             component = wave_front_score.d_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            //  - skip
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                    }
+                },
+                /* I */
+                ComponentType::I => {
+                    match component.bt {
+                        BackTraceMarker::FromM => {
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            component_type = ComponentType::M;
+                            // (5) Next component
+                            component = wave_front_score.m_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            //  - skip
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                        _ => { // FROM_I
+                            // (1) Next penalty
+                            penalty -= penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            // not change
+                            // (5) Next component
+                            component = wave_front_score.i_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Add operation
@@ -325,37 +325,6 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
-                        BackTraceMarker::FromI => {
-                            // (1) Next penalty
-                            // not change
-                            // (2) Next k
-                            // not change
-                            // (3) Next WFS
-                            // not change
-                            // (4) Component type
-                            component_type = ComponentType::I;
-                            // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Check traversed
-                            let match_count = fr - next_fr;
-                            let prev_match_query_index = next_fr - k - 1;
-
-                            let (quotient, remainder) = div_rem(prev_match_query_index, pattern_size as i32);
-                            let match_count_of_next_pattern = match_count + remainder + 1 - pattern_size as i32;
-                            if match_count_of_next_pattern >= pattern_size as i32 {
-                                let estimated_additive_position_info = (
-                                    (quotient + 1) as u32 + pattern_count_of_anchor,
-                                    (fr - match_count_of_next_pattern) as u32 + anchor_size,
-                                );
-                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
-                            }
-                            // (8) Add operation
-                            //  - skip
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
                         BackTraceMarker::FromD => {
                             // (1) Next penalty
                             // not change
@@ -387,6 +356,37 @@ impl WaveFront {
                             // (9) Next fr to fr
                             fr = next_fr;
                         },
+                        BackTraceMarker::FromI => {
+                            // (1) Next penalty
+                            // not change
+                            // (2) Next k
+                            // not change
+                            // (3) Next WFS
+                            // not change
+                            // (4) Component type
+                            component_type = ComponentType::I;
+                            // (5) Next component
+                            component = wave_front_score.i_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Check traversed
+                            let match_count = fr - next_fr;
+                            let prev_match_query_index = next_fr - k - 1;
+
+                            let (quotient, remainder) = div_rem(prev_match_query_index, pattern_size as i32);
+                            let match_count_of_next_pattern = match_count + remainder + 1 - pattern_size as i32;
+                            if match_count_of_next_pattern >= pattern_size as i32 {
+                                let estimated_additive_position_info = (
+                                    (quotient + 1) as u32 + pattern_count_of_anchor,
+                                    (fr - match_count_of_next_pattern) as u32 + anchor_size,
+                                );
+                                traversed_anchor_index_buffer.push(estimated_additive_position_info);
+                            }
+                            // (8) Add operation
+                            //  - skip
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
                         _ => { // START_POINT
                             // Add operation
                             //  - skip
@@ -397,47 +397,6 @@ impl WaveFront {
                         }
                     }
                 },
-                /* I */
-                ComponentType::I => {
-                    match component.bt {
-                        BackTraceMarker::FromM => {
-                            // (1) Next penalty
-                            penalty -= penalties.o + penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            component_type = ComponentType::M;
-                            // (5) Next component
-                            component = wave_front_score.m_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            //  - skip
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                        _ => { // FROM_I
-                            // (1) Next penalty
-                            penalty -= penalties.e;
-                            // (2) Next k
-                            k -= 1;
-                            // (3) Next WFS
-                            wave_front_score = &wave_front_scores[penalty as usize];
-                            // (4) Component type
-                            // not change
-                            // (5) Next component
-                            component = wave_front_score.i_component_of_k(k);
-                            // (6) Next fr
-                            let next_fr = component.fr;
-                            // (7) Add operation
-                            //  - skip
-                            // (9) Next fr to fr
-                            fr = next_fr;
-                        },
-                    }
-                },
                 /* D */
                 ComponentType::D => {
                     match component.bt {
@@ -445,7 +404,7 @@ impl WaveFront {
                             // (1) Next penalty
                             penalty -= penalties.o + penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
@@ -463,13 +422,54 @@ impl WaveFront {
                             // (1) Next penalty
                             penalty -= penalties.e;
                             // (2) Next k
-                            k += 1;
+                            k -= 1;
                             // (3) Next WFS
                             wave_front_score = &wave_front_scores[penalty as usize];
                             // (4) Component type
                             // not change
                             // (5) Next component
                             component = wave_front_score.d_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            //  - skip
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                    }
+                },
+                /* I */
+                ComponentType::I => {
+                    match component.bt {
+                        BackTraceMarker::FromM => {
+                            // (1) Next penalty
+                            penalty -= penalties.o + penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            component_type = ComponentType::M;
+                            // (5) Next component
+                            component = wave_front_score.m_component_of_k(k);
+                            // (6) Next fr
+                            let next_fr = component.fr;
+                            // (7) Add operation
+                            //  - skip
+                            // (9) Next fr to fr
+                            fr = next_fr;
+                        },
+                        _ => { // FROM_I
+                            // (1) Next penalty
+                            penalty -= penalties.e;
+                            // (2) Next k
+                            k += 1;
+                            // (3) Next WFS
+                            wave_front_score = &wave_front_scores[penalty as usize];
+                            // (4) Component type
+                            // not change
+                            // (5) Next component
+                            component = wave_front_score.i_component_of_k(k);
                             // (6) Next fr
                             let next_fr = component.fr;
                             // (7) Add operation

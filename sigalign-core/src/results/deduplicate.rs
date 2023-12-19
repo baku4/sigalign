@@ -81,10 +81,10 @@ impl AnchorAlignmentResult {
                         target_index += 1;
                     }
                 },
-                AlignmentOperation::Insertion => {
+                AlignmentOperation::Deletion => {
                     target_index += operation.count;
                 },
-                AlignmentOperation::Deletion => {
+                AlignmentOperation::Insertion => {
                     query_index += operation.count;
                 },
             }

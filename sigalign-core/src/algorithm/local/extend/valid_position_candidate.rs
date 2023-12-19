@@ -142,7 +142,7 @@ impl WaveFrontScore {
                 let query_length = comp.m.fr + self.max_k - comp_index as i32; // Fr - k
                 if max_query_length < query_length {
                     max_query_length = query_length;
-                    length_cache = comp.m.fr + comp.m.deletion_count as i32;
+                    length_cache = comp.m.fr + comp.m.insertion_count as i32;
                     comp_index_cache = comp_index;
                 }
             }

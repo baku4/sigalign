@@ -60,8 +60,8 @@ fn ops_to_ops(stable_ops: &Vec<StableAlignmentOperations>) -> Vec<AlignmentOpera
             operation: match x.operation {
                 StableAlignmentOperation::Match => AlignmentOperation::Match,
                 StableAlignmentOperation::Subst => AlignmentOperation::Subst,
-                StableAlignmentOperation::Insertion => AlignmentOperation::Insertion,
-                StableAlignmentOperation::Deletion => AlignmentOperation::Deletion,
+                StableAlignmentOperation::Insertion => AlignmentOperation::Deletion,
+                StableAlignmentOperation::Deletion => AlignmentOperation::Insertion,
             }
         }
     }).collect()

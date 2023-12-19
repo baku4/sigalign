@@ -38,15 +38,11 @@ impl AlignmentOperations {
 
 impl AlignmentOperation {
     #[inline]
-    //
-    // ! CAUTION !
-    //
-    // In this library, the definitions of Insertion and Deletion are opposite to their standard definitions in the SAM format.
     fn to_cigar_code(&self) -> u8 {
         match self {
             AlignmentOperation::Match | AlignmentOperation::Subst => b'M',
-            AlignmentOperation::Insertion => b'D',
-            AlignmentOperation::Deletion => b'I',
+            AlignmentOperation::Insertion => b'I',
+            AlignmentOperation::Deletion => b'D',
         }
     }
 }
