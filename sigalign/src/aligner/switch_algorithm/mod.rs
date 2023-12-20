@@ -12,6 +12,16 @@ impl Aligner {
     pub fn set_limit(&mut self, limit: Option<u32>) {
         self.dynamic_aligner.set_limit(limit);
     }
+    /// Change the algorithm to semi-global.
+    /// Returns `false` if the algorithm is already semi-global.
+    pub fn change_to_semi_global(&mut self) -> bool {
+        self.dynamic_aligner.change_to_semi_global()
+    }
+    /// Change the algorithm to local.
+    /// Returns `false` if the algorithm is already local.
+    pub fn change_to_local(&mut self) -> bool {
+        self.dynamic_aligner.change_to_local()
+    }
 }
 impl DynamicAligner {
     fn set_limit(&mut self, limit: Option<u32>) {
@@ -52,6 +62,36 @@ impl DynamicAligner {
                     _ => {},
                 }
             },
+        }
+    }
+    fn change_to_semi_global(&mut self) -> bool {
+        match self {
+            Self::Local(v) => {
+                let regulator = v.get_regulator().clone();
+                *self = Self::SemiGlobal(SemiGlobalAligner::new(regulator));
+                true
+            },
+            Self::LocalWithLimit(v) => {
+                let regulator = v.get_regulator().clone();
+                *self = Self::SemiGlobalWithLimit(SemiGlobalWithLimitAligner::new(regulator, v.get_limit()));
+                true
+            },
+            _ => false,
+        }
+    }
+    fn change_to_local(&mut self) -> bool {
+        match self {
+            Self::SemiGlobal(v) => {
+                let regulator = v.get_regulator().clone();
+                *self = Self::Local(LocalAligner::new(regulator));
+                true
+            },
+            Self::SemiGlobalWithLimit(v) => {
+                let regulator = v.get_regulator().clone();
+                *self = Self::LocalWithLimit(LocalWithLimitAligner::new(regulator, v.get_limit()));
+                true
+            },
+            _ => false,
         }
     }
 }

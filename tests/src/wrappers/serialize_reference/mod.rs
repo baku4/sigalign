@@ -1,5 +1,5 @@
 use log::info;
-use sigalign::Reference;
+use sigalign::{Reference, ReferenceBuilder};
 
 use crate::common::{
     init_logger,
@@ -21,7 +21,7 @@ fn test_reference_serialize() {
 
     for fa_file in [fa_file_1, fa_file_2].iter() {
         info!("fa_file: {:?}", fa_file);
-        let to_save_ref = Reference::from_fasta_file(&fa_file).unwrap();
+        let to_save_ref = ReferenceBuilder::new().add_fasta_file(&fa_file).unwrap().build().unwrap();
 
         buffer.clear();
         to_save_ref.save_to(&mut buffer).unwrap();

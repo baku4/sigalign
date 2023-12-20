@@ -8,6 +8,7 @@ impl AllocationStrategy for LinearStrategy {
         Self
     }
     #[inline(always)]
+    // TODO: Can be init with 0?
     fn initial_query_len(&self) -> u32 {
         200
     }

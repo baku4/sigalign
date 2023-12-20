@@ -42,16 +42,4 @@ impl DynamicAligner {
         let local_aligner = LocalAligner::new(regulator);
         Self::Local(local_aligner)
     }
-    pub fn new_local_with_limit(regulator: AlignmentRegulator, limit: u32) -> Self {
-        let local_with_limit_aligner = LocalWithLimitAligner::new(regulator, limit);
-        Self::LocalWithLimit(local_with_limit_aligner)
-    }
-    pub fn new_semi_global(regulator: AlignmentRegulator) -> Self {
-        let semi_global_aligner = SemiGlobalAligner::new(regulator);
-        Self::SemiGlobal(semi_global_aligner)
-    }
-    pub fn new_semi_global_with_limit(regulator: AlignmentRegulator, limit: u32) -> Self {
-        let semi_global_with_limit_aligner = SemiGlobalWithLimitAligner::new(regulator, limit);
-        Self::SemiGlobalWithLimit(semi_global_with_limit_aligner)
-    }
 }

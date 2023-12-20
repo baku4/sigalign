@@ -83,7 +83,7 @@ impl WaveFrontScore {
     fn with_max_k(max_k: i32) -> Self {
         Self {
             max_k,
-            components_by_k: vec![Components::default(); max_k as usize * 2 + 1], //FIXME: use zeroed
+            components_by_k: vec![Components::default(); max_k as usize * 2 + 1],
         }
     }
     // Get

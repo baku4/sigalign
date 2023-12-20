@@ -185,18 +185,23 @@ impl InMemoryStorage {
     }
     /// Set sequence to uppercase
     /// !Cannot be undone
-    pub fn set_sequence_to_uppercase(&mut self) {
+    pub fn set_sequences_to_uppercase(&mut self) {
         self.concatenated_sequence.iter_mut().for_each(|v| {
             *v = v.to_ascii_uppercase();
         });
     }
-    /// Make all N bases to "?" (for N is never matched with any other bases).
+    /// Make all designated bases to defined base
     /// !Cannot be undone
-    pub fn make_n_bases_to_question_mark(&mut self) {
+    pub fn change_bases_to(&mut self, bases_to_change: &[u8], target_base: u8) {
+        let mut byte_mapper: [u8; 256] = [0; 256];
+        for (i, item) in byte_mapper.iter_mut().enumerate() {
+            *item = i as u8;
+        }
+        bases_to_change.iter().for_each(|v| {
+            byte_mapper[*v as usize] = target_base;
+        });
         self.concatenated_sequence.iter_mut().for_each(|v| {
-            if *v == b'N' {
-                *v = b'?';
-            }
+            *v = byte_mapper[*v as usize];
         });
     }
 }

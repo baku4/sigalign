@@ -15,6 +15,7 @@ use bio::io::fasta;
 use log::info;
 use sigalign::{
     Reference,
+    ReferenceBuilder,
     Aligner, results::{FastaAlignmentResult, ReadAlignmentResult, LabeledAlignmentResult, LabeledTargetAlignmentResult,},
 };
 use sigalign_core::results::{AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult};
@@ -36,7 +37,7 @@ fn validate_semi_global_with_limit() {
     let ref_file = get_ref_for_val_path();
     let qry_file = get_qry_for_val_path();
 
-    let reference = Reference::from_fasta_file(&ref_file).unwrap();
+    let reference = ReferenceBuilder::new().add_fasta_file(&ref_file).unwrap().build().unwrap();
 
     let regulators = get_test_regulators();
     info!("Test {} regulators", regulators.len());
@@ -52,9 +53,9 @@ fn validate_semi_global_with_limit() {
             regulator.2,
             regulator.3,
             regulator.4,
-            false,
-            None,
         ).unwrap();
+        aligner.change_to_semi_global();
+
         let all_alignment_result = {
             let fasta_file = File::open(&qry_file).unwrap();
             aligner.align_fasta(&reference, fasta_file)
@@ -92,7 +93,7 @@ fn validate_local_with_limit() {
     let ref_file = get_ref_for_val_path();
     let qry_file = get_qry_for_val_path();
 
-    let reference = Reference::from_fasta_file(&ref_file).unwrap();
+    let reference = ReferenceBuilder::new().add_fasta_file(&ref_file).unwrap().build().unwrap();
 
     let regulators = get_test_regulators();
     info!("Test {} regulators", regulators.len());
@@ -108,8 +109,6 @@ fn validate_local_with_limit() {
             regulator.2,
             regulator.3,
             regulator.4,
-            true,
-            None,
         ).unwrap();
         let all_alignment_result = {
             let fasta_file = File::open(&qry_file).unwrap();

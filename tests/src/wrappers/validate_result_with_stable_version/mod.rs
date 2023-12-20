@@ -14,6 +14,7 @@ use ahash::{AHashMap, AHashSet};
 use log::info;
 use sigalign::{
     Reference,
+    ReferenceBuilder,
     Aligner, results::{FastaAlignmentResult, ReadAlignmentResult, LabeledAlignmentResult},
 };
 use sigalign_core::results::{AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult};
@@ -36,7 +37,7 @@ fn validate_semi_global_result_with_stable_version() {
     let qry_file = get_qry_for_val_path();
     let tmp_dir = get_dir_on_tmp_dir("validate_semi_global_result_with_stable_version").unwrap();
 
-    let reference = Reference::from_fasta_file(&ref_file).unwrap();
+    let reference = ReferenceBuilder::new().add_fasta_file(&ref_file).unwrap().build().unwrap();
 
     let regulators = get_test_regulators();
     info!("Test {} regulators", regulators.len());
@@ -61,9 +62,8 @@ fn validate_semi_global_result_with_stable_version() {
             regulator.2,
             regulator.3,
             regulator.4,
-            false,
-            None,
         ).unwrap();
+        aligner.change_to_semi_global();
 
         let fasta_file = File::open(&qry_file).unwrap();
         let current_result = aligner.align_fasta(&reference, fasta_file);
@@ -81,7 +81,7 @@ fn validate_local_result_with_stable_version() {
     let qry_file = get_qry_for_val_path();
     let tmp_dir = get_dir_on_tmp_dir("validate_local_result_with_stable_version").unwrap();
 
-    let reference = Reference::from_fasta_file(&ref_file).unwrap();
+    let reference = ReferenceBuilder::new().add_fasta_file(&ref_file).unwrap().build().unwrap();
 
     let regulators = get_test_regulators();
     info!("Test {} regulators", regulators.len());
@@ -106,8 +106,6 @@ fn validate_local_result_with_stable_version() {
             regulator.2,
             regulator.3,
             regulator.4,
-            true,
-            None,
         ).unwrap();
 
         let fasta_file = File::open(&qry_file).unwrap();

@@ -5,7 +5,7 @@ SigAlign is a library for gap-affine sequence alignment tasks guided by explicit
 
 ## Quick Start
 ```rust
-use sigalign::{Aligner, Reference};
+use sigalign::{Aligner, ReferenceBuilder};
 
 // (1) Build `Reference`
 let fasta =
@@ -13,17 +13,19 @@ br#">target_1
 ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA
 >target_2
 TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC"#;
-let reference = Reference::from_fasta(&fasta[..]).unwrap();
+let reference = ReferenceBuilder::new()
+    .ignore_case(true)
+    .ignore_base(b'N')
+    .add_fasta(&fasta[..]).unwrap()
+    .build().unwrap();
 
 // (2) Make `Aligner`
 let mut aligner = Aligner::new(
-    4,    // mismatch penalty
-    6,    // gap-open penalty
-    2,    // gap-extend penalty
-    50,   // minimum length
-    0.2,  // maximum penalty per length
-    true, // is local alignment (false for semi-global alignment)
-    None, // maximum number of alignments per query (None for unlimited)
+    4,   // Mismatch penalty
+    6,   // Gap-open penalty
+    2,   // Gap-extend penalty
+    50,  // Minimum aligned length
+    0.2, // Maximum penalty per length
 ).unwrap();
 
 // (3) Align query to reference
@@ -66,6 +68,7 @@ pub mod results;
 mod reference;
 pub use reference::{
     Reference,
+    ReferenceBuilder,
     ReferenceBuildError,
     ReferenceLoadError,
 };
