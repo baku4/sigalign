@@ -1,12 +1,11 @@
 use std::{
     path::PathBuf,
-    time::Instant, io::Write, fs::File,
+    time::Instant, fs::File,
 };
 use clap::{
     builder::{Command, Arg},
     arg,
     ArgMatches,
-    ArgAction,
     value_parser,
 };
 
@@ -204,15 +203,22 @@ impl AlignmentConfig {
         Ok(())
     }
     fn make_aligner(&self) -> Result<Aligner> {
-        let aligner = Aligner::new(
+        let mut aligner = Aligner::new(
             self.px,
             self.po,
             self.pe,
             self.minl,
             self.maxp,
-            self.is_local,
-            self.limit,
         )?;
+        if self.is_local {
+            _ = aligner.change_to_local();
+        } else {
+            _ = aligner.change_to_semi_global();
+        }
+        if let Some(limit) = self.limit {
+            aligner.set_limit(Some(limit));
+        }
+
         Ok(aligner)
     }
 }

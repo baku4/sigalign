@@ -186,9 +186,7 @@ impl InMemoryStorage {
     /// Set sequence to uppercase
     /// !Cannot be undone
     pub fn set_sequences_to_uppercase(&mut self) {
-        self.concatenated_sequence.iter_mut().for_each(|v| {
-            *v = v.to_ascii_uppercase();
-        });
+        self.concatenated_sequence.make_ascii_uppercase();
     }
     /// Make all designated bases to defined base
     /// !Cannot be undone

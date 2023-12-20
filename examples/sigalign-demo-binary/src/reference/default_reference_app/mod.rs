@@ -271,8 +271,8 @@ fn get_reference_with_default_option(
     mut sequence_storage: InMemoryStorage,
 ) -> Result<Reference> {
     // Preparing sequence storage
-    sequence_storage.set_sequence_to_uppercase();
-    sequence_storage.make_n_bases_to_question_mark();
+    sequence_storage.set_sequences_to_uppercase();
+    sequence_storage.change_bases_to(b"N", b'?');
 
     let total_length = sequence_storage.get_total_length();
     // Use half of total length as the maximum size of lookup table.

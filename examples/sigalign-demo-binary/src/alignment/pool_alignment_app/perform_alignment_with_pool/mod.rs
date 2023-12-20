@@ -3,10 +3,10 @@ use std::path::PathBuf;
 use std::thread;
 use std::sync::{mpsc, Mutex, Arc};
 
-use crate::{Result, error_msg, error};
+use crate::Result;
 use sigalign::{
     Aligner, Reference,
-    results::{AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult, AlignmentPosition, AlignmentOperations, AlignmentOperation},
+    results::{TargetAlignmentResult, AlignmentOperations, AlignmentOperation},
 };
 use sigalign_utils::{
     sequence_reader::{
@@ -229,9 +229,7 @@ impl Worker {
 }
 
 fn set_sequence_to_uppercase(sequence: &mut Vec<u8>) {
-    sequence.iter_mut().for_each(|v| {
-        *v = v.to_ascii_uppercase();
-    });
+    sequence.make_ascii_uppercase();
 }
 
 #[inline]
