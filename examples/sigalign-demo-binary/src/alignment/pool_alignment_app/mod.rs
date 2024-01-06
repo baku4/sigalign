@@ -152,7 +152,7 @@ impl AlignmentConfig {
             None => None,
         };
         // (5) Is local mode
-        let is_local = if matches.get_flag("use_semi_global") {
+        let is_local = if matches.get_flag("semi_global") {
             false
         } else {
             true
