@@ -267,6 +267,11 @@ fn write_target_manifest_file(
     Ok(())
 }
 
+#[cfg(feature = "safe_guard")]
+const USE_SAFE_GUARD: bool = true;
+#[cfg(not(feature = "safe_guard"))]
+const USE_SAFE_GUARD: bool = false;
+
 fn get_reference_with_default_option(
     mut sequence_storage: InMemoryStorage,
 ) -> Result<Reference> {
@@ -284,7 +289,7 @@ fn get_reference_with_default_option(
     let dynamic_lfi_option = DynamicLfiOption {
         suffix_array_sampling_ratio: 1,
         lookup_table_max_bytes_size,
-        use_safe_guard: true,
+        use_safe_guard: USE_SAFE_GUARD,
     };
     let raw_reference = RawReference::new(
         sequence_storage,

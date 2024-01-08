@@ -49,8 +49,8 @@ impl Reference {
     }
 
     /// Get sequence buffer for alignment.
-    pub fn get_sequence_buffer(&self) -> InMemoryBuffer {
-        self.as_ref().get_sequence_buffer()
+    pub fn get_sequence_buffer() -> InMemoryBuffer {
+        InMemoryBuffer::new()
     }
     /// Get the full sorted target indices
     pub fn get_full_sorted_target_indices(&self) -> &[u32] {
