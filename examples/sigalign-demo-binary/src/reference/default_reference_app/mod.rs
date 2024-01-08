@@ -284,6 +284,7 @@ fn get_reference_with_default_option(
     let dynamic_lfi_option = DynamicLfiOption {
         suffix_array_sampling_ratio: 1,
         lookup_table_max_bytes_size,
+        use_safe_guard: true,
     };
     let raw_reference = RawReference::new(
         sequence_storage,

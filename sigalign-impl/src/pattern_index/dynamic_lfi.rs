@@ -19,13 +19,14 @@ pub enum DynamicLfi {
 pub struct DynamicLfiOption {
     pub suffix_array_sampling_ratio: u64,
     pub lookup_table_max_bytes_size: u64,
+    pub use_safe_guard: bool,
 }
 impl DynamicLfiOption {
     fn to_lfi_option(self) -> LfiOption {
         LfiOption {
             suffix_array_sampling_ratio: self.suffix_array_sampling_ratio,
             lookup_table_max_bytes_size: self.lookup_table_max_bytes_size,
-            use_safe_guard: true,
+            use_safe_guard: self.use_safe_guard,
         }
     }
 }
@@ -40,7 +41,13 @@ impl PatternIndex for DynamicLfi {
     ) -> Result<Self, Self::BuildError> {
         let lfi_option = option.to_lfi_option();
         let unique_sequence = get_unique_characters_of_sequence(&concatenated_sequence);
-        let chr_count = unique_sequence.len();        
+        let chr_count = {
+            if lfi_option.use_safe_guard {
+                unique_sequence.len()
+            } else {
+                unique_sequence.len() - 1
+            }
+        };
 
         if chr_count <= 3 {
             let inner = Lfi32B2V64::new(concatenated_sequence, lfi_option)?;

@@ -105,6 +105,7 @@ impl ReferenceBuilder {
         DynamicLfiOption {
             suffix_array_sampling_ratio: 1,
             lookup_table_max_bytes_size,
+            use_safe_guard: true,
         }
     }
 }
