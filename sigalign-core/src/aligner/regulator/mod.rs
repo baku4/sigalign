@@ -2,7 +2,7 @@ use crate::core::regulators::{
     Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
 };
 use crate::results::{
-    AlignmentResult, AnchorAlignmentResult,
+    AlignmentResult, AnchorAlignmentResult, TargetAlignmentResult,
 };
 use thiserror::Error;
 use num::integer::{div_ceil, gcd};
@@ -126,15 +126,23 @@ fn calculate_max_pattern_size(
 
 impl AlignmentResult {
     pub fn multiply_gcd(&mut self, gcd: u32) {
-        self.0.iter_mut().for_each(|record_alignment_result| {
-            record_alignment_result.alignments.iter_mut().for_each(|alignment_result| {
-                alignment_result.multiply_gcd(gcd);
-            })
+        self.0.iter_mut().for_each(|target_alignment_result| {
+            target_alignment_result.multiply_gcd(gcd);
+        })
+    }
+}
+
+impl TargetAlignmentResult {
+    #[inline]
+    pub fn multiply_gcd(&mut self, gcd: u32) {
+        self.alignments.iter_mut().for_each(|alignment_result| {
+            alignment_result.multiply_gcd(gcd);
         })
     }
 }
 
 impl AnchorAlignmentResult {
+    #[inline]
     fn multiply_gcd(&mut self, gcd: u32) {
         self.penalty *= gcd;
     }

@@ -28,9 +28,12 @@ impl<A: AllocationStrategy> Aligner for SemiGlobalChainingAligner<A> {
     ) -> AlignmentResult {
         let most_lenient_regulator = self.sorted_regulators.last().unwrap();
         self.space_manager.allocate_more_space_if_needed(query.len() as u32, most_lenient_regulator);
+        self.space_manager.sorted_target_indices_buffer.clear();
+        self.space_manager.sorted_target_indices_buffer.extend_from_slice(sorted_target_indices);
+        let mut target_alignment_results = Vec::new();
         
         for (index, regulator) in self.sorted_regulators.iter().enumerate() {
-            let mut alignment_result = semi_global_alignment_algorithm(
+            let alignment_result = semi_global_alignment_algorithm(
                 reference,
                 sequence_buffer,
                 query,
@@ -44,13 +47,16 @@ impl<A: AllocationStrategy> Aligner for SemiGlobalChainingAligner<A> {
                 &mut self.space_manager.operations_buffer,
                 &mut self.space_manager.extension_buffer,
             );
-            if !alignment_result.0.is_empty() {
-                alignment_result.multiply_gcd(regulator.gcd_for_compression);
-                return alignment_result
-            }
+            alignment_result.0.into_iter().for_each(|mut target_alignment_result| {
+                target_alignment_result.multiply_gcd(regulator.gcd_for_compression);
+                // Remove the target index from the buffer
+                let index_of_target_index = self.space_manager.sorted_target_indices_buffer.binary_search(&target_alignment_result.index).unwrap();
+                self.space_manager.sorted_target_indices_buffer.remove(index_of_target_index);
+                target_alignment_results.push(target_alignment_result);
+            });
         }
 
-        AlignmentResult(Vec::new())
+        AlignmentResult(target_alignment_results)
     }
 }
 

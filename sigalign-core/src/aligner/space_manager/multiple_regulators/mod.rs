@@ -34,6 +34,7 @@ pub struct MultipleLocalSpaceManager<A: AllocationStrategy> {
     pub traversed_anchor_index_buffer: Vec<AnchorIndex>,
     pub operations_buffer: Vec<AlignmentOperations>,
     pub extension_buffer: Vec<Extension>,
+    pub sorted_target_indices_buffer: Vec<u32>,
 }
 
 impl<A: AllocationStrategy> MultipleSpaceManager for MultipleLocalSpaceManager<A> {
@@ -65,6 +66,7 @@ impl<A: AllocationStrategy> MultipleSpaceManager for MultipleLocalSpaceManager<A
             traversed_anchor_index_buffer: Vec::new(),
             operations_buffer: Vec::new(),
             extension_buffer: Vec::new(),
+            sorted_target_indices_buffer: Vec::new(),
         }
     }
     fn allocate_more_space_if_needed(
@@ -104,6 +106,7 @@ pub struct MultipleSemiGlobalSpaceManager<A: AllocationStrategy> {
     pub traversed_anchor_index_buffer: Vec<AnchorIndex>,
     pub operations_buffer: Vec<AlignmentOperations>,
     pub extension_buffer: Vec<Extension>,
+    pub sorted_target_indices_buffer: Vec<u32>,
 }
 
 impl<A: AllocationStrategy> MultipleSpaceManager for MultipleSemiGlobalSpaceManager<A> {
@@ -134,6 +137,7 @@ impl<A: AllocationStrategy> MultipleSpaceManager for MultipleSemiGlobalSpaceMana
             traversed_anchor_index_buffer: Vec::new(),
             operations_buffer: Vec::new(),
             extension_buffer: Vec::new(),
+            sorted_target_indices_buffer: Vec::new(),
         }
     }
     fn allocate_more_space_if_needed(
