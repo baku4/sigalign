@@ -155,7 +155,7 @@ impl AlignmentConfig {
             //  - Check if maxp also sorted
             let mut prev_maxp = 0.0;
             for (_, maxp) in cutoffs.iter() {
-                if *maxp < prev_maxp {
+                if *maxp <= prev_maxp {
                     error_msg!("Higher MinL have to be paired with lower MaxP in chaining alignment");
                 }
                 prev_maxp = *maxp;
