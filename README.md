@@ -1,4 +1,5 @@
 <div align="center">
+    <img src="images/logo.svg" width="120" />
 	<h1><code>SigAlign</code></h1>
 	<p>
 		A <b>Si</b>milarity-<b>G</b>uided <b>Align</b>ment Algorithm
