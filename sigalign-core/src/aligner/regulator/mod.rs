@@ -1,11 +1,12 @@
 use crate::core::regulators::{
     Penalty, PREC_SCALE, Cutoff, MinPenaltyForPattern,
+    calculate_max_pattern_size,
 };
 use crate::results::{
     AlignmentResult, AnchorAlignmentResult, TargetAlignmentResult,
 };
 use thiserror::Error;
-use num::integer::{div_ceil, gcd};
+use num::integer::gcd;
 
 #[derive(Error, Debug)]
 pub enum RegulatorError {
@@ -51,7 +52,11 @@ impl AlignmentRegulator {
         cutoff.divide_by_gcd(gcd);
 
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
-        let max_pattern_size = calculate_max_pattern_size(&cutoff, &min_penalty_for_pattern);
+        let max_pattern_size = calculate_max_pattern_size(
+            &cutoff,
+            &min_penalty_for_pattern,
+            penalties.e,
+        );
         
         Self {
             penalties,
@@ -91,36 +96,6 @@ impl AlignmentRegulator {
     /// Get size of pattern
     pub fn get_pattern_size(&self) -> u32 {
         self.pattern_size
-    }
-}
-
-#[inline]
-fn calculate_max_pattern_size(
-    cutoff: &Cutoff,
-    min_penalty_for_pattern: &MinPenaltyForPattern,
-) -> u32 {
-    let mut m = 1;
-    let mut upper_bound = div_ceil(
-        cutoff.minimum_length + 4,
-        2,
-    ) - 2;
-    loop {
-        let lower_bound = (
-            (cutoff.minimum_length + 4)  as f32 / (2*m + 2) as f32
-            - 1_f32
-        ).ceil() as u32;
-        let max_penalty = div_ceil(
-            PREC_SCALE * m * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even)
-            + (4 * cutoff.maximum_scaled_penalty_per_length),
-            2 * cutoff.maximum_scaled_penalty_per_length * (m+1)
-        ) - 2;
-
-        let pattern_size = max_penalty.min(upper_bound);
-        if pattern_size >= lower_bound {
-            return pattern_size as u32
-        }
-        m += 1;
-        upper_bound = lower_bound - 1;
     }
 }
 
@@ -182,28 +157,6 @@ impl Cutoff {
     }
 }
 
-impl MinPenaltyForPattern {
-    fn new(penalties: &Penalty) -> Self {
-        let odd: u32;
-        let even: u32;
-        if penalties.x <= penalties.o + penalties.e {
-            odd = penalties.x;
-            if penalties.x * 2 <= penalties.o + (penalties.e * 2) {
-                even = penalties.x;
-            } else {
-                even = penalties.o + (penalties.e * 2) - penalties.x;
-            }
-        } else {
-            odd = penalties.o + penalties.e;
-            even = penalties.e;
-        }
-        Self {
-            odd,
-            even
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -228,7 +181,11 @@ mod tests {
         let penalties = Penalty::new(4, 6, 2);
         let cutoff = Cutoff::new(50, 0.15);
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
-        let pattern_size = calculate_max_pattern_size(&cutoff, &min_penalty_for_pattern);
+        let pattern_size = calculate_max_pattern_size(
+            &cutoff,
+            &min_penalty_for_pattern,
+            penalties.e,
+        );
         println!("{}", pattern_size);
     }
 }
