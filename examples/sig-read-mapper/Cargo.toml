@@ -1,0 +1,21 @@
+[package]
+name = "sig-read-mapper"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+sigalign-core = { path = "../../sigalign-core" }
+sigalign-utils = { path = "../../sigalign-utils" }
+sigalign-impl = { path = "../../sigalign-impl" }
+sigalign = { path = "../../sigalign", features = ["short_key"] }
+env_logger = "0.11.3"
+anyhow = "1.0.82"
+clap = "4.5.4"
+glob = "0.3.1"
+itoa = "1.0.11"
+
+[features]
+default = []
+unuse_safe_guard = []
