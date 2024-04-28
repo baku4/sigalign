@@ -7,6 +7,7 @@ members = [
     "sigalign",
     "tests",
     "examples/sigalign-demo-binary",
+    "examples/sig-read-mapper",
 ]
 exclude = [
     "examples/sigalign-demo-web",
