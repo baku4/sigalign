@@ -1,5 +1,44 @@
 /*!
 Alignment results.
+
+Example in JSON format:
+```json
+{
+  "AlignmentResult": [
+    {
+      "TargetAlignmentResult": {
+        "index": 0,
+        "alignments": [
+          {
+            "AnchorAlignmentResult": {
+              "penalty": 4,
+              "length": 100,
+              "position": {
+                "query": [0, 100],
+                "target": [0, 100]
+              },
+              "operations": [
+                {
+                  "AlignmentOperations": {
+                    "operation": "Match",
+                    "count": 99
+                  }
+                },
+                {
+                  "AlignmentOperations": {
+                    "operation": "Subst",
+                    "count": 1
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
+```
 */ 
 use serde::{Deserialize, Serialize};
 

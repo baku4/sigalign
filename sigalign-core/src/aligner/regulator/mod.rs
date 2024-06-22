@@ -27,7 +27,7 @@ pub struct AlignmentRegulator {
 
 impl AlignmentRegulator {
     /// Generate new aligner.
-    pub fn new(
+    pub fn new_with_gcd_compressed(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
         gap_extend_penalty: u32,
@@ -42,11 +42,11 @@ impl AlignmentRegulator {
 
         let penalties = Penalty::new(mismatch_penalty, gap_open_penalty, gap_extend_penalty);
         let cutoff = Cutoff::new(minimum_alignment_length, maximum_penalty_per_alignment_length);
-        let aligner = Self::new_with_penalties_and_cutoff(penalties, cutoff);
+        let aligner = Self::new_with_gcd_compressed_from_penalties_and_cutoff(penalties, cutoff);
         
         Ok(aligner)
     }
-    fn new_with_penalties_and_cutoff(mut penalties: Penalty, mut cutoff: Cutoff) -> Self {
+    fn new_with_gcd_compressed_from_penalties_and_cutoff(mut penalties: Penalty, mut cutoff: Cutoff) -> Self {
         let gcd = penalties.gcd_of_penalties();
         penalties.divide_by_gcd(gcd);
         cutoff.divide_by_gcd(gcd);
@@ -66,12 +66,10 @@ impl AlignmentRegulator {
             pattern_size: max_pattern_size,
         }
     }
-    pub fn result_of_uncompressed_penalty(&self, mut reference_alignment_result: AlignmentResult) -> AlignmentResult {
+    pub fn decompress_result_with_gcd(&self, alignment_result: &mut AlignmentResult) {
         if self.gcd_for_compression != 1 {
-            reference_alignment_result.multiply_gcd(self.gcd_for_compression);
+            alignment_result.multiply_gcd(self.gcd_for_compression);
         }
-        
-        reference_alignment_result
     }
     /// Get mismatch penalty
     pub fn get_mismatch_penalty(&self) -> u32 {
@@ -100,6 +98,7 @@ impl AlignmentRegulator {
 }
 
 impl AlignmentResult {
+    // FIXME: To remove pub
     pub fn multiply_gcd(&mut self, gcd: u32) {
         self.0.iter_mut().for_each(|target_alignment_result| {
             target_alignment_result.multiply_gcd(gcd);
@@ -108,6 +107,7 @@ impl AlignmentResult {
 }
 
 impl TargetAlignmentResult {
+    // FIXME: To remove pub
     #[inline]
     pub fn multiply_gcd(&mut self, gcd: u32) {
         self.alignments.iter_mut().for_each(|alignment_result| {

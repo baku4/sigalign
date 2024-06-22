@@ -22,6 +22,7 @@ impl<A: AllocationStrategy> QueryLengthChecker<A> {
     pub fn get_allocated_length(&self) -> u32 {
         self.allocated_query_len
     }
+    /// `None` if the allocated length is enough, otherwise `Some(new_length)``
     #[inline(always)]
     pub fn optional_length_to_be_allocated(
         &mut self,
@@ -39,7 +40,7 @@ impl<A: AllocationStrategy> QueryLengthChecker<A> {
 
 impl<A: AllocationStrategy> Debug for QueryLengthChecker<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Query")
+        f.debug_struct("QueryLengthChecker")
             .field("allocated", &self.allocated_query_len)
             .field("allocation_strategy", &self.allocation_strategy)
             .finish()
