@@ -6,16 +6,24 @@ use lt_fm_index::{
     LtFmIndex, Block, blocks,
 };
 
-pub type Lfi32B2V64 = Lfi32<blocks::Block2<u64>>;
-pub type Lfi32B3V64 = Lfi32<blocks::Block3<u64>>;
-pub type Lfi32B4V64 = Lfi32<blocks::Block4<u64>>;
-pub type Lfi32B5V64 = Lfi32<blocks::Block5<u64>>;
+/// `StaticLfi` that can index 3 (2^2 - 1) characters, with a BWT block size of 64.
+pub type Lfi32B2V64 = StaticLfi<blocks::Block2<u64>>;
+/// `StaticLfi` that can index 7 (2^3 - 1) characters, with a BWT block size of 64.
+pub type Lfi32B3V64 = StaticLfi<blocks::Block3<u64>>;
+/// `StaticLfi` that can index 15 (2^4 - 1) characters, with a BWT block size of 64.
+pub type Lfi32B4V64 = StaticLfi<blocks::Block4<u64>>;
+/// `StaticLfi` that can index 31 (2^5 - 1) characters, with a BWT block size of 64.
+pub type Lfi32B5V64 = StaticLfi<blocks::Block5<u64>>;
 
-pub struct Lfi32<B: Block<u32>> {
+// TODO: Check if the specification is accurate.
+/// LtFmIndex that has a maximum number of characters that can be indexed.
+/// (The maximum length of one sequence is u32::MAX)
+pub struct StaticLfi<B: Block<u32>> {
     inner: LtFmIndex<u32, B>,
 }
 
 #[derive(Debug, Clone)]
+/// Option to define the structure of the LtFmIndex.
 pub struct LfiOption {
     pub suffix_array_sampling_ratio: u64,
     pub lookup_table_max_bytes_size : u64,
@@ -35,7 +43,7 @@ impl LfiOption {
     }
 }
 
-impl <B: Block<u32>> PatternIndex for Lfi32<B> {
+impl <B: Block<u32>> PatternIndex for StaticLfi<B> {
     type Option = LfiOption;
     type BuildError = LfiBuildError;
     
@@ -96,6 +104,7 @@ fn calculate_lookup_table_kmer_size(
     max_cap
 }
 
+/// Error type for `StaticLfi` build.
 #[derive(Debug, Error)]
 pub enum LfiBuildError {
     /// Triggered when sequence length exceeds the maximum allowable capacity.
@@ -118,7 +127,7 @@ use sigalign_core::reference::extensions::{
     EstimateSize,
 };
 //  - Serialize
-impl<B: Block<u32>> Serialize for Lfi32<B> {
+impl<B: Block<u32>> Serialize for StaticLfi<B> {
     fn save_to<W>(&self, mut writer: W) -> Result<(), std::io::Error> where
         W: std::io::Write
     {
@@ -134,7 +143,7 @@ impl<B: Block<u32>> Serialize for Lfi32<B> {
     }
 }
 //  - EstimateSize
-impl<B: Block<u32>> EstimateSize for Lfi32<B> {
+impl<B: Block<u32>> EstimateSize for StaticLfi<B> {
     fn serialized_size(&self) -> usize {
         self.inner.to_be_saved_size()
     }

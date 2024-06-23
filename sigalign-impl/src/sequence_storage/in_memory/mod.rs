@@ -11,7 +11,7 @@ use sigalign_utils::sequence_reader::{
 };
 
 // TODO: Debug impl manually
-/// Basic `SequenceStorage` implementation
+/// `SequenceStorage` that stores sequences in memory.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InMemoryStorage {
     target_count: usize,
@@ -20,6 +20,8 @@ pub struct InMemoryStorage {
     concatenated_label: String,
     label_index: Vec<usize>,
 }
+
+/// `SequenceBuffer` for `InMemoryStorage`.
 pub struct InMemoryBuffer {
     pointer: *const u8,
     len: usize,

@@ -1,20 +1,26 @@
 use crate::utils::get_unique_characters_of_sequence;
-use super::lfi::{
+use super::static_lfi::{
     Lfi32B2V64,
     Lfi32B3V64,
     Lfi32B4V64,
     Lfi32B5V64,
     LfiOption,
 };
-pub use super::lfi::LfiBuildError; // Re-export
+// Re-export: The build error type is the same as the static version.
+pub use super::static_lfi::LfiBuildError;
 use sigalign_core::reference::PatternIndex;
 
+/// The LtFmIndex that can adjust the type by the number of characters.
+/// - The maximum number of characters that can be indexed is 31 (same as the `Lfi32B5V64`).
+/// - The maximum length of one sequence is u32::MAX (same as the static version).
 pub enum DynamicLfi {
     B2(Lfi32B2V64),
     B3(Lfi32B3V64),
     B4(Lfi32B4V64),
     B5(Lfi32B5V64),
 }
+
+/// Option to define the structure of the LtFmIndex.
 #[derive(Debug, Clone)]
 pub struct DynamicLfiOption {
     pub suffix_array_sampling_ratio: u64,
