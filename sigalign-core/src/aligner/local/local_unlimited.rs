@@ -5,7 +5,6 @@ use crate::reference::{
 use crate::algorithm::local_alignment_algorithm;
 use super::{
     AlignmentRegulator,
-    RegulatorError,
     LocalWorkspace,
 };
 
@@ -16,27 +15,13 @@ pub struct LocalAligner {
 }
 
 impl LocalAligner {
-    /// Create a new Aligner
-    pub fn new(
-        mismatch_penalty: u32,
-        gap_open_penalty: u32,
-        gap_extend_penalty: u32,
-        minimum_alignment_length: u32,
-        maximum_penalty_per_alignment_length: f32,
-    ) -> Result<Self, RegulatorError> {
-        let regulator = AlignmentRegulator::new_with_gcd_compressed(
-            mismatch_penalty,
-            gap_open_penalty,
-            gap_extend_penalty,
-            minimum_alignment_length,
-            maximum_penalty_per_alignment_length,
-        )?;
+    /// Create a new Aligner from alignment regulator
+    pub fn new(regulator: AlignmentRegulator) -> Self {
         let workspace = LocalWorkspace::init(&regulator);
-
-        Ok(Self {
+        Self {
             regulator,
             workspace,
-        })
+        }
     }
     /// Low-level alignment function
     #[inline]
@@ -75,5 +60,8 @@ impl LocalAligner {
         );
         self.regulator.decompress_result_with_gcd(&mut result);
         result
+    }
+    pub fn regulator(&self) -> &AlignmentRegulator {
+        &self.regulator
     }
 }

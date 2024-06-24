@@ -267,6 +267,8 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
     AlignmentResult(target_alignment_results)
 }
 
+// FIXME: Un-panic when input limit is 0
+// Or make the Aligner with limit can only receive limit > 0
 #[inline]
 fn local_alignment_query_to_target_with_limit(
     anchor_table: &mut AnchorTable,

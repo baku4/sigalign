@@ -9,7 +9,7 @@ license = "MIT"
 [dependencies]
 num = "0.4.0"
 thiserror = "1.0.38"
-ahash = "0.8.0"
+ahash = "0.8.11"
 bytemuck = { version = "1.14.0", features = ["derive"] }
 capwriter = "0.2.0"
 serde = { version = "1.0.192", features = ["derive"] }

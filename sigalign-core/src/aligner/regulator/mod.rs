@@ -8,6 +8,7 @@ use crate::results::{
 use thiserror::Error;
 use num::integer::gcd;
 
+/// Error to define the regulator.
 #[derive(Error, Debug)]
 pub enum RegulatorError {
     #[error("Gap extend penalty only allow positive integer.")]
@@ -16,18 +17,19 @@ pub enum RegulatorError {
     InvalidMaxPenaltyPerLength,
 }
 
+/// Definition for the alignment results.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct AlignmentRegulator {
-    pub(crate) penalties: Penalty,
-    pub(crate) cutoff: Cutoff,
-    pub(crate) min_penalty_for_pattern: MinPenaltyForPattern,
-    pub(crate) gcd_for_compression: u32,
-    pub(crate) pattern_size: u32,
+    pub(super) penalties: Penalty,
+    pub(super) cutoff: Cutoff,
+    pub(super) min_penalty_for_pattern: MinPenaltyForPattern,
+    pub(super) gcd_for_compression: u32,
+    pub(super) pattern_size: u32,
 }
 
 impl AlignmentRegulator {
     /// Generate new aligner.
-    pub fn new_with_gcd_compressed(
+    pub fn new(
         mismatch_penalty: u32,
         gap_open_penalty: u32,
         gap_extend_penalty: u32,
@@ -66,7 +68,7 @@ impl AlignmentRegulator {
             pattern_size: max_pattern_size,
         }
     }
-    pub fn decompress_result_with_gcd(&self, alignment_result: &mut AlignmentResult) {
+    pub(super) fn decompress_result_with_gcd(&self, alignment_result: &mut AlignmentResult) {
         if self.gcd_for_compression != 1 {
             alignment_result.multiply_gcd(self.gcd_for_compression);
         }
@@ -98,8 +100,7 @@ impl AlignmentRegulator {
 }
 
 impl AlignmentResult {
-    // FIXME: To remove pub
-    pub fn multiply_gcd(&mut self, gcd: u32) {
+    fn multiply_gcd(&mut self, gcd: u32) {
         self.0.iter_mut().for_each(|target_alignment_result| {
             target_alignment_result.multiply_gcd(gcd);
         })
@@ -107,9 +108,8 @@ impl AlignmentResult {
 }
 
 impl TargetAlignmentResult {
-    // FIXME: To remove pub
     #[inline]
-    pub fn multiply_gcd(&mut self, gcd: u32) {
+    fn multiply_gcd(&mut self, gcd: u32) {
         self.alignments.iter_mut().for_each(|alignment_result| {
             alignment_result.multiply_gcd(gcd);
         })

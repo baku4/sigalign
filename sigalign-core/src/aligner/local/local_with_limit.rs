@@ -5,7 +5,6 @@ use crate::reference::{
 use crate::algorithm::local_alignment_algorithm_with_limit;
 use super::{
     AlignmentRegulator,
-    RegulatorError,
     LocalWorkspace,
     LocalAligner,
 };
@@ -19,22 +18,9 @@ pub struct LocalWithLimitAligner {
 
 impl LocalWithLimitAligner {
     /// Create a new Aligner
-    pub fn new(
-        mismatch_penalty: u32,
-        gap_open_penalty: u32,
-        gap_extend_penalty: u32,
-        minimum_alignment_length: u32,
-        maximum_penalty_per_alignment_length: f32,
-        limit: u32,
-    ) -> Result<Self, RegulatorError> {
-        let local_aligner = LocalAligner::new(
-            mismatch_penalty,
-            gap_open_penalty,
-            gap_extend_penalty,
-            minimum_alignment_length,
-            maximum_penalty_per_alignment_length,
-        )?;
-        Ok(local_aligner.to_limited(limit))
+    pub fn new(regulator: AlignmentRegulator, limit: u32) -> Self {
+        let aligner = LocalAligner::new(regulator);
+        aligner.to_limited(limit)
     }
     /// Low-level alignment function
     #[inline]
@@ -75,7 +61,13 @@ impl LocalWithLimitAligner {
         self.regulator.decompress_result_with_gcd(&mut result);
         result
     }
+    pub fn limit(&self) -> u32 {
+        self.limit
+    }
     pub fn set_limit(&mut self, limit: u32) {
         self.limit = limit;
+    }
+    pub fn regulator(&self) -> &AlignmentRegulator {
+        &self.regulator
     }
 }

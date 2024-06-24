@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 // Length Checker
 mod query_length_checker;
 pub use query_length_checker::{QueryLengthChecker, AllocationStrategy};

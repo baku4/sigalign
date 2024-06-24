@@ -1,4 +1,4 @@
-use super::regulator::{AlignmentRegulator, RegulatorError};
+use super::regulator::AlignmentRegulator;
 
 mod workspace;
 use workspace::LocalWorkspace;
