@@ -3,13 +3,13 @@ use std::cmp::Ordering;
 use ahash::AHashSet;
 
 use super::{
-    AlignmentResult,
-    TargetAlignmentResult,
-    AnchorAlignmentResult,
+    QueryAlignment,
+    TargetAlignment,
+    Alignment,
     AlignmentOperation, AlignmentPosition,
 };
 
-impl AlignmentResult {
+impl QueryAlignment {
     pub fn deduplicate(&mut self) {
         let mut paths = AHashSet::new();
         
@@ -19,7 +19,7 @@ impl AlignmentResult {
     }
 }
 
-impl TargetAlignmentResult {
+impl TargetAlignment {
     pub fn deduplicate(&mut self) {
         let mut paths = AHashSet::new();
         self.deduplicate_with_paths_buffer(&mut paths);
@@ -51,8 +51,8 @@ impl TargetAlignmentResult {
 }
 
 fn cmp_anchor_alignment_result(
-    a: &AnchorAlignmentResult,
-    b: &AnchorAlignmentResult,
+    a: &Alignment,
+    b: &Alignment,
 ) -> Ordering {
     b.position.get_query_length().cmp(&a.position.get_query_length())
         .then(a.position.query.0.cmp(&b.position.query.0))
@@ -64,7 +64,7 @@ impl AlignmentPosition {
     }
 }
 
-impl AnchorAlignmentResult {
+impl Alignment {
     fn get_path(&self) -> AHashSet<(u32, u32)> {
         let (mut query_index, mut target_index) = {
             let query_index = self.position.query.0;

@@ -3,7 +3,7 @@ use crate::core::regulators::{
     calculate_max_pattern_size,
 };
 use crate::results::{
-    AlignmentResult, AnchorAlignmentResult, TargetAlignmentResult,
+    QueryAlignment, Alignment, TargetAlignment,
 };
 use thiserror::Error;
 use num::integer::gcd;
@@ -68,7 +68,7 @@ impl AlignmentRegulator {
             pattern_size: max_pattern_size,
         }
     }
-    pub(super) fn decompress_result_with_gcd(&self, alignment_result: &mut AlignmentResult) {
+    pub(super) fn decompress_result_with_gcd(&self, alignment_result: &mut QueryAlignment) {
         if self.gcd_for_compression != 1 {
             alignment_result.multiply_gcd(self.gcd_for_compression);
         }
@@ -99,7 +99,7 @@ impl AlignmentRegulator {
     }
 }
 
-impl AlignmentResult {
+impl QueryAlignment {
     fn multiply_gcd(&mut self, gcd: u32) {
         self.0.iter_mut().for_each(|target_alignment_result| {
             target_alignment_result.multiply_gcd(gcd);
@@ -107,7 +107,7 @@ impl AlignmentResult {
     }
 }
 
-impl TargetAlignmentResult {
+impl TargetAlignment {
     #[inline]
     fn multiply_gcd(&mut self, gcd: u32) {
         self.alignments.iter_mut().for_each(|alignment_result| {
@@ -116,7 +116,7 @@ impl TargetAlignmentResult {
     }
 }
 
-impl AnchorAlignmentResult {
+impl Alignment {
     #[inline]
     fn multiply_gcd(&mut self, gcd: u32) {
         self.penalty *= gcd;

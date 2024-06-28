@@ -1,15 +1,15 @@
 use super::{
-    FastaAlignmentResult,
-    ReadAlignmentResult,
+    LabeledQueryAlignment,
+    LabeledTargetAlignment,
 };
 
-impl FastaAlignmentResult {
+impl LabeledQueryAlignment {
     pub fn count_alignments(&self) -> usize {
-        self.0.iter().map(|read| read.count_alignments()).sum()
-    }
+        self.0.iter().map(|lta| lta.count_alignments()).sum()
+    }   
 }
-impl ReadAlignmentResult {
+impl LabeledTargetAlignment {
     pub fn count_alignments(&self) -> usize {
-        self.result.count_alignments()
+        self.alignments.len()
     }
 }

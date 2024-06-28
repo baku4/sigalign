@@ -1,30 +1,14 @@
 /*!
 The structures for representing alignment outcomes.
 
-- `ReadAlignmentResult`: Represents alignment for a single read.
-    ```rust
-    read: String,
-    is_forward: bool,
-    result: LabeledAlignmentResult,
-    ```
-
-- `FastaAlignmentResult`: Collection of `ReadAlignmentResult` from a FASTA file.
-    ```rust
-    Vec<ReadAlignmentResult>,
-    ```
-
-- `AlignmentResult`: Core structure storing alignment results.
-    ```rust
-    Vec<TargetAlignmentResult>,
-    ```
-
-- `TargetAlignmentResult`: Contains target index and alignments against a target.
+- `LabeledTargetAlignment`: Contains a target index and label, with alignments against a specific target. 
     ```rust
     index: u32,
+    label: String,
     alignments: Vec<AnchorAlignmentResult>,
     ```
 
-- `AnchorAlignmentResult`: Details alignment's penalty, length, position, and operations.
+- `Alignment`: Details alignment's penalty, length, position, and operations.
     ```rust
     penalty: u32,
     length: u32,
@@ -49,42 +33,22 @@ The structures for representing alignment outcomes.
     Match, Subst, Insertion, Deletion,
     ```
 */
-
-use serde::{Deserialize, Serialize};
+mod labeled;
 
 // Re-export sigalign-core results
 pub use sigalign_core::results::{
-    AlignmentResult,
-    TargetAlignmentResult,
-    AnchorAlignmentResult,
+    QueryAlignment,
+    TargetAlignment,
+    Alignment,
     AlignmentPosition,
     AlignmentOperations,
     AlignmentOperation,
-    labeled::{
-        LabeledAlignmentResult,
-        LabeledTargetAlignmentResult,
-    },
+};
+// Export labeled results
+pub use labeled::{
+    LabeledQueryAlignment,
+    LabeledTargetAlignment,
 };
 
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "short_key", serde(rename = "ReadAln"))]
-pub struct ReadAlignmentResult {
-    #[cfg_attr(feature = "short_key", serde(rename = "id"))]
-    pub read: String,
-    #[cfg_attr(feature = "short_key", serde(rename = "+"))]
-    pub is_forward: bool,
-    #[cfg_attr(feature = "short_key", serde(rename = "res"))]
-    pub result: LabeledAlignmentResult,
-}
-
-#[derive(Debug, Clone)]
-#[derive(Serialize, Deserialize)]
-pub struct FastaAlignmentResult(
-    pub Vec<ReadAlignmentResult>
-);
-
 mod to_json;
-//TODO: pub mod to_sam;
-
 mod count_alignments;

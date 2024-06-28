@@ -1,5 +1,5 @@
 use crate::results::{
-    AnchorAlignmentResult,
+    Alignment,
     AlignmentOperations,
     AlignmentOperation,
     AlignmentPosition,
@@ -22,7 +22,7 @@ impl Extension {
     pub fn parse_anchor_alignment_result(
         &self,
         operations_buffer: &Vec<AlignmentOperations>,
-    ) -> AnchorAlignmentResult {
+    ) -> Alignment {
         let left_operations = &operations_buffer[
             self.left_side_operation_range.0 as usize
             ..self.left_side_operation_range.1 as usize
@@ -48,7 +48,7 @@ impl Extension {
         };
         operations.extend(right_operations[..last_index_of_right_operation].iter().rev().cloned());
     
-        AnchorAlignmentResult {
+        Alignment {
             penalty: self.penalty,
             length: self.length,
             position: self.alignment_position.clone(),

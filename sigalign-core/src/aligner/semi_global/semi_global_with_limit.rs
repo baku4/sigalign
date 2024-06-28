@@ -1,4 +1,4 @@
-use crate::results::AlignmentResult;
+use crate::results::QueryAlignment;
 use crate::reference::{
     Reference, PatternIndex, SequenceStorage,
 };
@@ -24,7 +24,7 @@ impl SemiGlobalWithLimitAligner {
     }
     /// Low-level alignment function
     #[inline]
-    pub fn alignment<I: PatternIndex, S: SequenceStorage> (
+    pub fn align<I: PatternIndex, S: SequenceStorage> (
         &mut self,
         // Query
         query: &[u8],
@@ -32,7 +32,7 @@ impl SemiGlobalWithLimitAligner {
         reference: &Reference<I, S>,
         sequence_buffer: &mut S::Buffer,
         sorted_target_indices: &[u32],
-    ) -> AlignmentResult {
+    ) -> QueryAlignment {
         // Initialization
         self.workspace.allocate_more_space_if_needed(
             query.len() as u32,

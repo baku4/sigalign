@@ -6,7 +6,7 @@ use crate::{
         }
     },
     results::{
-        AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult,
+        QueryAlignment, TargetAlignment, Alignment,
         AlignmentOperations,
     },
 };
@@ -41,10 +41,10 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
-) -> AlignmentResult {
+) -> QueryAlignment {
     let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
 
-    let target_alignment_results: Vec<TargetAlignmentResult> = anchor_table_map.iter_mut().filter_map(|(target_index, anchor_table)| {
+    let target_alignment_results: Vec<TargetAlignment> = anchor_table_map.iter_mut().filter_map(|(target_index, anchor_table)| {
         pattern_locater.fill_buffer(*target_index, sequence_buffer);
         let target = sequence_buffer.buffered_sequence();
         let anchor_alignment_results = local_alignment_query_to_target(
@@ -67,14 +67,14 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
         if anchor_alignment_results.is_empty() {
             None
         } else {
-            Some(TargetAlignmentResult {
+            Some(TargetAlignment {
                 index: *target_index,
                 alignments: anchor_alignment_results,
             })
         }
     }).collect();
 
-    AlignmentResult(target_alignment_results)
+    QueryAlignment(target_alignment_results)
 }
 
 #[inline]
@@ -94,7 +94,7 @@ fn local_alignment_query_to_target(
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
-) -> Vec<AnchorAlignmentResult> {
+) -> Vec<Alignment> {
     // Initialize
     //   - Clear the buffers
     traversed_anchor_index_buffer.clear();
@@ -105,7 +105,7 @@ fn local_alignment_query_to_target(
         anchor_table.0.len() as u32 - 1
     );
     //   - Create vector of results
-    let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
+    let mut anchor_alignment_results: Vec<Alignment> = Vec::new();
 
     (0..anchor_table.0.len()).for_each(|pattern_index| {
         (0..anchor_table.0[pattern_index].len()).for_each(|anchor_index_in_pattern| {
@@ -227,10 +227,10 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
     extension_buffer: &mut Vec<Extension>,
     // Limit of the number of alignments
     mut limit: u32,
-) -> AlignmentResult {
+) -> QueryAlignment {
     let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
 
-    let mut target_alignment_results: Vec<TargetAlignmentResult> = Vec::new();
+    let mut target_alignment_results: Vec<TargetAlignment> = Vec::new();
     for (target_index, anchor_table) in anchor_table_map.iter_mut() {
         pattern_locater.fill_buffer(*target_index, sequence_buffer);
         let target = sequence_buffer.buffered_sequence();
@@ -253,7 +253,7 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
         );
 
         if !anchor_alignment_results.is_empty() {
-            target_alignment_results.push(TargetAlignmentResult {
+            target_alignment_results.push(TargetAlignment {
                 index: *target_index,
                 alignments: anchor_alignment_results,
             });
@@ -264,7 +264,7 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
         }
     }
 
-    AlignmentResult(target_alignment_results)
+    QueryAlignment(target_alignment_results)
 }
 
 // FIXME: Un-panic when input limit is 0
@@ -288,7 +288,7 @@ fn local_alignment_query_to_target_with_limit(
     extension_buffer: &mut Vec<Extension>,
     // Limit of the number of alignments
     limit: &mut u32,
-) -> Vec<AnchorAlignmentResult> {
+) -> Vec<Alignment> {
     // Initialize
     //   - Clear the buffers
     traversed_anchor_index_buffer.clear();
@@ -299,7 +299,7 @@ fn local_alignment_query_to_target_with_limit(
         anchor_table.0.len() as u32 - 1
     );
     //   - Create vector of results
-    let mut anchor_alignment_results: Vec<AnchorAlignmentResult> = Vec::new();
+    let mut anchor_alignment_results: Vec<Alignment> = Vec::new();
 
     for pattern_index in 0..anchor_table.0.len() {
         for anchor_index_in_pattern in 0..anchor_table.0[pattern_index].len() {

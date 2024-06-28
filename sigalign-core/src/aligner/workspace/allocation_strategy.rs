@@ -56,7 +56,17 @@ fn check_if_enlarged_length_is_correct() {
     let strategy = DefaultDoublingStrategy::new();
     assert_eq!(strategy.enlarge_query_len(100), 128);
     assert_eq!(strategy.enlarge_query_len(200), 256);
+    assert_eq!(strategy.enlarge_query_len(256), 512);
     assert_eq!(strategy.enlarge_query_len(300), 512);
     assert_eq!(strategy.enlarge_query_len(500), 512);
+    assert_eq!(strategy.enlarge_query_len(512), 1024);
     assert_eq!(strategy.enlarge_query_len(700), 1024);
+    assert_eq!(
+        strategy.enlarge_query_len((2_i32.pow(20)-1) as u32),
+        (2_i32.pow(20)) as u32,
+    );
+    assert_eq!(
+        strategy.enlarge_query_len(2_i32.pow(22) as u32),
+        (2_i32.pow(23)) as u32,
+    );
 }

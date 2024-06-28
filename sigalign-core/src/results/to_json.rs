@@ -40,16 +40,10 @@ macro_rules! impl_translate_between_json {
 }
 
 use super::{
-    AlignmentResult,
-    TargetAlignmentResult,
-    AnchorAlignmentResult,
-    labeled::{
-        LabeledAlignmentResult,
-        LabeledTargetAlignmentResult,
-    },
+    QueryAlignment,
+    TargetAlignment,
+    Alignment,
 };
-impl_translate_between_json!(AlignmentResult);
-impl_translate_between_json!(TargetAlignmentResult);
-impl_translate_between_json!(AnchorAlignmentResult);
-impl_translate_between_json!(LabeledAlignmentResult);
-impl_translate_between_json!(LabeledTargetAlignmentResult);
+impl_translate_between_json!(QueryAlignment);
+impl_translate_between_json!(TargetAlignment);
+impl_translate_between_json!(Alignment);

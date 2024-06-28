@@ -40,8 +40,8 @@ macro_rules! impl_translate_between_json {
 }
 
 use super::{
-    ReadAlignmentResult,
-    FastaAlignmentResult,
+    LabeledQueryAlignment,
+    LabeledTargetAlignment,
 };
-impl_translate_between_json!(ReadAlignmentResult);
-impl_translate_between_json!(FastaAlignmentResult);
+impl_translate_between_json!(LabeledQueryAlignment);
+impl_translate_between_json!(LabeledTargetAlignment);

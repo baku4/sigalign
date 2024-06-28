@@ -4,13 +4,13 @@ Alignment results.
 Example in JSON format:
 ```json
 {
-  "AlignmentResult": [
+  "QueryAlignment": [
     {
-      "TargetAlignmentResult": {
+      "TargetAlignment": {
         "index": 0,
         "alignments": [
           {
-            "AnchorAlignmentResult": {
+            "Alignment": {
               "penalty": 4,
               "length": 100,
               "position": {
@@ -43,24 +43,25 @@ Example in JSON format:
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AlignmentResult(
-    pub Vec<TargetAlignmentResult>
+#[cfg_attr(feature = "short_key", serde(rename = "QryAln"))]
+pub struct QueryAlignment(
+    pub Vec<TargetAlignment>
 );
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature = "short_key", serde(rename = "TgtAln"))]
-pub struct TargetAlignmentResult {
+pub struct TargetAlignment {
     #[cfg_attr(feature = "short_key", serde(rename = "idx"))]
     pub index: u32,
     #[cfg_attr(feature = "short_key", serde(rename = "aln"))]
-    pub alignments: Vec<AnchorAlignmentResult>,
+    pub alignments: Vec<Alignment>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "short_key", serde(rename = "AncAln"))]
-pub struct AnchorAlignmentResult {
+#[cfg_attr(feature = "short_key", serde(rename = "Aln"))]
+pub struct Alignment {
     #[cfg_attr(feature = "short_key", serde(rename = "pen"))]
     pub penalty: u32,
     #[cfg_attr(feature = "short_key", serde(rename = "len"))]
@@ -73,6 +74,7 @@ pub struct AnchorAlignmentResult {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "short_key", serde(rename = "Pos"))]
 pub struct AlignmentPosition {
     #[cfg_attr(feature = "short_key", serde(rename = "qry"))]
     pub query: (u32, u32),
@@ -82,7 +84,7 @@ pub struct AlignmentPosition {
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "short_key", serde(rename = "Operation"))]
+#[cfg_attr(feature = "short_key", serde(rename = "Ops"))]
 pub struct AlignmentOperations {
     #[cfg_attr(feature = "short_key", serde(rename = "op"))]
     pub operation: AlignmentOperation,
@@ -103,7 +105,6 @@ pub enum AlignmentOperation {
     Insertion,
 }
 
-pub mod labeled;
 mod to_json;
 
 // Features
