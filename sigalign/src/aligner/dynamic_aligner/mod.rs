@@ -4,42 +4,74 @@ use sigalign_core::{
         PatternIndex, SequenceStorage,
     },
     aligner::{
-        Aligner as RawAligner,
-        LocalAligner, LocalWithLimitAligner,
-        SemiGlobalAligner, SemiGlobalWithLimitAligner, AlignmentRegulator,
+        AlignmentRegulator,
+        local::{LocalAligner, LocalWithLimitAligner},
+        semi_global::{SemiGlobalAligner, SemiGlobalWithLimitAligner},
     },
-    results::AlignmentResult,
+    results::QueryAlignment,
 };
-use sigalign_impl::allocation_strategy::LinearStrategy;
 
 #[derive(Clone)]
 pub enum DynamicAligner {
-    Local(LocalAligner<LinearStrategy>),
-    LocalWithLimit(LocalWithLimitAligner<LinearStrategy>),
-    SemiGlobal(SemiGlobalAligner<LinearStrategy>),
-    SemiGlobalWithLimit(SemiGlobalWithLimitAligner<LinearStrategy>),
+    Local(LocalAligner),
+    LocalWithLimit(LocalWithLimitAligner),
+    SemiGlobal(SemiGlobalAligner),
+    SemiGlobalWithLimit(SemiGlobalWithLimitAligner),
 }
 
-impl RawAligner for DynamicAligner {
-    fn alignment<I: PatternIndex, S: SequenceStorage> (
+impl DynamicAligner {
+    /// Align a query to the reference which is totally compatible with `sigalign-core`.
+    pub fn alignment<I: PatternIndex, S: SequenceStorage> (
         &mut self,
+        query: &[u8],
         reference: &RawReference<I, S>,
         sequence_buffer: &mut S::Buffer,
         sorted_target_indices: &[u32],
-        query: &[u8],
-    ) -> AlignmentResult {
+    ) -> QueryAlignment {
         match self {
-            Self::Local(v) => v.alignment(reference, sequence_buffer, sorted_target_indices, query),
-            Self::LocalWithLimit(v) => v.alignment(reference, sequence_buffer, sorted_target_indices, query),
-            Self::SemiGlobal(v) => v.alignment(reference, sequence_buffer, sorted_target_indices, query),
-            Self::SemiGlobalWithLimit(v) => v.alignment(reference, sequence_buffer, sorted_target_indices, query),
+            Self::Local(v) => v.alignment(
+                query,
+                reference,
+                sequence_buffer,
+                sorted_target_indices,
+            ),
+            Self::LocalWithLimit(v) => v.alignment(
+                query,
+                reference,
+                sequence_buffer,
+                sorted_target_indices,
+            ),
+            Self::SemiGlobal(v) => v.alignment(
+                query,
+                reference,
+                sequence_buffer,
+                sorted_target_indices,
+            ),
+            Self::SemiGlobalWithLimit(v) => v.alignment(
+                query,
+                reference,
+                sequence_buffer,
+                sorted_target_indices,
+            ),
+        }
+    }
+    pub fn regulator(&self) -> &AlignmentRegulator {
+        match self {
+            Self::Local(v) => v.regulator(),
+            Self::LocalWithLimit(v) => v.regulator(),
+            Self::SemiGlobal(v) => v.regulator(),
+            Self::SemiGlobalWithLimit(v) => v.regulator(),
         }
     }
 }
 
 impl DynamicAligner {
     pub fn new_local(regulator: AlignmentRegulator) -> Self {
-        let local_aligner = LocalAligner::new(regulator);
-        Self::Local(local_aligner)
+        let aligner = LocalAligner::new(regulator);
+        Self::Local(aligner)
+    }
+    pub fn new_semi_global(regulator: AlignmentRegulator) -> Self {
+        let aligner = SemiGlobalAligner::new(regulator);
+        Self::SemiGlobal(aligner)
     }
 }

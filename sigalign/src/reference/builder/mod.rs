@@ -13,7 +13,7 @@ use super::Reference;
 
 /// Builder for `Reference`.
 pub struct ReferenceBuilder {
-    ignore_case: bool,
+    uppercase: bool,
     to_ignore_bases: Vec<u8>,
     sequence_storage: InMemoryStorage,
 }
@@ -31,20 +31,19 @@ pub enum ReferenceBuildError {
     EmptySequence,
 }
 
-
 impl ReferenceBuilder {
     /// Make a new `ReferenceBuilder`.
     pub fn new() -> Self {
         Self {
-            ignore_case: true,
+            uppercase: true,
             to_ignore_bases: Vec::new(),
             sequence_storage: InMemoryStorage::new(),
         }
     }
     /* Configuration */
     /// Set all letters to uppercase when building.
-    pub fn ignore_case(mut self, ignore_case: bool) -> Self {
-        self.ignore_case = ignore_case;
+    pub fn set_uppercase(mut self, uppercase: bool) -> Self {
+        self.uppercase = uppercase;
         self
     }
     /// Set the base that never match to any other bases.
@@ -63,6 +62,10 @@ impl ReferenceBuilder {
         self
     }
     /* Add Sequences */
+    pub fn add_target(mut self, label: &str, sequence: &[u8]) -> Self {
+        self.sequence_storage.add_target(label, sequence);
+        self
+    }
     pub fn add_fasta<R: Read>(mut self, reader: R) -> Result<Self, ReferenceBuildError> {
         self.sequence_storage.add_fasta(reader).map_err(|_| ReferenceBuildError::invalid_fasta_record())?;
         Ok(self)
@@ -78,7 +81,7 @@ impl ReferenceBuilder {
     /// Finish building `Reference`.
     pub fn build(mut self) -> Result<Reference, ReferenceBuildError> {
         // Sequence Storage
-        if self.ignore_case {
+        if self.uppercase {
             self.sequence_storage.set_sequences_to_uppercase()
         }
         if !self.to_ignore_bases.is_empty() {

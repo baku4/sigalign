@@ -10,6 +10,7 @@ mod debug;
 mod builder;
 pub use builder::{ReferenceBuilder, ReferenceBuildError};
 
+pub type DefaultSequenceBuffer = InMemoryBuffer;
 /// A database for multiple target sequences.
 pub struct Reference {
     raw_reference: RawReference<DynamicLfi, InMemoryStorage>,
@@ -24,6 +25,7 @@ impl AsRef<RawReference<DynamicLfi, InMemoryStorage>> for Reference {
 
 impl Reference {
     /* Building Reference */
+    // TODO: This is really needed as public?
     /// ⚠️ This is lowest-level generator for `Reference`, assuming that users have already known about "sigalign-core" and "sigalign-impl" crates.
     pub fn from_raw(reference: RawReference<DynamicLfi, InMemoryStorage>) -> Self {
         let full_sorted_search_range = (0..reference.num_targets()).collect();

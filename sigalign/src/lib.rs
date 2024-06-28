@@ -76,5 +76,5 @@ pub use reference::{
 mod aligner;
 pub use aligner::{
     Aligner,
-    AlignerBuildError,
+    algorithms,
 };
