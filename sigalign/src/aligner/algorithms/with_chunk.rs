@@ -95,11 +95,24 @@ impl Algorithm for LocalWithChunk {
         reference: &Reference,
         sequence_buffer: &mut DefaultSequenceBuffer,
     ) -> QueryAlignment {
-        query.windows(self.segment_size as usize)
-            .step_by(self.sliding_size as usize)
-            .for_each(|chunked_query| {
-                //
-            });
+        let mut results = Vec::new();
+        
+        let mut start = 0;
+        while start + self.segment_size as usize <= query.len() {
+            let slice = &query[start..start + self.segment_size as usize];
+            let mut alignment = self.inner.align(
+                slice,
+                reference.as_ref(),
+                sequence_buffer,
+                reference.get_full_sorted_target_indices(),
+            );
+            adjust_positions(&mut alignment, start);
+            results.append(&mut alignment.0);
+
+            start += self.sliding_size as usize;
+        }
+
+        QueryAlignment(results)
     }
 }
 
@@ -110,10 +123,35 @@ impl Algorithm for SemiGlobalWithChunk {
         reference: &Reference,
         sequence_buffer: &mut DefaultSequenceBuffer,
     ) -> QueryAlignment {
-        query.windows(self.segment_size as usize)
-            .step_by(self.sliding_size as usize)
-            .for_each(|chunked_query| {
-                //
-            });
+        let mut results = Vec::new();
+        
+        let mut start = 0;
+        while start + self.segment_size as usize <= query.len() {
+            let slice = &query[start..start + self.segment_size as usize];
+            let mut alignment = self.inner.align(
+                slice,
+                reference.as_ref(),
+                sequence_buffer,
+                reference.get_full_sorted_target_indices(),
+            );
+            adjust_positions(&mut alignment, start);
+            results.append(&mut alignment.0);
+
+            start += self.sliding_size as usize;
+        }
+        
+        QueryAlignment(results)
     }
+}
+
+fn adjust_positions(
+    alignment: &mut QueryAlignment,
+    start: usize,
+) {
+    alignment.0.iter_mut().for_each(|tgt_aln| {
+        tgt_aln.alignments.iter_mut().for_each(|aln| {
+            aln.position.query.0 += start as u32;
+            aln.position.query.1 += start as u32;
+        })
+    });
 }

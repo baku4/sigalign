@@ -1,5 +1,6 @@
 use sigalign_core::aligner::{AlignmentRegulator, RegulatorError};
 
+/// Errors related to defining alignment algorithms.
 #[derive(Debug, thiserror::Error)]
 pub enum ParamsError {
     #[error("Invalid input value: {0}")]

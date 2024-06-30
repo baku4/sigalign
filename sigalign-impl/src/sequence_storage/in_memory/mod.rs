@@ -22,6 +22,7 @@ pub struct InMemoryStorage {
 }
 
 /// `SequenceBuffer` for `InMemoryStorage`.
+#[derive(Clone)]
 pub struct InMemoryBuffer {
     pointer: *const u8,
     len: usize,
