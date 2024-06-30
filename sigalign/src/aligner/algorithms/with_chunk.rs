@@ -11,12 +11,14 @@ use crate::{
 use super::{Algorithm, ParamsError, check_pattern_size};
 
 // Structs
+#[derive(Clone)]
 pub struct LocalWithChunk {
     inner: LocalAligner,
     segment_size: u32,
     sliding_size: u32,
 }
 
+#[derive(Clone)]
 pub struct SemiGlobalWithChunk {
     inner: SemiGlobalAligner,
     segment_size: u32,
@@ -114,6 +116,9 @@ impl Algorithm for LocalWithChunk {
 
         QueryAlignment(results)
     }
+    fn regulator(&self) -> &AlignmentRegulator {
+        self.inner.regulator()
+    }
 }
 
 impl Algorithm for SemiGlobalWithChunk {
@@ -142,6 +147,9 @@ impl Algorithm for SemiGlobalWithChunk {
         
         QueryAlignment(results)
     }
+    fn regulator(&self) -> &AlignmentRegulator {
+        self.inner.regulator()
+    }
 }
 
 fn adjust_positions(
@@ -154,4 +162,32 @@ fn adjust_positions(
             aln.position.query.1 += start as u32;
         })
     });
+}
+
+// Debug
+impl std::fmt::Debug for LocalWithChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalWithChunk")
+            .field("mismatch_penalty", &self.regulator().get_mismatch_penalty())
+            .field("gap_open_penalty", &self.regulator().get_gap_open_penalty())
+            .field("gap_extend_penalty", &self.regulator().get_gap_extend_penalty())
+            .field("minimum_length", &self.regulator().get_minimum_length())
+            .field("maximum_penalty_per_length", &self.regulator().get_maximum_penalty_per_length())
+            .field("segment_size", &self.segment_size)
+            .field("sliding_size", &self.sliding_size)
+            .finish()
+    }
+}
+impl std::fmt::Debug for SemiGlobalWithChunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SemiGlobalWithChunk")
+            .field("mismatch_penalty", &self.regulator().get_mismatch_penalty())
+            .field("gap_open_penalty", &self.regulator().get_gap_open_penalty())
+            .field("gap_extend_penalty", &self.regulator().get_gap_extend_penalty())
+            .field("minimum_length", &self.regulator().get_minimum_length())
+            .field("maximum_penalty_per_length", &self.regulator().get_maximum_penalty_per_length())
+            .field("segment_size", &self.segment_size)
+            .field("sliding_size", &self.sliding_size)
+            .finish()
+    }
 }

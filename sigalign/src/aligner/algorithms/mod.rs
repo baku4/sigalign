@@ -68,7 +68,7 @@ For example:
     ```
  */
 
-
+use sigalign_core::aligner::AlignmentRegulator;
 use super::{
     Reference, DefaultSequenceBuffer,
     QueryAlignment,
@@ -86,11 +86,14 @@ pub use with_limit::{LocalWithLimit, SemiGlobalWithLimit};
 pub use with_chunk::{LocalWithChunk, SemiGlobalWithChunk};
 
 /// An alignment algorithm.
-pub trait Algorithm {
+pub trait Algorithm: std::fmt::Debug + Clone {
+    // Low-level alignment method
     fn align(
         &mut self,
         query: &[u8],
         reference: &Reference,
         sequence_buffer: &mut DefaultSequenceBuffer,
     ) -> QueryAlignment;
+    // Can access the regulator
+    fn regulator(&self) -> &AlignmentRegulator;
 }

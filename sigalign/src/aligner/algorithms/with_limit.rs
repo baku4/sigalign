@@ -19,10 +19,12 @@ fn check_limit(limit: u32) -> Result<(), ParamsError> {
 }
 
 // Structs
+#[derive(Clone)]
 pub struct LocalWithLimit {
     inner: LocalWithLimitAligner,
 }
 
+#[derive(Clone)]
 pub struct SemiGlobalWithLimit {
     inner: SemiGlobalWithLimitAligner,
 }
@@ -91,6 +93,9 @@ impl Algorithm for LocalWithLimit {
             reference.get_full_sorted_target_indices(),
         )
     }
+    fn regulator(&self) -> &AlignmentRegulator {
+        self.inner.regulator()
+    }
 }
 
 impl Algorithm for SemiGlobalWithLimit {
@@ -106,5 +111,34 @@ impl Algorithm for SemiGlobalWithLimit {
             sequence_buffer,
             reference.get_full_sorted_target_indices(),
         )
+    }
+    fn regulator(&self) -> &AlignmentRegulator {
+        self.inner.regulator()
+    }
+}
+
+// Debug
+impl std::fmt::Debug for LocalWithLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LocalWithLimit")
+            .field("mismatch_penalty", &self.regulator().get_mismatch_penalty())
+            .field("gap_open_penalty", &self.regulator().get_gap_open_penalty())
+            .field("gap_extend_penalty", &self.regulator().get_gap_extend_penalty())
+            .field("minimum_length", &self.regulator().get_minimum_length())
+            .field("maximum_penalty_per_length", &self.regulator().get_maximum_penalty_per_length())
+            .field("limit", &self.inner.limit())
+            .finish()
+    }
+}
+impl std::fmt::Debug for SemiGlobalWithLimit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SemiGlobalWithLimit")
+            .field("mismatch_penalty", &self.regulator().get_mismatch_penalty())
+            .field("gap_open_penalty", &self.regulator().get_gap_open_penalty())
+            .field("gap_extend_penalty", &self.regulator().get_gap_extend_penalty())
+            .field("minimum_length", &self.regulator().get_minimum_length())
+            .field("maximum_penalty_per_length", &self.regulator().get_maximum_penalty_per_length())
+            .field("limit", &self.inner.limit())
+            .finish()
     }
 }

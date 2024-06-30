@@ -9,6 +9,8 @@ use crate::{
 pub mod algorithms;
 use algorithms::Algorithm;
 
+mod debug;
+
 /// An alignment executor.
 #[derive(Clone)]
 pub struct Aligner<A: Algorithm> {

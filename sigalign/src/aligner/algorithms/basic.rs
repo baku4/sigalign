@@ -11,10 +11,12 @@ use crate::{
 use super::{Algorithm, ParamsError, check_pattern_size};
 
 // Structs
+#[derive(Clone)]
 pub struct Local {
     inner: LocalAligner,
 }
 
+#[derive(Clone)]
 pub struct SemiGlobal {
     inner: SemiGlobalAligner,
 }
@@ -79,6 +81,9 @@ impl Algorithm for Local {
             reference.get_full_sorted_target_indices(),
         )
     }
+    fn regulator(&self) -> &AlignmentRegulator {
+        self.inner.regulator()
+    }
 }
 
 impl Algorithm for SemiGlobal {
@@ -94,5 +99,32 @@ impl Algorithm for SemiGlobal {
             sequence_buffer,
             reference.get_full_sorted_target_indices(),
         )
+    }
+    fn regulator(&self) -> &AlignmentRegulator {
+        self.inner.regulator()
+    }
+}
+
+// Debug
+impl std::fmt::Debug for Local {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Local")
+            .field("mismatch_penalty", &self.regulator().get_mismatch_penalty())
+            .field("gap_open_penalty", &self.regulator().get_gap_open_penalty())
+            .field("gap_extend_penalty", &self.regulator().get_gap_extend_penalty())
+            .field("minimum_length", &self.regulator().get_minimum_length())
+            .field("maximum_penalty_per_length", &self.regulator().get_maximum_penalty_per_length())
+            .finish()
+    }
+}
+impl std::fmt::Debug for SemiGlobal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SemiGlobal")
+            .field("mismatch_penalty", &self.regulator().get_mismatch_penalty())
+            .field("gap_open_penalty", &self.regulator().get_gap_open_penalty())
+            .field("gap_extend_penalty", &self.regulator().get_gap_extend_penalty())
+            .field("minimum_length", &self.regulator().get_minimum_length())
+            .field("maximum_penalty_per_length", &self.regulator().get_maximum_penalty_per_length())
+            .finish()
     }
 }

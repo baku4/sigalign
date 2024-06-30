@@ -24,7 +24,7 @@ let mut aligner = Aligner::new(
     4,   // Mismatch penalty
     6,   // Gap-open penalty
     2,   // Gap-extend penalty
-    50,  // Minimum aligned length
+    50,  // Minimum length
     0.2, // Maximum penalty per length
 ).unwrap();
 
