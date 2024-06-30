@@ -12,6 +12,12 @@ use sigalign_impl::{
 use super::Reference;
 
 /// Builder for `Reference`.
+/// 
+/// - Default configuration:
+///   - Uppercase: false
+///      - Reference treats uppercase and lowercase letters as different bases.
+///   - Ignore bases: None
+///      - Reference treats all characters as bases.
 pub struct ReferenceBuilder {
     uppercase: bool,
     to_ignore_bases: Vec<u8>,
@@ -94,7 +100,7 @@ impl ReferenceBuilder {
             self.sequence_storage,
             dynamic_lfi_option,
         )?;
-        Ok(Reference::from_raw(raw_reference))
+        Ok(Reference::from(raw_reference))
     }
 
     fn get_option_for_dynamic_lfi(sequence_storage: &InMemoryStorage) -> DynamicLfiOption {

@@ -1,37 +1,43 @@
 /*!
 The structures for representing alignment outcomes.
 
-- `LabeledTargetAlignment`: Contains a target index and label, with alignments against a specific target. 
-    ```rust
-    index: u32,
-    label: String,
-    alignments: Vec<AnchorAlignmentResult>,
-    ```
-
-- `Alignment`: Details alignment's penalty, length, position, and operations.
-    ```rust
-    penalty: u32,
-    length: u32,
-    position: AlignmentPosition,
-    operations: Vec<AlignmentOperations>,
-    ```
-
-- `AlignmentPosition`: Specifies alignment positions in query and target sequences.
-    ```rust
-    query: (u32, u32),
-    target: (u32, u32),
-    ```
-
-- `AlignmentOperations`: Describes a sequence of alignment operations.
-    ```rust
-    operation: AlignmentOperation,
-    count: u32,
-    ```
-
-- `AlignmentOperation`: Enumerates types of alignment operations.
-    ```rust
-    Match, Subst, Insertion, Deletion,
-    ```
+Example in JSON format:
+```json
+{
+  "QueryAlignment": [
+    {
+      "TargetAlignment": {
+        "index": 0,
+        "alignments": [
+          {
+            "Alignment": {
+              "penalty": 4,
+              "length": 100,
+              "position": {
+                "query": [0, 100],
+                "target": [0, 100]
+              },
+              "operations": [
+                {
+                  "AlignmentOperations": {
+                    "operation": "Match",
+                    "count": 99
+                  }
+                },
+                {
+                  "AlignmentOperations": {
+                    "operation": "Subst",
+                    "count": 1
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
 */
 mod labeled;
 

@@ -4,7 +4,7 @@ The module for alignment algorithms.
 `Algorithm` defines the behavior for an `Aligner`. It needs to be passed to build an `Aligner`.
 e.g.,
 ```rust
-use sigalign::algorithms::Local;
+use sigalign::{Aligner, algorithms::Local};
 
 let algorithm = Local::new(4, 6, 2, 50, 0.1).unwrap();
 let aligner = Aligner::new(algorithm);

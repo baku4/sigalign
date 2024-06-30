@@ -33,7 +33,7 @@ impl Reference {
         let signatures = Self::get_base64_decoded_signature(&encoded_signature)?;
         if signatures[0] == PREFIX && signatures[1] == LOWEST_COMPARABLE_WRAPPER_VERSION && signatures[2] == CORE_VERSION {
             let raw_reference = RawReference::load_from(reader)?;
-            Ok(Self::from_raw(raw_reference))
+            Ok(Self::from(raw_reference))
         } else {
             Err(ReferenceLoadError::IncompatibleVersion(signatures[1].clone()))
         }

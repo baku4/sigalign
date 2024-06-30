@@ -3,6 +3,9 @@ use sigalign_impl::{
     pattern_index::dynamic_lfi::DynamicLfi,
     sequence_storage::in_memory::{InMemoryStorage, InMemoryBuffer},
 };
+use crate::results::{
+    QueryAlignment, TargetAlignment, LabeledQueryAlignment, LabeledTargetAlignment,
+};
 
 mod io;
 pub use io::ReferenceLoadError;
@@ -24,14 +27,6 @@ impl AsRef<RawReference<DynamicLfi, InMemoryStorage>> for Reference {
 }
 
 impl Reference {
-    /* Building Reference */
-    // TODO: This is really needed as public?
-    /// ⚠️ This is lowest-level generator for `Reference`, assuming that users have already known about "sigalign-core" and "sigalign-impl" crates.
-    pub fn from_raw(reference: RawReference<DynamicLfi, InMemoryStorage>) -> Self {
-        let full_sorted_search_range = (0..reference.num_targets()).collect();
-        Self { raw_reference: reference, full_sorted_target_indices: full_sorted_search_range }
-    }
-
     /* Get Information */
     /// Get the sequence of the target. None if the target index is out of range.
     pub fn get_sequence(&self, target_index: u32) -> Option<Vec<u8>> {
@@ -50,6 +45,7 @@ impl Reference {
         self.as_ref().get_sequence_storage().get_total_length()
     }
 
+    /* Access Resources */
     /// Get sequence buffer for alignment.
     pub fn get_sequence_buffer() -> InMemoryBuffer {
         InMemoryBuffer::new()
@@ -57,5 +53,40 @@ impl Reference {
     /// Get the full sorted target indices
     pub fn get_full_sorted_target_indices(&self) -> &[u32] {
         &self.full_sorted_target_indices
+    }
+
+    /* Manipulate Results */
+    /// Label the query alignment.
+    pub fn label_query_alignment(&self, query_alignment: QueryAlignment) -> LabeledQueryAlignment {
+        let labeled_target_alignments = query_alignment.0.into_iter().map(|x| {
+            self.label_target_alignment(x)
+        }).collect();
+        LabeledQueryAlignment(labeled_target_alignments)
+    }
+    /// Label the target alignment.
+    #[inline]
+    pub fn label_target_alignment(&self, target_alignment: TargetAlignment) -> LabeledTargetAlignment {
+        let target_index = target_alignment.index;
+        let label = self.get_label(target_index).unwrap_or_else(|| target_index.to_string());
+        LabeledTargetAlignment {
+            index: target_index,
+            label,
+            alignments: target_alignment.alignments,
+        }
+    }
+}
+
+impl Into<RawReference<DynamicLfi, InMemoryStorage>> for Reference {
+    fn into(self) -> RawReference<DynamicLfi, InMemoryStorage> {
+        self.raw_reference
+    }
+}
+impl From<RawReference<DynamicLfi, InMemoryStorage>> for Reference {
+    fn from(raw_reference: RawReference<DynamicLfi, InMemoryStorage>) -> Self {
+        let full_sorted_target_indices = (0..raw_reference.num_targets()).collect();
+        Self {
+            raw_reference,
+            full_sorted_target_indices,
+        }
     }
 }
