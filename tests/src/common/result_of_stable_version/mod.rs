@@ -21,7 +21,7 @@ use sigalign_stable::{
     },
     results::fasta::FastaAlignmentResult as StableFastaAlignmentResult,
 };
-use sigalign_core::results::AlignmentResult;
+use sigalign_core::results::QueryAlignment;
 
 const VERSION_SIGNATURE: &str = "v0_3_2";
 const PRECISION_SCALE: u32 = 100_000;
@@ -35,7 +35,7 @@ pub fn get_semi_global_result_of_stable_version(
     query_fasta_file: &PathBuf,
     reference_fasta_file: &PathBuf,
     tmp_dir: &PathBuf,
-) -> AHashMap<String, AlignmentResult> {
+) -> AHashMap<String, QueryAlignment> {
     info!("Getting result of stable version of SigAlign...");
     let result_cache_file_path = get_result_cache_file_path(
         "semi_global",
@@ -76,7 +76,7 @@ pub fn get_local_result_of_stable_version(
     query_fasta_file: &PathBuf,
     reference_fasta_file: &PathBuf,
     tmp_dir: &PathBuf,
-) -> AHashMap<String, AlignmentResult> {
+) -> AHashMap<String, QueryAlignment> {
     info!("Getting result of stable version of SigAlign...");
     let result_cache_file_path = get_result_cache_file_path(
         "local",

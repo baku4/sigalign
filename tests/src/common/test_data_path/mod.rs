@@ -81,3 +81,15 @@ pub fn get_dir_on_tmp_dir(dir_name: &str) -> Result<PathBuf> {
     }
     Ok(path)
 }
+
+// TODO: Get tmp dir on the target directory
+#[test]
+fn print_target_dir() {
+    use cargo_metadata::MetadataCommand;
+
+    let metadata = MetadataCommand::new()
+        .exec()
+        .expect("Failed to get cargo metadata");
+    let target_dir = metadata.target_directory;
+    println!("CARGO_TARGET_DIR: {:?}", target_dir);
+}

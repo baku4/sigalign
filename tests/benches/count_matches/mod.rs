@@ -3,9 +3,8 @@ use criterion::{
     PlotConfiguration, AxisScale,
 };
 use sigalign::results::{
-    AlignmentResult,
-    TargetAlignmentResult,
-    AnchorAlignmentResult,
+    TargetAlignment,
+    Alignment,
     AlignmentOperations,
     AlignmentOperation,
 };

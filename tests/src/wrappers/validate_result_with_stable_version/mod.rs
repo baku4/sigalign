@@ -15,9 +15,9 @@ use log::info;
 use sigalign::{
     Reference,
     ReferenceBuilder,
-    Aligner, results::{FastaAlignmentResult, ReadAlignmentResult, LabeledAlignmentResult},
+    Aligner, results::{FastaAlignment, ReadAlignment, LabeledTargetAlignment},
 };
-use sigalign_core::results::{AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult};
+use sigalign_core::results::{QueryAlignment, TargetAlignment, Alignment};
 
 const TEST_REGULATOR_1: (u32, u32, u32, u32, f32) = (4, 6, 2, 70, 0.1);
 const TEST_REGULATOR_2: (u32, u32, u32, u32, f32) = (5, 4, 3, 110, 0.2);
@@ -116,27 +116,27 @@ fn validate_local_result_with_stable_version() {
     }
 }
 
-fn fasta_alignment_result_to_result_map(fasta_alignment_result: FastaAlignmentResult) -> AHashMap<String, AlignmentResult> {
+fn fasta_alignment_result_to_result_map(fasta_alignment_result: FastaAlignment) -> AHashMap<String, LabeledTargetAlignment> {
     let mut result_map = AHashMap::new();
-    for ReadAlignmentResult {
+    for ReadAlignment {
         read,
         is_forward: _,
         result,
     } in fasta_alignment_result.0 {
         let target_results = result.0.into_iter().map(|x| {
-            TargetAlignmentResult {
+            TargetAlignment {
                 index: x.index,
                 alignments: x.alignments
             }
         }).collect();
-        result_map.insert(read, AlignmentResult(target_results));
+        result_map.insert(read, QueryAlignment(target_results));
     }
     result_map
 }
 
 fn assert_current_result_is_correct(
-    current_result: FastaAlignmentResult,
-    answer: AHashMap<String, AlignmentResult>,
+    current_result: FastaAlignment,
+    answer: AHashMap<String, LabeledTargetAlignment>,
 ) {
     for read_alignment_result in current_result.0 {
         let read = read_alignment_result.read;
@@ -147,18 +147,18 @@ fn assert_current_result_is_correct(
     }
 }
 fn assert_results_are_same(
-    labeled_alignment_result: &LabeledAlignmentResult,
-    answer_result: &AlignmentResult,
+    labeled_alignment_result: &LabeledTargetAlignment,
+    answer_result: &LabeledTargetAlignment,
 ) {
-    let result_set_1: AHashSet<(u32, AnchorAlignmentResult)> = labeled_alignment_result.0.iter().map(|x| {
+    let result_set_1: AHashSet<(u32, Alignment)> = labeled_alignment_result.0.iter().map(|x| {
         x.alignments.iter().map(|y| {
             (x.index, y.clone())
-        }).collect::<Vec<(u32, AnchorAlignmentResult)>>()
+        }).collect::<Vec<(u32, Alignment)>>()
     }).flatten().collect();
-    let result_set_2: AHashSet<(u32, AnchorAlignmentResult)> = answer_result.0.iter().map(|x| {
+    let result_set_2: AHashSet<(u32, Alignment)> = answer_result.0.iter().map(|x| {
         x.alignments.iter().map(|y| {
             (x.index, y.clone())
-        }).collect::<Vec<(u32, AnchorAlignmentResult)>>()
+        }).collect::<Vec<(u32, Alignment)>>()
     }).flatten().collect();
 
     assert_eq!(result_set_1, result_set_2);

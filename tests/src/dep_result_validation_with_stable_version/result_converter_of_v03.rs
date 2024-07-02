@@ -1,47 +1,41 @@
-use ahash::AHashMap;
-use sigalign_stable::{
-    results::{
-        fasta::{
-            ReadAlignmentResult as StableReadAlignmentResult,
-            FastaAlignmentResult as StableFastaAlignmentResult,
-        },
-        AlignmentResult as StableAlignmentResult,
-        AnchorAlignmentResult as StableAnchorAlignmentResult,
-        AlignmentOperations as StableAlignmentOperations,
-        AlignmentOperation as StableAlignmentOperation,
+use sigalign_stable::results::{
+    fasta::{
+        ReadAlignmentResult as StableReadAlignmentResult,
+        FastaAlignmentResult as StableFastaAlignmentResult,
     },
+    AlignmentResult as StableAlignmentResult,
+    AnchorAlignmentResult as StableAnchorAlignmentResult,
+    AlignmentOperations as StableAlignmentOperations,
+    AlignmentOperation as StableAlignmentOperation,
 };
-use sigalign_core::{
-    results::{
-        QueryAlignment,
-        TargetAlignment,
-        Alignment,
-        AlignmentPosition,
-        AlignmentOperations,
-        AlignmentOperation,
-    }
+use sigalign::results::{
+    LabeledQueryAlignment,
+    LabeledTargetAlignment,
+    Alignment,
+    AlignmentPosition,
+    AlignmentOperations,
+    AlignmentOperation,
 };
 
-pub fn convert_result_of_stable_version_to_current_core_result(
+
+/* Convert stable version to current version */
+pub fn convert_result_of_stable_version_to_current(
     stable_result: &StableFastaAlignmentResult
-) -> AHashMap<String, QueryAlignment> {
-    stable_result.0.iter().map(|read_alignment_result| {
-        let read = read_alignment_result.read.clone();
-        let result = aln_res_to_aln_res(&read_alignment_result.result);
-        (read, result)
-    }).collect()
+) -> Vec<LabeledQueryAlignment> {
+    todo!()
 }
-fn aln_res_to_aln_res(stable_res: &StableAlignmentResult) -> QueryAlignment {
+fn aln_res_to_aln_res(stable_res: &StableAlignmentResult) -> LabeledQueryAlignment {
     let inner = stable_res.0.iter().map(|rec_aln_res| {
-        TargetAlignment {
+        LabeledTargetAlignment {
             index: rec_aln_res.index as u32,
+            label: rec_aln_res.label.clone(),
             alignments: anc_res_to_anc_res(&rec_aln_res.alignments)
         }
     }).collect();
-    QueryAlignment(inner)
+    LabeledQueryAlignment(inner)
 }
 fn anc_res_to_anc_res(stable_res: &Vec<StableAnchorAlignmentResult>) -> Vec<Alignment> {
-    stable_res.iter().map(|anc_res| {
+    stable_res.iter().map(|anc_res: &StableAnchorAlignmentResult| {
         Alignment {
             penalty: anc_res.penalty as u32,
             length: anc_res.length as u32,

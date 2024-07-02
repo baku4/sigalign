@@ -6,40 +6,14 @@ use std::path::PathBuf;
 use std::io::{Read, Write};
 use std::collections::HashSet;
 
-use crate::{
+use crate::common::{
     Result, error_msg,
     init_logger,
     test_data_path::*,
 };
 
-use sigalign::results::AlignmentOperation;
-use sigalign::utils::FastaReader;
-use sigalign::{
-    wrapper::{
-        DefaultReference, DefaultAligner
-    },
-    results::{
-        fasta::{FastaAlignmentResult, ReadAlignmentResult},
-        AlignmentResult,
-        TargetAlignmentResult,    
-        AnchorAlignmentResult,
-    },
-};
-
-use log::{info, error};
-mod stable_answer;
-mod result_converter;
-use stable_answer::get_answer_or_generate;
-use result_converter::convert_result_of_stable_version_to_current;
-
-// For bench
-pub fn get_stable_result_of_val_data() -> FastaAlignmentResult {
-    let [sample_result_of_stable, _] = get_answer_or_generate().unwrap();
-    let sample_result = convert_result_of_stable_version_to_current(&sample_result_of_stable);
-    sample_result
-}
-
-const ANSWER_ALIGNER_OPTION: (
+// Test options
+const ALIGNER_OPTION_1: (
     u32,
     u32,
     u32,
@@ -52,6 +26,40 @@ const ANSWER_ALIGNER_OPTION: (
     100, // Min. length
     0.1, // Max. penalty per length
 );
+const ALIGNER_OPTION_2: (
+    u32,
+    u32,
+    u32,
+    u32,
+    f32,
+) = (
+    3,   // Mismatch penalty
+    5,   // Gap-open penalty
+    1,   // Gap-extend penalty
+    80, // Min. length
+    0.09, // Max. penalty per length
+);
+
+
+mod result_of_v032;
+use result_of_v032::get_answer_or_generate;
+
+mod result_converter_of_v03;
+use result_converter_of_v03::convert_result_of_stable_version_to_current;
+
+// use sigalign::utils::FastaReader;
+
+use log::{info, error};
+mod stable_answer;
+
+// For bench
+// pub fn get_stable_result_of_val_data() -> FastaAlignmentResult {
+//     let [sample_result_of_stable, _] = get_answer_or_generate().unwrap();
+//     let sample_result = convert_result_of_stable_version_to_current(&sample_result_of_stable);
+//     sample_result
+// }
+
+
 
 #[test]
 fn test_current_algorithms_are_collect() {
@@ -353,33 +361,7 @@ fn is_equal_alignment_result(
         })
     }
 }
-fn right_result_includes_left(
-    a: &AlignmentResult,
-    b: &AlignmentResult,
-) -> bool {
-    let to_set = |alignment_result: &AlignmentResult| {
-        let set: HashSet<(u32, AnchorAlignmentResult)> = alignment_result.0.iter().map(|target_alignment_result| {
-            let target_index = &target_alignment_result.index;
-            target_alignment_result.alignments.iter().map(|res| {
-                (*target_index, res.clone())
-            })
-        }).flatten().collect();
-        set
-    };
-    let set_a = to_set(a);
-    let set_b = to_set(b);
-    if !set_a.is_subset(&set_b) {
-        // let mut only_in_set_a: Vec<(u32, AnchorAlignmentResult)> = set_a.sub(&set_b).into_iter().collect();
-        // let mut only_in_set_b: Vec<(u32, AnchorAlignmentResult)> = set_b.sub(&set_a).into_iter().collect();
-        // only_in_set_a.sort_by_key(|x| x.0);
-        // only_in_set_b.sort_by_key(|x| x.0);
-        // println!("only_in_set_a:\n{:#?}", only_in_set_a);
-        // println!("only_in_set_b:\n{:#?}", only_in_set_b);
-        false
-    } else {
-        true
-    }
-}
+
 fn sort_target_alignment_results(vec: &Vec<TargetAlignmentResult>) -> Vec<TargetAlignmentResult> {
     let mut sorted = vec.clone();
     sorted.sort_by_key(|v| v.index);

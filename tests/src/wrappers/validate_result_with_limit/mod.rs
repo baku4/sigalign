@@ -16,9 +16,9 @@ use log::info;
 use sigalign::{
     Reference,
     ReferenceBuilder,
-    Aligner, results::{FastaAlignmentResult, ReadAlignmentResult, LabeledAlignmentResult, LabeledTargetAlignmentResult,},
+    Aligner, results::{FastaAlignment, ReadAlignment, LabeledTargetAlignment, TargetResultWithOptionalLabel,},
 };
-use sigalign_core::results::{AlignmentResult, TargetAlignmentResult, AnchorAlignmentResult};
+use sigalign_core::results::{QueryAlignment, TargetAlignment, Alignment};
 
 const TEST_REGULATOR_1: (u32, u32, u32, u32, f32) = (4, 6, 2, 70, 0.1);
 const TEST_REGULATOR_2: (u32, u32, u32, u32, f32) = (5, 4, 3, 110, 0.2);
@@ -140,14 +140,14 @@ fn validate_local_with_limit() {
     }
 }
 
-fn get_set_of_fasta_alignment_result(fasta_alignment_result: &FastaAlignmentResult) -> AHashSet<(String, u32, AnchorAlignmentResult)> {
+fn get_set_of_fasta_alignment_result(fasta_alignment_result: &FastaAlignment) -> AHashSet<(String, u32, Alignment)> {
     let mut result_set = AHashSet::new();
-    for ReadAlignmentResult {
+    for ReadAlignment {
         read,
         is_forward: _,
         result,
     } in &fasta_alignment_result.0 {
-        for LabeledTargetAlignmentResult {
+        for TargetResultWithOptionalLabel {
             index,
             label: _,
             alignments,

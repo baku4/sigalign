@@ -10,7 +10,7 @@ ACACAGATCGCAAACTCACAATTGTATTTCTTTGCCACCTGGGCATATACTTTTTGCGCCCCCTCATTTA
 >target_2
 TCTGGGGCCATTGTATTTCTTTGCCAGCTGGGGCATATACTTTTTCCGCCCCCTCATTTACGCTCATCAC"#;
 let reference = ReferenceBuilder::new()
-    .ignore_case(true)
+    .set_uppercase(true)
     .ignore_base(b'N')
     .add_fasta(&fasta[..]).unwrap()
     .build().unwrap();
