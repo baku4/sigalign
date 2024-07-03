@@ -13,7 +13,7 @@ let regulator = AlignmentRegulator::new(
     4,   // Mismatch penalty
     6,   // Gap open penalty
     2,   // Gap extend penalty
-    50,  // Minimum aligned length
+    50,  // Minimum length
     0.1, // Maximum penalty per length
 ).unwrap(); // Can occur `RegulatorError` when input is invalid
 

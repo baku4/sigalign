@@ -10,33 +10,37 @@ use super::{
 };
 
 impl QueryAlignment {
-    pub fn deduplicate(&mut self) {
+    /// Deduplicate the alignments by connected (Match or Subst) base pairs positions.
+    pub fn deduplicated(self) -> Self {
         let mut paths = AHashSet::new();
-        
-        self.0.iter_mut().for_each(|v| {
-            v.deduplicate_with_paths_buffer(&mut paths);
-        })
+
+        Self(
+            self.0.into_iter().map(|v| {
+                v.deduplicated_with_paths_buffer(&mut paths)
+            }).collect()
+        )
     }
 }
 
 impl TargetAlignment {
-    pub fn deduplicate(&mut self) {
+    pub fn deduplicated(self) -> Self {
         let mut paths = AHashSet::new();
-        self.deduplicate_with_paths_buffer(&mut paths);
+        self.deduplicated_with_paths_buffer(&mut paths)
     }
-    fn deduplicate_with_paths_buffer(&mut self, paths: &mut AHashSet<(u32, u32)>) {
+    fn deduplicated_with_paths_buffer(mut self, paths: &mut AHashSet<(u32, u32)>) -> Self {
         paths.clear();
 
         self.alignments.sort_unstable_by(|a, b| {
-            cmp_anchor_alignment_result(a, b)
+            cmp_alignment_by_query_position(a, b)
         });
 
         let temporary_vec = std::mem::take(&mut self.alignments);
-        // - Same as 
+        // - Same as
         // let temporary_vec = std::mem::replace(
         //     &mut self.alignments,
         //     Vec::new(),
         // );
+        // TODO: Which is better?
         
         self.alignments = temporary_vec.into_iter().filter(|v| {
             let path = v.get_path();
@@ -47,10 +51,11 @@ impl TargetAlignment {
                 false
             }
         }).collect();
+        self
     }
 }
 
-fn cmp_anchor_alignment_result(
+fn cmp_alignment_by_query_position(
     a: &Alignment,
     b: &Alignment,
 ) -> Ordering {

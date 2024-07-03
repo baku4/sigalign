@@ -85,8 +85,8 @@ impl AlignmentRegulator {
     pub fn get_gap_extend_penalty(&self) -> u32 {
         self.penalties.e * self.gcd_for_compression
     }
-    /// Get minimum aligned length
-    pub fn get_minimum_aligned_length(&self) -> u32 {
+    /// Get minimum length
+    pub fn get_minimum_length(&self) -> u32 {
         self.cutoff.minimum_length
     }
     /// Get maximum penalty per length
@@ -142,13 +142,13 @@ impl Penalty {
 }
 
 impl Cutoff {
-    fn new(minimum_aligned_length: u32, maximum_penalty_per_length: f32) -> Self {
+    fn new(minimum_length: u32, maximum_penalty_per_length: f32) -> Self {
         let maximum_penalty_per_scale = (maximum_penalty_per_length * PREC_SCALE as f32) as u32;
-        Self::new_with_scaled_max_ppl(minimum_aligned_length, maximum_penalty_per_scale)
+        Self::new_with_scaled_max_ppl(minimum_length, maximum_penalty_per_scale)
     }
-    fn new_with_scaled_max_ppl(minimum_aligned_length: u32, maximum_penalty_per_scale: u32) -> Self {
+    fn new_with_scaled_max_ppl(minimum_length: u32, maximum_penalty_per_scale: u32) -> Self {
         Self {
-            minimum_length: minimum_aligned_length,
+            minimum_length,
             maximum_scaled_penalty_per_length: maximum_penalty_per_scale,
         }
     }

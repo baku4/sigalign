@@ -101,7 +101,7 @@ pub fn calculate_max_pattern_size(
 #[inline(always)]
 fn get_lower_bound_of_n(
     n: u32, // Number of patterns
-    minl: u32, // Minimum aligned length
+    minl: u32, // Minimum length
     pe: u32, // Gap-extend penalty
     p1: u32, // Penalty for odd pattern
 ) -> u32 {
