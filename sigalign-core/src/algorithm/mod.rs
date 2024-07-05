@@ -12,6 +12,7 @@ use wave_front::{
     WaveFrontScore,
     BackTraceMarker,
     BackTraceResult,
+    TraversedAnchor,
 };
 pub use wave_front::WaveFront;
 

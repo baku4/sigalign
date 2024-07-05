@@ -1,12 +1,11 @@
 use crate::core::regulators::Penalty;
-use super::AnchorIndex;
 use bytemuck::{Pod, Zeroable};
 
 mod match_counter;
 use match_counter::{MatchCounter, ForwardMatchCounter, ReverseMatchCounter};
 mod fill;
 mod backtrace;
-pub use backtrace::BackTraceResult;
+pub use backtrace::{BackTraceResult, TraversedAnchor};
 
 // Wave Front
 #[derive(Debug, Clone)]
@@ -87,18 +86,23 @@ impl WaveFrontScore {
         }
     }
     // Get
+    #[inline(always)]
     pub fn components_of_k(&self, k: i32) -> &Components {
         &self.components_by_k[(self.max_k + k) as usize]
     }
+    #[inline(always)]
     pub fn m_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).m
     }
+    #[inline(always)]
     pub fn d_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).d
     }
+    #[inline(always)]
     pub fn i_component_of_k(&self, k: i32) -> &Component {
         &self.components_of_k(k).i
     }
+    #[inline(always)]
     pub fn components_of_k_checked(&self, k: i32) -> Option<&Components> {
         self.components_by_k.get((self.max_k + k) as usize)
     }
@@ -120,6 +124,7 @@ pub struct Component {
     pub insertion_count: u16,
     pub bt: BackTraceMarker,
 }
+// FIXME: Check if Pod is needed
 unsafe impl Pod for Component {}
 unsafe impl Zeroable for Component {}
 

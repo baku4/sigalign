@@ -12,9 +12,7 @@ pub struct Extension {
     pub penalty: u32,
     pub length: u32,
     pub left_side_operation_range: (u32, u32),
-    pub left_traversed_anchor_range: (u32, u32),
     pub right_side_operation_range: (u32, u32),
-    pub right_traversed_anchor_range: (u32, u32),
 }
 
 impl Extension {

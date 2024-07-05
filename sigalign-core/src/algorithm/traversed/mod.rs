@@ -1,35 +1,34 @@
-use super::{AnchorTable, Anchor, AnchorIndex};
+use super::{AnchorTable, Anchor, TraversedAnchor as TraversedAnchor};
 
 #[inline]
 pub fn transform_left_additive_position_to_traversed_anchor_index(
     anchor_table: &AnchorTable,
-    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     base_pattern_index: u32,
     base_target_position: u32,
-    index_range: (u32, u32),
 ) {
-    traversed_anchor_index_buffer[index_range.0 as usize..index_range.1 as usize].iter_mut().for_each(|additive_position_info| {
-        let pattern_index = base_pattern_index - additive_position_info.0;
-        let target_position = base_target_position - additive_position_info.1;
+    traversed_anchors_buffer.iter_mut().for_each(|tv| {
+        let pattern_index = base_pattern_index - tv.addt_pattern_index;
+        let target_position = base_target_position - tv.addt_target_position;
         let anchors_by_pattern = &anchor_table.0[pattern_index as usize];
         let anchor_index_in_pattern = unsafe {
             binary_search(anchors_by_pattern, target_position).unwrap_unchecked()
         } as u32;
-        *additive_position_info = (pattern_index, anchor_index_in_pattern);
+        tv.addt_pattern_index = pattern_index;
+        tv.addt_target_position = anchor_index_in_pattern;
     });
 }
 #[inline]
 pub fn transform_right_additive_position_to_traversed_anchor_index(
     anchor_table: &AnchorTable,
-    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     base_pattern_index: u32,
     base_target_position: u32,
-    index_range: (u32, u32),
     pattern_size: u32,
 ) {
-    traversed_anchor_index_buffer[index_range.0 as usize..index_range.1 as usize].iter_mut().for_each(|additive_position_info| {
-        let mut pattern_index = base_pattern_index + additive_position_info.0;
-        let mut target_position = base_target_position + additive_position_info.1;
+    traversed_anchors_buffer.iter_mut().for_each(|tv| {
+        let mut pattern_index = base_pattern_index + tv.addt_pattern_index;
+        let mut target_position = base_target_position + tv.addt_target_position;
         let anchor_index_in_pattern = {
             loop {
                 let anchors_by_pattern = &anchor_table.0[pattern_index as usize];
@@ -47,7 +46,8 @@ pub fn transform_right_additive_position_to_traversed_anchor_index(
                 }
             }
         };
-        *additive_position_info = (pattern_index, anchor_index_in_pattern);
+        tv.addt_pattern_index = pattern_index;
+        tv.addt_target_position = anchor_index_in_pattern;
     });
 }
 
