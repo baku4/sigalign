@@ -12,10 +12,9 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker,
+    WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
     Extension, SparePenaltyCalculator,
     mark_traversed_anchors_as_skipped,
-    transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
 mod extend;
@@ -38,7 +37,7 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
 ) -> QueryAlignment {
@@ -59,7 +58,7 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
             right_wave_front,
             left_vpc_buffer,
             right_vpc_buffer,
-            traversed_anchor_index_buffer,
+            traversed_anchors_buffer,
             operations_buffer,
             extension_buffer,
         );
@@ -91,13 +90,14 @@ fn local_alignment_query_to_target(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     extension_buffer: &mut Vec<Extension>,
 ) -> Vec<Alignment> {
+    println!("cutoff: {:?}", cutoff);
     // Initialize
     //   - Clear the buffers
-    traversed_anchor_index_buffer.clear();
+    //     - traversed_anchors_buffer is cleared in the method.
     operations_buffer.clear();
     extension_buffer.clear();
     //   - Change the last pattern index
@@ -109,33 +109,33 @@ fn local_alignment_query_to_target(
 
     (0..anchor_table.0.len()).for_each(|pattern_index| {
         (0..anchor_table.0[pattern_index].len()).for_each(|anchor_index_in_pattern| {
-            let (skipped, extended) = {
+            let (skipped, _) = {
                 let anchor = &anchor_table.0[pattern_index][anchor_index_in_pattern];
                 (anchor.skipped, anchor.extended)
             };
             if !skipped {
-                if !extended {
-                    extend_anchor(
-                        anchor_table,
-                        (pattern_index as u32, anchor_index_in_pattern as u32),
-                        &pattern_size,
-                        spare_penalty_calculator,
-                        target,
-                        query,
-                        penalties,
-                        cutoff,
-                        left_wave_front,
-                        right_wave_front,
-                        left_vpc_buffer,
-                        right_vpc_buffer,
-                        operations_buffer,
-                        traversed_anchor_index_buffer,
-                        extension_buffer,
-                    );
-                    let current_anchor = &mut anchor_table.0[pattern_index][anchor_index_in_pattern];
-                    current_anchor.extended = true;
-                    current_anchor.extension_index = extension_buffer.len() as u32 - 1;
-                }
+                // (1) Extend the anchor if not skipped
+                extend_anchor(
+                    anchor_table,
+                    (pattern_index as u32, anchor_index_in_pattern as u32),
+                    &pattern_size,
+                    spare_penalty_calculator,
+                    target,
+                    query,
+                    penalties,
+                    cutoff,
+                    left_wave_front,
+                    right_wave_front,
+                    left_vpc_buffer,
+                    right_vpc_buffer,
+                    operations_buffer,
+                    traversed_anchors_buffer,
+                    extension_buffer,
+                );
+                let current_anchor = &mut anchor_table.0[pattern_index][anchor_index_in_pattern];
+                current_anchor.extended = true;
+                current_anchor.extension_index = extension_buffer.len() as u32 - 1;
+
                 let extension_index_of_current_anchor = anchor_table.0[pattern_index][anchor_index_in_pattern].extension_index as usize;
 
                 // (2) Check the all right traversed anchors

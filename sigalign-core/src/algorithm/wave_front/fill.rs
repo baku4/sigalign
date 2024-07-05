@@ -36,14 +36,17 @@ impl WaveFront {
         let tgt_len = tgt_seq.len();
         let qry_len = qry_seq.len();
 
+        // (1) Initialize the first wave front score
         let first_match_count = C::count_consecutive_match(tgt_seq, qry_seq, 0, 0);
-
         self.wave_front_scores[0].add_first_components(first_match_count);
 
+        // TODO: Check if "==" can be used instead of ">="
+        // (2) Check if the end point is already reached
         if first_match_count as usize >= tgt_len || first_match_count as usize >= qry_len {
             let end_point = WaveEndPoint { penalty: 0, k: Some(0) };
             self.end_point = end_point;
         } else {
+            // (3) Fill the wave front scores until the end point
             let end_point = self.fill_wave_front_scores_until_end::<C>(
                 tgt_seq,
                 qry_seq,
@@ -61,13 +64,14 @@ impl WaveFront {
         mut spare_penalty: u32,
         penalties: &Penalty,
     ) -> WaveEndPoint {
+        // TODO: Check if this step is really necessary
         if self.wave_front_scores.len() as u32 <= spare_penalty {
             spare_penalty = (self.wave_front_scores.len() - 1) as u32;
         }
         for penalty in 1..=spare_penalty {
             self.update_components_of_next_wave_front_score(penalty, penalties);
            
-            let optional_last_k = self.wave_front_scores[penalty as usize].extend_components_until_end::<C>(tgt_seq, qry_seq);
+            let optional_last_k = self.wave_front_scores[penalty as usize].extend_m_components_to_the_end::<C>(tgt_seq, qry_seq);
 
             if let Some(last_k) = optional_last_k {
                 return WaveEndPoint { penalty: penalty as usize, k: Some(last_k) };
@@ -98,23 +102,34 @@ impl WaveFront {
                 next_wave_front_score.components_by_k.as_mut_ptr(),
             )
         };
+
+        // Initialize the components (components_by_k in WaveFrontScore) with all zero
+        // If this step is not done, next components refer invalid values
         unsafe {
             let ptr = new_components_ptr as *mut u8;
             let byte_count = num_components * std::mem::size_of::<Components>();
             std::ptr::write_bytes(ptr, 0, byte_count);
         }
 
+        // Update components of next wave front score
+        //   1. Update I, D from previous M
+        //   2. Update I from previous I, D from previous D
+        //   3. Update M from previous M or current D, I
+
         // (1) From score: s-o-e
+        // New insertion or deletion
+        // TODO: Check if using i32 for penalty is more efficient than u32
         if let Some(pre_score) = penalty.checked_sub(gap_open_penalty + gap_extend_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
             for index_of_k in 0..num_components {
                 let k = index_of_k as i32 - max_k;
                 let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
-                // 1. Update D from M & M from D
+                // 1. Update D from previous M
+                // TODO: Can be all components from previous wave front score be copied + mark only Non-empty cell?
+                //       i.e., copy component and only add fr+1 and mark bt as FromM. do not define new values.
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
                     let pre_m_component = &pre_components.m;
                     if pre_m_component.bt != BackTraceMarker::Empty {
-                        // Update I
                         unsafe {
                             (*new_components_of_k).d = Component {
                                 fr: pre_m_component.fr + 1,
@@ -124,11 +139,11 @@ impl WaveFront {
                         }
                     }
                 }
-                // 2. Update I from M & M from I
+                // 2. Update I from previous M
+                // TODO: Can be all components from previous wave front score be copied + mark only Non-empty cell?
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k+1) {
                     let pre_m_component = &pre_components.m;
                     if pre_m_component.bt != BackTraceMarker::Empty {
-                        // Update D
                         unsafe {
                             (*new_components_of_k).i = Component {
                                 fr: pre_m_component.fr,
@@ -141,18 +156,18 @@ impl WaveFront {
             }
         }
         // (2) From score: s-e
+        // Extended insertion or deletion
         if let Some(pre_score) = penalty.checked_sub(*gap_extend_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
             for index_of_k in 0..num_components {
                 let k = index_of_k as i32 - max_k;
                 let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
-                // 1. Update D from D
+                // 1. Update D from previous D
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k-1) {
                     let pre_d_component = &pre_components.d;
-
                     if pre_d_component.bt != BackTraceMarker::Empty {
-                        // Update D
                         unsafe {
+                            // (If D is empty) OR (New FR is larger than previous values)
                             if (*new_components_of_k).d.bt == BackTraceMarker::Empty || (*new_components_of_k).d.fr < pre_d_component.fr + 1 {
                                 (*new_components_of_k).d = Component {
                                     fr: pre_d_component.fr + 1,
@@ -163,11 +178,10 @@ impl WaveFront {
                         };
                     }
                 }
-                // 2. Update I from I
+                // 2. Update I from previous I
                 if let Some(pre_components) = pre_wave_front_score.components_of_k_checked(k+1) {
                     let pre_i_component = &pre_components.i;
                     if pre_i_component.bt != BackTraceMarker::Empty {
-                        // Update I
                         unsafe {
                             if (*new_components_of_k).i.bt == BackTraceMarker::Empty || (*new_components_of_k).i.fr < pre_i_component.fr {
                                 (*new_components_of_k).i = Component {
@@ -182,12 +196,13 @@ impl WaveFront {
             }
         }
         // (3) From score: s-x
+        // Substitution
         if let Some(pre_score) = penalty.checked_sub(*mismatch_penalty) {
             let pre_wave_front_score = &self.wave_front_scores[pre_score as usize];
             for index_of_k in 0..num_components {
                 let k = index_of_k as i32 - max_k;
                 let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
-                // 1. Update M from M
+                // 1. Update M from previous M
                 let pre_component_index = (pre_wave_front_score.max_k + k) as usize;
 
                 if let Some(pre_components) = pre_wave_front_score.components_by_k.get(pre_component_index) {
@@ -202,7 +217,7 @@ impl WaveFront {
                     }
                 }
                 unsafe {
-                    // 2. Update M from D
+                    // 2. Update M from current D
                     if (*new_components_of_k).d.bt != BackTraceMarker::Empty && (
                         (*new_components_of_k).m.bt == BackTraceMarker::Empty || (*new_components_of_k).d.fr >= (*new_components_of_k).m.fr
                     ) {
@@ -212,7 +227,7 @@ impl WaveFront {
                             bt: BackTraceMarker::FromD,
                         };
                     }
-                    // 3. Update M from I
+                    // 3. Update M from current I
                     if (*new_components_of_k).i.bt != BackTraceMarker::Empty && (
                         (*new_components_of_k).m.bt == BackTraceMarker::Empty || (*new_components_of_k).i.fr >= (*new_components_of_k).m.fr
                     ) {
@@ -234,7 +249,7 @@ impl WaveFrontScore {
         self.components_by_k = vec![Components::new_start_point(first_match_count)];
     }
     #[inline]
-    fn extend_components_until_end<C: MatchCounter>(
+    fn extend_m_components_to_the_end<C: MatchCounter>(
         &mut self,
         tgt_seq: &[u8],
         qry_seq: &[u8],

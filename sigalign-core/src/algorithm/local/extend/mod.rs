@@ -8,9 +8,8 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker,
+    WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
     Extension, SparePenaltyCalculator,
-    transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
 
@@ -34,7 +33,7 @@ pub fn extend_anchor(
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
+    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     extension_buffer: &mut Vec<Extension>,
 ) {
     // 1. Init
@@ -110,32 +109,33 @@ pub fn extend_anchor(
         left_optimal_vpc.component_index,
         penalties,
         operations_buffer,
-        traversed_anchor_index_buffer,
     );
-    transform_left_additive_position_to_traversed_anchor_index(
-        anchor_table,
-        traversed_anchor_index_buffer,
-        anchor_index.0,
-        left_target_end_index,
-        left_back_trace_result.traversed_anchor_range,
-    );
+    // TODO: Have not to check left anchors
+    // If have left anchor: drop while backtracing
+    // transform_left_additive_position_to_traversed_anchor_index(
+    //     anchor_table,
+    //     traversed_anchor_index_buffer,
+    //     anchor_index.0,
+    //     left_target_end_index,
+    //     left_back_trace_result.traversed_anchor_range,
+    // );
     // 4.2. Backtrace right
     let right_optimal_vpc = &right_vpc_buffer[optimal_right_vpc_index];
     let right_back_trace_result = right_wave_front.backtrace_of_right_side(
         right_optimal_vpc.penalty,
+        cutoff.maximum_scaled_penalty_per_length as i32,
         *pattern_size,
         pattern_count,
         right_optimal_vpc.component_index,
         penalties,
         operations_buffer,
-        traversed_anchor_index_buffer,
+        traversed_anchors_buffer,
     );
     transform_right_additive_position_to_traversed_anchor_index(
         anchor_table,
-        traversed_anchor_index_buffer,
+        traversed_anchors_buffer,
         anchor_index.0,
         left_target_end_index,
-        right_back_trace_result.traversed_anchor_range,
         *pattern_size,
     );
     
@@ -154,9 +154,7 @@ pub fn extend_anchor(
         penalty: left_back_trace_result.penalty_of_extension + right_back_trace_result.penalty_of_extension,
         length: left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension,
         left_side_operation_range: left_back_trace_result.operation_buffer_range,
-        left_traversed_anchor_range: left_back_trace_result.traversed_anchor_range,
         right_side_operation_range: right_back_trace_result.operation_buffer_range,
-        right_traversed_anchor_range: right_back_trace_result.traversed_anchor_range,
     };
     extension_buffer.push(extension);
 }
