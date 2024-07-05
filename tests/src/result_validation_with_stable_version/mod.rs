@@ -62,6 +62,9 @@ fn test_local_mode_of_current_algorithm() {
 
     // Start to compare
     for aligner_option in ALIGNER_OPTIONS.iter() {
+        // Time to compare
+        let mut current_times = Vec::new();
+        let mut stable_times = Vec::new();
         info!("Start to compare with aligner option: {:?}", aligner_option);
         let mut current_aligner = CurrentAligner::new(
             Local::new(
@@ -93,14 +96,42 @@ fn test_local_mode_of_current_algorithm() {
             }
             record.extend_seq_buf(&mut query_buffer);
 
-            let current_result = current_aligner.align(&query_buffer, &current_reference);
-            let stable_result = stable_aligner.align_query(&stable_reference, &query_buffer);
+            // Current
+            let current_result = {
+                let start = std::time::Instant::now();
+                let result = current_aligner.align(&query_buffer, &current_reference);
+                let duration = start.elapsed();
+                current_times.push(duration);
+                result
+            };
+
+            let stable_result = {
+                let start = std::time::Instant::now();
+                let result = stable_aligner.align_query(&stable_reference, &query_buffer);
+                let duration = start.elapsed();
+                stable_times.push(duration);
+                result
+            };
             let stable_result = stable_result_to_current_result(stable_result);
 
             if !is_acceptable_query_alignment(&current_result, &stable_result) {
                 error!("Query index {}", query_index);
             }
             query_index += 1;
+        }
+        
+        // Print elapsed time
+        {
+            let current_mean: std::time::Duration = current_times.iter().sum::<std::time::Duration>() / current_times.len() as u32;
+            let current_min = current_times.iter().min().unwrap();
+            let current_max = current_times.iter().max().unwrap();
+
+            let stable_mean: std::time::Duration = stable_times.iter().sum::<std::time::Duration>() / stable_times.len() as u32;
+            let stable_min = stable_times.iter().min().unwrap();
+            let stable_max = stable_times.iter().max().unwrap();
+            info!("# Elapsed time");
+            info!("  - current: mean: {:?}, min: {:?}, max: {:?}", current_mean, current_min, current_max);
+            info!("  - stable: mean: {:?}, min: {:?}, max: {:?}", stable_mean, stable_min, stable_max);
         }
     }
 }

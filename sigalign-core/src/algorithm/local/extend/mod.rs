@@ -1,15 +1,15 @@
 use crate::{
     core::regulators::{
-        Penalty, Cutoff,
-    },
-    results::{
-        AlignmentPosition, AlignmentOperations,
-    },
+        Cutoff, Penalty
+    }, results::{
+        AlignmentOperations, AlignmentPosition
+    }
 };
 use super::{
     AnchorTable, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
     Extension, SparePenaltyCalculator,
+    transform_left_additive_position_to_traversed_anchor_index,
     transform_right_additive_position_to_traversed_anchor_index,
 };
 
@@ -34,8 +34,7 @@ pub fn extend_anchor(
     right_vpc_buffer: &mut Vec<Vpc>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    extension_buffer: &mut Vec<Extension>,
-) {
+) -> Option<Extension> {
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
     // 1.1. Define the range of sequence to extend    
@@ -103,24 +102,45 @@ pub fn extend_anchor(
     );
     // 4.2. Backtrace left
     let left_optimal_vpc = &left_vpc_buffer[optimal_left_vpc_index];
+    // TODO:
+    //   - checking traversed can be done in backtracing
+    //   - can check only the first traversed anchor
     let left_back_trace_result = left_wave_front.backtrace_of_left_side(
         left_optimal_vpc.penalty,
         *pattern_size,
         left_optimal_vpc.component_index,
         penalties,
         operations_buffer,
+        traversed_anchors_buffer,
     );
-    // TODO: Have not to check left anchors
-    // If have left anchor: drop while backtracing
-    // transform_left_additive_position_to_traversed_anchor_index(
-    //     anchor_table,
-    //     traversed_anchor_index_buffer,
-    //     anchor_index.0,
-    //     left_target_end_index,
-    //     left_back_trace_result.traversed_anchor_range,
-    // );
+    transform_left_additive_position_to_traversed_anchor_index(
+        anchor_table,
+        traversed_anchors_buffer,
+        anchor_index.0,
+        left_target_end_index,
+    );
+    // If already used leftmost traversed anchor - return None.
+    let leftmost_anchor_index = {
+        if let Some(tv) = traversed_anchors_buffer.first() {
+            let leftmost_traversed_anchor_index = (tv.addt_pattern_index, tv.addt_target_position);
+            if anchor_table.0[
+                tv.addt_pattern_index as usize
+            ][
+                tv.addt_target_position as usize
+            ].used_to_results_as_leftmost_anchor {
+                return None;
+            }
+            leftmost_traversed_anchor_index
+        } else {
+            // Current anchor index
+            anchor_index
+        }
+    };
+    
+    
     // 4.2. Backtrace right
     let right_optimal_vpc = &right_vpc_buffer[optimal_right_vpc_index];
+    let right_operation_meet_edge = right_optimal_vpc.query_length == right_query_slice.len() as u32;
     let right_back_trace_result = right_wave_front.backtrace_of_right_side(
         right_optimal_vpc.penalty,
         cutoff.maximum_scaled_penalty_per_length as i32,
@@ -155,6 +175,8 @@ pub fn extend_anchor(
         length: left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension,
         left_side_operation_range: left_back_trace_result.operation_buffer_range,
         right_side_operation_range: right_back_trace_result.operation_buffer_range,
+        leftmost_anchor_index,
+        right_operation_meet_edge,
     };
-    extension_buffer.push(extension);
+    Some(extension)
 }
