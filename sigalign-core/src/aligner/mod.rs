@@ -30,5 +30,5 @@ pub use regulator::{AlignmentRegulator, RegulatorError};
 
 /// Executing "local" alignment algorithm.
 pub mod local;
-/// Executing "semi-global" alignment algorithm.
-pub mod semi_global;
+// Executing "semi-global" alignment algorithm.
+// pub mod semi_global;

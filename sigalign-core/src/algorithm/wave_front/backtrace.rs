@@ -32,8 +32,6 @@ pub struct TraversedAnchor {
 
 impl WaveFront {
     #[inline]
-    // When the traversed anchor is detected in the left, return None immediately.
-    // TODO: Refine the variables' name
     pub fn backtrace_of_left_side(
         &self,
         mut penalty: u32,
@@ -41,7 +39,9 @@ impl WaveFront {
         component_index: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
-    ) -> Option<BackTraceResult> {
+        traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
+    ) -> BackTraceResult {
+        traversed_anchors_buffer.clear();
         operations_buffer.push(AlignmentOperations {
             operation: AlignmentOperation::Deletion,
             count: 0,
@@ -87,8 +87,12 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(fr-k, pattern_size as i32); // fr - k = query_index_of_first_match
                             let match_count_of_next_pattern = match_count - remainder;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                // Drop it
-                                return None
+                                traversed_anchors_buffer.push(TraversedAnchor {
+                                    addt_pattern_index: quotient as u32,
+                                    addt_target_position: (next_fr + match_count_of_next_pattern + 1) as u32,
+                                    cum_penalty_delta: 0,
+                                    to_skip: false,
+                                })
                             }
                             
                             // (8) Add operation
@@ -143,8 +147,12 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
                             let match_count_of_next_pattern = match_count - remainder;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                // Drop it
-                                return None
+                                traversed_anchors_buffer.push(TraversedAnchor {
+                                    addt_pattern_index: quotient as u32,
+                                    addt_target_position: (next_fr + match_count_of_next_pattern) as u32,
+                                    cum_penalty_delta: 0,
+                                    to_skip: false,
+                                });
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -177,8 +185,12 @@ impl WaveFront {
                             let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
                             let match_count_of_next_pattern = match_count - remainder;
                             if match_count_of_next_pattern >= pattern_size as i32 {
-                                // Drop it
-                                return None
+                                traversed_anchors_buffer.push(TraversedAnchor {
+                                    addt_pattern_index: quotient as u32,
+                                    addt_target_position: (next_fr + match_count_of_next_pattern) as u32,
+                                    cum_penalty_delta: 0,
+                                    to_skip: false,
+                                });
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -214,7 +226,7 @@ impl WaveFront {
                                 length_of_extension: total_length,
                                 penalty_of_extension: total_penalty,
                             };
-                            return Some(backtrace_result);
+                            return backtrace_result;
                         }
                     }
                 },
@@ -365,9 +377,9 @@ impl WaveFront {
         component_index: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
-        traversed_anchor_status_buffer: &mut Vec<TraversedAnchor>,
+        traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     ) -> BackTraceResult {
-        traversed_anchor_status_buffer.clear();
+        traversed_anchors_buffer.clear();
 
         operations_buffer.push(AlignmentOperations {
             operation: AlignmentOperation::Deletion,
@@ -436,7 +448,7 @@ impl WaveFront {
                                     (penalty + penalties.x) * PREC_SCALE // Penalty
                                 ) as i32;
                                 let pd_between_tv_matches = pd_to_previous_tv_matches - pd_to_this_tv_matches;
-                                traversed_anchor_status_buffer.iter_mut().for_each(|tv| {
+                                traversed_anchors_buffer.iter_mut().for_each(|tv| {
                                     tv.cum_penalty_delta += pd_between_tv_matches;
                                     if tv.cum_penalty_delta > 0 {
                                         tv.to_skip = true;
@@ -449,7 +461,7 @@ impl WaveFront {
                                     cum_penalty_delta: 0,
                                     to_skip: false
                                 };
-                                traversed_anchor_status_buffer.push(traversed_anchor);
+                                traversed_anchors_buffer.push(traversed_anchor);
                             }
                             
                             // (8) Add operation
@@ -520,7 +532,7 @@ impl WaveFront {
                                     - (penalty * PREC_SCALE) as i32 // Penalty
                                 ;
                                 let pd_between_tv_matches = pd_to_previous_tv_matches - pd_to_this_tv_matches;
-                                traversed_anchor_status_buffer.iter_mut().for_each(|tv| {
+                                traversed_anchors_buffer.iter_mut().for_each(|tv| {
                                     tv.cum_penalty_delta += pd_between_tv_matches;
                                     if tv.cum_penalty_delta > 0 {
                                         tv.to_skip = true;
@@ -533,7 +545,7 @@ impl WaveFront {
                                     cum_penalty_delta: 0,
                                     to_skip: false
                                 };
-                                traversed_anchor_status_buffer.push(traversed_anchor);
+                                traversed_anchors_buffer.push(traversed_anchor);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -581,7 +593,7 @@ impl WaveFront {
                                     - (penalty * PREC_SCALE) as i32 // Penalty
                                 ;
                                 let pd_between_tv_matches = pd_to_previous_tv_matches - pd_to_this_tv_matches;
-                                traversed_anchor_status_buffer.iter_mut().for_each(|tv| {
+                                traversed_anchors_buffer.iter_mut().for_each(|tv| {
                                     tv.cum_penalty_delta += pd_between_tv_matches;
                                     if tv.cum_penalty_delta > 0 {
                                         tv.to_skip = true;
@@ -594,7 +606,7 @@ impl WaveFront {
                                     cum_penalty_delta: 0,
                                     to_skip: false
                                 };
-                                traversed_anchor_status_buffer.push(traversed_anchor);
+                                traversed_anchors_buffer.push(traversed_anchor);
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -622,7 +634,7 @@ impl WaveFront {
                                 + (anchor_size as i32 * scaled_maximum_penalty_per_length)
                                 // pd after anchor + pd of anchor
                             ;
-                            traversed_anchor_status_buffer.iter_mut().for_each(|tv| {
+                            traversed_anchors_buffer.iter_mut().for_each(|tv| {
                                 tv.cum_penalty_delta += pd_between_tv_matches;
                                 if tv.cum_penalty_delta > 0 {
                                     tv.to_skip = true;

@@ -54,7 +54,7 @@ impl LocalAligner {
             &mut self.workspace.wave_front_buffer_2.as_mut(),
             &mut self.workspace.left_vpc_buffer,
             &mut self.workspace.right_vpc_buffer,
-            &mut self.workspace.traversed_anchor_index_buffer,
+            &mut self.workspace.traversed_anchors_buffer,
             &mut self.workspace.operations_buffer,
             &mut self.workspace.extension_buffer,
         );

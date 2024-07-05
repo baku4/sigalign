@@ -15,8 +15,8 @@ pub struct Anchor {
     pub target_position: u32,
     pub pattern_count: u32,
     pub extension_index: u32,
-    pub extended: bool,
-    pub skipped: bool,
+    pub to_skip: bool,
+    pub used_to_results_as_leftmost_anchor: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorTable(
@@ -100,8 +100,8 @@ impl Anchor {
                 target_position: pos,
                 pattern_count: 1,
                 extension_index: 0,
-                extended: false,
-                skipped: false,
+                to_skip: false,
+                used_to_results_as_leftmost_anchor: false,
             }
         }).collect()
     }

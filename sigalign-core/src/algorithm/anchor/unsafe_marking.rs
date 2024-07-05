@@ -111,5 +111,5 @@ fn mark_anchor_as_skipped(
     anchor_index_ptr: *const AnchorIndex,
 ) {
     let (i1, i2) = unsafe { *anchor_index_ptr };
-    anchor_table.0[i1 as usize][i2 as usize].skipped = true;
+    anchor_table.0[i1 as usize][i2 as usize].to_skip = true;
 }

@@ -1,6 +1,6 @@
 use crate::{
     algorithm::{
-        AnchorIndex, Extension, Vpc, SparePenaltyCalculator,
+        Extension, Vpc, SparePenaltyCalculator, TraversedAnchor,
     },
     aligner::{
         regulator::AlignmentRegulator, workspace::{
@@ -18,7 +18,7 @@ pub struct LocalWorkspace {
     pub wave_front_buffer_2: WaveFrontBuffer,
     pub left_vpc_buffer: Vec<Vpc>,
     pub right_vpc_buffer: Vec<Vpc>,
-    pub traversed_anchor_index_buffer: Vec<AnchorIndex>,
+    pub traversed_anchors_buffer: Vec<TraversedAnchor>,
     pub operations_buffer: Vec<AlignmentOperations>,
     pub extension_buffer: Vec<Extension>,
 }
@@ -44,7 +44,7 @@ impl LocalWorkspace {
             wave_front_buffer_2,
             left_vpc_buffer: Vec::new(),
             right_vpc_buffer: Vec::new(),
-            traversed_anchor_index_buffer: Vec::new(),
+            traversed_anchors_buffer: Vec::new(),
             operations_buffer: Vec::new(),
             extension_buffer: Vec::new(),
         }

@@ -18,12 +18,12 @@ pub fn is_acceptable_query_alignment(
         false
     } else {
         sorted_a.into_iter().zip(sorted_b.into_iter()).all(|(a,b)| {
-            is_same_target_alignment_when_deduplicated(&a, &b)
+            is_same_or_left_is_more_optimal_target_alignments_when_deduplicated(&a, &b)
         })
     }
 }
 
-fn is_same_target_alignment_when_deduplicated(
+fn is_same_or_left_is_more_optimal_target_alignments_when_deduplicated(
     a: &TargetAlignment,
     b: &TargetAlignment,
 ) -> bool {
@@ -31,7 +31,7 @@ fn is_same_target_alignment_when_deduplicated(
         let dedup_a = a.clone().deduplicated();
         let dedup_b = b.clone().deduplicated();
 
-        if is_equal_alignments(&dedup_a.alignments, &dedup_b.alignments) {
+        if is_same_or_left_is_more_optimal_alignments(&dedup_a.alignments, &dedup_b.alignments) {
             true
         } else {
             error!("Un-deduplicated alignment. left: {:?}, right: {:?}", a, b);
@@ -49,7 +49,7 @@ fn sort_target_alignments(vec: &Vec<TargetAlignment>) -> Vec<TargetAlignment> {
     sorted.sort_by_key(|v| v.index);
     sorted
 }
-fn is_equal_alignments(
+fn is_same_or_left_is_more_optimal_alignments(
     a: &Vec<Alignment>,
     b: &Vec<Alignment>,
 ) -> bool {
@@ -71,14 +71,47 @@ fn is_equal_alignments(
                 let set_a = sorted_a.iter().map(|x| x.clone()).collect::<HashSet<_>>();
                 let set_b = sorted_b.iter().map(|x| x.clone()).collect::<HashSet<_>>();
 
-                let only_in_a = set_a.difference(&set_b);
-                let only_in_b = set_b.difference(&set_a);
+                let only_in_a: Vec<Alignment> = set_a.difference(&set_b).into_iter()
+                    .map(|x| x.clone()).collect();
+                let only_in_b: Vec<Alignment> = set_b.difference(&set_a).into_iter()
+                    .map(|x| x.clone()).collect();
 
-                error!("Unequal alignment result. only in a: {:?}, only in b: {:?}", only_in_a, only_in_b);
-                // error!("Unequal alignment result. left: {:?}, right: {:?}", sorted_a, sorted_b);
-                is_equal = false;
-                break;
+                // Check is a is more optimal than b
+                if only_in_a.len() == 1 && only_in_b.len() == 1 {
+                    let a = only_in_a.first().unwrap();
+                    let b = only_in_b.first().unwrap();
+
+                    let a_is_more_optimal = {
+                        if a.length > b.length {
+                            true
+                        } else if a.length == b.length {
+                            if a.penalty < b.penalty {
+                                true
+                            } else if a.penalty == b.penalty {
+                                if a.position.query.0 < b.position.query.0 {
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    };
+                    if !a_is_more_optimal {
+                        is_equal = false;
+                        break;
+                    }
+                } else {
+                    is_equal = false;
+                    break;
+                }
             }
+        }
+        if !is_equal {
+            error!("Unequal alignment result. left: {:?}, right: {:?}", sorted_a, sorted_b);
         }
         is_equal
     }
