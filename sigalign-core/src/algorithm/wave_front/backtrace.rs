@@ -5,7 +5,8 @@ use crate::{
     },
 };
 use super::{
-    WaveFront, BackTraceMarker,
+    AnchorTable, AnchorIndex, WaveFront, BackTraceMarker,
+    get_leftmost_anchor_index_if_not_used_as_result,
 };
 use num::integer::div_rem;
 
@@ -39,9 +40,11 @@ impl WaveFront {
         component_index: u32,
         penalties: &Penalty,
         operations_buffer: &mut Vec<AlignmentOperations>,
-        traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    ) -> BackTraceResult {
-        traversed_anchors_buffer.clear();
+        // To check leftmost anchor index
+        anchor_table: &AnchorTable,
+        base_pattern_index: u32,
+        base_target_position: u32,
+    ) -> Option<(BackTraceResult, Option<AnchorIndex>)> { // Return leftmost anchor index if it is not used as result
         operations_buffer.push(AlignmentOperations {
             operation: AlignmentOperation::Deletion,
             count: 0,
@@ -63,6 +66,7 @@ impl WaveFront {
         let total_processed_query = (fr - k) as u32;
         let total_processed_target = fr as u32;
 
+        let mut leftmost_anchor_index: Option<AnchorIndex> = None;
         loop {
             match component_type {
                 /* M */
@@ -84,15 +88,23 @@ impl WaveFront {
                             // (7) Check traversed
                             let match_count = fr - next_fr - 1;
 
-                            let (quotient, remainder) = div_rem(fr-k, pattern_size as i32); // fr - k = query_index_of_first_match
-                            let match_count_of_next_pattern = match_count - remainder;
-                            if match_count_of_next_pattern >= pattern_size as i32 {
-                                traversed_anchors_buffer.push(TraversedAnchor {
-                                    addt_pattern_index: quotient as u32,
-                                    addt_target_position: (next_fr + match_count_of_next_pattern + 1) as u32,
-                                    cum_penalty_delta: 0,
-                                    to_skip: false,
-                                })
+                            if leftmost_anchor_index.is_none() {
+                                let (quotient, remainder) = div_rem(fr-k, pattern_size as i32); // fr - k = query_index_of_first_match
+                                let match_count_of_next_pattern = match_count - remainder;
+                                if match_count_of_next_pattern >= pattern_size as i32 {
+                                    let addt_pattern_index = quotient as u32;
+                                    let addt_target_position = (next_fr + match_count_of_next_pattern + 1) as u32;
+                                    leftmost_anchor_index = get_leftmost_anchor_index_if_not_used_as_result(
+                                        anchor_table,
+                                        addt_pattern_index,
+                                        addt_target_position,
+                                        base_pattern_index,
+                                        base_target_position,
+                                    );
+                                    if leftmost_anchor_index.is_none() {
+                                        return None
+                                    }
+                                }
                             }
                             
                             // (8) Add operation
@@ -144,16 +156,25 @@ impl WaveFront {
                             // (7) Check traversed
                             let match_count = fr - next_fr;
 
-                            let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
-                            let match_count_of_next_pattern = match_count - remainder;
-                            if match_count_of_next_pattern >= pattern_size as i32 {
-                                traversed_anchors_buffer.push(TraversedAnchor {
-                                    addt_pattern_index: quotient as u32,
-                                    addt_target_position: (next_fr + match_count_of_next_pattern) as u32,
-                                    cum_penalty_delta: 0,
-                                    to_skip: false,
-                                });
+                            if leftmost_anchor_index.is_none() {
+                                let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
+                                let match_count_of_next_pattern = match_count - remainder;
+                                if match_count_of_next_pattern >= pattern_size as i32 {
+                                    let addt_pattern_index = quotient as u32;
+                                    let addt_target_position = (next_fr + match_count_of_next_pattern) as u32;
+                                    leftmost_anchor_index = get_leftmost_anchor_index_if_not_used_as_result(
+                                        anchor_table,
+                                        addt_pattern_index,
+                                        addt_target_position,
+                                        base_pattern_index,
+                                        base_target_position,
+                                    );
+                                    if leftmost_anchor_index.is_none() {
+                                        return None
+                                    }
+                                }
                             }
+
                             // (8) Add operation
                             if match_count != 0 {
                                 operations_buffer.push(
@@ -182,15 +203,23 @@ impl WaveFront {
                             // (7) Check traversed
                             let match_count = fr-next_fr;
 
-                            let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
-                            let match_count_of_next_pattern = match_count - remainder;
-                            if match_count_of_next_pattern >= pattern_size as i32 {
-                                traversed_anchors_buffer.push(TraversedAnchor {
-                                    addt_pattern_index: quotient as u32,
-                                    addt_target_position: (next_fr + match_count_of_next_pattern) as u32,
-                                    cum_penalty_delta: 0,
-                                    to_skip: false,
-                                });
+                            if leftmost_anchor_index.is_none() {
+                                let (quotient, remainder) = div_rem(fr - k, pattern_size as i32);
+                                let match_count_of_next_pattern = match_count - remainder;
+                                if match_count_of_next_pattern >= pattern_size as i32 {
+                                    let addt_pattern_index = quotient as u32;
+                                    let addt_target_position = (next_fr + match_count_of_next_pattern) as u32;
+                                    leftmost_anchor_index = get_leftmost_anchor_index_if_not_used_as_result(
+                                        anchor_table,
+                                        addt_pattern_index,
+                                        addt_target_position,
+                                        base_pattern_index,
+                                        base_target_position,
+                                    );
+                                    if leftmost_anchor_index.is_none() {
+                                        return None
+                                    }
+                                }
                             }
                             // (8) Add operation
                             if match_count != 0 {
@@ -226,7 +255,7 @@ impl WaveFront {
                                 length_of_extension: total_length,
                                 penalty_of_extension: total_penalty,
                             };
-                            return backtrace_result;
+                            return Some((backtrace_result, leftmost_anchor_index));
                         }
                     }
                 },

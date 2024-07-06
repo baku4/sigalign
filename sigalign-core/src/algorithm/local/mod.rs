@@ -14,8 +14,7 @@ use super::{
     AnchorTable, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
     Extension, SparePenaltyCalculator,
-    transform_left_additive_position_to_traversed_anchor_index,
-    transform_right_additive_position_to_traversed_anchor_index,
+    transform_right_additive_positions_to_traversed_anchor_index,
 };
 mod extend;
 use extend::extend_anchor;
@@ -39,7 +38,6 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    extension_buffer: &mut Vec<Extension>,
 ) -> QueryAlignment {
     let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
 
@@ -60,7 +58,6 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
             right_vpc_buffer,
             traversed_anchors_buffer,
             operations_buffer,
-            extension_buffer,
         );
 
         if anchor_alignment_results.is_empty() {
@@ -92,7 +89,6 @@ fn local_alignment_query_to_target(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    extension_buffer: &mut Vec<Extension>,
 ) -> Vec<Alignment> {
     // Initialize
     //   - Clear the buffers
@@ -135,8 +131,8 @@ fn local_alignment_query_to_target(
                 //   - If extension does not exists (i.e., leftmost anchor is already used), pass.
                 if let Some(extension) = optional_extension {
                     // (3) Check if this anchor's result is valid
-                    if extension.length >= cutoff.minimum_length {
-                        if extension.right_operation_meet_edge { // If valid
+                    if extension.length >= cutoff.minimum_length { // If valid
+                        if extension.right_operation_meet_edge {
                             // Mark all traversed anchors to skip
                             traversed_anchors_buffer.iter().for_each(|tv| {
                                 anchor_table.0[
@@ -158,8 +154,7 @@ fn local_alignment_query_to_target(
                         }
                         let result = extension.parse_anchor_alignment_result(operations_buffer);
                         alignment_results.push(result);
-                    } else {
-                        // If invalid
+                    } else { // If invalid
                         traversed_anchors_buffer.iter().for_each(|tv| {
                             if tv.to_skip {
                                 anchor_table.0[

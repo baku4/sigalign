@@ -9,8 +9,7 @@ use super::{
     AnchorTable, AnchorIndex,
     WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
     Extension, SparePenaltyCalculator,
-    transform_left_additive_position_to_traversed_anchor_index,
-    transform_right_additive_position_to_traversed_anchor_index,
+    transform_right_additive_positions_to_traversed_anchor_index,
 };
 
 mod valid_position_candidate;
@@ -102,42 +101,18 @@ pub fn extend_anchor(
     );
     // 4.2. Backtrace left
     let left_optimal_vpc = &left_vpc_buffer[optimal_left_vpc_index];
-    // TODO:
-    //   - checking traversed can be done in backtracing
-    //   - can check only the first traversed anchor
-    let left_back_trace_result = left_wave_front.backtrace_of_left_side(
+    let (left_back_trace_result, leftmost_anchor_index) = left_wave_front.backtrace_of_left_side(
         left_optimal_vpc.penalty,
         *pattern_size,
         left_optimal_vpc.component_index,
         penalties,
         operations_buffer,
-        traversed_anchors_buffer,
-    );
-    transform_left_additive_position_to_traversed_anchor_index(
         anchor_table,
-        traversed_anchors_buffer,
         anchor_index.0,
         left_target_end_index,
-    );
-    // If already used leftmost traversed anchor - return None.
-    let leftmost_anchor_index = {
-        if let Some(tv) = traversed_anchors_buffer.first() {
-            let leftmost_traversed_anchor_index = (tv.addt_pattern_index, tv.addt_target_position);
-            if anchor_table.0[
-                tv.addt_pattern_index as usize
-            ][
-                tv.addt_target_position as usize
-            ].used_to_results_as_leftmost_anchor {
-                return None;
-            }
-            leftmost_traversed_anchor_index
-        } else {
-            // Current anchor index
-            anchor_index
-        }
-    };
-    
-    
+    )?;
+    let leftmost_anchor_index = leftmost_anchor_index.unwrap_or(anchor_index);
+
     // 4.2. Backtrace right
     let right_optimal_vpc = &right_vpc_buffer[optimal_right_vpc_index];
     let right_operation_meet_edge = right_optimal_vpc.query_length == right_query_slice.len() as u32;
@@ -151,7 +126,7 @@ pub fn extend_anchor(
         operations_buffer,
         traversed_anchors_buffer,
     );
-    transform_right_additive_position_to_traversed_anchor_index(
+    transform_right_additive_positions_to_traversed_anchor_index(
         anchor_table,
         traversed_anchors_buffer,
         anchor_index.0,
