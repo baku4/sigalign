@@ -1,11 +1,15 @@
 use crate::core::regulators::Penalty;
+use super::{
+    AnchorTable, AnchorIndex,
+    get_leftmost_anchor_index_if_not_used_as_result,
+};
 use bytemuck::{Pod, Zeroable};
 
 mod match_counter;
 use match_counter::{MatchCounter, ForwardMatchCounter, ReverseMatchCounter};
 mod fill;
 mod backtrace;
-pub use backtrace::{BackTraceResult, TraversedAnchor};
+pub use backtrace::TraversedAnchor;
 
 // Wave Front
 #[derive(Debug, Clone)]

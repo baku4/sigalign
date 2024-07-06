@@ -1,9 +1,6 @@
 use crate::core::BufferedPatternLocator;
 use ahash::AHashMap;
 
-mod unsafe_marking;
-pub use unsafe_marking::mark_traversed_anchors_as_skipped;
-
 /**
 Anchor Table: Sorted target positions by pattern
   - 1: Pattern index
