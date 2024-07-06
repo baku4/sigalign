@@ -9,7 +9,7 @@ mod match_counter;
 use match_counter::{MatchCounter, ForwardMatchCounter, ReverseMatchCounter};
 mod fill;
 mod backtrace;
-pub use backtrace::TraversedAnchor;
+pub use backtrace::{BackTraceResult, TraversedAnchor};
 
 // Wave Front
 #[derive(Debug, Clone)]
@@ -78,6 +78,10 @@ impl WaveFront {
     #[inline]
     pub fn is_reached_to_sequence_end(&self) -> bool {
         self.end_point.k.is_some()
+    }
+    #[inline]
+    pub fn penalty_of_end_point(&self) -> usize {
+        self.end_point.penalty
     }
 }
 

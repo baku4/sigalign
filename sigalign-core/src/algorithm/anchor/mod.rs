@@ -3,9 +3,13 @@ use ahash::AHashMap;
 
 /**
 Anchor Table: Sorted target positions by pattern
-  - 1: Pattern index
-  - 2: Anchor sorted by target position
+  - 1st Vec: Pattern index
+  - 2nd Vec: Anchor sorted by target position
 If the locations of consecutive patterns are ungapped -> merge to one Anchor
+
+Anchor: position of alignment start point
+  - target_position: leftmost position of the patterns
+  - pattern_count: count of patterns
 */
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Anchor {

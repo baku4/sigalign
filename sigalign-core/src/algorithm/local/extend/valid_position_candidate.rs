@@ -2,6 +2,7 @@ use crate::core::regulators::PREC_SCALE;
 use super::{WaveFront, WaveFrontScore, BackTraceMarker};
 
 // Validate Position Candidate
+// TODO: can i32 be used instead of i64?
 #[derive(Debug, Clone)]
 pub struct Vpc {
     pub scaled_penalty_delta: i64,
