@@ -50,9 +50,8 @@ impl SemiGlobalWithLimitAligner {
             &self.regulator.cutoff,
             &mut self.workspace.spare_penalty_calculator,
             &mut self.workspace.wave_front_buffer.as_mut(),
-            &mut self.workspace.traversed_anchor_index_buffer,
+            &mut self.workspace.traversed_anchors_buffer,
             &mut self.workspace.operations_buffer,
-            &mut self.workspace.extension_buffer,
             self.limit,
         );
         self.regulator.decompress_result_with_gcd(&mut result);

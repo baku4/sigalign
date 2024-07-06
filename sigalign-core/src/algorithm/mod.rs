@@ -11,7 +11,7 @@ use wave_front::{
     WaveFrontScore,
     BackTraceMarker,
 };
-pub use wave_front::{WaveFront, TraversedAnchor};
+pub use wave_front::{WaveFront, BackTraceResult, TraversedAnchor};
 
 mod spare_penalty;
 pub use spare_penalty::SparePenaltyCalculator;
@@ -29,12 +29,12 @@ pub use extension::Extension;
 mod local;
 pub use local::{
     local_alignment_algorithm,
-    // local_alignment_algorithm_with_limit,
+    local_alignment_algorithm_with_limit,
     Vpc,
 };
 
-// mod semi_global;
-// pub use semi_global::{
-//     semi_global_alignment_algorithm,
-//     semi_global_alignment_algorithm_with_limit,
-// };
+mod semi_global;
+pub use semi_global::{
+    semi_global_alignment_algorithm,
+    semi_global_alignment_algorithm_with_limit,
+};

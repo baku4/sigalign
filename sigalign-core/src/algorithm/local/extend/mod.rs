@@ -115,7 +115,10 @@ pub fn extend_anchor(
 
     // 4.2. Backtrace right
     let right_optimal_vpc = &right_vpc_buffer[optimal_right_vpc_index];
-    let right_operation_meet_edge = right_optimal_vpc.query_length == right_query_slice.len() as u32;
+    let right_operation_meet_edge = {
+        right_wave_front.is_reached_to_sequence_end()
+        && (right_wave_front.penalty_of_end_point() as u32 == right_optimal_vpc.penalty)
+    };
     let right_back_trace_result = right_wave_front.backtrace_of_right_side(
         right_optimal_vpc.penalty,
         cutoff.maximum_scaled_penalty_per_length as i32,

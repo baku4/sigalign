@@ -1,6 +1,6 @@
 use crate::{
     core::regulators::{
-        Penalty, Cutoff, PREC_SCALE,
+        Penalty, Cutoff,
     },
     results::{
         AlignmentPosition, AlignmentOperations,
@@ -8,11 +8,10 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, BackTraceMarker, BackTraceResult,
+    WaveFront, BackTraceMarker, BackTraceResult, TraversedAnchor,
     Extension,
     SparePenaltyCalculator,
-    transform_left_additive_position_to_traversed_anchor_index,
-    transform_right_additive_position_to_traversed_anchor_index,
+    transform_right_additive_positions_to_traversed_anchor_index,
 };
 
 mod backtrace;
@@ -42,9 +41,8 @@ pub fn extend_anchor(
     // Buffers
     wave_front: &mut WaveFront,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
-    extension_buffer: &mut Vec<Extension>,
-) {
+    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
+) -> Option<Extension> {
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
     // 1.1. Define the range of sequence to extend
@@ -74,53 +72,38 @@ pub fn extend_anchor(
     //   - confirm invalid: early drop here
     if !wave_front.is_reached_to_sequence_end() {
         let (penalty, component_index) = get_the_last_end_point(wave_front);
-        let right_traversed_anchor_range = wave_front.backtrace_to_get_right_side_traversed_anchor(
+        wave_front.backtrace_to_get_only_right_traversed_anchors(
             penalty,
+            cutoff.maximum_scaled_penalty_per_length as i32,
             *pattern_size,
             pattern_count,
             component_index,
             penalties,
-            traversed_anchor_index_buffer,
+            traversed_anchors_buffer,
         );
-        transform_right_additive_position_to_traversed_anchor_index(
+        transform_right_additive_positions_to_traversed_anchor_index(
             anchor_table,
-            traversed_anchor_index_buffer,
+            traversed_anchors_buffer,
             anchor_index.0,
             left_target_end_index,
-            right_traversed_anchor_range,
             *pattern_size,
         );
-
-        let incomplete_extension = Extension {
-            alignment_position: AlignmentPosition {
-                query: (0, 0),
-                target: (0, 0),
-            },
-            penalty: 0,
-            length: 0,
-            left_side_operation_range: (0, 0),
-            left_traversed_anchor_range: (0, 0),
-            right_side_operation_range: (0, 0),
-            right_traversed_anchor_range,
-        };
-        extension_buffer.push(incomplete_extension);
-
-        return;
+        return None;
     }
     //   - have chance to valid: proceed
     let right_back_trace_result = wave_front.backtrace_from_the_end_of_right_side(
         *pattern_size,
+        cutoff.maximum_scaled_penalty_per_length as i32,
         pattern_count,
         penalties,
         operations_buffer,
-        traversed_anchor_index_buffer,
+        traversed_anchors_buffer,
     );
-    transform_right_additive_position_to_traversed_anchor_index(
+    transform_right_additive_positions_to_traversed_anchor_index(
         anchor_table,
-        traversed_anchor_index_buffer,
+        traversed_anchors_buffer,
         anchor_index.0,
         left_target_end_index,
-        right_back_trace_result.traversed_anchor_range,
         *pattern_size,
     );
 
@@ -149,64 +132,22 @@ pub fn extend_anchor(
     // 3.4. Check if invalid
     //   - confirm invalid: early drop here
     if !wave_front.is_reached_to_sequence_end() {
-        let (penalty, component_index) = get_the_last_end_point(wave_front);
-        let left_traversed_anchor_range = wave_front.backtrace_to_get_left_side_traversed_anchor(
-            penalty,
-            *pattern_size,
-            component_index,
-            penalties,
-            traversed_anchor_index_buffer,
-        );
-        transform_left_additive_position_to_traversed_anchor_index(
-            anchor_table,
-            traversed_anchor_index_buffer,
-            anchor_index.0,
-            left_target_end_index,
-            left_traversed_anchor_range,
-        );
-
-        let incomplete_extension = Extension {
-            alignment_position: AlignmentPosition {
-                query: (0, 0),
-                target: (0, 0),
-            },
-            penalty: 0,
-            length: 0,
-            left_side_operation_range: (0, 0),
-            left_traversed_anchor_range,
-            right_side_operation_range: (0, 0),
-            right_traversed_anchor_range: right_back_trace_result.traversed_anchor_range,
-        };
-        extension_buffer.push(incomplete_extension);
-
-        return;
+        return None;
     }
     //   - have chance to valid: proceed
-    let left_back_trace_result = wave_front.backtrace_from_the_end_of_left_side(
+    let (left_back_trace_result, leftmost_anchor_index) = wave_front.backtrace_from_the_end_of_left_side(
         *pattern_size,
         penalties,
         operations_buffer,
-        traversed_anchor_index_buffer,
-    );
-    transform_left_additive_position_to_traversed_anchor_index(
         anchor_table,
-        traversed_anchor_index_buffer,
         anchor_index.0,
         left_target_end_index,
-        left_back_trace_result.traversed_anchor_range,
-    );
+    )?;
+    let leftmost_anchor_index = leftmost_anchor_index.unwrap_or(anchor_index);
     
     // 4. Check validation
     let penalty = left_back_trace_result.penalty_of_extension + right_back_trace_result.penalty_of_extension;
-    let mut length = left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension;
-    //   - if invalid: mark the length as 0
-    if (
-        length < cutoff.minimum_length
-    ) || (
-        penalty * PREC_SCALE > cutoff.maximum_scaled_penalty_per_length * length
-    ) {
-        length = 0;
-    };
+    let length = left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension;
     
     // 5. Push extension
     let extension = Extension {
@@ -223,11 +164,11 @@ pub fn extend_anchor(
         penalty,
         length,
         left_side_operation_range: left_back_trace_result.operation_buffer_range,
-        left_traversed_anchor_range: left_back_trace_result.traversed_anchor_range,
         right_side_operation_range: right_back_trace_result.operation_buffer_range,
-        right_traversed_anchor_range: right_back_trace_result.traversed_anchor_range,
+        leftmost_anchor_index,
+        right_operation_meet_edge: true, // Always true in semi-global
     };
-    extension_buffer.push(extension);
+    return Some(extension);
 }
 
 #[inline(always)]
