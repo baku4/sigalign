@@ -7,6 +7,7 @@ pub use logger::init_logger;
 // Test Data
 pub mod test_data_path;
 pub mod random_text_and_pattern;
+pub mod random_regulator;
 
 // Result of stable version of sigalign
 mod result_of_stable_version;
