@@ -51,9 +51,12 @@ fn test_local_mode_of_current_algorithm() {
     let stable_aligner_generator = |px, po, pe, minl, maxp| {
         StableAligner::new_local(px, po, pe, minl, maxp).unwrap()
     };
+    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
+        .map(|_| gen_random_regulator()).collect::<Vec<_>>();
     test_of_current_algorithm(
         &current_aligner_generator,
-        &stable_aligner_generator,
+        Some(&stable_aligner_generator),
+        regulators,
     );
 }
 
@@ -67,15 +70,19 @@ fn test_semi_global_mode_of_current_algorithm() {
     let stable_aligner_generator = |px, po, pe, minl, maxp| {
         StableAligner::new_semi_global(px, po, pe, minl, maxp).unwrap()
     };
+    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
+        .map(|_| gen_random_regulator()).collect::<Vec<_>>();
     test_of_current_algorithm(
         &current_aligner_generator,
-        &stable_aligner_generator,
+        Some(&stable_aligner_generator),
+        regulators,
     );
 }
 
 fn test_of_current_algorithm<F1, F2, A>(
     current_aligner_generator: &F1,
-    stable_aligner_generator: &F2,
+    stable_aligner_generator: Option<&F2>,
+    regulators: Vec<(u32, u32, u32, u32, f32)>,
 ) where
     A: Algorithm,
     F1: Fn(u32, u32, u32, u32, f32) -> CurrentAligner<A>,
@@ -92,13 +99,15 @@ fn test_of_current_algorithm<F1, F2, A>(
     let current_reference = ReferenceBuilder::new()
         .add_fasta_file(&ref_file).unwrap()
         .build().unwrap();
-    let stable_reference = StableReference::from_fasta_file(
-        &ref_file
-    ).unwrap();
+    let stable_reference = if stable_aligner_generator.is_some() {
+        Some(StableReference::from_fasta_file(
+            &ref_file
+        ).unwrap())
+    } else {
+        None
+    };
 
     // Start to compare
-    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
-        .map(|_| gen_random_regulator()).collect::<Vec<_>>();
     for aligner_option in regulators {
         // Time to compare
         let mut current_times = Vec::new();
@@ -112,13 +121,15 @@ fn test_of_current_algorithm<F1, F2, A>(
             aligner_option.4,
         );
 
-        let mut stable_aligner = stable_aligner_generator(
-            aligner_option.0,
-            aligner_option.1,
-            aligner_option.2,
-            aligner_option.3,
-            aligner_option.4,
-        );
+        let mut stable_aligner = stable_aligner_generator.map(|f| {
+            f(
+                aligner_option.0,
+                aligner_option.1,
+                aligner_option.2,
+                aligner_option.3,
+                aligner_option.4,
+            )
+        });
 
         let mut fasta_reader = FastaReader::new(
             std::fs::File::open(&qry_file).unwrap()
@@ -149,33 +160,42 @@ fn test_of_current_algorithm<F1, F2, A>(
                 result
             };
 
-            let stable_result = {
-                let start = std::time::Instant::now();
-                let result = stable_aligner.align_query(&stable_reference, &query_buffer);
-                let duration = start.elapsed();
-                stable_times.push(duration);
-                result
-            };
-            let stable_result = stable_result_to_current_result(stable_result);
+            // Stables
+            if stable_aligner_generator.is_some() {
+                let reference = stable_reference.as_ref().unwrap();
+                let aligner = stable_aligner.as_mut().unwrap();
 
-            if !is_acceptable_query_alignment(&current_result, &stable_result) {
-                error!("Query index {}", query_index);
+                let stable_result = {
+                    let start = std::time::Instant::now();
+                    let result = aligner.align_query(reference, &query_buffer);
+                    let duration = start.elapsed();
+                    stable_times.push(duration);
+                    result
+                };
+                let stable_result = stable_result_to_current_result(stable_result);
+    
+                if !is_acceptable_query_alignment(&current_result, &stable_result) {
+                    error!("Query index {}", query_index);
+                }
             }
+
             query_index += 1;
         }
         
         // Print elapsed time
         {
+            info!("# Elapsed time");
             let current_mean: std::time::Duration = current_times.iter().sum::<std::time::Duration>() / current_times.len() as u32;
             let current_min = current_times.iter().min().unwrap();
             let current_max = current_times.iter().max().unwrap();
-
-            let stable_mean: std::time::Duration = stable_times.iter().sum::<std::time::Duration>() / stable_times.len() as u32;
-            let stable_min = stable_times.iter().min().unwrap();
-            let stable_max = stable_times.iter().max().unwrap();
-            info!("# Elapsed time");
             info!("  - current: mean: {:?}, min: {:?}, max: {:?}", current_mean, current_min, current_max);
-            info!("  - stable: mean: {:?}, min: {:?}, max: {:?}", stable_mean, stable_min, stable_max);
+
+            if stable_aligner_generator.is_some() {
+                let stable_mean: std::time::Duration = stable_times.iter().sum::<std::time::Duration>() / stable_times.len() as u32;
+                let stable_min = stable_times.iter().min().unwrap();
+                let stable_max = stable_times.iter().max().unwrap();
+                info!("  - stable: mean: {:?}, min: {:?}, max: {:?}", stable_mean, stable_min, stable_max);
+            }
         }
     }
 }

@@ -37,12 +37,11 @@ impl WaveFront {
         let qry_len = qry_seq.len();
 
         // (1) Initialize the first wave front score
-        let first_match_count = C::count_consecutive_match(tgt_seq, qry_seq, 0, 0);
+        let first_match_count = C::count_consecutive_match(qry_seq, tgt_seq, 0, 0);
         self.wave_front_scores[0].add_first_components(first_match_count);
 
-        // TODO: Check if "==" can be used instead of ">="
         // (2) Check if the end point is already reached
-        if first_match_count as usize >= tgt_len || first_match_count as usize >= qry_len {
+        if first_match_count as usize == tgt_len || first_match_count as usize == qry_len {
             let end_point = WaveEndPoint { penalty: 0, k: Some(0) };
             self.end_point = end_point;
         } else {
@@ -64,13 +63,14 @@ impl WaveFront {
         mut spare_penalty: u32,
         penalties: &Penalty,
     ) -> WaveEndPoint {
-        // TODO: Check if this step is really necessary
+        // This step is needed to occasionally over-estimate the spare penalty
+        //   - WFS length is more accurate than spare penalty function
         if self.wave_front_scores.len() as u32 <= spare_penalty {
             spare_penalty = (self.wave_front_scores.len() - 1) as u32;
         }
         for penalty in 1..=spare_penalty {
             self.update_components_of_next_wave_front_score(penalty, penalties);
-           
+
             let optional_last_k = self.wave_front_scores[penalty as usize].extend_m_components_to_the_end::<C>(tgt_seq, qry_seq);
 
             if let Some(last_k) = optional_last_k {
@@ -216,27 +216,33 @@ impl WaveFront {
                         };
                     }
                 }
-                unsafe {
-                    // 2. Update M from current D
-                    if (*new_components_of_k).d.bt != BackTraceMarker::Empty && (
-                        (*new_components_of_k).m.bt == BackTraceMarker::Empty || (*new_components_of_k).d.fr >= (*new_components_of_k).m.fr
-                    ) {
-                        (*new_components_of_k).m = Component {
-                            fr: (*new_components_of_k).d.fr,
-                            insertion_count: (*new_components_of_k).d.insertion_count,
-                            bt: BackTraceMarker::FromD,
-                        };
-                    }
-                    // 3. Update M from current I
-                    if (*new_components_of_k).i.bt != BackTraceMarker::Empty && (
-                        (*new_components_of_k).m.bt == BackTraceMarker::Empty || (*new_components_of_k).i.fr >= (*new_components_of_k).m.fr
-                    ) {
-                        (*new_components_of_k).m = Component {
-                            fr: (*new_components_of_k).i.fr,
-                            insertion_count: (*new_components_of_k).i.insertion_count,
-                            bt: BackTraceMarker::FromI,
-                        };
-                    }
+            }
+        }
+        // TODO: Optimization
+        for index_of_k in 0..num_components {
+            let new_components_of_k = unsafe { new_components_ptr.add(index_of_k) };
+            unsafe {
+                // 2. Update M from current D
+                if (*new_components_of_k).d.bt != BackTraceMarker::Empty && (
+                    (*new_components_of_k).m.bt == BackTraceMarker::Empty
+                    || (*new_components_of_k).d.fr >= (*new_components_of_k).m.fr
+                ) {
+                    (*new_components_of_k).m = Component {
+                        fr: (*new_components_of_k).d.fr,
+                        insertion_count: (*new_components_of_k).d.insertion_count,
+                        bt: BackTraceMarker::FromD,
+                    };
+                }
+                // 3. Update M from current I
+                if (*new_components_of_k).i.bt != BackTraceMarker::Empty && (
+                    (*new_components_of_k).m.bt == BackTraceMarker::Empty
+                    || (*new_components_of_k).i.fr >= (*new_components_of_k).m.fr
+                ) {
+                    (*new_components_of_k).m = Component {
+                        fr: (*new_components_of_k).i.fr,
+                        insertion_count: (*new_components_of_k).i.insertion_count,
+                        bt: BackTraceMarker::FromI,
+                    };
                 }
             }
         }
@@ -259,14 +265,14 @@ impl WaveFrontScore {
 
             if m_component.bt != BackTraceMarker::Empty {
                 // Extend & update
-                let mut v = (m_component.fr - k) as usize;
-                let mut h = m_component.fr as usize;
-                let match_count = C::count_consecutive_match(tgt_seq, qry_seq, v, h);
+                let mut v = (m_component.fr - k) as usize; // query length to this component
+                let mut h = m_component.fr as usize; // target length to this component
+                let match_count = C::count_consecutive_match(qry_seq, tgt_seq, v, h);
                 m_component.fr += match_count;
                 // Check exit condition
                 v += match_count as usize;
                 h += match_count as usize;
-                if h >= tgt_seq.len() || v >= qry_seq.len() {
+                if h == tgt_seq.len() || v == qry_seq.len() {
                     return Some(k);
                 }
             };
