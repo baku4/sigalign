@@ -1,10 +1,12 @@
 use super::DpMatrix;
-use sigalign::{
-    results::{
-        AlignmentResult,
-        TargetAlignmentResult, AnchorAlignmentResult, AlignmentOperation,
-    },
-    utils::FastaReader,
+use sigalign::results::{
+    QueryAlignment,
+    TargetAlignment,
+    Alignment,
+    AlignmentOperation,
+};
+use sigalign_utils::sequence_reader::{
+    fasta::FastaReader, SeqRecord,
 };
 use std::path::PathBuf;
 use ahash::AHashSet;
@@ -17,12 +19,20 @@ pub fn semi_global_with_dpm(
     gap_extend_penalty: u32,
     min_length: u32,
     max_penalty_per_length: f32,
-) -> AlignmentResult {
-    let ref_reader = FastaReader::from_path(ref_file).unwrap();
-    let result = ref_reader.into_iter().enumerate().filter_map(|(index, (_, target))| {
+) -> QueryAlignment {
+    let mut ref_reader = FastaReader::from_path(ref_file).unwrap();
+    let mut target_buffer = Vec::new();
+    let mut target_index = 0;
+
+    let mut result = Vec::new();
+
+    while let Some(mut record) = ref_reader.next() {
+        target_buffer.clear();
+        record.extend_seq_buf(&mut target_buffer);
+
         let dp_matrix = DpMatrix::new(
             query.to_vec(),
-            target,
+            target_buffer.clone(),
             mismatch_penalty,
             gap_open_penalty,
             gap_extend_penalty,
@@ -30,14 +40,13 @@ pub fn semi_global_with_dpm(
         let alignments = dp_matrix.parse_valid_semi_global_result(min_length, max_penalty_per_length);
 
         if alignments.len() != 0 {
-            Some(TargetAlignmentResult {
-                index: index as u32,
+            result.push(TargetAlignment {
+                index: target_index,
                 alignments,
-            })
-        } else {
-            None
+            });
         }
-    }).collect();
 
-    AlignmentResult(result)
+        target_index += 1;
+    }
+    QueryAlignment(result)
 }

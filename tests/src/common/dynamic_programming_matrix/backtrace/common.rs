@@ -1,13 +1,12 @@
 use super::{DpMatrix, Cell, BacktraceMarker};
 use ahash::AHashSet;
-use sigalign::results::{AlignmentOperation, AlignmentOperations, AlignmentPosition, AnchorAlignmentResult};
-use std::cmp;
+use sigalign::results::{AlignmentOperation, AlignmentOperations, AlignmentPosition, Alignment};
 
 pub fn parse_the_unique_alignments_and_its_path(
     dp_matrix: &DpMatrix,
     start_query_index: usize,
     last_query_index: usize,
-) -> Vec<(AnchorAlignmentResult, AHashSet<(usize, usize)>)> {
+) -> Vec<(Alignment, AHashSet<(usize, usize)>)> {
     // (1) Get all endpoints
     let mut all_endpoints = Vec::new();
     let last_target_index = dp_matrix.target.len() - 1;
@@ -64,7 +63,7 @@ pub fn parse_the_unique_alignments_and_its_path(
         if paths.is_disjoint(&path) {
             paths.extend(&path);
             Some((
-                AnchorAlignmentResult {
+                Alignment {
                     penalty,
                     length,
                     position,

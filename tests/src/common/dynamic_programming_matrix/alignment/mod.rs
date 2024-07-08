@@ -1,16 +1,16 @@
 use super::DpMatrix;
-use sigalign::{
-    results::{
-        AlignmentResult,
-        TargetAlignmentResult, AnchorAlignmentResult, AlignmentOperation,
-    },
-    utils::FastaReader,
+use sigalign::results::{
+    QueryAlignment,
+    TargetAlignment,
+    Alignment,
+    AlignmentOperation,
 };
 use std::path::PathBuf;
 use ahash::AHashSet;
 
-mod reference_for_dp_matrix;
-use reference_for_dp_matrix::{
+mod helpers_to_boost_dp_from_sigalign;
+use helpers_to_boost_dp_from_sigalign::{
+    calculate_the_pattern_size,
     target_indices_having_matched_pattern,
 };
 

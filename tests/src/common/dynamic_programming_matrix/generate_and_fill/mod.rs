@@ -1,7 +1,6 @@
 use super::{
     DpMatrix, Cell, BacktraceMarker,
 };
-use std::cmp;
 impl Cell {
     fn new() -> Self {
         Self { penalty: 0, btm: BacktraceMarker::FromDiag }

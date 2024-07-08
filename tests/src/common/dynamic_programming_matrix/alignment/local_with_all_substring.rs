@@ -1,35 +1,39 @@
 use super::{
     DpMatrix,
+    calculate_the_pattern_size,
     target_indices_having_matched_pattern,
 };
 use sigalign::{
-    results::{AlignmentResult, AlignmentOperation, AnchorAlignmentResult, TargetAlignmentResult},
-    wrapper::{
-        DefaultReference, DefaultAligner,
+    results::{
+        QueryAlignment,
+        TargetAlignment,
+        Alignment,
+        AlignmentOperation,
     },
-    utils::{FastaReader, calculate_max_pattern_size},
-    reference::{
-        Reference,
-        sequence_storage::SequenceBuffer,
-    },
+    Aligner,
+    Reference,
+    ReferenceBuilder,
+};
+use sigalign_utils::sequence_reader::{
+    fasta::FastaReader,
+    SeqRecord,
 };
 use ahash::AHashSet;
 use std::path::PathBuf;
 
 pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
     query: &[u8],
-    sig_reference: &DefaultReference,
+    sig_reference: &Reference,
     mismatch_penalty: u32,
     gap_open_penalty: u32,
     gap_extend_penalty: u32,
     min_length: u32,
     max_penalty_per_length: f32,
-) -> AlignmentResult {
+) -> QueryAlignment {
     // Init
-    let mut buffer = sig_reference.get_sequence_buffer();
     let mut target_alignment_results = Vec::new();
     // Cal pattern size
-    let pattern_size = calculate_max_pattern_size(
+    let pattern_size = calculate_the_pattern_size(
         mismatch_penalty, 
         gap_open_penalty,
         gap_extend_penalty,
@@ -44,8 +48,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
     );
     // Align
     for target_index in target_indices {
-        sig_reference.fill_sequence_buffer(target_index, &mut buffer);
-        let target = buffer.buffered_sequence();
+        let target = sig_reference.get_sequence(target_index).unwrap();
 
         // Get anchor alignment results
         let mut all_anchor_alignment_results = Vec::new();
@@ -84,7 +87,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
         });
 
         // Deduplicates
-        let mut target_alignment_result: TargetAlignmentResult = TargetAlignmentResult {
+        let mut target_alignment_result: TargetAlignment = TargetAlignment {
             index: target_index,
             alignments: Vec::new(),
         };
@@ -103,7 +106,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
         }
     }
 
-    AlignmentResult(target_alignment_results)
+    QueryAlignment(target_alignment_results)
 }
 
 pub fn local_all_substring_with_dpm_using_all_target(
@@ -114,15 +117,21 @@ pub fn local_all_substring_with_dpm_using_all_target(
     gap_extend_penalty: u32,
     min_length: u32,
     max_penalty_per_length: f32,
-) -> AlignmentResult {
-    let ref_reader = FastaReader::from_path(ref_file).unwrap();
+) -> QueryAlignment {
+    let mut ref_reader = FastaReader::from_path(ref_file).unwrap();
+    let mut target_buffer = Vec::new();
+    let mut target_index = 0;
     let mut target_alignment_results = Vec::new();
 
-    ref_reader.into_iter().enumerate().for_each(|(index, (_, target))| {
-        let mut target_alignment_result: TargetAlignmentResult = TargetAlignmentResult {
-            index: index as u32,
+    while let Some(mut record) = ref_reader.next() {
+        target_buffer.clear();
+        record.extend_seq_buf(&mut target_buffer);
+
+        let mut target_alignment_result: TargetAlignment = TargetAlignment {
+            index: target_index,
             alignments: Vec::new(),
         };
+
         let mut paths: AHashSet<(u32, u32)> = AHashSet::new();
 
         let query_length = query.len();
@@ -132,7 +141,7 @@ pub fn local_all_substring_with_dpm_using_all_target(
                 let substring = query[query_start_index..query_last_index].to_vec();
                 let dp_matrix = DpMatrix::new(
                     substring,
-                    target.clone(),
+                    target_buffer.clone(),
                     mismatch_penalty,
                     gap_open_penalty,
                     gap_extend_penalty,
@@ -159,31 +168,33 @@ pub fn local_all_substring_with_dpm_using_all_target(
         if target_alignment_result.alignments.len() != 0 {
             target_alignment_results.push(target_alignment_result)
         }
-    });
 
-    AlignmentResult(target_alignment_results)
+        target_index += 1;
+    }
+
+    QueryAlignment(target_alignment_results)
 }
 
 fn adjust_position_of_alignments(
-    anchor_alignment_results: &mut Vec<AnchorAlignmentResult>,
+    alignments: &mut Vec<Alignment>,
     query_start_index: usize,
 ) {
-    anchor_alignment_results.iter_mut().for_each(|result| {
+    alignments.iter_mut().for_each(|result| {
         let query_position = &mut result.position.query;
         query_position.0 += query_start_index as u32;
         query_position.1 += query_start_index as u32;
     });
 }
 fn get_alignment_paths(
-    anchor_alignment_result: &AnchorAlignmentResult,
+    alignments: &Alignment,
 ) -> AHashSet<(u32, u32)> {
     let (mut query_index, mut target_index) = {
-        let query_index = anchor_alignment_result.position.query.0;
-        let target_index = anchor_alignment_result.position.target.0;
+        let query_index = alignments.position.query.0;
+        let target_index = alignments.position.target.0;
         (query_index, target_index)
     };
     let mut paths = AHashSet::new();
-    anchor_alignment_result.operations.iter().for_each(|operation| {
+    alignments.operations.iter().for_each(|operation| {
         match operation.operation {
             AlignmentOperation::Match | AlignmentOperation::Subst => {
                 for _ in 0..operation.count {

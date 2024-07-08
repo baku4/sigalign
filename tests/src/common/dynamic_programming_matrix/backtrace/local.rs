@@ -1,5 +1,5 @@
 use ahash::AHashSet;
-use sigalign::results::AnchorAlignmentResult;
+use sigalign::results::Alignment;
 
 use super::{
     DpMatrix,
@@ -12,7 +12,7 @@ pub fn parse_valid_local_result(
     dp_matrix: &DpMatrix,
     minimum_length: u32,
     maximum_penalty_per_length: f32,
-) -> Vec<AnchorAlignmentResult> {
+) -> Vec<Alignment> {
     let mut result = Vec::new();
     let mut paths = AHashSet::new();
 

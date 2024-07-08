@@ -1,7 +1,9 @@
 use super::{DpMatrix, Cell, BacktraceMarker};
 use sigalign::results::{
+    Alignment,
     AlignmentOperations,
-    AlignmentOperation, AnchorAlignmentResult, AlignmentPosition,
+    AlignmentOperation,
+    AlignmentPosition,
 };
 use std::cmp;
 use ahash::AHashSet;
@@ -22,14 +24,14 @@ impl DpMatrix {
         &self,
         minimum_length: u32,
         maximum_penalty_per_length: f32,
-    ) -> Vec<AnchorAlignmentResult> {
+    ) -> Vec<Alignment> {
         parse_valid_local_result(self, minimum_length, maximum_penalty_per_length)
     }
     pub fn parse_valid_semi_global_result(
         &self,
         minimum_length: u32,
         maximum_penalty_per_length: f32,
-    ) -> Vec<AnchorAlignmentResult> {
+    ) -> Vec<Alignment> {
         parse_valid_semi_global_result(self, minimum_length, maximum_penalty_per_length)
     }
 }

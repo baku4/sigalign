@@ -8,7 +8,9 @@ mod sequence_reader;
 
 /* Test for `sigalign` crate */
 // Result validation with stable version
+mod result_validation_only_with_cutoff;
 mod result_validation_with_stable_version;
+mod result_validation_with_dynamic_programming_matrix;
 
 
 // Tests for sigalign-impl

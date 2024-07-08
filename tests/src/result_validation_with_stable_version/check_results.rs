@@ -5,117 +5,126 @@ use ahash::AHashSet as HashSet;
 use sigalign::results::{Alignment, QueryAlignment, TargetAlignment};
 
 
-// Check if the results is acceptable.
-pub fn is_acceptable_query_alignment(
-    a: &QueryAlignment,
-    b: &QueryAlignment,
+// Check if the left query alignment is same or more optimal than the right query alignment
+pub fn is_left_query_alignment_better(
+    query_index: usize,
+    left: &QueryAlignment,
+    right: &QueryAlignment,
 ) -> bool {
-    let sorted_a = sort_target_alignments(&a.0);
-    let sorted_b = sort_target_alignments(&b.0);
+    let sorted_a = sort_target_alignments(&left.0);
+    let sorted_b = sort_target_alignments(&right.0);
 
-    if sorted_a.len() != sorted_b.len() {
-        error!("Unequal target alignment count. left: {}, right: {}", sorted_a.len(), sorted_b.len());
-        false
-    } else {
-        sorted_a.into_iter().zip(sorted_b.into_iter()).all(|(a,b)| {
-            is_same_or_left_is_more_optimal_target_alignments_when_deduplicated(&a, &b)
-        })
-    }
-}
-
-fn is_same_or_left_is_more_optimal_target_alignments_when_deduplicated(
-    a: &TargetAlignment,
-    b: &TargetAlignment,
-) -> bool {
-    if a.index == b.index {
-        let dedup_a = a.clone().deduplicated();
-        let dedup_b = b.clone().deduplicated();
-
-        if is_same_or_left_is_more_optimal_alignments(&dedup_a.alignments, &dedup_b.alignments) {
+    let is_left_better = if sorted_a.len() != sorted_b.len() {
+        let a_set = sorted_a.iter().map(|x| x.index).collect::<HashSet<_>>();
+        let b_set = sorted_b.iter().map(|x| x.index).collect::<HashSet<_>>();
+        if a_set.is_superset(&b_set) {
+            // info!(
+            //     "(Query index {}) Unequal target alignment count (left: {}, right: {}).\nBut left is superset of right: left have {:?}",
+            //     query_index, sorted_a.len(), sorted_b.len(), a_set.difference(&b_set)
+            // );
             true
         } else {
-            error!("Un-deduplicated alignment. left: {:?}, right: {:?}", a, b);
-            error!("Unequal in target index {}", a.index);
+            error!(
+                "(Query index {}) Unequal target alignment count (left: {}, right: {}).\nLeft is not superset of right: right have {:?}",
+                query_index, sorted_a.len(), sorted_b.len(), b_set.difference(&a_set)
+            );
             false
         }
     } else {
-        error!("Unequal target index. left: {}, right: {}", a.index, b.index);
-        false
-    }
-}
+        sorted_a.into_iter().zip(sorted_b.into_iter()).all(|(a,b)| {
+            is_left_target_alignment_better_after_deduplication(&a, &b)
+        })
+    };
 
+    if !is_left_better {
+        error!("In query index: {}", query_index);
+    }
+    is_left_better
+}
 fn sort_target_alignments(vec: &Vec<TargetAlignment>) -> Vec<TargetAlignment> {
     let mut sorted = vec.clone();
     sorted.sort_by_key(|v| v.index);
     sorted
 }
-fn is_same_or_left_is_more_optimal_alignments(
-    a: &Vec<Alignment>,
-    b: &Vec<Alignment>,
+fn is_left_target_alignment_better_after_deduplication(
+    left: &TargetAlignment,
+    right: &TargetAlignment,
 ) -> bool {
-    let sorted_a = sort_by_optimal(a);
-    let sorted_b = sort_by_optimal(b);
-
-    if sorted_a.len() != sorted_b.len() {
-        error!("Unequal alignment count. left: {}, right: {}", sorted_a.len(), sorted_b.len());
-        false
-    } else {
-        let mut is_equal = true;
-        for (a, b) in sorted_a.iter().zip(sorted_b.iter()) {
-            let is_equal_anchor_alignment_result = {
-                a.penalty == b.penalty
-                && a.length == b.length
-                && a.position == b.position
-            };
-            if !is_equal_anchor_alignment_result {
-                let set_a = sorted_a.iter().map(|x| x.clone()).collect::<HashSet<_>>();
-                let set_b = sorted_b.iter().map(|x| x.clone()).collect::<HashSet<_>>();
-
-                let only_in_a: Vec<Alignment> = set_a.difference(&set_b).into_iter()
-                    .map(|x| x.clone()).collect();
-                let only_in_b: Vec<Alignment> = set_b.difference(&set_a).into_iter()
-                    .map(|x| x.clone()).collect();
-
-                // Check is a is more optimal than b
-                if only_in_a.len() == 1 && only_in_b.len() == 1 {
-                    let a = only_in_a.first().unwrap();
-                    let b = only_in_b.first().unwrap();
-
-                    let a_is_more_optimal = {
-                        if a.length > b.length {
-                            true
-                        } else if a.length == b.length {
-                            if a.penalty < b.penalty {
-                                true
-                            } else if a.penalty == b.penalty {
-                                if a.position.query.0 < b.position.query.0 {
-                                    true
-                                } else {
-                                    false
-                                }
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        }
-                    };
-                    if !a_is_more_optimal {
-                        is_equal = false;
-                        break;
-                    }
-                } else {
-                    is_equal = false;
-                    break;
-                }
+    let left_is_better = {
+        if left.index == right.index {
+            let dedup_a = left.clone().deduplicated();
+            let dedup_b = right.clone().deduplicated();
+            if is_left_alignment_better(&dedup_a.alignments, &dedup_b.alignments) {
+                true
+            } else {
+                false
             }
+        } else {
+            false
         }
-        if !is_equal {
-            error!("Unequal alignment result. left: {:?}, right: {:?}", sorted_a, sorted_b);
+    };
+    if !left_is_better {
+        error!("In target index: {}", left.index);
+    }
+    left_is_better
+}
+fn is_left_alignment_better(
+    left: &Vec<Alignment>,
+    right: &Vec<Alignment>,
+) -> bool {
+    let set_a = left.iter().map(|x| x.clone()).collect::<HashSet<_>>();
+    let set_b = right.iter().map(|x| x.clone()).collect::<HashSet<_>>();
+
+    let mut only_in_a: Vec<Alignment> = set_a.difference(&set_b).into_iter()
+        .map(|x| x.clone()).collect();
+    let only_in_b: Vec<Alignment> = set_b.difference(&set_a).into_iter()
+        .map(|x| x.clone()).collect();
+
+    let a_is_more_optimal = if only_in_b.len() == 0 {
+        true
+    } else {
+        let mut merged = Vec::new();
+        merged.extend(left.iter().cloned());
+        merged.extend(right.iter().cloned());
+        let pseudo_deduplicated_target_alignment = TargetAlignment {
+            index: 0,
+            alignments: merged,
+        }.deduplicated();
+        // drop the operations for comparison
+        //   - This is necessary because the operations can be slightly differ by the anchor's side
+        drop_the_operations_for_alignments(&mut only_in_a);
+        let optimal_alignments: HashSet<_> = {
+            let mut alignments = pseudo_deduplicated_target_alignment.alignments;
+            drop_the_operations_for_alignments(&mut alignments);
+            alignments.into_iter().collect()
+        };
+        let a_is_more_optimal = only_in_a.iter().all(|x| {
+            optimal_alignments.contains(x)
+        });
+        if a_is_more_optimal {
+            true
+        } else {
+            false
         }
-        is_equal
+    };
+
+    // if a_is_more_optimal {
+    //     info!("It is OK, since left ({}) is more optimal than right ({})", left.len(), right.len());
+    // } else {
+    //     error!("Left is not optimal.\nonly in left: {:?}\nonly in right: {:?}", left, right);
+    // }
+    if !a_is_more_optimal {
+        error!("Left is not optimal.\nonly in left: {:?}\nonly in right: {:?}", only_in_a, only_in_b);
+    }
+    a_is_more_optimal
+}
+
+fn drop_the_operations_for_alignments(alignments: &mut Vec<Alignment>) {
+    for alignment in alignments.iter_mut() {
+        alignment.operations.clear();
     }
 }
+
 fn sort_by_optimal(vec: &Vec<Alignment>) -> Vec<Alignment> {
     let mut sorted = vec.clone();
     sorted.sort_by(|a, b| optimal_alignment(a, b));

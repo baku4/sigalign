@@ -1,4 +1,4 @@
-use sigalign::results::AnchorAlignmentResult;
+use sigalign::results::Alignment;
 
 use super::{
     DpMatrix,
@@ -9,7 +9,7 @@ pub fn parse_valid_semi_global_result(
     dp_matrix: &DpMatrix,
     minimum_length: u32,
     maximum_penalty_per_length: f32,
-) -> Vec<AnchorAlignmentResult> {
+) -> Vec<Alignment> {
     let unique_alignments = parse_the_unique_alignments_and_its_path(
         dp_matrix,
         0,

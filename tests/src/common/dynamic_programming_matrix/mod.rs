@@ -1,10 +1,10 @@
 use sigalign::results::{
+    Alignment,
     AlignmentOperations,
-    AlignmentOperation, AnchorAlignmentResult,
+    AlignmentOperation,
 };
-use std::cmp;
 
-mod generate;
+mod generate_and_fill;
 mod backtrace;
 mod alignment;
 pub use alignment::{
@@ -33,10 +33,15 @@ enum BacktraceMarker {
 }
 
 #[test]
-fn calculation_of_penalty_is_accurate() {
-    use crate::test_data_path::{get_qry_for_val_path, get_ref_for_val_path};
-    use sigalign::utils::FastaReader;
-    use crate::init_logger;
+fn dp_matrix_calculates_penalty_accurately() {
+    use crate::common::{
+        init_logger,
+        test_data_path::{get_qry_for_val_path, get_ref_for_val_path},
+    };
+    use sigalign_utils::sequence_reader::{
+        SeqRecord as _,
+        fasta::FastaReader,
+    };
     use log::info;
 
     init_logger();
@@ -49,22 +54,27 @@ fn calculation_of_penalty_is_accurate() {
     let px = 4;
     let po = 6;
     let pe = 2;
-    let ml = 100;
-    let mppl = 0.1;
+    let minl = 100;
+    let maxp = 0.1;
 
-    for (qry_idx, (label, query)) in FastaReader::from_path(&qry_file).unwrap().enumerate() {
-        if qry_idx == qry_count {
+    let mut qry_index = 0;
+    let mut qry_buffer = Vec::new();
+    let mut qry_reader = FastaReader::from_path(&qry_file).unwrap();
+    while let Some(mut record) = qry_reader.next() {
+        qry_buffer.clear();
+        record.extend_seq_buf(&mut qry_buffer);
+        if qry_index == qry_count {
             break;
         }
-        info!("Query label: {}", label);
+        info!("Query index: {}", qry_index);
         let results = semi_global_with_dpm(
-            &query,
+            &qry_buffer,
             &ref_file,
             px,
             po,
             pe,
-            ml,
-            mppl,
+            minl,
+            maxp,
         );
 
         results.0.iter().for_each(|x| {
@@ -73,12 +83,14 @@ fn calculation_of_penalty_is_accurate() {
                 let p2 = y.penalty;
 
                 if p1 != p2 {
-                    println!("query: {}", String::from_utf8(query.clone()).unwrap());
-                    println!("AnchorAlignmentResult:\n{:#?}", y);
+                    println!("query: {}", String::from_utf8(qry_buffer.clone()).unwrap());
+                    println!("Alignment:\n{:#?}", y);
                     panic!("")
                 }
             });
         });
+
+        qry_index += 1;
     }
 }
 fn cal_penalty(
@@ -101,33 +113,3 @@ fn cal_penalty(
         }
     }).sum()
 }
-
-// #[test]
-// fn test_errored_seq() {
-//     use backtrace::*;
-
-//     let query = b"GCCTAGACAGAAGAATTCCCAGTAACTTCCTTGTGTTGTGTGCATTCAACTCACAGAGTTGAACGTTCCCTTAGACAGAGCAGATTTGAAACACTCTATTTGTGCAATTTGCAAATGTAGATTTCAAGCGCTTTAAGGTCAATGGCAGAAAAGGAAATATCTTCGTTTCAAAACTAGA";
-
-//     let target = b"TTTCTGTTCATAXXXTAGACAGAAGAATTCCCAGTAACTTCCTTGTGTTGTGTGCATTCAACTCACAGAGTTGAACGTTCCCTTAGACAGAGCAGATTTGAAACACTCTATTTGTGCAATTTGCAAATGTAGATTTCAAGCGCTTTAAGGTCAATGGCAGAAAAGGAAATATCTTCGTTTCAAAACTAGAXXXX";
-
-//     let dp_matrix = DpMatrix::new(
-//         query.to_vec(),
-//         target.to_vec(),
-//         4,
-//         6,
-//         2,
-//     );
-
-//     let result = backtrace_from_the_indices(
-//         &dp_matrix,
-//         0,
-//         177,
-//         189,
-//     );
-
-//     let ops = concat_ops(result.0);
-//     println!("ops: {:#?}", ops);
-//     let pos = get_alignment_position(177, 189, &ops);
-//     println!("pos: {:#?}", pos);
-//     println!("pen: {}", result.2);
-// }
