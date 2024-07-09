@@ -55,6 +55,7 @@ impl LocalWithLimitAligner {
             &mut self.workspace.right_vpc_buffer,
             &mut self.workspace.traversed_anchors_buffer,
             &mut self.workspace.operations_buffer,
+            &mut self.workspace.positions_hash,
             self.limit,
         );
         self.regulator.decompress_result_with_gcd(&mut result);

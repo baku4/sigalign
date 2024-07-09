@@ -1,6 +1,6 @@
 use crate::{
     core::regulators::{
-        Penalty, Cutoff,
+        Penalty, Cutoff, PREC_SCALE,
     },
     results::{
         AlignmentPosition, AlignmentOperations,
@@ -42,7 +42,8 @@ pub fn extend_anchor(
     wave_front: &mut WaveFront,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-) -> Option<Extension> {
+    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
+) -> Option<Extension> { // None if already used position or not reached to the end
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
     // 1.1. Define the range of sequence to extend
@@ -70,31 +71,40 @@ pub fn extend_anchor(
     );
     // 2.4. Check if invalid
     //   - confirm invalid: early drop here
-    if !wave_front.is_reached_to_sequence_end() {
-        let (penalty, component_index) = get_the_last_end_point(wave_front);
-        wave_front.backtrace_to_get_only_right_traversed_anchors(
-            penalty,
-            cutoff.maximum_scaled_penalty_per_length as i32,
-            *pattern_size,
-            pattern_count,
-            component_index,
-            penalties,
-            traversed_anchors_buffer,
-        );
-        transform_right_additive_positions_to_traversed_anchor_index(
-            anchor_table,
-            traversed_anchors_buffer,
-            anchor_index.0,
-            left_target_end_index,
-            *pattern_size,
-        );
-        return None;
-    }
+    let right_end_point = match wave_front.get_optional_end_point() {
+        Some(ep) => ep,
+        None => {
+            let (penalty, component_index) = get_the_point_of_filling_terminated(wave_front);
+            wave_front.backtrace_to_get_only_right_traversed_anchors(
+                penalty,
+                cutoff.maximum_scaled_penalty_per_length as i32,
+                *pattern_size,
+                pattern_count,
+                component_index,
+                penalties,
+                traversed_anchors_buffer,
+            );
+            transform_right_additive_positions_to_traversed_anchor_index(
+                anchor_table,
+                traversed_anchors_buffer,
+                anchor_index.0,
+                left_target_end_index,
+                *pattern_size,
+            );
+            return None;
+        }
+    };
     //   - have chance to valid: proceed
-    let right_back_trace_result = wave_front.backtrace_from_the_end_of_right_side(
-        *pattern_size,
+    let (right_query_length, right_target_length, right_alignment_length) = wave_front.get_proceed_length(
+        right_end_point.0, right_end_point.1
+    );
+    // 2.5. Get the operations range
+    let right_operation_range_in_buffer = wave_front.backtrace_of_right_side_with_checking_traversed(
+        right_end_point.0,
         cutoff.maximum_scaled_penalty_per_length as i32,
+        *pattern_size,
         pattern_count,
+        right_end_point.1,
         penalties,
         operations_buffer,
         traversed_anchors_buffer,
@@ -106,7 +116,7 @@ pub fn extend_anchor(
         left_target_end_index,
         *pattern_size,
     );
-
+    
     // 3. Extend to the left
     // 3.1. Get slices to extend
     let left_target_slice = &target[..left_target_end_index as usize];
@@ -114,8 +124,8 @@ pub fn extend_anchor(
     // 3.2. Calculate the left spare penalty
     let left_spare_penalty = {
         let max_scaled_penalty_delta_of_right = {
-            (right_back_trace_result.length_of_extension * cutoff.maximum_scaled_penalty_per_length) as i64
-            - right_back_trace_result.penalty_of_extension as i64
+            ((right_alignment_length + anchor_size) * cutoff.maximum_scaled_penalty_per_length) as i32
+            - (right_end_point.0 * PREC_SCALE) as i32
         };
         spare_penalty_calculator.get_left_spare_penalty(
             max_scaled_penalty_delta_of_right,
@@ -131,48 +141,63 @@ pub fn extend_anchor(
     );
     // 3.4. Check if invalid
     //   - confirm invalid: early drop here
-    if !wave_front.is_reached_to_sequence_end() {
-        return None;
-    }
+    let left_end_point = match wave_front.get_optional_end_point() {
+        Some(ep) => ep,
+        None => {
+            return None;
+        }
+    };
     //   - have chance to valid: proceed
-    let (left_back_trace_result, leftmost_anchor_index) = wave_front.backtrace_from_the_end_of_left_side(
+    let (left_query_length, left_target_length, left_alignment_length) = wave_front.get_proceed_length(
+        left_end_point.0, left_end_point.1
+    );
+    //   - Check if the position is already used 
+    let alignment_position = AlignmentPosition {
+        query: (
+            left_query_end_index - left_query_length,
+            right_query_start_index + right_query_length,
+        ),
+        target: (
+            left_target_end_index - left_target_length,
+            right_target_start_index + right_target_length,
+        ),
+    };
+    if positions_hash.contains(&alignment_position) {
+        return None
+    } else {
+        positions_hash.insert(alignment_position.clone());
+    }
+    //   - Check if this alignment is valid
+    let alignment_length = left_alignment_length + right_alignment_length + anchor_size;
+    let penalty = left_end_point.0 + right_end_point.0;
+    let is_valid = {
+        (alignment_length >= cutoff.minimum_length)
+        && (cutoff.maximum_scaled_penalty_per_length * alignment_length >= penalty * PREC_SCALE)
+    } ;
+    // 3.5. Get the operations range
+    let left_operation_range_in_buffer = wave_front.backtrace_of_left_side_without_checking_traversed(
+        left_end_point.0,
         *pattern_size,
+        left_end_point.1,
         penalties,
         operations_buffer,
-        anchor_table,
-        anchor_index.0,
-        left_target_end_index,
-    )?;
-    let leftmost_anchor_index = leftmost_anchor_index.unwrap_or(anchor_index);
-    
-    // 4. Check validation
-    let penalty = left_back_trace_result.penalty_of_extension + right_back_trace_result.penalty_of_extension;
-    let length = left_back_trace_result.length_of_extension + right_back_trace_result.length_of_extension;
+    );
     
     // 5. Push extension
     let extension = Extension {
-        alignment_position: AlignmentPosition {
-            query: (
-                left_query_end_index - left_back_trace_result.processed_length.0,
-                left_query_end_index + right_back_trace_result.processed_length.0,
-            ),
-            target: (
-                left_target_end_index - left_back_trace_result.processed_length.1,
-                left_target_end_index + right_back_trace_result.processed_length.1,
-            ),
-        },
+        alignment_position,
         penalty,
-        length,
-        left_side_operation_range: left_back_trace_result.operation_buffer_range,
-        right_side_operation_range: right_back_trace_result.operation_buffer_range,
-        leftmost_anchor_index,
+        length: alignment_length,
+        left_side_operation_range: left_operation_range_in_buffer,
+        right_side_operation_range: right_operation_range_in_buffer,
         right_operation_meet_edge: true, // Always true in semi-global
+        is_valid,
     };
     return Some(extension);
 }
 
 #[inline(always)]
-fn get_the_last_end_point(
+fn get_the_point_of_filling_terminated(
     wave_front: &WaveFront,
 ) -> (u32, u32) { // (penalty, component index) of end point
     let last_penalty = wave_front.end_point.penalty;

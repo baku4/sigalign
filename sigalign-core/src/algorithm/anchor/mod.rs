@@ -18,6 +18,7 @@ pub struct Anchor {
     pub extension_index: u32,
     pub to_skip: bool,
     pub used_to_results_as_leftmost_anchor: bool,
+    pub used_to_results_as_rightmost_anchor: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchorTable(
@@ -103,6 +104,7 @@ impl Anchor {
                 extension_index: 0,
                 to_skip: false,
                 used_to_results_as_leftmost_anchor: false,
+                used_to_results_as_rightmost_anchor: false,
             }
         }).collect()
     }

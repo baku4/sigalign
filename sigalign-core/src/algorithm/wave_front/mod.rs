@@ -83,6 +83,15 @@ impl WaveFront {
     pub fn penalty_of_end_point(&self) -> usize {
         self.end_point.penalty
     }
+    #[inline]
+    // Return penalty and component index
+    pub fn get_optional_end_point(&self) -> Option<(u32, u32)> {
+        let end_point = &self.end_point;
+        let penalty = end_point.penalty;
+        let k = end_point.k?;
+        let component_index = (self.wave_front_scores[penalty ].max_k + k) as u32;
+        Some((penalty as u32, component_index))
+    }
 }
 
 impl WaveFrontScore {

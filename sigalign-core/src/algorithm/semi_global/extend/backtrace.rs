@@ -16,21 +16,6 @@ enum ComponentType {
 
 impl WaveFront {
     #[inline]
-    pub fn backtrace_from_the_end_of_left_side(
-        &self,
-        pattern_size: u32,
-        penalties: &Penalty,
-        operations_buffer: &mut Vec<AlignmentOperations>,
-        anchor_table: &AnchorTable,
-        base_pattern_index: u32,
-        base_target_position: u32,
-    ) -> Option<(BackTraceResult, Option<AnchorIndex>)> {
-        let (penalty, component_index) = self.get_penalty_and_component_index_from_end();
-        self.backtrace_of_left_side(
-            penalty, pattern_size, component_index, penalties, operations_buffer, anchor_table, base_pattern_index, base_target_position
-        )
-    }
-    #[inline]
     pub fn backtrace_from_the_end_of_right_side(
         &self,
         pattern_size: u32,

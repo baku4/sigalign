@@ -2,10 +2,12 @@ use crate::core::regulators::PREC_SCALE;
 use super::{WaveFront, WaveFrontScore, BackTraceMarker};
 
 // Validate Position Candidate
-// TODO: can i32 be used instead of i64?
+//  - Scalable penalty delta is i32:
+//    PREC_SCALE is 100_000 now that the maximum query length is limited to about
+//    2_147_483_647 (2^31) / (100_000 * MaxP) = 20_000 / MaxP
 #[derive(Debug, Clone)]
 pub struct Vpc {
-    pub scaled_penalty_delta: i64,
+    pub scaled_penalty_delta: i32,
     pub query_length: u32,
     pub penalty: u32,
     pub component_index: u32,
@@ -24,7 +26,7 @@ impl Vpc {
 
         for (left_vpc_index, left_vpc) in left_sorted_vpc_vector.iter().enumerate().rev() {
             for (right_vpc_index, right_vpc) in right_sorted_vpc_vector.iter().enumerate().rev() {
-                let scaled_penalty_margin = left_vpc.scaled_penalty_delta + right_vpc.scaled_penalty_delta + anchor_scaled_penalty_delta as i64;
+                let scaled_penalty_margin = left_vpc.scaled_penalty_delta + right_vpc.scaled_penalty_delta + anchor_scaled_penalty_delta as i32;
 
                 if scaled_penalty_margin >= 0 {
                     let query_length_without_anchor = left_vpc.query_length + right_vpc.query_length;
@@ -39,6 +41,10 @@ impl Vpc {
         }
         
         (optimal_left_vpc_index, optimal_right_vpc_index)
+    }
+    pub fn get_alignment_length(&self, maximum_scaled_penalty_per_length: u32) -> u32 {
+        // PD = maxp * length - penalty
+        ((self.penalty * PREC_SCALE) as i32 + self.scaled_penalty_delta) as u32 / maximum_scaled_penalty_per_length
     }
 }
 
@@ -59,7 +65,7 @@ impl WaveFront {
 
         self.wave_front_scores[..=last_penalty].iter().enumerate().for_each(|(penalty, wave_front_score)| {
             let (max_query_length, length, comp_index) = wave_front_score.point_of_maximum_query_length();
-            let scaled_penalty_delta = (length as u32 * maximum_penalty_per_scale) as i64 - (penalty * PREC_SCALE as usize) as i64;
+            let scaled_penalty_delta = (length as u32 * maximum_penalty_per_scale) as i32 - (penalty * PREC_SCALE as usize) as i32;
 
             let mut ql_index_to_insert: usize = 0;
             let mut pd_index_to_insert: usize = 0;
@@ -151,4 +157,26 @@ impl WaveFrontScore {
 
         (max_query_length as u32, length_cache, comp_index_cache as u32)
     }
+}
+
+#[test]
+fn test_alignment_length_calculation() {
+    let alignment_length = 100;
+    let penalty = 5 as u32;
+    let maximum_scaled_penalty_per_length = (0.01) * PREC_SCALE as f32;
+
+    let scaled_penalty_delta = (
+        alignment_length as u32 * maximum_scaled_penalty_per_length as u32
+    ) as i32 - (penalty * PREC_SCALE) as i32;
+
+    let vpc = Vpc {
+        scaled_penalty_delta,
+        query_length: 0, // Not needed
+        penalty,
+        component_index: 0, // Not needed
+    };
+    assert_eq!(
+        vpc.get_alignment_length(maximum_scaled_penalty_per_length as u32),
+        alignment_length,
+    );
 }

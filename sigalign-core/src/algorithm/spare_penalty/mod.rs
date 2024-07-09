@@ -45,17 +45,17 @@ impl SparePenaltyCalculator {
     #[inline(always)]
     pub fn get_left_spare_penalty(
         &self,
-        right_penalty_delta: i64,
+        right_penalty_delta: i32,
         pattern_index: u32,
     ) -> u32 {
         let ce = &self.coefficient_for_left;
-        i64::max(
+        i32::max(
             (
-                ce.0 as i64 * right_penalty_delta
-                + ce.1 as i64 * pattern_index as i64
-                - ce.2 as i64
-            ) / ce.3 as i64,
-            self.min_penalty as i64
+                ce.0 as i32 * right_penalty_delta
+                + ce.1 as i32 * pattern_index as i32
+                - ce.2 as i32
+            ) / ce.3 as i32,
+            self.min_penalty as i32
         ) as u32
     }
     #[inline]
