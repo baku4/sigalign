@@ -10,28 +10,22 @@ use ahash::AHashSet;
 
 mod common;
 use common::{
+    parse_the_unoverlapped_alignments_with_path,
     parse_the_unique_alignments_and_its_path,
-    concat_ops,
-    get_alignment_position,
 };
-mod local;
-use local::parse_valid_local_result;
+// Criteria to print output is changed.
+// Old version:
+//   - print the alignment whose position is not overlapped with "the existing results".
+// New version:
+//   - print the alignment whose position is overlapped with "the more optimal results".
 mod semi_global;
-use semi_global::parse_valid_semi_global_result;
+pub use semi_global::parse_valid_semi_global_result_from_dpm;
+mod local;
+pub use local::parse_valid_local_result_from_dpm;
 
-impl DpMatrix {
-    pub fn parse_valid_local_result(
-        &self,
-        minimum_length: u32,
-        maximum_penalty_per_length: f32,
-    ) -> Vec<Alignment> {
-        parse_valid_local_result(self, minimum_length, maximum_penalty_per_length)
-    }
-    pub fn parse_valid_semi_global_result(
-        &self,
-        minimum_length: u32,
-        maximum_penalty_per_length: f32,
-    ) -> Vec<Alignment> {
-        parse_valid_semi_global_result(self, minimum_length, maximum_penalty_per_length)
-    }
-}
+mod local_old;
+pub use local_old::parse_valid_local_result_old;
+mod semi_global_old;
+pub use semi_global_old::parse_valid_semi_global_result_old;
+
+

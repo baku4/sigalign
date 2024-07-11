@@ -1,6 +1,5 @@
 use super::{
     DpMatrix,
-    calculate_the_pattern_size,
     target_indices_having_matched_pattern,
 };
 use sigalign::{
@@ -21,7 +20,7 @@ use sigalign_utils::sequence_reader::{
 use ahash::AHashSet;
 use std::path::PathBuf;
 
-pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
+pub fn dp_local_with_all_subs_to_to_pattern_existing_targets(
     query: &[u8],
     sig_reference: &Reference,
     mismatch_penalty: u32,
@@ -30,21 +29,60 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
     min_length: u32,
     max_penalty_per_length: f32,
 ) -> QueryAlignment {
-    // Init
     let mut target_alignment_results = Vec::new();
-    // Cal pattern size
-    let pattern_size = calculate_the_pattern_size(
+    // Fetch target indices
+    let target_indices = target_indices_having_matched_pattern(
+        query,
+        sig_reference,
         mismatch_penalty, 
         gap_open_penalty,
         gap_extend_penalty,
         min_length,
         max_penalty_per_length,
-    ).unwrap();
+    );
+    // Align
+    for target_index in target_indices {
+        let target = sig_reference.get_sequence(target_index).unwrap();
+        let dp_matrix = DpMatrix::new(
+            query.to_vec(),
+            target.to_vec(),
+            mismatch_penalty,
+            gap_open_penalty,
+            gap_extend_penalty,
+        );
+        let alignments = parse_valid_local_result_from_dpm(
+            &dp_matrix, min_length, max_penalty_per_length,
+        );
+        if alignments.len() != 0 {
+            target_alignment_results.push(TargetAlignment {
+                index: target_index,
+                alignments,
+            });
+        }
+    }
+    QueryAlignment(target_alignment_results)
+}
+
+
+pub fn dp_local_to_target_pattern_existing_targets(
+    query: &[u8],
+    sig_reference: &Reference,
+    mismatch_penalty: u32,
+    gap_open_penalty: u32,
+    gap_extend_penalty: u32,
+    min_length: u32,
+    max_penalty_per_length: f32,
+) -> QueryAlignment {
+    let mut target_alignment_results = Vec::new();
     // Fetch target indices
     let target_indices = target_indices_having_matched_pattern(
         query,
         sig_reference,
-        pattern_size,
+        mismatch_penalty, 
+        gap_open_penalty,
+        gap_extend_penalty,
+        min_length,
+        max_penalty_per_length,
     );
     // Align
     for target_index in target_indices {
@@ -65,7 +103,7 @@ pub fn local_all_substring_with_dpm_only_to_pattern_matched_targets(
                     gap_extend_penalty,
                 );
                 
-                let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result(min_length, max_penalty_per_length);
+                let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result_old(min_length, max_penalty_per_length);
 
                 adjust_position_of_alignments(
                     &mut anchor_alignment_results,
@@ -147,7 +185,7 @@ pub fn local_all_substring_with_dpm_using_all_target(
                     gap_extend_penalty,
                 );
 
-                let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result(min_length, max_penalty_per_length);
+                let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result_old(min_length, max_penalty_per_length);
 
                 adjust_position_of_alignments(
                     &mut anchor_alignment_results,

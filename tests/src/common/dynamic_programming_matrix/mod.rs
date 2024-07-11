@@ -6,10 +6,19 @@ use sigalign::results::{
 
 mod generate_and_fill;
 mod backtrace;
+use backtrace::{
+    parse_valid_semi_global_result_from_dpm,
+    parse_valid_local_result_from_dpm,
+};
 mod alignment;
+// API for alignment with DP matrix
 pub use alignment::{
-    local_all_substring_with_dpm_only_to_pattern_matched_targets,
-    semi_global_with_dpm,
+    dp_semi_global_to_pattern_existing_targets,
+    dp_semi_global_to_ref_file,
+    dp_semi_global_to_target,
+    dp_local_to_to_pattern_existing_targets,
+    dp_local_to_ref_file,
+    dp_local_to_target,
 };
 
 #[derive(Debug, Clone)]
@@ -67,7 +76,7 @@ fn dp_matrix_calculates_penalty_accurately() {
             break;
         }
         info!("Query index: {}", qry_index);
-        let results = semi_global_with_dpm(
+        let results = dp_semi_global_to_ref_file(
             &qry_buffer,
             &ref_file,
             px,

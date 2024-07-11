@@ -3,10 +3,10 @@ use sigalign::results::Alignment;
 
 use super::{
     DpMatrix,
-    parse_the_unoverlapped_alignments_with_path,
+    parse_the_unique_alignments_and_its_path,
 };
 
-pub fn parse_valid_local_result_from_dpm(
+pub fn parse_valid_local_result_old(
     dp_matrix: &DpMatrix,
     minimum_length: u32,
     maximum_penalty_per_length: f32,
@@ -19,26 +19,28 @@ pub fn parse_valid_local_result_from_dpm(
         for start_query_index in 0..(query_length+1-substring_length) {
             let last_query_index = start_query_index + substring_length - 1;
 
-            let unoverlapped_alignments_with_path = parse_the_unoverlapped_alignments_with_path(
+            let unique_alignments = parse_the_unique_alignments_and_its_path(
                 dp_matrix,
                 start_query_index,
                 last_query_index,
             );
 
-            for (alignment, path) in unoverlapped_alignments_with_path.into_iter() {
-                let length = alignment.length;
-                let penalty = alignment.penalty;
+            unique_alignments.into_iter().for_each(|(x, path)| {
+                let length = x.length;
+                let penalty = x.penalty;
                 if (
                     length >= minimum_length
                 ) && (
                     penalty <= (length as f64 * maximum_penalty_per_length as f64) as u32
                 ) {
+                    // Valid
+                    // And unique
                     if paths.is_disjoint(&path) {
-                        result.push(alignment);
+                        paths.extend(&path);
+                        result.push(x);
                     }
-                    paths.extend(&path);
                 }
-            }
+            });
         }
     }
 

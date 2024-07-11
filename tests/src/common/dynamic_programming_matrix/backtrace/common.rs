@@ -1,6 +1,85 @@
-use super::{DpMatrix, Cell, BacktraceMarker};
+use super::{DpMatrix, BacktraceMarker};
 use ahash::AHashSet;
 use sigalign::results::{AlignmentOperation, AlignmentOperations, AlignmentPosition, Alignment};
+
+pub fn parse_the_unoverlapped_alignments_with_path(
+    dp_matrix: &DpMatrix,
+    start_query_index: usize,
+    last_query_index: usize,
+) -> Vec<(Alignment, AHashSet<(usize, usize)>)> {
+    // (1) Get all alignments with path
+    let mut alignments_with_path = parse_the_alignments_with_path(
+        dp_matrix, start_query_index, last_query_index,
+    );
+
+    // (2) Sort by
+    //   - penalty
+    //   - last query index
+    alignments_with_path.sort_by(|(a, _), (b, _)| {
+        a.penalty.cmp(&b.penalty).then( // lesser penalty: more opt
+            b.position.query.1.cmp(&a.position.query.1) // larger last query index: more opt
+        )
+    });
+    
+    // (3) Deduplicates
+    let mut paths = AHashSet::new();
+    let mut unoverlap_alignments = Vec::new();
+    for (alignment, path) in alignments_with_path.into_iter() {
+        if path.is_disjoint(&paths) {
+            unoverlap_alignments.push((alignment, path.clone()));
+        }
+
+        paths.extend(&path);
+    }
+
+    unoverlap_alignments
+}
+
+fn parse_the_alignments_with_path(
+    dp_matrix: &DpMatrix,
+    start_query_index: usize,
+    last_query_index: usize,
+) -> Vec<(Alignment, AHashSet<(usize, usize)>)> {
+    // (1) Get all endpoints
+    let mut all_endpoints = Vec::new();
+    let last_target_index = dp_matrix.target.len() - 1;
+    for i in 0..last_query_index {
+        all_endpoints.push((i, last_target_index));
+    }
+    for j in 0..last_target_index {
+        all_endpoints.push((last_query_index, j));
+    }
+    all_endpoints.push((last_query_index, last_target_index));
+    // (2) Get all alignments
+    let mut alignments = Vec::new();
+    all_endpoints.into_iter().for_each(|(query_index, target_index)| {
+        let (
+            reversed_operation,
+            path,
+            penalty,
+        ) = backtrace_from_the_indices(
+            dp_matrix,
+            start_query_index,
+            query_index,
+            target_index,
+        );
+        
+        let length = reversed_operation.len() as u32;
+        let operations = concat_ops(reversed_operation);
+        let position = get_alignment_position(query_index, target_index, &operations);
+
+        alignments.push((
+            Alignment {
+                penalty,
+                length,
+                position,
+                operations,
+            },
+            path,
+        ))
+    });
+    alignments
+}
 
 pub fn parse_the_unique_alignments_and_its_path(
     dp_matrix: &DpMatrix,
@@ -78,7 +157,7 @@ pub fn parse_the_unique_alignments_and_its_path(
 }
 
 // Result: reversed_operation, path, penalty
-pub fn backtrace_from_the_indices(
+fn backtrace_from_the_indices(
     dp_matrix: &DpMatrix,
     start_query_index: usize,
     query_index: usize,
@@ -143,7 +222,7 @@ pub fn backtrace_from_the_indices(
                     BacktraceMarker::FromIns => {
                         cell_type = BacktraceMarker::FromIns;
                     },
-                    _ => panic!(""),
+                    _ => unreachable!(""),
                 }
             },
         }
@@ -153,7 +232,8 @@ pub fn backtrace_from_the_indices(
 
     (reversed_operation, path, last_penalty - start_penalty)
 }
-pub fn concat_ops(
+
+fn concat_ops(
     reversed_operation: Vec<AlignmentOperation>,
 ) -> Vec<AlignmentOperations> {
     let mut result: Vec<AlignmentOperations> = Vec::new();
@@ -177,7 +257,7 @@ pub fn concat_ops(
 
     result
 }
-pub fn get_alignment_position(
+fn get_alignment_position(
     last_query_index: usize,
     last_target_index: usize,
     operations: &Vec<AlignmentOperations>,

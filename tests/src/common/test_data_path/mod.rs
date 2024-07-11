@@ -55,6 +55,14 @@ pub fn get_qry_for_val_path() -> PathBuf {
 //
 // (3) For data caching
 //
+pub fn get_target_dir() -> Result<PathBuf> {
+    use cargo_metadata::MetadataCommand;
+
+    let metadata = MetadataCommand::new()
+        .exec()?;
+    let target_dir = metadata.target_directory.as_std_path().to_path_buf();
+    Ok(target_dir)
+}
 const LOCAL_TMP_DIR: &str = "tmp";
 pub fn get_local_tmp_dir() -> Result<PathBuf> {
     let local_tmp_dir = PathBuf::from(LOCAL_TMP_DIR);

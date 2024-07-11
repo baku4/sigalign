@@ -29,6 +29,8 @@ use result_converter_of_v03::stable_result_to_current_result;
 mod check_results;
 use check_results::is_left_query_alignment_better;
 
+mod print_results;
+
 // Test options:
 //   - Aligner's options to test
 #[cfg(feature = "ci")]
