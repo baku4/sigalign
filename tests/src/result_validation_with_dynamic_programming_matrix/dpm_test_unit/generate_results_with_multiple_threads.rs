@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::thread;
 use std::sync::{mpsc, Mutex, Arc};
 use anyhow::{Result, bail};
+use log::info;
 
 use sigalign::results::QueryAlignment;
 use sigalign::ReferenceBuilder;
@@ -157,13 +158,9 @@ impl Worker {
                     },
                     Err(_) => break,
                 };
-                // if job.query_index % 100 == 0 {
-                if true {
-                    println!("Worker {}: Processing query index {}", id, job.query_index);
+                if job.query_index % 100 == 0 {
+                    info!("Worker {}: Processing query index {}", id, job.query_index);
                 }
-                let reference = ReferenceBuilder::new()
-                    .add_fasta_file(&job.ref_file).unwrap()
-                    .build().unwrap();
                 // Perform the job
                 let result = match job.mode {
                     DpmTestMode::LocalWithOneMat => {

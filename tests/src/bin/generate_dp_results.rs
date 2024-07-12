@@ -1,6 +1,8 @@
 use std::env;
+use log::info;
 use sigalign_tests::{
     common::{
+        init_logger,
         random_regulator::gen_random_regulator_with_seed,
         test_data_path::DataForValidation,
     },
@@ -39,22 +41,23 @@ fn main() {
         },
         None => DpmTestMode::LocalWithOneMat,
     };
+    init_logger();
     let thread_num = thread_num.unwrap_or(4);
     let start_seed = start_seed.unwrap_or(0);
     let seed_count = seed_count.unwrap_or(2);
     let overwrite = overwrite.unwrap_or(false);
-    println!("# Test Specifics:");
-    println!(" - Mode: {:?}", mode);
-    println!(" - Thread Num: {}", thread_num);
-    println!(" - Start Seed: {}", start_seed);
-    println!(" - Seed Count: {}", seed_count);
-    println!(" - Overwrite: {}", overwrite);
+    info!("# Test Specifics:");
+    info!(" - Mode: {:?}", mode);
+    info!(" - Thread Num: {}", thread_num);
+    info!(" - Start Seed: {}", start_seed);
+    info!(" - Seed Count: {}", seed_count);
+    info!(" - Overwrite: {}", overwrite);
     let test_dataset = DataForValidation::Default;
-    println!(" - Test Dataset: {:?}", test_dataset);
+    info!(" - Test Dataset: {:?}", test_dataset);
     
     for seed in start_seed..start_seed+seed_count {
         let regulator = gen_random_regulator_with_seed(seed);
-        println!("# Seed : {} -> Regulator: {:?}", seed, regulator);
+        info!("# Seed : {} -> Regulator: {:?}", seed, regulator);
         let test_unit = DpmTestUnit::new(
             mode.clone(),
             test_dataset.clone(),
@@ -64,13 +67,13 @@ fn main() {
             regulator.3,
             regulator.4,
         ).unwrap();
-        println!("Test Unit: {:?}", test_unit);
+        info!("Test Unit: {:?}", test_unit);
         let res = test_unit.save_results_to_cache_with_multiple_threads(
             thread_num,
             overwrite,
         );
         if let Err(e) = res {
-            println!("{:?}", e)
+            info!("{:?}", e)
         }
     }
 }
