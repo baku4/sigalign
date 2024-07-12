@@ -1,12 +1,4 @@
 use super::{DpMatrix, Cell, BacktraceMarker};
-use sigalign::results::{
-    Alignment,
-    AlignmentOperations,
-    AlignmentOperation,
-    AlignmentPosition,
-};
-use std::cmp;
-use ahash::AHashSet;
 
 mod common;
 use common::{

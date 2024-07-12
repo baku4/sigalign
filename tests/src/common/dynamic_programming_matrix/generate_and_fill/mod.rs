@@ -19,37 +19,24 @@ impl DpMatrix {
         
         // Initialize
         let mut dp_mat = vec![vec![Cell::new(); len2+1]; len1+1];
-        let mut del_mat = vec![vec![Cell::new(); len2+1]; len1+1];
         let mut ins_mat = vec![vec![Cell::new(); len2+1]; len1+1];
+        let mut del_mat = vec![vec![Cell::new(); len2+1]; len1+1];
         for i in 0..=len1 {
-            ins_mat[i][0].penalty = u32::MAX >> 1;
             del_mat[i][0].penalty = u32::MAX >> 1;
+            ins_mat[i][0].penalty = u32::MAX >> 1;
         }
         for j in 0..=len2 {
-            del_mat[0][j].penalty = u32::MAX >> 1;
             ins_mat[0][j].penalty = u32::MAX >> 1;
+            del_mat[0][j].penalty = u32::MAX >> 1;
         }
         
         // Fill matrices
         for i in 1..=len1 {
             for j in 1..=len2 {
-                // Deletion
-                let p_from_del = {
-                    let p_from_dp = dp_mat[i-1][j].penalty + gap_open_penalty + gap_extend_penalty;
-                    let p_from_del = del_mat[i-1][j].penalty + gap_extend_penalty;
-                    
-                    if p_from_dp < p_from_del {
-                        del_mat[i][j] = Cell { penalty: p_from_dp, btm: BacktraceMarker::FromDiag };
-                        p_from_dp
-                    } else {
-                        del_mat[i][j] = Cell { penalty: p_from_del, btm: BacktraceMarker::FromDel };
-                        p_from_del
-                    }
-                };
                 // Insertion
                 let p_from_ins = {
-                    let p_from_dp = dp_mat[i][j-1].penalty + gap_open_penalty + gap_extend_penalty;
-                    let p_from_ins = ins_mat[i][j-1].penalty + gap_extend_penalty;
+                    let p_from_dp = dp_mat[i-1][j].penalty + gap_open_penalty + gap_extend_penalty;
+                    let p_from_ins = ins_mat[i-1][j].penalty + gap_extend_penalty;
                     
                     if p_from_dp < p_from_ins {
                         ins_mat[i][j] = Cell { penalty: p_from_dp, btm: BacktraceMarker::FromDiag };
@@ -57,6 +44,19 @@ impl DpMatrix {
                     } else {
                         ins_mat[i][j] = Cell { penalty: p_from_ins, btm: BacktraceMarker::FromIns };
                         p_from_ins
+                    }
+                };
+                // Deletion
+                let p_from_del = {
+                    let p_from_dp = dp_mat[i][j-1].penalty + gap_open_penalty + gap_extend_penalty;
+                    let p_from_del = del_mat[i][j-1].penalty + gap_extend_penalty;
+                    
+                    if p_from_dp < p_from_del {
+                        del_mat[i][j] = Cell { penalty: p_from_dp, btm: BacktraceMarker::FromDiag };
+                        p_from_dp
+                    } else {
+                        del_mat[i][j] = Cell { penalty: p_from_del, btm: BacktraceMarker::FromDel };
+                        p_from_del
                     }
                 };
                 // DP
@@ -68,13 +68,13 @@ impl DpMatrix {
                         (p_from_dp + mismatch_penalty, false)
                     }
                 };
-                let min_p = p_from_diag.min(p_from_ins.min(p_from_del));
+                let min_p = p_from_diag.min(p_from_del.min(p_from_ins));
                 let btm = if (min_p == p_from_diag) && is_match {
                     BacktraceMarker::FromDiag
-                } else if min_p == p_from_del {
-                    BacktraceMarker::FromDel
                 } else if min_p == p_from_ins {
                     BacktraceMarker::FromIns
+                } else if min_p == p_from_del {
+                    BacktraceMarker::FromDel
                 } else {
                     BacktraceMarker::FromDiag
                 };
@@ -86,8 +86,8 @@ impl DpMatrix {
             target,
             query,
             dp_mat,
-            del_mat,
             ins_mat,
+            del_mat,
         }
     }
 }

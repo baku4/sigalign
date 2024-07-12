@@ -187,40 +187,40 @@ fn backtrace_from_the_indices(
                         i -= 1;
                         j -= 1;
                     },
-                    BacktraceMarker::FromDel => {
-                        cell_type = BacktraceMarker::FromDel;
-                    },
                     BacktraceMarker::FromIns => {
                         cell_type = BacktraceMarker::FromIns;
                     },
+                    BacktraceMarker::FromDel => {
+                        cell_type = BacktraceMarker::FromDel;
+                    },
                 }
             },
-            BacktraceMarker::FromDel => {
-                let btm = dp_matrix.del_mat[i][j].btm;
-                reversed_operation.push(AlignmentOperation::Deletion);
+            BacktraceMarker::FromIns => {
+                let btm = dp_matrix.ins_mat[i][j].btm;
+                reversed_operation.push(AlignmentOperation::Insertion);
                 i -= 1;
 
                 match btm {
                     BacktraceMarker::FromDiag => {
                         cell_type = BacktraceMarker::FromDiag;
                     },
-                    BacktraceMarker::FromDel => {
-                        cell_type = BacktraceMarker::FromDel;
+                    BacktraceMarker::FromIns => {
+                        cell_type = BacktraceMarker::FromIns;
                     },
                     _ => panic!(""),
                 }
             },
-            BacktraceMarker::FromIns => {
-                let btm = dp_matrix.ins_mat[i][j].btm;
-                reversed_operation.push(AlignmentOperation::Insertion);
+            BacktraceMarker::FromDel => {
+                let btm = dp_matrix.del_mat[i][j].btm;
+                reversed_operation.push(AlignmentOperation::Deletion);
                 j -= 1;
 
                 match btm {
                     BacktraceMarker::FromDiag => {
                         cell_type = BacktraceMarker::FromDiag;
                     },
-                    BacktraceMarker::FromIns => {
-                        cell_type = BacktraceMarker::FromIns;
+                    BacktraceMarker::FromDel => {
+                        cell_type = BacktraceMarker::FromDel;
                     },
                     _ => unreachable!(""),
                 }
@@ -271,10 +271,10 @@ fn get_alignment_position(
                 query_length += count;
                 target_length += count;
             },
-            AlignmentOperation::Deletion => {
+            AlignmentOperation::Insertion => {
                 query_length += count;
             },
-            AlignmentOperation::Insertion => {
+            AlignmentOperation::Deletion => {
                 target_length += count;
             },
         }

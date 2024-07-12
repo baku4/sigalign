@@ -18,3 +18,6 @@ pub use result_of_stable_version::{
 
 // DP matrix to generate the answer result
 pub mod dynamic_programming_matrix;
+
+// Results conversion
+pub mod tsv_results;

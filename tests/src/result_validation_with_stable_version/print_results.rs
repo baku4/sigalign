@@ -7,8 +7,8 @@ use crate::common::dynamic_programming_matrix::{
 };
 use super::stable_result_to_current_result;
 
-const QRY: &[u8; 200] = b"";
-const TGT: &[u8; 1000] = b"";
+const QRY: &[u8; 0] = b"";
+const TGT: &[u8; 0] = b"";
 const ALIGNER_OPTION: (u32, u32, u32, u32, f32) = (1, 1, 1, 100, 0.1);
 const IS_LOCAL: bool = true;
 

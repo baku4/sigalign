@@ -18,14 +18,13 @@ pub struct Record {
 mod read_using_bio_crate;
 use read_using_bio_crate::get_record_iterator_from_bio_crate;
 
-use crate::common::test_data_path::get_ref_for_val_path;
+use crate::common::test_data_path::DataForValidation;
 
 #[test]
 fn test_read_fasta_file() {
-    use crate::common::test_data_path::get_qry_for_val_path;
+    use crate::common::test_data_path::DataForValidation;
 
-    let path_1 = get_qry_for_val_path();
-    let path_2 = get_ref_for_val_path();
+    let (path_1, path_2) = DataForValidation::Default.get_data_paths();
 
     for file_path in [path_1, path_2] {
         println!("Reading file: {:?}", file_path);

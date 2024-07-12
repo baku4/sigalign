@@ -26,7 +26,7 @@ pub use semi_global::{
 
 mod local_with_one_matrix;
 pub use local_with_one_matrix::{
-    dp_local_to_to_pattern_existing_targets,
+    dp_local_to_pattern_existing_targets,
     dp_local_to_ref_file,
     dp_local_to_target,
 };

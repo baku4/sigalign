@@ -39,17 +39,48 @@ pub fn get_zlib_compressed_lf_fa_path() -> PathBuf {
 // (2) For result validation
 //
 const VALIDATE_RES_DIR: &str = "test_data/validate_result";
-const REF_FILE: &str = "reference.fa";
-const QRY_FILE: &str = "query.fa";
-pub fn get_ref_for_val_path() -> PathBuf {
-    let mut path = PathBuf::from(VALIDATE_RES_DIR);
-    path.push(REF_FILE);
-    path
+#[derive(Clone, Debug)]
+pub enum DataForValidation {
+    Default,
+    OneData,
 }
-pub fn get_qry_for_val_path() -> PathBuf {
-    let mut path = PathBuf::from(VALIDATE_RES_DIR);
-    path.push(QRY_FILE);
-    path
+impl DataForValidation {
+    /// Return reference and query file paths
+    pub fn get_data_paths(&self) -> (PathBuf, PathBuf) {
+        let mut path = PathBuf::from(VALIDATE_RES_DIR);
+        path.push(self.dir_name());
+        let (ref_fname, qry_fname) = self.file_name();
+        (
+            path.join(ref_fname),
+            path.join(qry_fname),
+        )
+    }
+    /// Get unique tag for each dataset
+    pub fn get_tag(&self) -> &str {
+        match self {
+            DataForValidation::Default => "val_def",
+            DataForValidation::OneData => "val_one",
+        }
+    }
+    pub fn from_tag(tag: &str) -> Result<Self> {
+        match tag {
+            "val_def" => Ok(DataForValidation::Default),
+            "val_one" => Ok(DataForValidation::OneData),
+            _ => error_msg!("Unknown tag: {}", tag),
+        }
+    }
+    fn dir_name(&self) -> &str {
+        match self {
+            DataForValidation::Default => "default",
+            DataForValidation::OneData => "one_data",
+        }
+    }
+    fn file_name(&self) -> (&str, &str) {
+        match self {
+            DataForValidation::Default => ("reference.fa", "query.fa"),
+            DataForValidation::OneData => ("reference.fa", "query.fa"),
+        }
+    }
 }
 
 //
@@ -88,16 +119,4 @@ pub fn get_dir_on_tmp_dir(dir_name: &str) -> Result<PathBuf> {
         fs::create_dir(&path)?;
     }
     Ok(path)
-}
-
-// TODO: Get tmp dir on the target directory
-#[test]
-fn print_target_dir() {
-    use cargo_metadata::MetadataCommand;
-
-    let metadata = MetadataCommand::new()
-        .exec()
-        .expect("Failed to get cargo metadata");
-    let target_dir = metadata.target_directory;
-    println!("CARGO_TARGET_DIR: {:?}", target_dir);
 }

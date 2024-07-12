@@ -33,3 +33,7 @@ harness = false
 
 [features]
 ci = []
+
+[[bin]]
+name = "generate_dp_results"
+path = "src/bin/generate_dp_results.rs"

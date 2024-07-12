@@ -1,7 +1,7 @@
 use log::{error, info};
 use crate::common::{
     init_logger,
-    test_data_path::{get_qry_for_val_path, get_ref_for_val_path},
+    test_data_path::DataForValidation,
     random_regulator::gen_random_regulator,
 };
 use sigalign_utils::sequence_reader::{
@@ -82,8 +82,7 @@ fn test_of_current_algorithm<F, A>(
     init_logger();
 
     // Prepare paths
-    let ref_file = get_ref_for_val_path();
-    let qry_file = get_qry_for_val_path();
+    let (ref_file, qry_file) = DataForValidation::Default.get_data_paths();
 
     // Prepare reference
     info!("Start to prepare reference");

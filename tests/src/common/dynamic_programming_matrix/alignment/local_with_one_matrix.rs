@@ -15,7 +15,7 @@ use sigalign_utils::sequence_reader::{
 use std::path::PathBuf;
 use ahash::AHashSet;
 
-pub fn dp_local_to_to_pattern_existing_targets(
+pub fn dp_local_to_pattern_existing_targets(
     query: &[u8],
     sig_reference: &Reference,
     mismatch_penalty: u32,

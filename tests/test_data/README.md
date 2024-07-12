@@ -1,0 +1,23 @@
+# Test Data
+
+- `build_reference`: for building reference tests
+  - default:
+    - LF
+    - multiple lined
+    - uncompressed
+  - test cases:
+    - (1) LF VS CRLF
+    - (2) multiple lined VS two lined (=one line for sequence)
+    - (3) uncompressed VS gzip compressed
+- `validate_result`: for validating results
+  - `default`
+    - original genome: T2T-CHM13
+    - generating targets
+      - (1) extracting 1,000 bp with sliding 899 bp
+      - (2) dividing by letter case
+        - All base is upper -> prefix as `high_comp`
+        - All base is lower -> prefix as `low_comp`
+      - (3) sampling 1000 for each clusters -> total 2000 records
+    - simulating query
+      - 10,000 sequences with length of 200 bp
+      - `dwgsim -N 10000 -z 0 -H -1 200 -2 0 {reference_file} {output_path}`

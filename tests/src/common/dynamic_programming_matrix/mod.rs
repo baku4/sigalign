@@ -16,7 +16,7 @@ pub use alignment::{
     dp_semi_global_to_pattern_existing_targets,
     dp_semi_global_to_ref_file,
     dp_semi_global_to_target,
-    dp_local_to_to_pattern_existing_targets,
+    dp_local_to_pattern_existing_targets,
     dp_local_to_ref_file,
     dp_local_to_target,
 };
@@ -26,8 +26,8 @@ pub struct DpMatrix {
     target: Vec<u8>,
     query: Vec<u8>,
     dp_mat: Vec<Vec<Cell>>,
-    del_mat: Vec<Vec<Cell>>,
     ins_mat: Vec<Vec<Cell>>,
+    del_mat: Vec<Vec<Cell>>,
 }
 #[derive(Debug, Clone)]
 struct Cell {
@@ -37,15 +37,15 @@ struct Cell {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum BacktraceMarker {
     FromDiag,
-    FromDel,
     FromIns,
+    FromDel,
 }
 
 #[test]
 fn dp_matrix_calculates_penalty_accurately() {
     use crate::common::{
         init_logger,
-        test_data_path::{get_qry_for_val_path, get_ref_for_val_path},
+        test_data_path::DataForValidation,
     };
     use sigalign_utils::sequence_reader::{
         SeqRecord as _,
@@ -57,8 +57,7 @@ fn dp_matrix_calculates_penalty_accurately() {
 
     let qry_count = 10;
 
-    let qry_file = get_qry_for_val_path();
-    let ref_file = get_ref_for_val_path();
+    let (ref_file, qry_file) = DataForValidation::Default.get_data_paths();
 
     let px = 4;
     let po = 6;
