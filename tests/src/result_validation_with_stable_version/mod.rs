@@ -1,8 +1,10 @@
 use log::{error, info};
 use crate::common::{
     init_logger,
-    test_data_path::DataForValidation,
-    random_regulator::{gen_random_regulator, gen_random_regulator_not_errored_in_v032},
+    test_data::DataForValidation,
+    configuration::TestSetting,
+    random_regulator::{gen_random_regulator_not_errored_in_v03},
+    result_converter_of_v03::stable_result_to_current_result,
 };
 use sigalign_utils::sequence_reader::{
     SeqRecord,
@@ -23,33 +25,13 @@ use sigalign_stable::{
     },
 };
 
-mod result_converter_of_v03;
-use result_converter_of_v03::stable_result_to_current_result;
-
 mod check_results;
 use check_results::is_left_query_alignment_better;
 
 mod print_results;
 
-// Test options:
-//   - Aligner's options to test
-#[cfg(feature = "ci")]
-const ALIGNER_OPTION_COUNT: u32 = 2;
-#[cfg(not(feature = "ci"))]
-const ALIGNER_OPTION_COUNT: u32 = 10;
-//  - Complexity
-#[cfg(feature = "ci")]
-const ASSUMED_MAX_MISMATCH_PER_100: u32 = 2;
-#[cfg(not(feature = "ci"))]
-const ASSUMED_MAX_MISMATCH_PER_100: u32 = 4;
-//  - Query interval
-#[cfg(feature = "ci")]
-const QUERY_SAMPLING_INTERVAL: u32 = 100;
-#[cfg(not(feature = "ci"))]
-const QUERY_SAMPLING_INTERVAL: u32 = 1;
-
 #[test]
-fn test_local_mode_of_current_algorithm() {
+fn test_local_mode_of_current_algorithm_with_random_regulator() {
     let current_aligner_generator = |px, po, pe, minl, maxp| {
         CurrentAligner::new(
             Local::new(px, po, pe, minl, maxp).unwrap()
@@ -58,17 +40,24 @@ fn test_local_mode_of_current_algorithm() {
     let stable_aligner_generator = |px, po, pe, minl, maxp| {
         StableAligner::new_local(px, po, pe, minl, maxp).unwrap()
     };
-    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
-        .map(|_| gen_random_regulator_not_errored_in_v032(ASSUMED_MAX_MISMATCH_PER_100)).collect::<Vec<_>>();
-    test_of_current_algorithm(
+    let settings = TestSetting::from_env().unwrap().validation_with_stable;
+    let regulators = (
+        settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+    ).map(|seed| gen_random_regulator_not_errored_in_v03(
+        settings.max_match_per_100_bases,
+        seed,
+    )).collect::<Vec<_>>();
+
+    test_current_algorithm_is_more_optimal_than_stable(
         &current_aligner_generator,
         Some(&stable_aligner_generator),
         regulators,
+        settings.query_sampling_interval,
     );
 }
 
 #[test]
-fn test_semi_global_mode_of_current_algorithm() {
+fn test_semi_global_mode_of_current_algorithm_with_random_regulator() {
     let current_aligner_generator = |px, po, pe, minl, maxp| {
         CurrentAligner::new(
             SemiGlobal::new(px, po, pe, minl, maxp).unwrap()
@@ -77,19 +66,27 @@ fn test_semi_global_mode_of_current_algorithm() {
     let stable_aligner_generator = |px, po, pe, minl, maxp| {
         StableAligner::new_semi_global(px, po, pe, minl, maxp).unwrap()
     };
-    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
-        .map(|_| gen_random_regulator_not_errored_in_v032(ASSUMED_MAX_MISMATCH_PER_100)).collect::<Vec<_>>();
-    test_of_current_algorithm(
+    let settings = TestSetting::from_env().unwrap().validation_with_stable;
+    let regulators = (
+            settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+        ).map(|seed| gen_random_regulator_not_errored_in_v03(
+            settings.max_match_per_100_bases,
+            seed,
+        )).collect::<Vec<_>>();
+    
+    test_current_algorithm_is_more_optimal_than_stable(
         &current_aligner_generator,
         Some(&stable_aligner_generator),
         regulators,
+        settings.query_sampling_interval,
     );
 }
 
-fn test_of_current_algorithm<F1, F2, A>(
+fn test_current_algorithm_is_more_optimal_than_stable<F1, F2, A>(
     current_aligner_generator: &F1,
     stable_aligner_generator: Option<&F2>,
     regulators: Vec<(u32, u32, u32, u32, f32)>,
+    query_sampling_interval: u32,
 ) where
     A: Algorithm,
     F1: Fn(u32, u32, u32, u32, f32) -> CurrentAligner<A>,
@@ -145,7 +142,7 @@ fn test_of_current_algorithm<F1, F2, A>(
         let mut query_step = 0;
         while let Some(mut record) = fasta_reader.next() {
             query_step += 1;
-            if query_step == QUERY_SAMPLING_INTERVAL {
+            if query_step == query_sampling_interval {
                 query_step = 0;
             } else {
                 continue;

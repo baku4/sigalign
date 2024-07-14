@@ -14,7 +14,11 @@ lt-fm-index = "0.7.0-alpha.3"
 
 anyhow = "1.0.65"
 log = "0.4.17"
+config = "0.14"
 cargo_metadata = "0.18"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
 ahash = "0.8.0"
 bincode = "2.0.0-rc.1"
 rand = "0.8.5"
@@ -32,7 +36,6 @@ name = "benchmark"
 harness = false
 
 [features]
-ci = []
 
 [[bin]]
 name = "generate_dp_results"

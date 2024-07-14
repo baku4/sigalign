@@ -18,10 +18,8 @@ use crate::common::{
         dp_local_to_ref_file,
         dp_semi_global_to_ref_file,
     },
-    test_data_path::{
-        get_target_dir,
-        DataForValidation,
-    },
+    directory_path::get_target_dir,
+    test_data::DataForValidation,
     tsv_results::{
         write_query_alignment_as_tsv_format,
         read_query_alignments_from_tsv_format,

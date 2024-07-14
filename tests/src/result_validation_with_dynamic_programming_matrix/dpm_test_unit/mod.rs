@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 use anyhow::{Result, bail};
 
-use crate::common::test_data_path::{
-    get_target_dir,
-    DataForValidation,
+use crate::common::{
+    directory_path::get_target_dir,
+    test_data::DataForValidation,
 };
 
 mod generate_results_with_multiple_threads;

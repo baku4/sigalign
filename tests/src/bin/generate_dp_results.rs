@@ -3,8 +3,8 @@ use log::info;
 use sigalign_tests::{
     common::{
         init_logger,
-        random_regulator::gen_random_regulator_with_seed,
-        test_data_path::DataForValidation,
+        random_regulator::gen_random_regulator,
+        test_data::DataForValidation,
     },
     result_validation_with_dynamic_programming_matrix::{DpmTestUnit, DpmTestMode},
 };
@@ -46,6 +46,7 @@ fn main() {
     let start_seed = start_seed.unwrap_or(0);
     let seed_count = seed_count.unwrap_or(2);
     let overwrite = overwrite.unwrap_or(false);
+    let max_match_per_100_bases = 3;
     info!("# Test Specifics:");
     info!(" - Mode: {:?}", mode);
     info!(" - Thread Num: {}", thread_num);
@@ -56,7 +57,7 @@ fn main() {
     info!(" - Test Dataset: {:?}", test_dataset);
     
     for seed in start_seed..start_seed+seed_count {
-        let regulator = gen_random_regulator_with_seed(seed);
+        let regulator = gen_random_regulator(max_match_per_100_bases, seed);
         info!("# Seed : {} -> Regulator: {:?}", seed, regulator);
         let test_unit = DpmTestUnit::new(
             mode.clone(),

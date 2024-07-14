@@ -45,7 +45,7 @@ enum BacktraceMarker {
 fn dp_matrix_calculates_penalty_accurately() {
     use crate::common::{
         init_logger,
-        test_data_path::DataForValidation,
+        test_data::DataForValidation,
     };
     use sigalign_utils::sequence_reader::{
         SeqRecord as _,

@@ -1,7 +1,8 @@
 use log::{error, info};
 use crate::common::{
     init_logger,
-    test_data_path::DataForValidation,
+    configuration::TestSetting,
+    test_data::DataForValidation,
     random_regulator::gen_random_regulator,
 };
 use sigalign_utils::sequence_reader::{
@@ -15,30 +16,6 @@ use sigalign_utils::sequence_reader::{
 use sigalign::{
     algorithms::{Algorithm, Local, SemiGlobal}, results::{Alignment, QueryAlignment, TargetAlignment}, Aligner as CurrentAligner, Reference as CurrentReference, ReferenceBuilder
 };
-use sigalign_stable::{
-    results::AlignmentResult as StableQueryAlignment,
-    wrapper::{
-        DefaultAligner as StableAligner,
-        DefaultReference as StableReference,
-    },
-};
-
-// Test options:
-//   - Aligner's options to test
-#[cfg(feature = "ci")]
-const ALIGNER_OPTION_COUNT: u32 = 2;
-#[cfg(not(feature = "ci"))]
-const ALIGNER_OPTION_COUNT: u32 = 10;
-//  - Complexity
-#[cfg(feature = "ci")]
-const ASSUMED_MAX_MISMATCH_PER_100: u32 = 2;
-#[cfg(not(feature = "ci"))]
-const ASSUMED_MAX_MISMATCH_PER_100: u32 = 4;
-//  - Query interval
-#[cfg(feature = "ci")]
-const QUERY_SAMPLING_INTERVAL: u32 = 100;
-#[cfg(not(feature = "ci"))]
-const QUERY_SAMPLING_INTERVAL: u32 = 1;
 
 #[test]
 fn test_local_mode_gives_valid_results_for_cutoffs() {
@@ -47,12 +24,18 @@ fn test_local_mode_gives_valid_results_for_cutoffs() {
             Local::new(px, po, pe, minl, maxp).unwrap()
         )
     };
-    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
-        .map(|_| gen_random_regulator(ASSUMED_MAX_MISMATCH_PER_100)).collect::<Vec<_>>();
+    let settings = TestSetting::from_env().unwrap().validation_with_cutoff;
+    let regulators = (
+        settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+    ).map(|seed| gen_random_regulator(
+        settings.max_match_per_100_bases,
+        seed,
+    )).collect::<Vec<_>>();
 
     test_of_current_algorithm(
         &current_aligner_generator,
         regulators,
+        settings.query_sampling_interval,
     );
 }
 
@@ -63,18 +46,25 @@ fn test_semi_global_mode_gives_valid_results_for_cutoffs() {
             SemiGlobal::new(px, po, pe, minl, maxp).unwrap()
         )
     };
-    let regulators: Vec<(u32, u32, u32, u32, f32)> = (0..ALIGNER_OPTION_COUNT)
-        .map(|_| gen_random_regulator(ASSUMED_MAX_MISMATCH_PER_100)).collect::<Vec<_>>();
+    let settings = TestSetting::from_env().unwrap().validation_with_cutoff;
+    let regulators = (
+        settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+    ).map(|seed| gen_random_regulator(
+        settings.max_match_per_100_bases,
+        seed,
+    )).collect::<Vec<_>>();
 
     test_of_current_algorithm(
         &current_aligner_generator,
         regulators,
+        settings.query_sampling_interval,
     );
 }
 
 fn test_of_current_algorithm<F, A>(
     current_aligner_generator: &F,
     regulators: Vec<(u32, u32, u32, u32, f32)>,
+    query_sampling_interval: u32,
 ) where
     A: Algorithm,
     F: Fn(u32, u32, u32, u32, f32) -> CurrentAligner<A>,
@@ -111,7 +101,7 @@ fn test_of_current_algorithm<F, A>(
         let mut query_step = 0;
         while let Some(mut record) = fasta_reader.next() {
             query_step += 1;
-            if query_step == QUERY_SAMPLING_INTERVAL {
+            if query_step == query_sampling_interval {
                 query_step = 0;
             } else {
                 continue;

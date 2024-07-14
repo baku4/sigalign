@@ -14,7 +14,7 @@ use type2::{
 use std::path::PathBuf;
 
 fn get_test_fasta_path() -> PathBuf {
-    use sigalign_tests::common::test_data_path::DataForValidation;
+    use sigalign_tests::common::test_data::DataForValidation;
 
     let (fasta_file, _) = DataForValidation::Default.get_data_paths();
     

@@ -1,0 +1,11 @@
+validation_with_cutoff:
+  regulator_start_seed: 0
+  regulator_seed_count: 2
+  query_sampling_interval: 100
+  max_match_per_100_bases: 2
+
+validation_with_stable:
+  regulator_start_seed: 0
+  regulator_seed_count: 2
+  query_sampling_interval: 100
+  max_match_per_100_bases: 2

@@ -3,7 +3,7 @@ Fasta reader can read various type of FASTA formatted file
 */
 use crate::common::{
     Result, error_msg,
-    test_data_path::{
+    test_data::{
         get_lf_fa_path,
         get_crlf_fa_path,
         get_two_line_fa_path,
