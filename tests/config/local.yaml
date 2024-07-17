@@ -1,11 +1,16 @@
-validation_with_cutoff:
-  regulator_start_seed: 0
-  regulator_seed_count: 4
-  query_sampling_interval: 1
-  max_match_per_100_bases: 3
+val_with_cutoff:
+  seed_start: 0
+  seed_count: 4
+  query_interval: 1
+  max_subst_percent: 3
 
-validation_with_stable:
-  regulator_start_seed: 0
-  regulator_seed_count: 4
-  query_sampling_interval: 1
-  max_match_per_100_bases: 3
+val_with_stable:
+  seed_start: 0
+  seed_count: 4
+  query_interval: 1
+  max_subst_percent: 3
+
+val_with_stable_and_dpm:
+  seed_start: 0
+  seed_count: 4
+  max_subst_percent: 3

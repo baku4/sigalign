@@ -38,15 +38,16 @@ use check_results::{
 mod dpm_results_cache;
 use dpm_results_cache::{DpmAlignerWithCache, DpmMode};
 
-const MAX_MISMATCH_PER_100_BASES: u32 = 3;
-const REGULATOR_START_SEED: u64 = 0;
-const REGULATOR_SEED_COUNT: u64 = 2;
-
 // Compare current results with stable version.
 // If the two results are different, using DPM to check the results.
 #[test]
 fn test_local_is_equal_to_stable_or_dpm() {
     init_logger();
+
+    let settings = {
+        TestSetting::from_env().unwrap().val_with_stable_and_dpm
+    };
+    info!("Test Settings: {:?}", settings);
 
     // Prepare paths
     let test_data = DataForValidation::Default;
@@ -62,9 +63,9 @@ fn test_local_is_equal_to_stable_or_dpm() {
     ).unwrap();
 
     // Start to compare
-    for seed in REGULATOR_START_SEED..REGULATOR_START_SEED + REGULATOR_SEED_COUNT {
+    for seed in settings.seed_start..settings.seed_start + settings.seed_count {
         let regulators = gen_random_regulator_not_errored_in_v03(
-            MAX_MISMATCH_PER_100_BASES,
+            settings.max_subst_percent,
             seed,
         );
         info!("Start to compare with regulators: {:?} (seed: {})", regulators, seed);
