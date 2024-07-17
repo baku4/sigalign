@@ -26,9 +26,14 @@ pub use semi_global::{
 
 mod local_with_one_matrix;
 pub use local_with_one_matrix::{
-    dp_local_to_pattern_existing_targets,
-    dp_local_to_ref_file,
-    dp_local_to_target,
+    dp_local_with_one_mat_to_pattern_existing_targets,
+    dp_local_with_one_mat_to_ref_file,
+    dp_local_with_one_mat_to_target,
 };
 
-// mod local_with_all_substring;
+mod local_with_all_substring;
+pub use local_with_all_substring::{
+    dp_local_with_all_subs_to_pattern_existing_targets,
+    dp_local_with_all_subs_to_ref_file,
+    dp_local_with_all_subs_to_target,
+};  

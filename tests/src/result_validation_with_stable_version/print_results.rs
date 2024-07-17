@@ -3,7 +3,7 @@ use sigalign::{algorithms::{Algorithm, Local, SemiGlobal}, Aligner as CurrentAli
 use sigalign_stable::wrapper::{DefaultAligner as StableAligner, DefaultReference as StableReference};
 use crate::common::dynamic_programming_matrix::{
     dp_semi_global_to_target,
-    dp_local_to_target,
+    dp_local_with_one_mat_to_target,
 };
 use super::stable_result_to_current_result;
 
@@ -90,7 +90,7 @@ fn print_errored_result_with_stable() {
 #[test]
 fn print_errored_result_with_dp() {
     let result = if IS_LOCAL {
-        dp_local_to_target(
+        dp_local_with_one_mat_to_target(
             QRY,
             TGT,
             ALIGNER_OPTION.0, ALIGNER_OPTION.1, ALIGNER_OPTION.2, ALIGNER_OPTION.3, ALIGNER_OPTION.4

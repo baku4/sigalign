@@ -15,7 +15,7 @@ use sigalign_utils::sequence_reader::{
 use std::path::PathBuf;
 use ahash::AHashSet;
 
-pub fn dp_local_to_pattern_existing_targets(
+pub fn dp_local_with_one_mat_to_pattern_existing_targets(
     query: &[u8],
     sig_reference: &Reference,
     mismatch_penalty: u32,
@@ -58,7 +58,7 @@ pub fn dp_local_to_pattern_existing_targets(
     QueryAlignment(target_alignment_results)
 }
 
-pub fn dp_local_to_ref_file(
+pub fn dp_local_with_one_mat_to_ref_file(
     query: &[u8],
     ref_file: &PathBuf,
     mismatch_penalty: u32,
@@ -77,7 +77,7 @@ pub fn dp_local_to_ref_file(
         target_buffer.clear();
         record.extend_seq_buf(&mut target_buffer);
 
-        let alignments = dp_local_to_target(
+        let alignments = dp_local_with_one_mat_to_target(
             query,
             &target_buffer,
             mismatch_penalty,
@@ -99,7 +99,7 @@ pub fn dp_local_to_ref_file(
     QueryAlignment(result)
 }
 
-pub fn dp_local_to_target(
+pub fn dp_local_with_one_mat_to_target(
     query: &[u8],
     target: &[u8],
     mismatch_penalty: u32,

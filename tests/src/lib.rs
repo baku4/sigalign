@@ -10,7 +10,7 @@ mod sequence_reader;
 // Result validation with stable version
 mod result_validation_only_with_cutoff;
 mod result_validation_with_stable_version;
-mod debug_alignment_results;
+mod results_validation_with_stable_and_dpm;
 pub mod result_validation_with_dynamic_programming_matrix;
 
 

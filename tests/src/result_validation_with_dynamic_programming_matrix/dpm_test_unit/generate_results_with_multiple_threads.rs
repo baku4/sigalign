@@ -13,9 +13,9 @@ use sigalign_utils::sequence_reader::{
 };
 use crate::common::{
     dynamic_programming_matrix::{
-        dp_local_to_pattern_existing_targets,
+        dp_local_with_one_mat_to_pattern_existing_targets,
         dp_semi_global_to_pattern_existing_targets,
-        dp_local_to_ref_file,
+        dp_local_with_one_mat_to_ref_file,
         dp_semi_global_to_ref_file,
     },
     directory_path::get_target_dir,
@@ -162,7 +162,7 @@ impl Worker {
                 // Perform the job
                 let result = match job.mode {
                     DpmTestMode::LocalWithOneMat => {
-                        dp_local_to_ref_file(
+                        dp_local_with_one_mat_to_ref_file(
                             &job.query,
                             &job.ref_file,
                             job.px,

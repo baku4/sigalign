@@ -1,26 +1,22 @@
 use super::{
     DpMatrix,
+    parse_valid_local_result_from_dpm,
+    parse_valid_semi_global_result_from_dpm,
     target_indices_having_matched_pattern,
 };
 use sigalign::{
     results::{
-        QueryAlignment,
-        TargetAlignment,
-        Alignment,
-        AlignmentOperation,
+        Alignment, AlignmentOperation, QueryAlignment, TargetAlignment
     },
-    Aligner,
     Reference,
-    ReferenceBuilder,
-};
+    };
 use sigalign_utils::sequence_reader::{
-    fasta::FastaReader,
-    SeqRecord,
+    fasta::FastaReader, SeqRecord,
 };
-use ahash::AHashSet;
 use std::path::PathBuf;
+use ahash::AHashSet;
 
-pub fn dp_local_with_all_subs_to_to_pattern_existing_targets(
+pub fn dp_local_with_all_subs_to_pattern_existing_targets(
     query: &[u8],
     sig_reference: &Reference,
     mismatch_penalty: u32,
@@ -43,111 +39,29 @@ pub fn dp_local_with_all_subs_to_to_pattern_existing_targets(
     // Align
     for target_index in target_indices {
         let target = sig_reference.get_sequence(target_index).unwrap();
-        let dp_matrix = DpMatrix::new(
-            query.to_vec(),
-            target.to_vec(),
+
+        let alignments = dp_local_with_all_subs_to_target(
+            query,
+            &target,
             mismatch_penalty,
             gap_open_penalty,
             gap_extend_penalty,
+            min_length,
+            max_penalty_per_length,
         );
-        let alignments = parse_valid_local_result_from_dpm(
-            &dp_matrix, min_length, max_penalty_per_length,
-        );
+
         if alignments.len() != 0 {
             target_alignment_results.push(TargetAlignment {
                 index: target_index,
-                alignments,
+                alignments: alignments,
             });
         }
     }
-    QueryAlignment(target_alignment_results)
-}
-
-
-pub fn dp_local_to_target_pattern_existing_targets(
-    query: &[u8],
-    sig_reference: &Reference,
-    mismatch_penalty: u32,
-    gap_open_penalty: u32,
-    gap_extend_penalty: u32,
-    min_length: u32,
-    max_penalty_per_length: f32,
-) -> QueryAlignment {
-    let mut target_alignment_results = Vec::new();
-    // Fetch target indices
-    let target_indices = target_indices_having_matched_pattern(
-        query,
-        sig_reference,
-        mismatch_penalty, 
-        gap_open_penalty,
-        gap_extend_penalty,
-        min_length,
-        max_penalty_per_length,
-    );
-    // Align
-    for target_index in target_indices {
-        let target = sig_reference.get_sequence(target_index).unwrap();
-
-        // Get anchor alignment results
-        let mut all_anchor_alignment_results = Vec::new();
-        let query_length = query.len();
-        for substring_length in (1..=query_length).rev() {
-            for query_start_index in 0..(query_length+1-substring_length) {
-                let query_last_index = query_start_index + substring_length;
-                let substring = query[query_start_index..query_last_index].to_vec();
-                let dp_matrix = DpMatrix::new(
-                    substring,
-                    target.to_vec(),
-                    mismatch_penalty,
-                    gap_open_penalty,
-                    gap_extend_penalty,
-                );
-                
-                let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result_old(min_length, max_penalty_per_length);
-
-                adjust_position_of_alignments(
-                    &mut anchor_alignment_results,
-                    query_start_index,
-                );
-
-                all_anchor_alignment_results.extend(anchor_alignment_results);
-            }
-        };
-
-        // Sort by
-        //  1. query length - descending
-        //  2. query start index - ascending
-        all_anchor_alignment_results.sort_by(|a, b| {
-            let qlen1 = a.position.query.1 - a.position.query.0;
-            let qlen2 = b.position.query.1 - b.position.query.0;
-            qlen2.cmp(&qlen1)
-                .then(a.position.query.0.cmp(&b.position.query.0))
-        });
-
-        // Deduplicates
-        let mut target_alignment_result: TargetAlignment = TargetAlignment {
-            index: target_index,
-            alignments: Vec::new(),
-        };
-        let mut paths: AHashSet<(u32, u32)> = AHashSet::new();
-        all_anchor_alignment_results.into_iter().for_each(|x| {
-            let current_paths: AHashSet<(u32, u32)> = get_alignment_paths(&x);
-
-            if paths.is_disjoint(&current_paths) {
-                paths.extend(&current_paths);
-                target_alignment_result.alignments.push(x);
-            }
-        });
-
-        if target_alignment_result.alignments.len() != 0 {
-            target_alignment_results.push(target_alignment_result)
-        }
-    }
 
     QueryAlignment(target_alignment_results)
 }
 
-pub fn local_all_substring_with_dpm_using_all_target(
+pub fn dp_local_with_all_subs_to_ref_file(
     query: &[u8],
     ref_file: &PathBuf,
     mismatch_penalty: u32,
@@ -159,58 +73,106 @@ pub fn local_all_substring_with_dpm_using_all_target(
     let mut ref_reader = FastaReader::from_path(ref_file).unwrap();
     let mut target_buffer = Vec::new();
     let mut target_index = 0;
-    let mut target_alignment_results = Vec::new();
+
+    let mut result = Vec::new();
 
     while let Some(mut record) = ref_reader.next() {
         target_buffer.clear();
         record.extend_seq_buf(&mut target_buffer);
 
-        let mut target_alignment_result: TargetAlignment = TargetAlignment {
-            index: target_index,
-            alignments: Vec::new(),
-        };
+        let alignments = dp_local_with_all_subs_to_target(
+            query,
+            &target_buffer,
+            mismatch_penalty,
+            gap_open_penalty,
+            gap_extend_penalty,
+            min_length,
+            max_penalty_per_length,
+        );
 
-        let mut paths: AHashSet<(u32, u32)> = AHashSet::new();
-
-        let query_length = query.len();
-        for substring_length in (1..=query_length).rev() {
-            for query_start_index in 0..(query_length+1-substring_length) {
-                let query_last_index = query_start_index + substring_length;
-                let substring = query[query_start_index..query_last_index].to_vec();
-                let dp_matrix = DpMatrix::new(
-                    substring,
-                    target_buffer.clone(),
-                    mismatch_penalty,
-                    gap_open_penalty,
-                    gap_extend_penalty,
-                );
-
-                let mut anchor_alignment_results = dp_matrix.parse_valid_semi_global_result_old(min_length, max_penalty_per_length);
-
-                adjust_position_of_alignments(
-                    &mut anchor_alignment_results,
-                    query_start_index,
-                );
-
-                for anchor_alignment_result in anchor_alignment_results {
-                    let current_paths: AHashSet<(u32, u32)> = get_alignment_paths(&anchor_alignment_result);
-
-                    if paths.is_disjoint(&current_paths) {
-                        paths.extend(&current_paths);
-                        target_alignment_result.alignments.push(anchor_alignment_result);
-                    }
-                }
-            }
-        };
-
-        if target_alignment_result.alignments.len() != 0 {
-            target_alignment_results.push(target_alignment_result)
+        if alignments.len() != 0 {
+            result.push(TargetAlignment {
+                index: target_index,
+                alignments,
+            });
         }
 
         target_index += 1;
     }
+    QueryAlignment(result)
+}
 
-    QueryAlignment(target_alignment_results)
+pub fn dp_local_with_all_subs_to_target(
+    query: &[u8],
+    target: &[u8],
+    mismatch_penalty: u32,
+    gap_open_penalty: u32,
+    gap_extend_penalty: u32,
+    min_length: u32,
+    max_penalty_per_length: f32,
+) -> Vec<Alignment> {
+    let mut alignments = Vec::new();
+    // Get alignment results
+    let query_length = query.len();
+    for substring_length in (1..=query_length).rev() {
+        for query_start_index in 0..(query_length+1-substring_length) {
+            let query_last_index = query_start_index + substring_length;
+            let substring = query[query_start_index..query_last_index].to_vec();
+            let dp_matrix = DpMatrix::new(
+                substring,
+                target.to_vec(),
+                mismatch_penalty,
+                gap_open_penalty,
+                gap_extend_penalty,
+            );
+            
+            let mut alignments_for_substring = parse_valid_semi_global_result_from_dpm(
+                &dp_matrix, min_length, max_penalty_per_length,
+            );
+
+            adjust_position_of_alignments(
+                &mut alignments_for_substring,
+                query_start_index,
+            );
+
+            alignments.extend(alignments_for_substring);
+        }
+    };
+
+    // Sort by
+    //  1. query length - descending
+    //  2. query start index - ascending
+    //  3. penalty - ascending
+    alignments.sort_by(|a, b| {
+        let qlen1 = a.position.query.1 - a.position.query.0;
+        let qlen2 = b.position.query.1 - b.position.query.0;
+        qlen2.cmp(&qlen1)
+            .then(a.position.query.0.cmp(&b.position.query.0))
+            .then(a.penalty.cmp(&b.penalty))
+    });
+
+    // Deduplicates
+    let mut paths: AHashSet<(u32, u32)> = AHashSet::new();
+    let mut dedup_alignments = Vec::new();
+
+    alignments.into_iter().for_each(|x| {
+        let length = x.length;
+        let penalty = x.penalty;
+        if (
+            length >= min_length
+        ) && (
+            penalty <= (length as f64 * max_penalty_per_length as f64) as u32
+        ) {
+            let current_paths: AHashSet<(u32, u32)> = get_alignment_paths(&x);
+
+            if paths.is_disjoint(&current_paths) {
+                dedup_alignments.push(x);
+            }
+            paths.extend(&current_paths);
+        }
+    });
+
+    dedup_alignments
 }
 
 fn adjust_position_of_alignments(
@@ -223,16 +185,14 @@ fn adjust_position_of_alignments(
         query_position.1 += query_start_index as u32;
     });
 }
-fn get_alignment_paths(
-    alignments: &Alignment,
-) -> AHashSet<(u32, u32)> {
+fn get_alignment_paths(alignment: &Alignment) -> AHashSet<(u32, u32)> {
     let (mut query_index, mut target_index) = {
-        let query_index = alignments.position.query.0;
-        let target_index = alignments.position.target.0;
+        let query_index = alignment.position.query.0;
+        let target_index = alignment.position.target.0;
         (query_index, target_index)
     };
     let mut paths = AHashSet::new();
-    alignments.operations.iter().for_each(|operation| {
+    alignment.operations.iter().for_each(|operation| {
         match operation.operation {
             AlignmentOperation::Match | AlignmentOperation::Subst => {
                 for _ in 0..operation.count {
@@ -242,10 +202,10 @@ fn get_alignment_paths(
                 }
             },
             AlignmentOperation::Insertion => {
-                target_index += operation.count;
+                query_index += operation.count;
             },
             AlignmentOperation::Deletion => {
-                query_index += operation.count;
+                target_index += operation.count;
             },
         }
     });

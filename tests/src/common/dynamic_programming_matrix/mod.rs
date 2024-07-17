@@ -16,9 +16,12 @@ pub use alignment::{
     dp_semi_global_to_pattern_existing_targets,
     dp_semi_global_to_ref_file,
     dp_semi_global_to_target,
-    dp_local_to_pattern_existing_targets,
-    dp_local_to_ref_file,
-    dp_local_to_target,
+    dp_local_with_one_mat_to_pattern_existing_targets,
+    dp_local_with_one_mat_to_ref_file,
+    dp_local_with_one_mat_to_target,
+    dp_local_with_all_subs_to_pattern_existing_targets,
+    dp_local_with_all_subs_to_ref_file,
+    dp_local_with_all_subs_to_target,
 };
 
 #[derive(Debug, Clone)]
