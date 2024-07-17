@@ -1,4 +1,5 @@
 use sigalign::results::Alignment;
+const PREC_SCALE: u32 = 100_000;
 
 use super::{
     DpMatrix,
@@ -22,7 +23,7 @@ pub fn parse_valid_semi_global_result_from_dpm(
         if (
             length >= minimum_length
         ) && (
-            penalty <= (length as f64 * maximum_penalty_per_length as f64) as u32
+            penalty * PREC_SCALE <= (length * (maximum_penalty_per_length * PREC_SCALE as f32) as u32)
         ) {
             Some(x)
         } else {

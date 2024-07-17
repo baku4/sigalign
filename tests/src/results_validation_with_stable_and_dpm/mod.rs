@@ -1,4 +1,5 @@
 use log::{error, info};
+use ahash::AHashSet as HashSet;
 use crate::common::{
     init_logger,
     test_data::DataForValidation,
@@ -35,7 +36,7 @@ use check_results::{
     sort_alignments_by_optimality,
 };
 mod dpm_results_cache;
-use dpm_results_cache::DpmAlignerWithCache;
+use dpm_results_cache::{DpmAlignerWithCache, DpmMode};
 
 const MAX_MISMATCH_PER_100_BASES: u32 = 3;
 const REGULATOR_START_SEED: u64 = 0;
@@ -127,7 +128,8 @@ fn test_local_is_equal_to_stable_or_dpm() {
                     target_alignment.unwrap().alignments
                 };
                 let dpm_alignments = {
-                    let dpm_aligner = DpmAlignerWithCache::new_local_with_all_subs(
+                    let dpm_aligner = DpmAlignerWithCache::new(
+                        DpmMode::LocalWithAllSubs,
                         test_data.get_tag().to_string(),
                         query_index,
                         *target_index,
@@ -158,6 +160,12 @@ fn test_local_is_equal_to_stable_or_dpm() {
                     error!(" - Target: {}", String::from_utf8_lossy(&target));
                     error!(" - Current results: {:?}", current_dedup_alignments);
                     error!(" - DPM results: {:?}", dpm_alignments);
+                    let set_current: HashSet<Alignment> = current_dedup_alignments.iter().cloned().collect();
+                    let set_dpm: HashSet<Alignment> = dpm_alignments.iter().cloned().collect();
+                    let only_in_current = set_current.difference(&set_dpm).collect::<Vec<_>>();
+                    let only_in_dpm = set_dpm.difference(&set_current).collect::<Vec<_>>();
+                    error!(" - Only in current: {:?}", only_in_current);
+                    error!(" - Only in DPM: {:?}", only_in_dpm);
                     panic!("The results are not equal to DPM");
                 } else {
                     info!("[Query index: {}] Target index: {} is equal to DPM", query_index, target_index);

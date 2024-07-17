@@ -1,6 +1,5 @@
 use super::{
     DpMatrix,
-    parse_valid_local_result_from_dpm,
     parse_valid_semi_global_result_from_dpm,
     target_indices_having_matched_pattern,
 };
@@ -15,6 +14,7 @@ use sigalign_utils::sequence_reader::{
 };
 use std::path::PathBuf;
 use ahash::AHashSet;
+const PREC_SCALE: u32 = 100_000;
 
 pub fn dp_local_with_all_subs_to_pattern_existing_targets(
     query: &[u8],
@@ -161,7 +161,7 @@ pub fn dp_local_with_all_subs_to_target(
         if (
             length >= min_length
         ) && (
-            penalty <= (length as f64 * max_penalty_per_length as f64) as u32
+            penalty * PREC_SCALE <= (length * (max_penalty_per_length * PREC_SCALE as f32) as u32)
         ) {
             let current_paths: AHashSet<(u32, u32)> = get_alignment_paths(&x);
 
