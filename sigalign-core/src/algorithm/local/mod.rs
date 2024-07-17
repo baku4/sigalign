@@ -132,34 +132,20 @@ fn local_alignment_query_to_target(
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
                 // (2) If extension exists, continue
-                //   - If extension does not exists (i.e., leftmost anchor is already used), pass.
+                //   - If extension does not exists:
+                //     (i.e., alignment result is invalid or leftmost anchor is already used), pass.
                 if let Some(extension) = optional_extension {
-                    // Mark right traversed anchors to skip
-                    if extension.right_operation_meet_edge {
-                        // Mark all
-                        traversed_anchors_buffer.iter().for_each(|tv| {
+                    traversed_anchors_buffer.iter().for_each(|tv| {
+                        if tv.to_skip {
                             anchor_table.0[
                                 tv.addt_pattern_index as usize
                             ][
                                 tv.addt_target_position as usize
                             ].to_skip = true;
-                        });
-                    } else {
-                        // Mark only PD >= 0
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            if tv.to_skip {
-                                anchor_table.0[
-                                    tv.addt_pattern_index as usize
-                                ][
-                                    tv.addt_target_position as usize
-                                ].to_skip = true;
-                            }
-                        });
-                    }
-                    if extension.is_valid {
-                        let alignment = extension.parse_anchor_alignment_result(operations_buffer);
-                        alignment_results.push(alignment);
-                    }
+                        }
+                    });
+                    let alignment = extension.parse_anchor_alignment_result(operations_buffer);
+                    alignment_results.push(alignment);
                 }
             }
         });
