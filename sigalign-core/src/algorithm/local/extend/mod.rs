@@ -36,7 +36,6 @@ pub fn extend_anchor(
     right_vpc_buffer: &mut Vec<Vpc>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> Option<Extension> {
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
@@ -161,8 +160,6 @@ pub fn extend_anchor(
         length: alignment_length,
         left_side_operation_range: left_operation_range_in_buffer,
         right_side_operation_range: right_operation_range_in_buffer,
-        right_operation_meet_edge: true,
-        is_valid: true, //FIXME: to remove this field
     };
     Some(extension)
 }

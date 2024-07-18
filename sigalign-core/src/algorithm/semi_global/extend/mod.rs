@@ -8,24 +8,13 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, BackTraceMarker, BackTraceResult, TraversedAnchor,
+    WaveFront, BackTraceMarker, TraversedAnchor,
     Extension,
     SparePenaltyCalculator,
     transform_right_additive_positions_to_traversed_anchor_index,
 };
 
 mod backtrace;
-
-#[derive(Debug, Clone)]
-pub struct SemiGlobalExtension {
-    pub penalty: u32,
-    pub length: u32,
-    pub alignment_position: AlignmentPosition,
-    pub left_side_operation_range: (u32, u32),
-    pub left_traversed_anchor_range: (u32, u32),
-    pub right_side_operation_range: (u32, u32),
-    pub right_traversed_anchor_range: (u32, u32),
-}
 
 // Return the optional extension of anchor
 //  - None if this anchor is
@@ -47,7 +36,6 @@ pub fn extend_anchor(
     wave_front: &mut WaveFront,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> Option<Extension> { // None if already used position or not reached to the end
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
@@ -192,8 +180,6 @@ pub fn extend_anchor(
         length: alignment_length,
         left_side_operation_range: left_operation_range_in_buffer,
         right_side_operation_range: right_operation_range_in_buffer,
-        right_operation_meet_edge: true, // Always true in semi-global
-        is_valid,
     };
     return Some(extension);
 }

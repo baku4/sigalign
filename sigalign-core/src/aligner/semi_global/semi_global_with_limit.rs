@@ -52,7 +52,6 @@ impl SemiGlobalWithLimitAligner {
             &mut self.workspace.wave_front_buffer.as_mut(),
             &mut self.workspace.traversed_anchors_buffer,
             &mut self.workspace.operations_buffer,
-            &mut self.workspace.positions_hash,
             self.limit,
         );
         self.regulator.decompress_result_with_gcd(&mut result);

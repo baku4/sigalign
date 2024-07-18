@@ -13,8 +13,6 @@ pub struct Extension {
     pub length: u32,
     pub left_side_operation_range: (u32, u32),
     pub right_side_operation_range: (u32, u32),
-    pub right_operation_meet_edge: bool,
-    pub is_valid: bool,
 }
 
 impl Extension {

@@ -11,16 +11,13 @@ use wave_front::{
     WaveFrontScore,
     BackTraceMarker,
 };
-pub use wave_front::{WaveFront, BackTraceResult, TraversedAnchor};
+pub use wave_front::{WaveFront, TraversedAnchor};
 
 mod spare_penalty;
 pub use spare_penalty::SparePenaltyCalculator;
 
 mod traversed;
-use traversed::{
-    get_leftmost_anchor_index_if_not_used_as_result,
-    transform_right_additive_positions_to_traversed_anchor_index,
-};
+use traversed::transform_right_additive_positions_to_traversed_anchor_index;
 
 mod extension;
 pub use extension::Extension;
