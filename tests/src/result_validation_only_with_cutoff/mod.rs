@@ -24,18 +24,18 @@ fn test_local_mode_gives_valid_results_for_cutoffs() {
             Local::new(px, po, pe, minl, maxp).unwrap()
         )
     };
-    let settings = TestSetting::from_env().unwrap().validation_with_cutoff;
+    let settings = TestSetting::from_env().unwrap().val_with_cutoff;
     let regulators = (
-        settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+        settings.seed_start..settings.seed_start + settings.seed_count
     ).map(|seed| gen_random_regulator(
-        settings.max_match_per_100_bases,
+        settings.max_subst_percent,
         seed,
     )).collect::<Vec<_>>();
 
     test_of_current_algorithm(
         &current_aligner_generator,
         regulators,
-        settings.query_sampling_interval,
+        settings.query_interval,
     );
 }
 
@@ -46,18 +46,18 @@ fn test_semi_global_mode_gives_valid_results_for_cutoffs() {
             SemiGlobal::new(px, po, pe, minl, maxp).unwrap()
         )
     };
-    let settings = TestSetting::from_env().unwrap().validation_with_cutoff;
+    let settings = TestSetting::from_env().unwrap().val_with_cutoff;
     let regulators = (
-        settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+        settings.seed_start..settings.seed_start + settings.seed_count
     ).map(|seed| gen_random_regulator(
-        settings.max_match_per_100_bases,
+        settings.max_subst_percent,
         seed,
     )).collect::<Vec<_>>();
 
     test_of_current_algorithm(
         &current_aligner_generator,
         regulators,
-        settings.query_sampling_interval,
+        settings.query_interval,
     );
 }
 

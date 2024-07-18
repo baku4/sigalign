@@ -7,7 +7,7 @@ use crate::{
             AllocationStrategy, DefaultDoublingStrategy, QueryLengthChecker, WaveFrontBuffer
         }
     },
-    results::{AlignmentOperations, AlignmentPosition},
+    results::AlignmentOperations,
 };
 
 #[derive(Clone)]
@@ -17,7 +17,6 @@ pub struct SemiGlobalWorkspace {
     pub wave_front_buffer: WaveFrontBuffer,
     pub traversed_anchors_buffer: Vec<TraversedAnchor>,
     pub operations_buffer: Vec<AlignmentOperations>,
-    pub positions_hash: ahash::AHashSet<AlignmentPosition>,
 }
 impl SemiGlobalWorkspace {
     pub fn init(regulator: &AlignmentRegulator) -> Self {
@@ -39,7 +38,6 @@ impl SemiGlobalWorkspace {
             wave_front_buffer,
             traversed_anchors_buffer: Vec::new(),
             operations_buffer: Vec::new(),
-            positions_hash: ahash::AHashSet::new(),
         }
     }
     pub fn allocate_more_space_if_needed(

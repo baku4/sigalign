@@ -1,10 +1,6 @@
-use crate::{
-    core::regulators::{Penalty, PREC_SCALE},
-    results::AlignmentOperations,
-};
+use crate::core::regulators::{Penalty, PREC_SCALE};
 use super::{
-    AnchorTable, AnchorIndex,
-    WaveFront, BackTraceMarker, BackTraceResult, TraversedAnchor,
+    WaveFront, BackTraceMarker, TraversedAnchor,
 };
 use num::integer::div_rem;
 
@@ -15,31 +11,6 @@ enum ComponentType {
 }
 
 impl WaveFront {
-    #[inline]
-    pub fn backtrace_from_the_end_of_right_side(
-        &self,
-        pattern_size: u32,
-        scaled_maximum_penalty_per_length: i32,
-        pattern_count_of_anchor: u32,
-        penalties: &Penalty,
-        operations_buffer: &mut Vec<AlignmentOperations>,
-        traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    ) -> BackTraceResult {
-        let (penalty, component_index) = self.get_penalty_and_component_index_from_end();
-        self.backtrace_of_right_side(
-            penalty, scaled_maximum_penalty_per_length, pattern_size, pattern_count_of_anchor, component_index, penalties, operations_buffer, traversed_anchors_buffer
-        )
-    }
-    #[inline(always)]
-    fn get_penalty_and_component_index_from_end(&self) -> (u32, u32) {
-        let end_point = &self.end_point;
-        let penalty = end_point.penalty as u32;
-        let component_index = {
-            let k = unsafe { end_point.k.unwrap_unchecked() };
-            self.wave_front_scores[penalty as usize].max_k + k
-        } as u32;
-        (penalty, component_index)
-    }
     // Codes for "operation" is removed from original "backtrace_of_right_side" method
     #[inline]
     pub fn backtrace_to_get_only_right_traversed_anchors(

@@ -8,7 +8,7 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, BackTraceMarker, BackTraceResult, TraversedAnchor,
+    WaveFront, BackTraceMarker, TraversedAnchor,
     Extension,
     SparePenaltyCalculator,
     transform_right_additive_positions_to_traversed_anchor_index,
@@ -16,18 +16,12 @@ use super::{
 
 mod backtrace;
 
-#[derive(Debug, Clone)]
-pub struct SemiGlobalExtension {
-    pub penalty: u32,
-    pub length: u32,
-    pub alignment_position: AlignmentPosition,
-    pub left_side_operation_range: (u32, u32),
-    pub left_traversed_anchor_range: (u32, u32),
-    pub right_side_operation_range: (u32, u32),
-    pub right_traversed_anchor_range: (u32, u32),
-}
-
-// Assuming leftmost anchor
+// Return the optional extension of anchor
+//  - None if this anchor is
+//     - invalid
+//        - not meet sequences' end
+//        - not satisfy the cutoff
+//     - or not leftmost (= having traversed anchor on the left)
 #[inline]
 pub fn extend_anchor(
     anchor_table: &AnchorTable,
@@ -42,7 +36,6 @@ pub fn extend_anchor(
     wave_front: &mut WaveFront,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> Option<Extension> { // None if already used position or not reached to the end
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
@@ -151,7 +144,26 @@ pub fn extend_anchor(
     let (left_query_length, left_target_length, left_alignment_length) = wave_front.get_proceed_length(
         left_end_point.0, left_end_point.1
     );
-    //   - Check if the position is already used 
+    //   - Check if this alignment is valid
+    let alignment_length = left_alignment_length + right_alignment_length + anchor_size;
+    let penalty = left_end_point.0 + right_end_point.0;
+    let is_valid = {
+        (alignment_length >= cutoff.minimum_length)
+        && (cutoff.maximum_scaled_penalty_per_length * alignment_length >= penalty * PREC_SCALE)
+    };
+    if !is_valid {
+        return None;
+    }
+    // 3.5. Get the operations range
+    let left_operation_range_in_buffer = wave_front.backtrace_of_left_side_while_checking_this_anchor_is_leftmost(
+        left_end_point.0,
+        *pattern_size,
+        left_end_point.1,
+        penalties,
+        operations_buffer,
+    )?;
+
+    // 5. Push extension
     let alignment_position = AlignmentPosition {
         query: (
             left_query_end_index - left_query_length,
@@ -162,36 +174,12 @@ pub fn extend_anchor(
             right_target_start_index + right_target_length,
         ),
     };
-    if positions_hash.contains(&alignment_position) {
-        return None
-    } else {
-        positions_hash.insert(alignment_position.clone());
-    }
-    //   - Check if this alignment is valid
-    let alignment_length = left_alignment_length + right_alignment_length + anchor_size;
-    let penalty = left_end_point.0 + right_end_point.0;
-    let is_valid = {
-        (alignment_length >= cutoff.minimum_length)
-        && (cutoff.maximum_scaled_penalty_per_length * alignment_length >= penalty * PREC_SCALE)
-    } ;
-    // 3.5. Get the operations range
-    let left_operation_range_in_buffer = wave_front.backtrace_of_left_side_without_checking_traversed(
-        left_end_point.0,
-        *pattern_size,
-        left_end_point.1,
-        penalties,
-        operations_buffer,
-    );
-    
-    // 5. Push extension
     let extension = Extension {
         alignment_position,
         penalty,
         length: alignment_length,
         left_side_operation_range: left_operation_range_in_buffer,
         right_side_operation_range: right_operation_range_in_buffer,
-        right_operation_meet_edge: true, // Always true in semi-global
-        is_valid,
     };
     return Some(extension);
 }

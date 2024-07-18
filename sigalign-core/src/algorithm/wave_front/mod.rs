@@ -1,15 +1,11 @@
 use crate::core::regulators::Penalty;
-use super::{
-    AnchorTable, AnchorIndex,
-    get_leftmost_anchor_index_if_not_used_as_result,
-};
 use bytemuck::{Pod, Zeroable};
 
 mod match_counter;
 use match_counter::{MatchCounter, ForwardMatchCounter, ReverseMatchCounter};
 mod fill;
 mod backtrace;
-pub use backtrace::{BackTraceResult, TraversedAnchor};
+pub use backtrace::TraversedAnchor;
 
 // Wave Front
 #[derive(Debug, Clone)]
@@ -74,14 +70,6 @@ impl WaveFront {
             end_point: WaveEndPoint { penalty: 0, k: None },
             wave_front_scores,
         }
-    }
-    #[inline]
-    pub fn is_reached_to_sequence_end(&self) -> bool {
-        self.end_point.k.is_some()
-    }
-    #[inline]
-    pub fn penalty_of_end_point(&self) -> usize {
-        self.end_point.penalty
     }
     #[inline]
     // Return penalty and component index

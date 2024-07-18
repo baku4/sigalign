@@ -6,6 +6,8 @@ use super::{
     parse_the_unoverlapped_alignments_with_path,
 };
 
+const PREC_SCALE: u32 = 100_000;
+
 pub fn parse_valid_local_result_from_dpm(
     dp_matrix: &DpMatrix,
     minimum_length: u32,
@@ -31,7 +33,7 @@ pub fn parse_valid_local_result_from_dpm(
                 if (
                     length >= minimum_length
                 ) && (
-                    penalty <= (length as f64 * maximum_penalty_per_length as f64) as u32
+                    penalty * PREC_SCALE <= (length * (maximum_penalty_per_length * PREC_SCALE as f32) as u32)
                 ) {
                     if paths.is_disjoint(&path) {
                         result.push(alignment);

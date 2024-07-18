@@ -5,7 +5,7 @@ use super::{
 };
 use sigalign::{
     results::{
-        Alignment, AlignmentOperation, QueryAlignment, TargetAlignment
+        Alignment, QueryAlignment, TargetAlignment
     },
     Reference,
     };
@@ -13,7 +13,6 @@ use sigalign_utils::sequence_reader::{
     fasta::FastaReader, SeqRecord,
 };
 use std::path::PathBuf;
-use ahash::AHashSet;
 
 pub fn dp_local_with_one_mat_to_pattern_existing_targets(
     query: &[u8],

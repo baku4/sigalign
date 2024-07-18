@@ -7,12 +7,12 @@ use crate::{
     },
     results::{
         QueryAlignment, TargetAlignment, Alignment,
-        AlignmentOperations, AlignmentPosition,
+        AlignmentOperations,
     },
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, BackTraceMarker, BackTraceResult, TraversedAnchor,
+    WaveFront, BackTraceMarker, TraversedAnchor,
     Extension, SparePenaltyCalculator,
     transform_right_additive_positions_to_traversed_anchor_index,
 };
@@ -35,7 +35,6 @@ pub fn semi_global_alignment_algorithm<L: BufferedPatternLocator>(
     wave_front: &mut WaveFront,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> QueryAlignment {
     let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
     let target_alignment_results: Vec<TargetAlignment> = anchor_table_map.iter_mut().filter_map(|(target_index, anchor_table)| {
@@ -52,7 +51,6 @@ pub fn semi_global_alignment_algorithm<L: BufferedPatternLocator>(
             wave_front,
             traversed_anchors_buffer,
             operations_buffer,
-            positions_hash,
         );
 
         if anchor_alignment_results.is_empty() {
@@ -80,12 +78,10 @@ fn semi_global_alignment_query_to_target(
     wave_front: &mut WaveFront,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> Vec<Alignment> {
     // Initialize
     //   - (1) Clear the buffers
     operations_buffer.clear();
-    positions_hash.clear();
     //   - (2) Change the last pattern index
     spare_penalty_calculator.change_last_pattern_index(
         anchor_table.0.len() as u32 - 1
@@ -113,47 +109,27 @@ fn semi_global_alignment_query_to_target(
                     wave_front,
                     operations_buffer,
                     traversed_anchors_buffer,
-                    positions_hash,
                 );
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
                 // (2) If extension exists
-                if let Some(extension) = optional_extension {
-                    if extension.is_valid {
-                        // Mark all
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        });
-                        let alignment = extension.parse_anchor_alignment_result(operations_buffer);
-                        alignment_results.push(alignment);
-                    } else {
-                        // Mark only PD >= 0
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            if tv.to_skip {
-                                anchor_table.0[
-                                    tv.addt_pattern_index as usize
-                                ][
-                                    tv.addt_target_position as usize
-                                ].to_skip = true;
-                            }
-                        });
+                //   - Mark skipped anchors:
+                //     Semi-global can always check the right traversed anchor.
+                //     Right backtracing is always happened.
+                //     "traversed_anchors_buffer" is always filled with right traversed anchors.
+                traversed_anchors_buffer.iter().for_each(|tv| {
+                    if tv.to_skip {
+                        anchor_table.0[
+                            tv.addt_pattern_index as usize
+                        ][
+                            tv.addt_target_position as usize
+                        ].to_skip = true;
                     }
-                } else {
-                    // If extension not exists: mark the right traversed anchor and continue
-                    // Mark only PD >= 0
-                    traversed_anchors_buffer.iter().for_each(|tv| {
-                        if tv.to_skip {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        }
-                    });
+                });
+                //   - Output alignment when extension exists
+                if let Some(extension) = optional_extension {
+                    let alignment = extension.parse_anchor_alignment_result(operations_buffer);
+                    alignment_results.push(alignment);
                 }
             }
         });
@@ -176,7 +152,6 @@ pub fn semi_global_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
     wave_front: &mut WaveFront,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
     // Limit of the number of alignments
     mut limit: u32,
 ) -> QueryAlignment {
@@ -197,7 +172,6 @@ pub fn semi_global_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
             wave_front,
             traversed_anchors_buffer,
             operations_buffer,
-            positions_hash,
             &mut limit,
         );
         if !alignment_results.is_empty() {
@@ -226,14 +200,12 @@ fn semi_global_alignment_query_to_target_with_limit(
     wave_front: &mut WaveFront,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
     // Limit of the number of alignments
     limit: &mut u32,
 ) -> Vec<Alignment> {
     // Initialize
     //   - (1) Clear the buffers
     operations_buffer.clear();
-    positions_hash.clear();
     //   - (2) Change the last pattern index
     spare_penalty_calculator.change_last_pattern_index(
         anchor_table.0.len() as u32 - 1
@@ -264,38 +236,28 @@ fn semi_global_alignment_query_to_target_with_limit(
                     wave_front,
                     operations_buffer,
                     traversed_anchors_buffer,
-                    positions_hash,
                 );
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
-
                 // (2) If extension exists
-                if let Some(extension) = optional_extension {
-                    // Mark all
-                    traversed_anchors_buffer.iter().for_each(|tv| {
+                //   - Mark skipped anchors:
+                //     Semi-global can always check the right traversed anchor.
+                //     Right backtracing is always happened.
+                //     "traversed_anchors_buffer" is always filled with right traversed anchors.
+                traversed_anchors_buffer.iter().for_each(|tv| {
+                    if tv.to_skip {
                         anchor_table.0[
                             tv.addt_pattern_index as usize
                         ][
                             tv.addt_target_position as usize
                         ].to_skip = true;
-                    });
-                    if extension.is_valid {
-                        let alignment = extension.parse_anchor_alignment_result(operations_buffer);
-                        alignment_results.push(alignment);
-                        // Reduce the limit
-                        *limit -= 1;
                     }
-                } else {
-                    // If extension not exists: mark the right traversed anchor and continue
-                    // Mark only PD >= 0
-                    traversed_anchors_buffer.iter().for_each(|tv| {
-                        if tv.to_skip {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        }
-                    });
+                });
+                //   - Output alignment when extension exists
+                if let Some(extension) = optional_extension {
+                    let alignment = extension.parse_anchor_alignment_result(operations_buffer);
+                    alignment_results.push(alignment);
+                    // Reduce the limit
+                    *limit -= 1;
                 }
             }
         }

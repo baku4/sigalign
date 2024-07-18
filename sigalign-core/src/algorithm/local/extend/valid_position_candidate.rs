@@ -42,10 +42,6 @@ impl Vpc {
         
         (optimal_left_vpc_index, optimal_right_vpc_index)
     }
-    pub fn get_alignment_length(&self, maximum_scaled_penalty_per_length: u32) -> u32 {
-        // PD = maxp * length - penalty
-        ((self.penalty * PREC_SCALE) as i32 + self.scaled_penalty_delta) as u32 / maximum_scaled_penalty_per_length
-    }
 }
 
 impl WaveFront {
@@ -157,26 +153,4 @@ impl WaveFrontScore {
 
         (max_query_length as u32, length_cache, comp_index_cache as u32)
     }
-}
-
-#[test]
-fn test_alignment_length_calculation() {
-    let alignment_length = 100;
-    let penalty = 5 as u32;
-    let maximum_scaled_penalty_per_length = (0.01) * PREC_SCALE as f32;
-
-    let scaled_penalty_delta = (
-        alignment_length as u32 * maximum_scaled_penalty_per_length as u32
-    ) as i32 - (penalty * PREC_SCALE) as i32;
-
-    let vpc = Vpc {
-        scaled_penalty_delta,
-        query_length: 0, // Not needed
-        penalty,
-        component_index: 0, // Not needed
-    };
-    assert_eq!(
-        vpc.get_alignment_length(maximum_scaled_penalty_per_length as u32),
-        alignment_length,
-    );
 }

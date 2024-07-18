@@ -7,7 +7,7 @@ use crate::{
     },
     results::{
         QueryAlignment, TargetAlignment, Alignment,
-        AlignmentOperations, AlignmentPosition,
+        AlignmentOperations,
     },
 };
 use super::{
@@ -38,7 +38,6 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> QueryAlignment {
     let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
 
@@ -59,7 +58,6 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
             right_vpc_buffer,
             traversed_anchors_buffer,
             operations_buffer,
-            positions_hash,
         );
 
         if anchor_alignment_results.is_empty() {
@@ -91,12 +89,10 @@ fn local_alignment_query_to_target(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
 ) -> Vec<Alignment> {
     // Initialize
     //   - (1) Clear the buffers
     operations_buffer.clear();
-    positions_hash.clear();
     //   - (2) Change the last pattern index
     spare_penalty_calculator.change_last_pattern_index(
         anchor_table.0.len() as u32 - 1
@@ -127,39 +123,24 @@ fn local_alignment_query_to_target(
                     right_vpc_buffer,
                     operations_buffer,
                     traversed_anchors_buffer,
-                    positions_hash,
                 );
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
                 // (2) If extension exists, continue
-                //   - If extension does not exists (i.e., leftmost anchor is already used), pass.
+                //   - If extension does not exists:
+                //     (i.e., alignment result is invalid or leftmost anchor is already used), pass.
                 if let Some(extension) = optional_extension {
-                    // Mark right traversed anchors to skip
-                    if extension.right_operation_meet_edge {
-                        // Mark all
-                        traversed_anchors_buffer.iter().for_each(|tv| {
+                    traversed_anchors_buffer.iter().for_each(|tv| {
+                        if tv.to_skip {
                             anchor_table.0[
                                 tv.addt_pattern_index as usize
                             ][
                                 tv.addt_target_position as usize
                             ].to_skip = true;
-                        });
-                    } else {
-                        // Mark only PD >= 0
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            if tv.to_skip {
-                                anchor_table.0[
-                                    tv.addt_pattern_index as usize
-                                ][
-                                    tv.addt_target_position as usize
-                                ].to_skip = true;
-                            }
-                        });
-                    }
-                    if extension.is_valid {
-                        let alignment = extension.parse_anchor_alignment_result(operations_buffer);
-                        alignment_results.push(alignment);
-                    }
+                        }
+                    });
+                    let alignment = extension.parse_anchor_alignment_result(operations_buffer);
+                    alignment_results.push(alignment);
                 }
             }
         });
@@ -184,7 +165,6 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
     // Limit of the number of alignments
     mut limit: u32,
 ) -> QueryAlignment {
@@ -208,7 +188,6 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
             right_vpc_buffer,
             traversed_anchors_buffer,
             operations_buffer,
-            positions_hash,
             &mut limit,
         );
         if !anchor_alignment_results.is_empty() {
@@ -241,14 +220,12 @@ fn local_alignment_query_to_target_with_limit(
     right_vpc_buffer: &mut Vec<Vpc>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
     // Limit of the number of alignments
     limit: &mut u32,
 ) -> Vec<Alignment> {
     // Initialize
     //   - (1) Clear the buffers
     operations_buffer.clear();
-    positions_hash.clear();
     //   - (2) Change the last pattern index
     spare_penalty_calculator.change_last_pattern_index(
         anchor_table.0.len() as u32 - 1
@@ -282,41 +259,26 @@ fn local_alignment_query_to_target_with_limit(
                     right_vpc_buffer,
                     operations_buffer,
                     traversed_anchors_buffer,
-                    positions_hash,
                 );
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
                 // (2) If extension exists, continue
-                //   - If extension does not exists (i.e., leftmost anchor is already used), pass.
+                //   - If extension does not exists:
+                //     (i.e., alignment result is invalid or leftmost anchor is already used), pass.
                 if let Some(extension) = optional_extension {
-                    // Mark right traversed anchors to skip
-                    if extension.right_operation_meet_edge {
-                        // Mark all
-                        traversed_anchors_buffer.iter().for_each(|tv| {
+                    traversed_anchors_buffer.iter().for_each(|tv| {
+                        if tv.to_skip {
                             anchor_table.0[
                                 tv.addt_pattern_index as usize
                             ][
                                 tv.addt_target_position as usize
                             ].to_skip = true;
-                        });
-                    } else {
-                        // Mark only PD >= 0
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            if tv.to_skip {
-                                anchor_table.0[
-                                    tv.addt_pattern_index as usize
-                                ][
-                                    tv.addt_target_position as usize
-                                ].to_skip = true;
-                            }
-                        });
-                    }
-                    if extension.is_valid {
-                        let alignment = extension.parse_anchor_alignment_result(operations_buffer);
-                        alignment_results.push(alignment);
-                        // Reduce the limit
-                        *limit -= 1;
-                    }
+                        }
+                    });
+                    let alignment = extension.parse_anchor_alignment_result(operations_buffer);
+                    alignment_results.push(alignment);
+                    // Reduce the limit
+                    *limit -= 1;
                 }
             }
         }

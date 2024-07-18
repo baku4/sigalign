@@ -15,7 +15,10 @@ use super::{
 mod valid_position_candidate;
 pub use valid_position_candidate::Vpc;
 
-// Assuming leftmost anchor
+// Return the optional extension of anchor
+//  - None if this anchor is
+//     - invalid
+//     - or not leftmost (= having traversed anchor on the left)
 #[inline]
 pub fn extend_anchor(
     anchor_table: &AnchorTable,
@@ -33,8 +36,7 @@ pub fn extend_anchor(
     right_vpc_buffer: &mut Vec<Vpc>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
-    positions_hash: &mut ahash::AHashSet<AlignmentPosition>,
-) -> Option<Extension> { // None if already used position
+) -> Option<Extension> {
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
     // 1.1. Define the range of sequence to extend    
@@ -102,7 +104,7 @@ pub fn extend_anchor(
     );
     let left_optimal_vpc = &left_vpc_buffer[optimal_left_vpc_index];
     let right_optimal_vpc = &right_vpc_buffer[optimal_right_vpc_index];
-    // 4.2. Check the alignment result before backtracing
+    // 4.2. Check if the alignment result is valid before backtracing
     let (alignment_position, alignment_length) = {
         let (q1, t1, a1) = left_wave_front.get_proceed_length(left_optimal_vpc.penalty, left_optimal_vpc.component_index);
         let (q2, t2, a2) = right_wave_front.get_proceed_length(right_optimal_vpc.penalty, right_optimal_vpc.component_index);
@@ -120,20 +122,19 @@ pub fn extend_anchor(
             a1 + a2 + anchor_size,
         )
     };
-    //   - Check if the position is already used
-    if positions_hash.contains(&alignment_position) {
+    if alignment_length < cutoff.minimum_length {
         return None
-    } else {
-        positions_hash.insert(alignment_position.clone());
     }
-    //   - Check if this alignment is valid
-    let is_valid = alignment_length >= cutoff.minimum_length;
-    // 4.3. Backtrace from right
-    //   - primary purpose is finding the traversed anchors to skip
-    let right_operation_meet_edge = {
-        right_wave_front.is_reached_to_sequence_end()
-        && (right_wave_front.penalty_of_end_point() as u32 == right_optimal_vpc.penalty)
-    };
+    // 4.3. Backtrace from left
+    //   - None if this anchor is not leftmost (= having traversed anchor on the left)
+    let left_operation_range_in_buffer = left_wave_front.backtrace_of_left_side_while_checking_this_anchor_is_leftmost(
+        left_optimal_vpc.penalty,
+        *pattern_size,
+        left_optimal_vpc.component_index,
+        penalties,
+        operations_buffer,
+    )?;
+    // 4.4. Backtrace from right
     let right_operation_range_in_buffer = right_wave_front.backtrace_of_right_side_with_checking_traversed(
         right_optimal_vpc.penalty,
         cutoff.maximum_scaled_penalty_per_length as i32,
@@ -151,18 +152,7 @@ pub fn extend_anchor(
         left_target_end_index,
         *pattern_size,
     );
-    // 4.3. Backtrace from left
-    let left_operation_range_in_buffer = if is_valid {
-        left_wave_front.backtrace_of_left_side_without_checking_traversed(
-            left_optimal_vpc.penalty,
-            *pattern_size,
-            left_optimal_vpc.component_index,
-            penalties,
-            operations_buffer,
-        )
-    } else {
-        (0 ,0)
-    };
+
     // 5. Push extension
     let extension = Extension {
         alignment_position,
@@ -170,8 +160,6 @@ pub fn extend_anchor(
         length: alignment_length,
         left_side_operation_range: left_operation_range_in_buffer,
         right_side_operation_range: right_operation_range_in_buffer,
-        right_operation_meet_edge,
-        is_valid,
     };
     Some(extension)
 }

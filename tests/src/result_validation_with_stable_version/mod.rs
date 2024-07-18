@@ -40,11 +40,11 @@ fn test_local_mode_of_current_algorithm_with_random_regulator() {
     let stable_aligner_generator = |px, po, pe, minl, maxp| {
         StableAligner::new_local(px, po, pe, minl, maxp).unwrap()
     };
-    let settings = TestSetting::from_env().unwrap().validation_with_stable;
+    let settings = TestSetting::from_env().unwrap().val_with_stable;
     let regulators = (
-        settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+        settings.seed_start..settings.seed_start + settings.seed_count
     ).map(|seed| gen_random_regulator_not_errored_in_v03(
-        settings.max_match_per_100_bases,
+        settings.max_subst_percent,
         seed,
     )).collect::<Vec<_>>();
 
@@ -52,7 +52,7 @@ fn test_local_mode_of_current_algorithm_with_random_regulator() {
         &current_aligner_generator,
         Some(&stable_aligner_generator),
         regulators,
-        settings.query_sampling_interval,
+        settings.query_interval,
     );
 }
 
@@ -66,11 +66,11 @@ fn test_semi_global_mode_of_current_algorithm_with_random_regulator() {
     let stable_aligner_generator = |px, po, pe, minl, maxp| {
         StableAligner::new_semi_global(px, po, pe, minl, maxp).unwrap()
     };
-    let settings = TestSetting::from_env().unwrap().validation_with_stable;
+    let settings = TestSetting::from_env().unwrap().val_with_stable;
     let regulators = (
-            settings.regulator_start_seed..settings.regulator_start_seed + settings.regulator_seed_count
+            settings.seed_start..settings.seed_start + settings.seed_count
         ).map(|seed| gen_random_regulator_not_errored_in_v03(
-            settings.max_match_per_100_bases,
+            settings.max_subst_percent,
             seed,
         )).collect::<Vec<_>>();
     
@@ -78,7 +78,7 @@ fn test_semi_global_mode_of_current_algorithm_with_random_regulator() {
         &current_aligner_generator,
         Some(&stable_aligner_generator),
         regulators,
-        settings.query_sampling_interval,
+        settings.query_interval,
     );
 }
 

@@ -18,7 +18,7 @@ const CACHE_DIR_NAME: &str = "dpm_results_cache_failed_in_stable";
 const PREC_SCALE_FOR_MAXP: u32 = 10_000;
 
 pub struct DpmAlignerWithCache {
-    mode: Mode,
+    mode: DpmMode,
     test_data_tag: String,
     query_index: u32,
     target_index: u32,
@@ -29,30 +29,32 @@ pub struct DpmAlignerWithCache {
     maxp: f32,
     cache_file_path: PathBuf,
 }
-enum Mode {
+#[derive(Debug, Clone)]
+pub enum DpmMode {
     SemiGlobal,
     LocalWithOneMat,
     LocalWithAllSubs,
 }
-impl Mode {
+impl DpmMode {
     fn to_str(&self) -> &str {
         match self {
-            Mode::SemiGlobal => "semi_global",
-            Mode::LocalWithOneMat => "local_with_one_mat",
-            Mode::LocalWithAllSubs => "local_with_all_subs",
+            DpmMode::SemiGlobal => "semi_global",
+            DpmMode::LocalWithOneMat => "local_with_one_mat",
+            DpmMode::LocalWithAllSubs => "local_with_all_subs",
         }
     }
 
 }
 
 impl DpmAlignerWithCache {
-    pub fn new_local_with_all_subs(
+    pub fn new(
+        mode: DpmMode,
         test_data_tag: String,
         query_index: u32, target_index: u32,
         px: u32, po: u32, pe: u32, minl: u32, maxp: f32,
     ) -> Self {
         let mut tmp = DpmAlignerWithCache {
-            mode: Mode::LocalWithAllSubs,
+            mode,
             test_data_tag, query_index, target_index,
             px, po, pe, minl, maxp,
             cache_file_path: PathBuf::new(),
@@ -115,21 +117,21 @@ impl DpmAlignerWithCache {
         target: &[u8],
     ) -> TargetAlignment {
         let alignments = match self.mode {
-            Mode::SemiGlobal => {
+            DpmMode::SemiGlobal => {
                 dp_semi_global_to_target(
                     query, target,
                     self.px, self.po, self.pe,
                     self.minl, self.maxp,
                 )
             },
-            Mode::LocalWithOneMat => {
+            DpmMode::LocalWithOneMat => {
                 dp_local_with_one_mat_to_target(
                     query, target,
                     self.px, self.po, self.pe,
                     self.minl, self.maxp,
                 )
             },
-            Mode::LocalWithAllSubs => {
+            DpmMode::LocalWithAllSubs => {
                 dp_local_with_all_subs_to_target(
                     query, target,
                     self.px, self.po, self.pe,
