@@ -1,3 +1,5 @@
+// Tests limited version of SemiGlobal and Local algorithms
+
 use std::fs::File;
 
 use crate::common::{
