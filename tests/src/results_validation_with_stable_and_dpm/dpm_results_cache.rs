@@ -29,6 +29,7 @@ pub struct DpmAlignerWithCache {
     maxp: f32,
     cache_file_path: PathBuf,
 }
+#[derive(Debug, Clone)]
 pub enum DpmMode {
     SemiGlobal,
     LocalWithOneMat,

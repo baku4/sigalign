@@ -118,42 +118,23 @@ fn semi_global_alignment_query_to_target(
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
                 // (2) If extension exists
-                if let Some(extension) = optional_extension {
-                    if extension.is_valid {
-                        // Mark all
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        });
-                        let alignment = extension.parse_anchor_alignment_result(operations_buffer);
-                        alignment_results.push(alignment);
-                    } else {
-                        // Mark only PD >= 0
-                        traversed_anchors_buffer.iter().for_each(|tv| {
-                            if tv.to_skip {
-                                anchor_table.0[
-                                    tv.addt_pattern_index as usize
-                                ][
-                                    tv.addt_target_position as usize
-                                ].to_skip = true;
-                            }
-                        });
+                //   - Mark skipped anchors:
+                //     Semi-global can always check the right traversed anchor.
+                //     Right backtracing is always happened.
+                //     "traversed_anchors_buffer" is always filled with right traversed anchors.
+                traversed_anchors_buffer.iter().for_each(|tv| {
+                    if tv.to_skip {
+                        anchor_table.0[
+                            tv.addt_pattern_index as usize
+                        ][
+                            tv.addt_target_position as usize
+                        ].to_skip = true;
                     }
-                } else {
-                    // If extension not exists: mark the right traversed anchor and continue
-                    // Mark only PD >= 0
-                    traversed_anchors_buffer.iter().for_each(|tv| {
-                        if tv.to_skip {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        }
-                    });
+                });
+                //   - Output alignment when extension exists
+                if let Some(extension) = optional_extension {
+                    let alignment = extension.parse_anchor_alignment_result(operations_buffer);
+                    alignment_results.push(alignment);
                 }
             }
         });

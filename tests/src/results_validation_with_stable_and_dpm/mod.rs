@@ -38,10 +38,55 @@ use check_results::{
 mod dpm_results_cache;
 use dpm_results_cache::{DpmAlignerWithCache, DpmMode};
 
-// Compare current results with stable version.
-// If the two results are different, using DPM to check the results.
+#[test]
+fn test_semi_global_is_equal_to_stable_or_dpm() {
+    let current_aligner_generator = |px, po, pe, minl, maxp| {
+        CurrentAligner::new(
+            SemiGlobal::new(px, po, pe, minl, maxp).unwrap()
+        )
+    };
+    let stable_aligner_generator = |px, po, pe, minl, maxp| {
+        StableAligner::new_semi_global(px, po, pe, minl, maxp).unwrap()
+    };
+    let dpm_alignment_mode = DpmMode::SemiGlobal;
+
+    test_current_is_equal_to_stable_or_dpm(
+        &current_aligner_generator,
+        &stable_aligner_generator,
+        dpm_alignment_mode,
+    );
+}
+
 #[test]
 fn test_local_is_equal_to_stable_or_dpm() {
+    let current_aligner_generator = |px, po, pe, minl, maxp| {
+        CurrentAligner::new(
+            Local::new(px, po, pe, minl, maxp).unwrap()
+        )
+    };
+    let stable_aligner_generator = |px, po, pe, minl, maxp| {
+        StableAligner::new_local(px, po, pe, minl, maxp).unwrap()
+    };
+    let dpm_alignment_mode = DpmMode::LocalWithAllSubs;
+
+    test_current_is_equal_to_stable_or_dpm(
+        &current_aligner_generator,
+        &stable_aligner_generator,
+        dpm_alignment_mode,
+    );
+}
+
+// Compare current results with stable version.
+// If the two results are different, using DPM to check the results.
+fn test_current_is_equal_to_stable_or_dpm<A, F1, F2>(
+    current_aligner_generator: &F1,
+    stable_aligner_generator: &F2,
+    dpm_alignment_mode: DpmMode,
+) where
+    A: Algorithm,
+    F1: Fn(u32, u32, u32, u32, f32) -> CurrentAligner<A>,
+    F2: Fn(u32, u32, u32, u32, f32) -> StableAligner,
+{
     init_logger();
 
     let settings = {
@@ -70,21 +115,20 @@ fn test_local_is_equal_to_stable_or_dpm() {
         );
         info!("Start to compare with regulators: {:?} (seed: {})", regulators, seed);
 
-        let algorithm = Local::new(
+        let mut current_aligner = current_aligner_generator(
             regulators.0,
             regulators.1,
             regulators.2,
             regulators.3,
             regulators.4,
-        ).unwrap();
-        let mut current_aligner = CurrentAligner::from(algorithm);
-        let mut stable_aligner = StableAligner::new_local(
+        );
+        let mut stable_aligner = stable_aligner_generator(
             regulators.0,
             regulators.1,
             regulators.2,
             regulators.3,
             regulators.4,
-        ).unwrap();
+        );
 
         let mut fasta_reader = FastaReader::new(
             std::fs::File::open(&qry_file).unwrap()
@@ -130,7 +174,7 @@ fn test_local_is_equal_to_stable_or_dpm() {
                 };
                 let dpm_alignments = {
                     let dpm_aligner = DpmAlignerWithCache::new(
-                        DpmMode::LocalWithAllSubs,
+                        dpm_alignment_mode.clone(),
                         test_data.get_tag().to_string(),
                         query_index,
                         *target_index,

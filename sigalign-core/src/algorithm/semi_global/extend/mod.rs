@@ -27,7 +27,12 @@ pub struct SemiGlobalExtension {
     pub right_traversed_anchor_range: (u32, u32),
 }
 
-// Assuming leftmost anchor
+// Return the optional extension of anchor
+//  - None if this anchor is
+//     - invalid
+//        - not meet sequences' end
+//        - not satisfy the cutoff
+//     - or not leftmost (= having traversed anchor on the left)
 #[inline]
 pub fn extend_anchor(
     anchor_table: &AnchorTable,
@@ -151,7 +156,26 @@ pub fn extend_anchor(
     let (left_query_length, left_target_length, left_alignment_length) = wave_front.get_proceed_length(
         left_end_point.0, left_end_point.1
     );
-    //   - Check if the position is already used 
+    //   - Check if this alignment is valid
+    let alignment_length = left_alignment_length + right_alignment_length + anchor_size;
+    let penalty = left_end_point.0 + right_end_point.0;
+    let is_valid = {
+        (alignment_length >= cutoff.minimum_length)
+        && (cutoff.maximum_scaled_penalty_per_length * alignment_length >= penalty * PREC_SCALE)
+    };
+    if !is_valid {
+        return None;
+    }
+    // 3.5. Get the operations range
+    let left_operation_range_in_buffer = wave_front.backtrace_of_left_side_while_checking_this_anchor_is_leftmost(
+        left_end_point.0,
+        *pattern_size,
+        left_end_point.1,
+        penalties,
+        operations_buffer,
+    )?;
+
+    // 5. Push extension
     let alignment_position = AlignmentPosition {
         query: (
             left_query_end_index - left_query_length,
@@ -162,28 +186,6 @@ pub fn extend_anchor(
             right_target_start_index + right_target_length,
         ),
     };
-    if positions_hash.contains(&alignment_position) {
-        return None
-    } else {
-        positions_hash.insert(alignment_position.clone());
-    }
-    //   - Check if this alignment is valid
-    let alignment_length = left_alignment_length + right_alignment_length + anchor_size;
-    let penalty = left_end_point.0 + right_end_point.0;
-    let is_valid = {
-        (alignment_length >= cutoff.minimum_length)
-        && (cutoff.maximum_scaled_penalty_per_length * alignment_length >= penalty * PREC_SCALE)
-    } ;
-    // 3.5. Get the operations range
-    let left_operation_range_in_buffer = wave_front.backtrace_of_left_side_without_checking_traversed(
-        left_end_point.0,
-        *pattern_size,
-        left_end_point.1,
-        penalties,
-        operations_buffer,
-    );
-    
-    // 5. Push extension
     let extension = Extension {
         alignment_position,
         penalty,
