@@ -16,3 +16,4 @@ pub use io::{
 };
 mod label;
 pub use label::LabelStorage;
+mod clone;
