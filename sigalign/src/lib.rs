@@ -27,7 +27,7 @@ let reference = ReferenceBuilder::new()
     ) // Add sequence manually
     .build().unwrap();
 
-// (2) Make `Aligner`
+// (2) Initialize `Aligner`
 let algorithm = Local::new(
     4,   // Mismatch penalty
     6,   // Gap-open penalty
@@ -93,6 +93,9 @@ pub use aligner::{
     algorithms,
 };
 
+pub mod utils;
+
+
 #[cfg(test)]
 mod doc_tests {
 #[test]
@@ -121,7 +124,7 @@ let reference = ReferenceBuilder::new()
     ) // Add sequence manually
     .build().unwrap();
 
-// (2) Make `Aligner`
+// (2) Initialize `Aligner`
 let algorithm = Local::new(
     4,   // Mismatch penalty
     6,   // Gap-open penalty

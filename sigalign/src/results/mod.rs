@@ -1,5 +1,5 @@
 /*!
-The structures for representing alignment outcomes.
+Representation of the alignment outcomes.
 
 Example in JSON format:
 ```json

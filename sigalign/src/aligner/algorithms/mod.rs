@@ -1,5 +1,5 @@
 /*!
-The module for alignment algorithms.
+Supported alignment algorithms.
 
 `Algorithm` defines the behavior for an `Aligner`. It needs to be passed to build an `Aligner`.
 e.g.,
