@@ -3,13 +3,7 @@ Fasta reader can read various type of FASTA formatted file
 */
 use crate::common::{
     Result, error_msg,
-    test_data::{
-        get_lf_fa_path,
-        get_crlf_fa_path,
-        get_two_line_fa_path,
-        get_gzip_compressed_lf_fa_path,
-        get_zlib_compressed_lf_fa_path,
-    },
+    test_data::DataForRefBuild,
 };
 
 use sigalign_utils::sequence_reader::{
@@ -21,9 +15,9 @@ use sigalign_utils::sequence_reader::{
 #[test]
 // Test if the gzip and zlib compressed FASTA file can be read
 fn generate_same_record_regardless_of_compression() {
-    let fa = get_lf_fa_path();
-    let gzip_fa = get_gzip_compressed_lf_fa_path();
-    let zlib_fa = get_zlib_compressed_lf_fa_path();
+    let fa = DataForRefBuild::LF.get_data_path();
+    let gzip_fa = DataForRefBuild::Gz.get_data_path();
+    let zlib_fa = DataForRefBuild::Zlib.get_data_path();
 
     let mut fa_reader = FastaReader::from_path(fa).unwrap();
     let gzip_file = std::fs::File::open(gzip_fa).unwrap();
@@ -64,9 +58,9 @@ fn generate_same_record_regardless_of_compression() {
 #[test]
 // Fasta reader can read various type of FASTA formatted file
 fn generate_same_record_regardless_of_line_ending() {
-    let lf_fa = get_lf_fa_path();
-    let crlf_fa = get_crlf_fa_path();
-    let two_line = get_two_line_fa_path();
+    let lf_fa = DataForRefBuild::LF.get_data_path();
+    let crlf_fa = DataForRefBuild::CRLF.get_data_path();
+    let two_line = DataForRefBuild::TwoLine.get_data_path();
 
     let mut lf_reader = FastaReader::from_path(lf_fa).unwrap();
     let mut crlf_reader = FastaReader::from_path(crlf_fa).unwrap();

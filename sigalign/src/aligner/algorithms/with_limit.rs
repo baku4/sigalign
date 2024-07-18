@@ -10,14 +10,6 @@ use crate::{
 };
 use super::{Algorithm, ParamsError, check_pattern_size};
 
-fn check_limit(limit: u32) -> Result<(), ParamsError> {
-    if limit == 0 {
-        Err(ParamsError::InvalidValue("Limit must be greater than 0.".to_string()))
-    } else {
-        Ok(())
-    }
-}
-
 // Structs
 #[derive(Clone)]
 pub struct LocalWithLimit {
@@ -30,19 +22,17 @@ pub struct SemiGlobalWithLimit {
 }
 
 // New
-fn get_regulator_with_limit(
+fn get_regulator(
     mismatch_penalty: u32,
     gap_open_penalty: u32,
     gap_extend_penalty: u32,
     minimum_length: u32,
     maximum_penalty_per_length: f32,
-    limit: u32,
 ) -> Result<AlignmentRegulator, ParamsError> {
     let regulator = AlignmentRegulator::new(
         mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_length, maximum_penalty_per_length
     )?;
     check_pattern_size(&regulator)?;
-    check_limit(limit)?;
     Ok(regulator)
 }
 
@@ -55,7 +45,7 @@ impl LocalWithLimit {
         maximum_penalty_per_length: f32,
         limit: u32,
     ) -> Result<Self, ParamsError> {
-        let regulator = get_regulator_with_limit(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_length, maximum_penalty_per_length, limit)?;
+        let regulator = get_regulator(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_length, maximum_penalty_per_length)?;
         Ok(Self {
             inner: LocalWithLimitAligner::new(regulator, limit),
         })
@@ -71,7 +61,7 @@ impl SemiGlobalWithLimit {
         maximum_penalty_per_length: f32,
         limit: u32,
     ) -> Result<Self, ParamsError> {
-        let regulator = get_regulator_with_limit(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_length, maximum_penalty_per_length, limit)?;
+        let regulator = get_regulator(mismatch_penalty, gap_open_penalty, gap_extend_penalty, minimum_length, maximum_penalty_per_length)?;
         Ok(Self {
             inner: SemiGlobalWithLimitAligner::new(regulator, limit),
         })

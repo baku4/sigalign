@@ -1,17 +1,11 @@
-val_with_cutoff:
-  seed_start: 0
-  seed_count: 2
-  query_interval: 100
-  max_subst_percent: 2
-
-val_with_stable:
+satisfy_cutoff:
   seed_start: 0
   seed_count: 2
   query_interval: 100
   max_subst_percent: 2
 
 # Not used in the CI pipeline
-val_with_stable_and_dpm:
+val_with_032_and_dpm:
   seed_start: 0
   seed_count: 0
   max_subst_percent: 0

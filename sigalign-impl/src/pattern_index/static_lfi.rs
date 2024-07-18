@@ -18,6 +18,7 @@ pub type Lfi32B5V64 = StaticLfi<blocks::Block5<u64>>;
 // TODO: Check if the specification is accurate.
 /// LtFmIndex that has a maximum number of characters that can be indexed.
 /// (The maximum length of one sequence is u32::MAX)
+#[derive(Clone)]
 pub struct StaticLfi<B: Block<u32>> {
     inner: LtFmIndex<u32, B>,
 }

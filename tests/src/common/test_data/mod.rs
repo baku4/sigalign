@@ -6,33 +6,50 @@ use std::{env, path::PathBuf, fs};
 // (1) For reference building
 //
 const BUILD_REF_DIR: &str = "test_data/build_reference";
-const LF_FILE: &str = "LF.fa";
-const CRLF_FILE: &str = "CRLF.fa";
-const TWO_LINE_FILE: &str = "two_line.fa";
-pub fn get_lf_fa_path() -> PathBuf {
-    let mut path = PathBuf::from(BUILD_REF_DIR);
-    path.push(LF_FILE);
-    path
+#[derive(Clone, Debug)]
+pub enum DataForRefBuild {
+    LF,
+    CRLF,
+    TwoLine,
+    Gz,
+    Zlib,
 }
-pub fn get_crlf_fa_path() -> PathBuf {
-    let mut path = PathBuf::from(BUILD_REF_DIR);
-    path.push(CRLF_FILE);
-    path
-}
-pub fn get_two_line_fa_path() -> PathBuf {
-    let mut path = PathBuf::from(BUILD_REF_DIR);
-    path.push(TWO_LINE_FILE);
-    path
-}
-pub fn get_gzip_compressed_lf_fa_path() -> PathBuf {
-    let mut path = get_lf_fa_path();
-    path.set_extension("fa.gz");
-    path
-}
-pub fn get_zlib_compressed_lf_fa_path() -> PathBuf {
-    let mut path = get_lf_fa_path();
-    path.set_extension("fa.zlib");
-    path
+impl DataForRefBuild {
+    /// Return reference and query file paths
+    pub fn get_data_path(&self) -> PathBuf {
+        let mut path = PathBuf::from(BUILD_REF_DIR);
+        path.push(self.file_name());
+        path
+    }
+    /// Get unique tag for each dataset
+    pub fn get_tag(&self) -> &str {
+        match self {
+            Self::LF => "lf",
+            Self::CRLF => "crlf",
+            Self::TwoLine => "two_line",
+            Self::Gz => "gz",
+            Self::Zlib => "zlib",
+        }
+    }
+    pub fn from_tag(tag: &str) -> Result<Self> {
+        match tag {
+            "lf" => Ok(Self::LF),
+            "crlf" => Ok(Self::CRLF),
+            "two_line" => Ok(Self::TwoLine),
+            "gz" => Ok(Self::Gz),
+            "zlib" => Ok(Self::Zlib),
+            _ => error_msg!("Unknown tag: {}", tag),
+        }
+    }
+    fn file_name(&self) -> &str {
+        match self {
+            Self::LF => "LF.fa",
+            Self::CRLF => "CRLF.fa",
+            Self::TwoLine => "two_line.fa",
+            Self::Gz => "LF.fa.gz",
+            Self::Zlib => "LF.fa.zlib",
+        }
+    }
 }
 
 // 

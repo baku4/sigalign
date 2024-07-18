@@ -12,12 +12,10 @@ fn config_dir_path() -> Result<PathBuf> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TestSetting {
-    // validation_with_cutoff
-    pub val_with_cutoff: ValidationWithCutoff,
-    // validation_with_stable
-    pub val_with_stable: ValidationWithStable,
-    // validation_with_stable_and_dpm
-    pub val_with_stable_and_dpm: ValidationWithStableAndDpm,
+    // satisfy_cutoff
+    pub satisfy_cutoff: SatisfyCutoff,
+    // validation_with_032_and_dpm
+    pub val_with_032_and_dpm: ValidationWith032AndDpm,
 }
 impl TestSetting {
     pub fn from_env() -> Result<Self> {
@@ -75,21 +73,14 @@ impl TestEnvironment {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ValidationWithCutoff {
+pub struct SatisfyCutoff {
     pub seed_start: u64,
     pub seed_count: u64,
     pub query_interval: u32,
     pub max_subst_percent: u32,
 }
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ValidationWithStable {
-    pub seed_start: u64,
-    pub seed_count: u64,
-    pub query_interval: u32,
-    pub max_subst_percent: u32,
-}
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ValidationWithStableAndDpm {
+pub struct ValidationWith032AndDpm {
     pub seed_start: u64,
     pub seed_count: u64,
     pub max_subst_percent: u32,

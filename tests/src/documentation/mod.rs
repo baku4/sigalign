@@ -1,7 +1,11 @@
 #[test]
-fn quick_start() {
+fn quick_start_example() {
     
-use sigalign::{Aligner, ReferenceBuilder};
+use sigalign::{
+    ReferenceBuilder,
+    Aligner,
+    algorithms::Local,
+};
 
 // (1) Build `Reference`
 let fasta =
@@ -15,18 +19,19 @@ let reference = ReferenceBuilder::new()
     .add_fasta(&fasta[..]).unwrap()
     .build().unwrap();
 
-// (2) Make `Aligner`
-let mut aligner = Aligner::new(
+// (2) Initialize `Aligner`
+let algorithm = Local::new(
     4,   // Mismatch penalty
     6,   // Gap-open penalty
     2,   // Gap-extend penalty
     50,  // Minimum aligned length
     0.2, // Maximum penalty per length
 ).unwrap();
+let mut aligner = Aligner::new(algorithm);
 
 // (3) Align query to reference
 let query = b"CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA";
-let result = aligner.align_query(&reference, query);
+let result = aligner.align(query, &reference);
 println!("{:#?}", result);
 
 }

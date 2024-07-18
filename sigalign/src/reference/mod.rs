@@ -15,6 +15,7 @@ pub use builder::{ReferenceBuilder, ReferenceBuildError};
 
 pub type DefaultSequenceBuffer = InMemoryBuffer;
 /// A database for multiple target sequences.
+#[derive(Clone)]
 pub struct Reference {
     raw_reference: RawReference<DynamicLfi, InMemoryStorage>,
     full_sorted_target_indices: Vec<u32>,

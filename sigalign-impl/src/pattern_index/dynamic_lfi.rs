@@ -13,6 +13,7 @@ use sigalign_core::reference::PatternIndex;
 /// The LtFmIndex that can adjust the type by the number of characters.
 /// - The maximum number of characters that can be indexed is 31 (same as the `Lfi32B5V64`).
 /// - The maximum length of one sequence is u32::MAX (same as the static version).
+#[derive(Clone)]
 pub enum DynamicLfi {
     B2(Lfi32B2V64),
     B3(Lfi32B3V64),

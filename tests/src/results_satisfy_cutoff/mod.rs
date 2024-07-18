@@ -18,13 +18,13 @@ use sigalign::{
 };
 
 #[test]
-fn test_local_mode_gives_valid_results_for_cutoffs() {
+fn test_local_gives_results_satisfy_cutoffs() {
     let current_aligner_generator = |px, po, pe, minl, maxp| {
         CurrentAligner::new(
             Local::new(px, po, pe, minl, maxp).unwrap()
         )
     };
-    let settings = TestSetting::from_env().unwrap().val_with_cutoff;
+    let settings = TestSetting::from_env().unwrap().satisfy_cutoff;
     let regulators = (
         settings.seed_start..settings.seed_start + settings.seed_count
     ).map(|seed| gen_random_regulator(
@@ -40,13 +40,13 @@ fn test_local_mode_gives_valid_results_for_cutoffs() {
 }
 
 #[test]
-fn test_semi_global_mode_gives_valid_results_for_cutoffs() {
+fn test_semi_global_gives_results_satisfy_cutoffs() {
     let current_aligner_generator = |px, po, pe, minl, maxp| {
         CurrentAligner::new(
             SemiGlobal::new(px, po, pe, minl, maxp).unwrap()
         )
     };
-    let settings = TestSetting::from_env().unwrap().val_with_cutoff;
+    let settings = TestSetting::from_env().unwrap().satisfy_cutoff;
     let regulators = (
         settings.seed_start..settings.seed_start + settings.seed_count
     ).map(|seed| gen_random_regulator(
