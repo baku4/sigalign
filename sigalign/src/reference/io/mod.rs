@@ -10,8 +10,8 @@ use sigalign_core::reference::{
 use super::Reference;
 
 const PREFIX: &str = "SIGALIGN_REFERENCE";
-const LOWEST_COMPARABLE_WRAPPER_VERSION: &str = "0.4.0-alpha";
-const CORE_VERSION: &str = "0.1.0";
+const LOWEST_COMPARABLE_WRAPPER_VERSION: &str = "0.4.0";
+const CORE_VERSION: &str = "0.2.0";
 const DELIMITER: &str = ":";
 
 impl Reference {
