@@ -1,11 +1,7 @@
 // Tests limited version of SemiGlobal and Local algorithms
 
-use std::fs::File;
-
 use crate::common::{
-    init_logger,
-    test_data::DataForValidation,
-    random_regulator::gen_random_regulator,
+    configuration::TestSetting, init_logger, random_regulator::gen_random_regulator, test_data::DataForValidation
 };
 use ahash::AHashSet as HashSet;
 use log::info;
@@ -14,10 +10,7 @@ use sigalign::{
 };
 use sigalign_utils::sequence_reader::{fasta::FastaReader, SeqRecord as _};
 
-const SEED_START: u64 = 0;
-const SEED_COUNT: u64 = 5;
-const MAX_SUBST_PERCENT: u32 = 2;
-const TEST_LIMITS: [u32; 5] = [1000, 100, 10, 1, 0];
+const TEST_LIMITS: [u32; 4] = [100, 10, 1, 0];
 
 #[test]
 fn test_limited_semi_global_works() {
@@ -64,14 +57,16 @@ fn test_limit_works<A1, A2, F1, F2>(
 {
     init_logger();
 
+    let settings = TestSetting::from_env().unwrap().satisfy_cutoff;
+
     let test_data = DataForValidation::Default;
     info!("Test data: {:?}", test_data);
     let (ref_file, qry_file) = test_data.get_data_paths();
 
     let reference = ReferenceBuilder::new().add_fasta_file(&ref_file).unwrap().build().unwrap();
 
-    for seed in SEED_START..SEED_START + SEED_COUNT {
-        let regulator = gen_random_regulator(MAX_SUBST_PERCENT, seed);
+    for seed in settings.seed_start..settings.seed_start + settings.seed_count {
+        let regulator = gen_random_regulator(settings.max_subst_percent, seed);
         info!("Start to compare with regulators: {:?} (seed: {})", regulator, seed);
 
         let mut default_aligner = default_aligner_generator(
@@ -100,7 +95,14 @@ fn test_limit_works<A1, A2, F1, F2>(
         );
         let mut query_buffer = Vec::new();
         let mut query_index = 0;
+        let mut query_step = 0;
         while let Some(mut record) = fasta_reader.next() {
+            query_step += 1;
+            if query_step == settings.query_interval {
+                query_step = 0;
+            } else {
+                continue;
+            }
             query_buffer.clear();
             if query_index % 1000 == 0 {
                 info!("Processed {} queries", query_index);

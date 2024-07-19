@@ -4,7 +4,7 @@ use crate::common::{
     init_logger,
     test_data::DataForValidation,
     configuration::TestSetting,
-    random_regulator::{gen_random_regulator_not_errored_in_v03},
+    random_regulator::gen_random_regulator_not_errored_in_v03,
     result_converter_of_v03::stable_result_to_current_result,
     dynamic_programming_matrix::{
         dp_local_with_one_mat_to_target,

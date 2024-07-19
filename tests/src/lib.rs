@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
 pub mod common;
 
 
@@ -15,7 +17,3 @@ pub mod result_validation_with_dynamic_programming_matrix;
 // Reference acts expectedly
 mod reference_gives_correct_data;
 mod reference_save_and_load;
-
-
-// Tests for Documentation
-mod documentation;

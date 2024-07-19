@@ -6,12 +6,12 @@ members = [
     "sigalign-utils",
     "sigalign",
     "tests",
-    "examples/sigalign-demo-binary",
-    "examples/sig-read-mapper",
 ]
 exclude = [
     "examples/sigalign-demo-web",
     "examples/sigalign-demo-wasm",
+    "examples/sigalign-demo-binary",
+    "examples/sig-read-mapper",
     "sigalign-py",
 ]
 

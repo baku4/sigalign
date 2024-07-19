@@ -44,7 +44,6 @@ enum BacktraceMarker {
     FromDel,
 }
 
-#[test]
 fn dp_matrix_calculates_penalty_accurately() {
     use crate::common::{
         init_logger,

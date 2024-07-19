@@ -11,5 +11,3 @@ Cargo.lock
 
 # OS generated files
 .DS_Store
-# Local tmp dir
-tmp/
