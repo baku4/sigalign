@@ -1,36 +1,39 @@
 <div align="center">
-    <img src="images/logo.svg" width="120" />
+    <img src="images/logo.svg" width="125" />
 	<h1><code>SigAlign</code></h1>
 	<p>
 		A <b>Si</b>milarity-<b>G</b>uided <b>Align</b>ment Algorithm
 	</p>
-	<p>
-		<a href="https://github.com/baku4/sigalign/" target="_blank"><img alt="License" src="https://img.shields.io/github/license/baku4/sigalign?style=flat-square"></a>
-		<a href="https://crates.io/crates/sigalign/" target="_blank"><img alt="Crates.io" src="https://img.shields.io/crates/v/sigalign.svg?style=flat-square"></a>
-		<a href="https://docs.rs/sigalign/latest/"><img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square" alt="docs.rs docs" /></a>
-		<a href="https://pypi.org/project/sigalign/" target="_blank"><img alt="PyPI" src="https://img.shields.io/pypi/v/sigalign?style=flat-square"></a>
+    <p>
+        <a href="https://github.com/baku4/sigalign/actions/workflows/build_and_test.yml/" target="_blank"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/baku4/sigalign/build_and_test.yml?style=flat-square&label=build %26 test"></a>
+        <a href="https://github.com/baku4/sigalign/" target="_blank"><img alt="License" src="https://img.shields.io/github/license/baku4/sigalign?style=flat-square"></a>
+        <br>
+		<a href="https://crates.io/crates/sigalign/" target="_blank"><img alt="Crates.io" src="https://img.shields.io/crates/v/sigalign.svg?style=flat-square&logo=rust"></a>
+        <img alt="Crates.io MSRV" src="https://img.shields.io/crates/msrv/sigalign?style=flat-square&logo=rust">
+        <img alt="docs.rs" src="https://img.shields.io/docsrs/sigalign?style=flat-square&logo=docsdotrs">
+		<a href="https://pypi.org/project/sigalign/" target="_blank"><img alt="PyPI" src="https://img.shields.io/pypi/v/sigalign?style=flat-square&logo=python&logoColor=white"></a>
 	</p>
 </div>
 
 ## What is `SigAlign`?
-`SigAlign` is a library for biological sequence alignment, the process of matching two sequences to identify similarity, which is a crucial step in analyzing sequence data in bioinformatics and computational biology. If you are new to sequence alignment, a quick overview on [Wikipedia](https://en.wikipedia.org/wiki/Sequence_alignment) will be helpful.
+SigAlign is a library for **biological sequence alignment**, the process of matching two sequences to identify similarity, which is a crucial step in analyzing sequence data in bioinformatics and computational biology. If you are new to sequence alignment, a quick overview on [Wikipedia](https://en.wikipedia.org/wiki/Sequence_alignment) will be helpful.
 
-`SigAlign` is a **non-heuristic** algorithm that outputs alignments satisfying two cutoffs:
+SigAlign is a **non-heuristic** algorithm that outputs alignments satisfying two cutoffs:
 
 1. **Minimum Length**
 2. **Maximum Penalty per Length**
 
-In `SigAlign`, the penalty is calculated based on a **gap-affine scheme**, which imposes different penalties on mismatches, gap openings, and gap extensions.
+In SigAlign, the penalty is calculated based on a **gap-affine scheme**, which imposes different penalties on mismatches, gap openings, and gap extensions.
 
 ### Core Purpose
 
-`SigAlign` is designed to be:
+SigAlign is designed to be:
 
 - ⚡️ **Fast** to collect highly similar alignments
 - 💡 **Easy** to customize and explain results
 - 🧱 **Small and flexible** to be a basic building block for other tools
 
-`SigAlign` is **not** intended to:
+SigAlign is **not** intended to:
 
 - Align ultra-long reads
 - Search for low similarity alignments
@@ -155,7 +158,7 @@ run();
 
 ## License
 
-`SigAlign` is released under the [MIT License]((https://github.com/baku4/sigalign/blob/main/LICENSE)).
+SigAlign is released under the [MIT License]((https://github.com/baku4/sigalign/blob/main/LICENSE)).
 
 ## Citation
 
