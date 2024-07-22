@@ -1,4 +1,7 @@
-use sigalign_core::reference::Reference as RawReference;
+use sigalign_core::reference::{
+    Reference as RawReference,
+    extensions::EstimateSize as _,
+};
 use sigalign_impl::{
     pattern_index::dynamic_lfi::DynamicLfi,
     sequence_storage::in_memory::{InMemoryStorage, InMemoryBuffer},
@@ -44,6 +47,10 @@ impl Reference {
     /// Get the total length of all targets (in base pairs).
     pub fn get_total_length(&self) -> u32 {
         self.as_ref().get_sequence_storage().get_total_length()
+    }
+    /// Get estimated size in bytes. (This is an estimate, not the exact size.)
+    pub fn get_estimated_size_in_bytes(&self) -> usize {
+        self.as_ref().serialized_size()
     }
 
     /* Access Resources */
