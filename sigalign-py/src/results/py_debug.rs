@@ -1,44 +1,48 @@
+use core::fmt;
+
 use super::{
-    FastaResult,
-    PyReadResult,
-    QueryResult,
-    PyTargetResult,
+    PyFastaAlignment,
+    PyReadAlignment,
+    PyQueryAlignment,
+    PyTargetAlignment,
     PyAlignment,
-    PyOperation,
+    PyAlignmentOperations,
+    PyAlignmentOperation,
 };
 
-impl FastaResult {
+impl PyFastaAlignment {
     pub fn py_debug(&self) -> String {
         format!(
-            "FastaResult(num_read_results={})",
+            "FastaAlignment(num_read_alignments={})",
             self.0.len(),
         )
     }
 }
 
-impl PyReadResult {
+impl PyReadAlignment {
     pub fn py_debug(&self) -> String {
         format!(
-            "ReadResult(read={}, num_target_results={})",
+            "ReadAlignment(read={}, is_forward={}, num_target_alignments={})",
             self.read,
+            self.is_forward,
             self.result.0.len(),
         )
     }
 }
 
-impl QueryResult {
+impl PyQueryAlignment {
     pub fn py_debug(&self) -> String {
         format!(
-            "QueryResult(num_target_results={})",
+            "QueryAlignment(num_target_alignments={})",
             self.0.len(),
         )
     }
 }
 
-impl PyTargetResult {
+impl PyTargetAlignment {
     pub fn py_debug(&self) -> String {
         format!(
-            "TargetResult(index={}, label={:?}, num_alignments={})",
+            "TargetAlignment(index={}, label={:?}, num_alignments={})",
             self.index,
             self.label,
             self.num_alignments(),
@@ -59,8 +63,28 @@ impl PyAlignment {
     }
 }
 
-impl PyOperation {
+impl PyAlignmentOperations {
     pub fn py_debug(&self) -> String {
-        format!("Operation(case={}, count={})", self.case, self.count)
+        format!("AlignmentOperations(operation={}, count={})", self.operation, self.count)
+    }
+}
+
+impl PyAlignmentOperation {
+    pub fn py_debug(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+impl fmt::Display for PyAlignmentOperation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Match => "Match",
+                Self::Subst => "Subst",
+                Self::Insertion => "Insertion",
+                Self::Deletion => "Deletion",
+            }
+        )
     }
 }

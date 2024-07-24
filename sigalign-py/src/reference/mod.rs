@@ -23,6 +23,12 @@ pub struct PyReference {
     pub inner: Reference,
 }
 
+impl AsRef<Reference> for PyReference {
+    fn as_ref(&self) -> &Reference {
+        &self.inner
+    }
+}
+
 #[pymethods]
 impl PyReference {
     #[classmethod]

@@ -7,34 +7,42 @@ use serde_json::{
 };
 
 use sigalign::results::{
-    AlignmentResult,
-    AnchorAlignmentResult,
-    AlignmentOperation,
-    labeled::{
-        LabeledAlignmentResult,
-    },
-    fasta::{
-        FastaAlignmentResult,
-        LabeledFastaAlignmentResult,
-    },
+    QueryAlignment, LabeledQueryAlignment, TargetAlignment, LabeledTargetAlignment,
+    Alignment, AlignmentOperations, AlignmentOperation,
 };
 
+mod iterators; // Contains Python's iterators classes.
+pub use iterators::{FastaAlignmentIter, QueryAlignmentIter};
+mod from;
 mod py_debug;
 mod to_flat_result;
-use to_flat_result::{FlatReadResult, FlatTargetResult};
+use to_flat_result::{FlatReadAlignment, FlatTargetAlignment};
 
-#[pyclass(sequence)]
-#[repr(transparent)]
+
+pub fn register_results_module_as_submodule(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
+    let results_module = PyModule::new_bound(parent_module.py(), "results")?;
+    results_module.add_class::<PyFastaAlignment>()?;
+    results_module.add_class::<PyReadAlignment>()?;
+    results_module.add_class::<PyQueryAlignment>()?;
+    results_module.add_class::<PyTargetAlignment>()?;
+    results_module.add_class::<PyAlignment>()?;
+    results_module.add_class::<PyAlignmentOperations>()?;
+    results_module.add_class::<PyAlignmentOperation>()?;
+    Ok(())
+}
+
+/// Not in Rust library.
+#[pyclass(name = "FastaAlignment", sequence, frozen, eq, hash)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct FastaResult(pub Vec<PyReadResult>);
+pub struct PyFastaAlignment(pub Vec<PyReadAlignment>);
 #[pymethods]
-impl FastaResult {
+impl PyFastaAlignment {
     #[new]
-    fn py_new(read_results: Vec<PyReadResult>) -> Self {
-        Self(read_results)
+    fn py_new(read_alignments: Vec<PyReadAlignment>) -> Self {
+        Self(read_alignments)
     }
-    fn to_list(&self) -> PyResult<Vec<PyReadResult>> {
+    fn to_list(&self) -> PyResult<Vec<PyReadAlignment>> {
         Ok(self.0.clone())
     }
     fn to_json(&self) -> String {
@@ -43,7 +51,7 @@ impl FastaResult {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatReadResult> {
+    fn to_table(&self) -> Vec<FlatReadAlignment> {
         self.to_flat_results()
     }
     fn num_alignments(&self) -> usize {
@@ -52,10 +60,8 @@ impl FastaResult {
     fn __len__(&self) -> PyResult<usize> {
         Ok(self.0.len())
     }
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<FastaResultIter>> {
-        let iter = FastaResultIter {
-            inner: slf.0.clone().into_iter(),
-        };
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<FastaAlignmentIter>> {
+        let iter = FastaAlignmentIter::new(slf.0.clone());
         Py::new(slf.py(), iter)
     }
     fn __str__(&self) -> PyResult<String> {
@@ -66,33 +72,23 @@ impl FastaResult {
     }
 }
 
-#[pyclass]
-struct FastaResultIter {
-    inner: std::vec::IntoIter<PyReadResult>,
-}
-#[pymethods]
-impl FastaResultIter {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyReadResult> {
-        slf.inner.next()
-    }
-}
-
-#[pyclass(name = "ReadResult")]
+/// Not in Rust library.
+#[pyclass(name = "ReadAlignment", sequence, frozen, eq, hash)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct PyReadResult {
+pub struct PyReadAlignment {
     read: String,
-    result: QueryResult,
+    is_forward: bool,
+    pub result: PyQueryAlignment,
 }
 #[pymethods]
-impl PyReadResult {
+impl PyReadAlignment {
     #[new]
-    fn py_new(read: String, result: QueryResult) -> Self {
+    #[pyo3(signature = (read, result, is_forward = true))]
+    fn py_new(read: String, result: PyQueryAlignment, is_forward: bool) -> Self {
         Self {
             read,
+            is_forward,
             result,
         }
     }
@@ -102,7 +98,7 @@ impl PyReadResult {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatReadResult> {
+    fn to_table(&self) -> Vec<FlatReadAlignment> {
         self.to_flat_results()
     }
     pub fn num_alignments(&self) -> usize {
@@ -116,18 +112,18 @@ impl PyReadResult {
     }
 }
 
-#[pyclass(sequence)]
-#[repr(transparent)]
+/// Represents the both `QueryAlignment` and `LabeledQueryAlignment`.
+#[pyclass(name = "QueryAlignment", sequence, frozen, eq, hash)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct QueryResult(pub Vec<PyTargetResult>);
+pub struct PyQueryAlignment(pub Vec<PyTargetAlignment>);
 #[pymethods]
-impl QueryResult {
+impl PyQueryAlignment {
     #[new]
-    fn py_new(target_results: Vec<PyTargetResult>) -> Self {
-        Self(target_results)
+    fn py_new(target_alignments: Vec<PyTargetAlignment>) -> Self {
+        Self(target_alignments)
     }
-    fn to_list(&self) -> PyResult<Vec<PyTargetResult>> {
+    fn to_list(&self) -> PyResult<Vec<PyTargetAlignment>> {
         Ok(self.0.clone())
     }
     fn to_json(&self) -> String {
@@ -136,7 +132,7 @@ impl QueryResult {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatTargetResult> {
+    fn to_table(&self) -> Vec<FlatTargetAlignment> {
         self.to_flat_results()
     }
     pub fn num_alignments(&self) -> usize {
@@ -145,10 +141,8 @@ impl QueryResult {
     fn __len__(&self) -> PyResult<usize> {
         Ok(self.0.len())
     }
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<QueryResultIter>> {
-        let iter = QueryResultIter {
-            inner: slf.0.clone().into_iter(),
-        };
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<QueryAlignmentIter>> {
+        let iter = QueryAlignmentIter::new(slf.0.clone());
         Py::new(slf.py(), iter)
     }
     fn __str__(&self) -> PyResult<String> {
@@ -158,24 +152,12 @@ impl QueryResult {
         Ok(self.py_debug())
     }
 }
-#[pyclass]
-struct QueryResultIter {
-    inner: std::vec::IntoIter<PyTargetResult>,
-}
-#[pymethods]
-impl QueryResultIter {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
-        slf
-    }
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyTargetResult> {
-        slf.inner.next()
-    }
-}
 
-#[pyclass(name = "TargetResult")]
+/// Represents the both `TargetAlignment` and `LabeledTargetAlignment`.
+#[pyclass(name = "TargetAlignment", frozen, eq, hash)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct PyTargetResult {
+pub struct PyTargetAlignment {
     #[pyo3(get)]
     pub index: u32,
     #[pyo3(get)]
@@ -184,10 +166,11 @@ pub struct PyTargetResult {
     pub alignments: Vec<PyAlignment>,
 }
 #[pymethods]
-impl PyTargetResult {
+impl PyTargetAlignment {
     #[new]
+    #[pyo3(signature = (index, alignments, label=None))]
     fn py_new(index: u32, alignments: Vec<PyAlignment>, label: Option<String>) -> Self {
-        PyTargetResult {
+        Self {
             index,
             label,
             alignments: alignments,
@@ -199,7 +182,7 @@ impl PyTargetResult {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatTargetResult> {
+    fn to_table(&self) -> Vec<FlatTargetAlignment> {
         self.to_flat_results()
     }
     pub fn num_alignments(&self) -> usize {
@@ -213,7 +196,8 @@ impl PyTargetResult {
     }
 }
 
-#[pyclass(name = "Alignment")]
+// Instead of `AlignmentPosition`, use tuple `(u32, u32)` for `query` and `target`, for simplicity.
+#[pyclass(name = "Alignment", frozen, eq, hash)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct PyAlignment {
@@ -226,13 +210,13 @@ pub struct PyAlignment {
     #[pyo3(get)]
     pub target_position: (u32, u32),
     #[pyo3(get)]
-    pub operations: Vec<PyOperation>,
+    pub operations: Vec<PyAlignmentOperations>,
 }
 #[pymethods]
 impl PyAlignment {
     #[new]
-    fn new(penalty: u32, length: u32, query_position: (u32, u32), target_position: (u32, u32), operations: Vec<PyOperation>) -> Self {
-        PyAlignment {
+    fn new(penalty: u32, length: u32, query_position: (u32, u32), target_position: (u32, u32), operations: Vec<PyAlignmentOperations>) -> Self {
+        Self {
             penalty,
             length,
             query_position,
@@ -254,31 +238,23 @@ impl PyAlignment {
     }
 }
 
-#[pyclass(name = "Operation")]
+#[pyclass(name = "AlignmentOperations", frozen, eq, hash)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
-pub struct PyOperation {
+pub struct PyAlignmentOperations {
     #[pyo3(get)]
-    pub case: String,
+    pub operation: PyAlignmentOperation,
     #[pyo3(get)]
     pub count: u32,
 }
 #[pymethods]
-impl PyOperation {
+impl PyAlignmentOperations {
     #[new]
-    fn py_new(case: String, count: u32) -> PyResult<Self> {
-        match case.as_str() {
-            "M" | "S" | "D" | "I" => {
-                Ok(PyOperation {
-                    case,
-                    count,
-                })
-            },
-            _ => Err(PyValueError::new_err(
-                format!("Invalid case argument: {}. Expected one of 'M', 'S', 'D', 'I'.", case)
-            ))
-        }
-        
+    fn py_new(operation: PyAlignmentOperation, count: u32) -> PyResult<Self> {
+        Ok(Self {
+            operation,
+            count,
+        })
     }
     fn to_json(&self) -> String {
         to_string(self).unwrap()
@@ -294,86 +270,39 @@ impl PyOperation {
     }
 }
 
-impl FastaResult {
-    pub fn from_labeled_fasta_result(
-        labeled_fasta_alignment_result: LabeledFastaAlignmentResult
-    ) -> Self {
-        Self(labeled_fasta_alignment_result.0.into_iter().map(|x| {
-            PyReadResult {
-                read: x.read,
-                result: QueryResult::from_labeled_alignment_result(x.result),
-            }
-        }).collect())
-    }
-    pub fn from_fasta_result(
-        fasta_alignment_result: FastaAlignmentResult
-    ) -> Self {
-        Self(fasta_alignment_result.0.into_iter().map(|x| {
-            PyReadResult {
-                read: x.read,
-                result: QueryResult::from_alignment_result(x.result),
-            }
-        }).collect())
-    }
+#[pyclass(name = "AlignmentOperation", frozen, eq, hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Serialize, Deserialize)]
+pub enum PyAlignmentOperation {
+    Match,
+    Subst,
+    Insertion,
+    Deletion,
 }
-
-impl QueryResult {
-    pub fn from_labeled_alignment_result(alignment_result: LabeledAlignmentResult) -> Self {
-        Self(alignment_result.0.into_iter().map(|x| {
-            PyTargetResult {
-                index: x.index,
-                label: Some(x.label),
-                alignments: x.alignments.into_iter().map(|v| {
-                    PyAlignment::from_anchor_alignment_result(v)
-                }).collect(),
-            }
-        }).collect())
-    }
-    pub fn from_alignment_result(alignment_result: AlignmentResult) -> Self {
-        Self(alignment_result.0.into_iter().map(|x| {
-            PyTargetResult {
-                index: x.index,
-                label: None,
-                alignments: x.alignments.into_iter().map(|v| {
-                    PyAlignment::from_anchor_alignment_result(v)
-                }).collect(),
-            }
-        }).collect())
-    }
-}
-
-impl PyAlignment {
-    fn from_anchor_alignment_result(anchor_alignment_result :AnchorAlignmentResult) -> Self {
-        Self {
-            penalty: anchor_alignment_result.penalty,
-            length: anchor_alignment_result.length,
-            query_position: anchor_alignment_result.position.query,
-            target_position: anchor_alignment_result.position.target,
-            operations: anchor_alignment_result.operations.into_iter().map(|v| {
-                PyOperation {
-                    case: match v.operation {
-                        AlignmentOperation::Match => "M".to_string(),
-                        AlignmentOperation::Subst => "S".to_string(),
-                        AlignmentOperation::Insertion => "I".to_string(),
-                        AlignmentOperation::Deletion => "D".to_string(),
-                    },
-                    count: v.count,
-                }
-            }).collect(),
+#[pymethods]
+impl PyAlignmentOperation {
+    #[new]
+    fn py_new(chr: &str) -> PyResult<Self> {
+        match chr {
+            "M" | "Match" => Ok(Self::Match),
+            "S" | "Subst" => Ok(Self::Subst),
+            "I" | "Insertion" => Ok(Self::Insertion),
+            "D" | "Deletion" => Ok(Self::Deletion),
+            _ => Err(PyValueError::new_err(
+                format!("Invalid alignment operation: {}. Expected one of 'M (or Match)', 'S (or Subst)', 'I (or Insertion)', 'D (or Deletion)'.", chr)
+            ))
         }
     }
-}
-
-pub fn get_result_module(py: Python) -> PyResult<&PyModule> {
-    let results_module = PyModule::new(py, "results")?;
-    results_module.add_class::<FastaResult>()?;
-    results_module.add_class::<PyReadResult>()?;
-    results_module.add_class::<QueryResult>()?;
-    results_module.add_class::<PyTargetResult>()?;
-    results_module.add_class::<PyAlignment>()?;
-    results_module.add_class::<PyOperation>()?;
-    py.import("sys")?
-        .getattr("modules")?
-        .set_item("sigalign.results", results_module)?;
-    Ok(results_module)
+    fn to_json(&self) -> String {
+        to_string(self).unwrap()
+    }
+    fn to_json_pretty(&self) -> String {
+        to_string_pretty(self).unwrap()
+    }
+    fn __str__(&self) -> PyResult<String> {
+        Ok(self.py_debug())
+    }
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(self.py_debug())
+    }
 }
