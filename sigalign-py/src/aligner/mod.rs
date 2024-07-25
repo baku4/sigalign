@@ -3,6 +3,7 @@ use pyo3::exceptions::{
     PyException,
     PyValueError,
 };
+use pyo3::types::{PyBytes, PyString};
 use sigalign::{
     Aligner,
     algorithms::{
@@ -34,7 +35,7 @@ use wrapper_for_algorithm::AlignerWrapper;
 pub struct PyAligner {
     pub aligner_wrapper: AlignerWrapper,
     pub limitation_holder: Option<u32>,
-    pub chunked_holder: Option<(u32, u32)>,
+    pub chunk_holder: Option<(u32, u32)>,
 }
 
 #[pymethods]
@@ -48,9 +49,14 @@ impl PyAligner {
         maxp: f32,
         use_local_mode: bool,
         use_limit: Option<u32>,
-        use_chunked_mode: Option<(u32, u32)>,
+        use_chunk: Option<(u32, u32)>,
     ) -> PyResult<Self> {
-        todo!()
+        let aligner_wrapper = AlignerWrapper::new(px, po, pe, minl, maxp, use_local_mode, use_limit, use_chunk)?;
+        Ok(PyAligner {
+            aligner_wrapper,
+            limitation_holder: use_limit,
+            chunk_holder: use_chunk,
+        })
     }
 
     #[getter(px)]
@@ -85,126 +91,66 @@ impl PyAligner {
     fn get_limitation(&self) -> Option<u32> {
         self.limitation_holder
     }
+    #[getter(chunk)]
+    fn get_chunk(&self) -> Option<(u32, u32)> {
+        self.chunk_holder
+    }
 
     // Alignments
     #[pyo3(signature = (
-        reference,
         query,
+        reference,
         with_label=false,
     ))]
     fn align_query(
         &mut self,
+        query: &[u8],
         reference: &PyReference,
-        query: &str,
         with_label: bool,
-    ) -> PyResult<PyQueryAlignment> {
-        let res =  self.aligner_wrapper.align_query(query, reference);
-        let py_query_alignment = if with_label {
-            let sig_reference = reference.as_ref();
-            let labeled_res = sig_reference.label_query_alignment(res);
-            PyQueryAlignment::from(labeled_res)
-        } else {
-            PyQueryAlignment::from(res)
-        };
-        Ok(py_query_alignment)
+    ) -> PyQueryAlignment {
+        let py_query_alignment =  self.aligner_wrapper.align_query(query, reference, with_label);
+        py_query_alignment
     }
-    // #[pyo3(signature = (
-    //     reference,
-    //     fasta_file,
-    //     with_label=true,
-    //     accept_interrupt=true,
-    // ))]
-    // fn align_fasta_file(
-    //     &mut self,
-    //     reference: &PyReference,
-    //     fasta_file: &str,
-    //     with_label: bool,
-    //     accept_interrupt: bool,
-    // ) -> PyResult<FastaResult> {
-    //     let result = if with_label {
-    //         let labeled_result = if accept_interrupt {
-    //             self.align_fasta_file_with_label_checking_signals(reference, fasta_file)?
-    //         } else {
-    //             self.aligner.align_fasta_file_labeled(&reference.reference, fasta_file)
-    //                 .map_err(convert_error)?
-    //         };
-    //         FastaResult::from_labeled_fasta_result(labeled_result)
-    //     } else {
-    //         let unlabeled_result = if accept_interrupt {
-    //             self.align_fasta_file_without_label_checking_signals(reference, fasta_file)?
-    //         } else {
-    //             self.aligner.align_fasta_file(&reference.reference, fasta_file)
-    //                 .map_err(convert_error)?
-    //         };
-    //         FastaResult::from_fasta_result(unlabeled_result)
-    //     };
-    //     Ok(result)
-    // }
+    #[pyo3(signature = (
+        file_path,
+        reference,
+        with_label=false,
+        with_reverse_complementary=false,
+        allow_interrupt=false,
+    ))]
+    fn align_fasta_file(
+        &mut self,
+        file_path: &str,
+        reference: &PyReference,
+        with_label: bool,
+        with_reverse_complementary: bool,
+        allow_interrupt: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        self.aligner_wrapper.align_fasta_file(reference, file_path, with_label, with_reverse_complementary, allow_interrupt)
+    }
+    #[pyo3(signature = (
+        fasta,
+        reference,
+        with_label=false,
+        with_reverse_complementary=false,
+        allow_interrupt=false,
+    ))]
+    fn align_fasta(
+        &mut self,
+        fasta: &Bound<PyAny>,
+        reference: &PyReference,
+        with_label: bool,
+        with_reverse_complementary: bool,
+        allow_interrupt: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        let fasta_bytes = if fasta.is_instance_of::<PyString>() {
+            fasta.downcast::<PyString>()?.to_str()?.as_bytes()
+        } else if fasta.is_instance_of::<PyBytes>() {
+            fasta.downcast::<PyBytes>()?.as_bytes()
+        } else {
+            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+        };
+
+        self.aligner_wrapper.align_fasta_bytes(reference, fasta_bytes, with_label, with_reverse_complementary, allow_interrupt)
+    }
 }
-
-// fn convert_error(err: AlignmentError) -> PyErr {
-//     match err {
-//         AlignmentError::IoError(v) => v.into(),
-//         _ => {
-//             PyException::new_err(
-//                 format!("{}", err)
-//             )
-//         }
-//     }
-// }
-
-// use sigalign::utils::FastaReader;
-// impl PyAligner {
-//     fn align_fasta_file_with_label_checking_signals(
-//         &mut self,
-//         reference: &PyReference,
-//         fasta_file: &str,
-//     ) -> PyResult<LabeledFastaAlignmentResult> {
-//         Python::with_gil(|py| -> PyResult<LabeledFastaAlignmentResult> {
-//             let fasta_reader = FastaReader::from_path(fasta_file)?;
-//             let mut sequence_buffer = reference.reference.get_sequence_buffer();
-//             let mut results = Vec::new();
-//             for (label, query) in fasta_reader {
-//                 let result = self.aligner.alignment(
-//                     &reference.reference,
-//                     &mut sequence_buffer,
-//                     &query,
-//                 ).to_labeled_result_unchecked(&reference.reference);
-//                 if result.result_counts() != 0 {
-//                     results.push(LabeledReadAlignmentResult {
-//                         read: label,
-//                         result,
-//                     });
-//                 }
-//                 py.check_signals()?;
-//             }
-//             Ok(LabeledFastaAlignmentResult(results))
-//         })
-//     }
-//     fn align_fasta_file_without_label_checking_signals(
-//         &mut self,
-//         reference: &PyReference,
-//         fasta_file: &str,
-//     ) -> PyResult<FastaAlignmentResult> {
-//         Python::with_gil(|py| -> PyResult<FastaAlignmentResult> {
-//             let fasta_reader = FastaReader::from_path(fasta_file)?;
-//             let mut sequence_buffer = reference.reference.get_sequence_buffer();
-//             let mut results = Vec::new();
-//             for (label, query) in fasta_reader {
-//                 let result = self.aligner.alignment(
-//                     &reference.reference,
-//                     &mut sequence_buffer,
-//                     &query,
-//                 );
-//                 if result.result_counts() != 0 {
-//                     results.push(ReadAlignmentResult {
-//                         read: label,
-//                         result,
-//                     });
-//                 }
-//                 py.check_signals()?;
-//             }
-//             Ok(FastaAlignmentResult(results))
-//         })
-//     }
-// }

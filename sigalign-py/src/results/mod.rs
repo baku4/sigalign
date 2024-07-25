@@ -28,6 +28,7 @@ pub fn register_results_module_as_submodule(parent_module: &Bound<'_, PyModule>)
     results_module.add_class::<PyAlignment>()?;
     results_module.add_class::<PyAlignmentOperations>()?;
     results_module.add_class::<PyAlignmentOperation>()?;
+    parent_module.add_submodule(&results_module)?;
     Ok(())
 }
 
@@ -77,8 +78,11 @@ impl PyFastaAlignment {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 #[derive(Serialize, Deserialize)]
 pub struct PyReadAlignment {
-    read: String,
-    is_forward: bool,
+    #[pyo3(get)]
+    pub read: String,
+    #[pyo3(get)]
+    pub is_forward: bool,
+    #[pyo3(get)]
     pub result: PyQueryAlignment,
 }
 #[pymethods]

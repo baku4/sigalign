@@ -88,9 +88,9 @@ impl PyReference {
         Ok(self.inner.get_total_length())
     }
 
-    fn get_sequence(&self, target_index: u32) -> PyResult<String> {
+    fn get_sequence(&self, target_index: u32) -> PyResult<Vec<u8>> {
         match self.inner.get_sequence(target_index) {
-            Some(v) => Ok(String::from_utf8(v).unwrap()),
+            Some(v) => Ok(v),
             None => Err(PyValueError::new_err("Target index is out of bound."))
         }
     }

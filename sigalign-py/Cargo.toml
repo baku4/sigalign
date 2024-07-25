@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 sigalign = { path = "../sigalign" }
+sigalign-utils = { path = "../sigalign-utils" }
 serde = "1.0.164"
 serde_json = "1.0.99"
 
