@@ -16,9 +16,11 @@ use sigalign::{
         QueryAlignment, TargetAlignment, Alignment,
     }
 };
-use sigalign_utils::sequence_reader::{IdRecord, SeqRecord};
+use sigalign_utils::sequence_reader::{IdRefRecord, SeqRefRecord};
 use sigalign_utils::sequence_reader::{
+    IdRecord, SeqRecord,
     fasta::FastaReader,
+    fastq::FastqReader,
 };
 
 use crate::reference::PyReference;
@@ -38,7 +40,11 @@ fn map_params_err(err: sigalign::algorithms::ParamsError) -> PyErr {
 }
 
 impl AlignerWrapper {
-    // New
+    /*
+    
+    New
+    
+    */
     pub fn new(
         px: u32,
         po: u32,
@@ -74,7 +80,11 @@ impl AlignerWrapper {
         }
     }
 
-    // Getters
+    /*
+    
+    Getters
+    
+    */
     pub fn get_mismatch_penalty(&self) -> u32 {
         match self {
             AlignerWrapper::Local(v) => v.get_mismatch_penalty(),
@@ -135,6 +145,16 @@ impl AlignerWrapper {
             AlignerWrapper::SemiGlobalWithChunk(v) => v.get_maximum_penalty_per_length(),
         }
     }
+    pub fn is_local_mode(&self) -> bool {
+        match self {
+            AlignerWrapper::Local(_)
+            | AlignerWrapper::LocalWithLimit(_)
+            | AlignerWrapper::LocalWithChunk(_) => true,
+            AlignerWrapper::SemiGlobal(_)
+            | AlignerWrapper::SemiGlobalWithLimit(_)
+            | AlignerWrapper::SemiGlobalWithChunk(_) => false,
+        }
+    }
     // TODO: Add limitation and chunk getters
     pub fn as_str(&self) -> &str {
         match self {
@@ -147,7 +167,12 @@ impl AlignerWrapper {
         }
     }
 
-    // Perform Alignment
+    /*
+    
+    Perform Alignment
+    
+    */
+    // - For query
     #[inline]
     pub fn align_query(
         &mut self,
@@ -172,6 +197,8 @@ impl AlignerWrapper {
         };
         py_query_alignment
     }
+
+    // - For fasta
     pub fn align_fasta_file(
         &mut self,
         reference: &PyReference,
@@ -258,6 +285,93 @@ impl AlignerWrapper {
             },
         }
     }
+    // - For fastq
+    pub fn align_fastq_file(
+        &mut self,
+        reference: &PyReference,
+        file_path: &str,
+        with_label: bool,
+        with_reverse_complementary: bool,
+        checking_signals: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        let mut fastq_reader = FastqReader::from_path(file_path)?;
+        if checking_signals {
+            self.align_fastq_with_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+        } else {
+            self.align_fastq_without_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+        }
+    }
+    pub fn align_fastq_bytes(
+        &mut self,
+        reference: &PyReference,
+        fastq_bytes: &[u8],
+        with_label: bool,
+        with_reverse_complementary: bool,
+        checking_signals: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        let mut fastq_reader = FastqReader::new(fastq_bytes);
+        if checking_signals {
+            self.align_fastq_with_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+        } else {
+            self.align_fastq_without_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+        }
+    }
+    fn align_fastq_without_checking_signals<R: Read>(
+        &mut self,
+        reference: &PyReference,
+        fastq_reader: &mut FastqReader<R>,
+        with_label: bool,
+        with_reverse_complementary: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        match self {
+            AlignerWrapper::Local(v) => {
+                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
+            },
+            AlignerWrapper::LocalWithLimit(v) => {
+                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
+            },
+            AlignerWrapper::LocalWithChunk(v) => {
+                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
+            },
+            AlignerWrapper::SemiGlobal(v) => {
+                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
+            },
+            AlignerWrapper::SemiGlobalWithLimit(v) => {
+                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
+            },
+            AlignerWrapper::SemiGlobalWithChunk(v) => {
+                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
+            },
+        }
+    }
+    fn align_fastq_with_checking_signals<R: Read>(
+        &mut self,
+        reference: &PyReference,
+        fastq_reader: &mut FastqReader<R>,
+        with_label: bool,
+        with_reverse_complementary: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        match self {
+            AlignerWrapper::Local(v) => {
+                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
+            },
+            AlignerWrapper::LocalWithLimit(v) => {
+                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
+            },
+            AlignerWrapper::LocalWithChunk(v) => {
+                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
+            },
+            AlignerWrapper::SemiGlobal(v) => {
+                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
+            },
+            AlignerWrapper::SemiGlobalWithLimit(v) => {
+                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
+            },
+            AlignerWrapper::SemiGlobalWithChunk(v) => {
+                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
+            },
+        }
+    }
 }
 
 // Alignment Helpers
@@ -287,10 +401,10 @@ fn align_fasta_with_core_aligner<A: Algorithm, R: Read>(
         query_buffer.clear();
         label_buffer.clear();
         record.extend_seq_buf(&mut query_buffer);
-        record.extend_id_string(&mut label_buffer);
+        record.extend_id_string(&mut label_buffer).unwrap();
 
         let query_alignment = aligner.align(&query_buffer, reference);
-        let py_query_alignmnet = if with_label {
+        let py_query_alignment = if with_label {
             let labeled_query_alignment = reference.label_query_alignment(query_alignment);
             PyQueryAlignment::from(labeled_query_alignment)
         } else {
@@ -299,7 +413,7 @@ fn align_fasta_with_core_aligner<A: Algorithm, R: Read>(
         let py_read_alignment = PyReadAlignment{
             read: label_buffer.clone(),
             is_forward: true,
-            result: py_query_alignmnet,
+            result: py_query_alignment,
         };
         py_read_alignments.push(py_read_alignment);
 
@@ -339,10 +453,10 @@ fn align_fasta_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
             query_buffer.clear();
             label_buffer.clear();
             record.extend_seq_buf(&mut query_buffer);
-            record.extend_id_string(&mut label_buffer);
+            record.extend_id_string(&mut label_buffer).unwrap();
 
             let query_alignment = aligner.align(&query_buffer, reference);
-            let py_query_alignmnet = if with_label {
+            let py_query_alignment = if with_label {
                 let labeled_query_alignment = reference.label_query_alignment(query_alignment);
                 PyQueryAlignment::from(labeled_query_alignment)
             } else {
@@ -351,7 +465,7 @@ fn align_fasta_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
             let py_read_alignment = PyReadAlignment{
                 read: label_buffer.clone(),
                 is_forward: true,
-                result: py_query_alignmnet,
+                result: py_query_alignment,
             };
             py_read_alignments.push(py_read_alignment);
 
@@ -366,6 +480,98 @@ fn align_fasta_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
                 };
                 let py_read_alignment = PyReadAlignment{
                     read: label_buffer.clone(),
+                    is_forward: false,
+                    result: py_query_alignmnet,
+                };
+                py_read_alignments.push(py_read_alignment);
+            }
+            py.check_signals()?;
+        }
+        Ok(PyFastaAlignment(py_read_alignments))
+    })
+}
+// - For FASTQ
+#[inline]
+fn align_fastq_with_core_aligner<A: Algorithm, R: Read>(
+    aligner: &mut Aligner<A>,
+    fastq_reader: &mut FastqReader<R>,
+    reference: &Reference,
+    with_label: bool,
+    with_reverse_complementary: bool,
+) -> PyFastaAlignment {
+    let mut py_read_alignments = Vec::new();
+
+    while let Some(record) = fastq_reader.next() {
+        let query_alignment = aligner.align(record.seq(), reference);
+        let py_query_alignment = if with_label {
+            let labeled_query_alignment = reference.label_query_alignment(query_alignment);
+            PyQueryAlignment::from(labeled_query_alignment)
+        } else {
+            PyQueryAlignment::from(query_alignment)
+        };
+        let py_read_alignment = PyReadAlignment{
+            read: String::from_utf8_lossy(record.id()).to_string(),
+            is_forward: true,
+            result: py_query_alignment,
+        };
+        py_read_alignments.push(py_read_alignment);
+
+        if with_reverse_complementary {
+            let reversed = record.seq().iter().rev().map(|&x| x).collect::<Vec<u8>>();
+            let query_alignment = aligner.align(&reversed, reference);
+            let py_query_alignmnet = if with_label {
+                let labeled_query_alignment = reference.label_query_alignment(query_alignment);
+                PyQueryAlignment::from(labeled_query_alignment)
+            } else {
+                PyQueryAlignment::from(query_alignment)
+            };
+            let py_read_alignment = PyReadAlignment{
+                read: String::from_utf8_lossy(record.id()).to_string(),
+                is_forward: false,
+                result: py_query_alignmnet,
+            };
+            py_read_alignments.push(py_read_alignment);
+        }
+    }
+    PyFastaAlignment(py_read_alignments)
+}
+#[inline]
+fn align_fastq_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
+    aligner: &mut Aligner<A>,
+    fastq_reader: &mut FastqReader<R>,
+    reference: &Reference,
+    with_label: bool,
+    with_reverse_complementary: bool,
+) -> PyResult<PyFastaAlignment> {
+    Python::with_gil(|py| -> PyResult<PyFastaAlignment> {
+        let mut py_read_alignments = Vec::new();
+
+        while let Some(record) = fastq_reader.next() {
+            let query_alignment = aligner.align(record.seq(), reference);
+            let py_query_alignment = if with_label {
+                let labeled_query_alignment = reference.label_query_alignment(query_alignment);
+                PyQueryAlignment::from(labeled_query_alignment)
+            } else {
+                PyQueryAlignment::from(query_alignment)
+            };
+            let py_read_alignment = PyReadAlignment{
+                read: String::from_utf8_lossy(record.id()).to_string(),
+                is_forward: true,
+                result: py_query_alignment,
+            };
+            py_read_alignments.push(py_read_alignment);
+    
+            if with_reverse_complementary {
+                let reversed = record.seq().iter().rev().map(|&x| x).collect::<Vec<u8>>();
+                let query_alignment = aligner.align(&reversed, reference);
+                let py_query_alignmnet = if with_label {
+                    let labeled_query_alignment = reference.label_query_alignment(query_alignment);
+                    PyQueryAlignment::from(labeled_query_alignment)
+                } else {
+                    PyQueryAlignment::from(query_alignment)
+                };
+                let py_read_alignment = PyReadAlignment{
+                    read: String::from_utf8_lossy(record.id()).to_string(),
                     is_forward: false,
                     result: py_query_alignmnet,
                 };

@@ -52,7 +52,7 @@ impl PyFastaAlignment {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatReadAlignment> {
+    fn to_rows(&self) -> Vec<FlatReadAlignment> {
         self.to_flat_results()
     }
     fn num_alignments(&self) -> usize {
@@ -102,7 +102,7 @@ impl PyReadAlignment {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatReadAlignment> {
+    fn to_rows(&self) -> Vec<FlatReadAlignment> {
         self.to_flat_results()
     }
     pub fn num_alignments(&self) -> usize {
@@ -136,7 +136,7 @@ impl PyQueryAlignment {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatTargetAlignment> {
+    fn to_rows(&self) -> Vec<FlatTargetAlignment> {
         self.to_flat_results()
     }
     pub fn num_alignments(&self) -> usize {
@@ -186,7 +186,7 @@ impl PyTargetAlignment {
     fn to_json_pretty(&self) -> String {
         to_string_pretty(self).unwrap()
     }
-    fn to_table(&self) -> Vec<FlatTargetAlignment> {
+    fn to_rows(&self) -> Vec<FlatTargetAlignment> {
         self.to_flat_results()
     }
     pub fn num_alignments(&self) -> usize {

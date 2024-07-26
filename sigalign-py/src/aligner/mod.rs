@@ -41,6 +41,16 @@ pub struct PyAligner {
 #[pymethods]
 impl PyAligner {
     #[new]
+    #[pyo3(signature = (
+        px,
+        po,
+        pe,
+        minl,
+        maxp,
+        use_local_mode=true,
+        use_limit=None,
+        use_chunk=None,
+    ))]
     fn py_new(
         px: u32,
         po: u32,
@@ -87,6 +97,10 @@ impl PyAligner {
     fn get_algorithm(&self) -> &str {
         self.aligner_wrapper.as_str()
     }
+    #[getter(is_local_mode)]
+    fn is_local_mode(&self) -> bool {
+        self.aligner_wrapper.is_local_mode()
+    }
     #[getter(limitation)]
     fn get_limitation(&self) -> Option<u32> {
         self.limitation_holder
@@ -104,12 +118,20 @@ impl PyAligner {
     ))]
     fn align_query(
         &mut self,
-        query: &[u8],
+        query: &Bound<PyAny>,
         reference: &PyReference,
         with_label: bool,
-    ) -> PyQueryAlignment {
-        let py_query_alignment =  self.aligner_wrapper.align_query(query, reference, with_label);
-        py_query_alignment
+    ) -> PyResult<PyQueryAlignment> {
+        let query_bytes = if query.is_instance_of::<PyString>() {
+            query.downcast::<PyString>()?.to_str()?.as_bytes()
+        } else if query.is_instance_of::<PyBytes>() {
+            query.downcast::<PyBytes>()?.as_bytes()
+        } else {
+            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+        };
+
+        let py_query_alignment =  self.aligner_wrapper.align_query(query_bytes, reference, with_label);
+        Ok(py_query_alignment)
     }
     #[pyo3(signature = (
         file_path,
@@ -152,5 +174,47 @@ impl PyAligner {
         };
 
         self.aligner_wrapper.align_fasta_bytes(reference, fasta_bytes, with_label, with_reverse_complementary, allow_interrupt)
+    }
+    #[pyo3(signature = (
+        file_path,
+        reference,
+        with_label=false,
+        with_reverse_complementary=false,
+        allow_interrupt=false,
+    ))]
+    fn align_fastq_file(
+        &mut self,
+        file_path: &str,
+        reference: &PyReference,
+        with_label: bool,
+        with_reverse_complementary: bool,
+        allow_interrupt: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        self.aligner_wrapper.align_fastq_file(reference, file_path, with_label, with_reverse_complementary, allow_interrupt)
+    }
+    #[pyo3(signature = (
+        fastq,
+        reference,
+        with_label=false,
+        with_reverse_complementary=false,
+        allow_interrupt=false,
+    ))]
+    fn align_fastq(
+        &mut self,
+        fastq: &Bound<PyAny>,
+        reference: &PyReference,
+        with_label: bool,
+        with_reverse_complementary: bool,
+        allow_interrupt: bool,
+    ) -> PyResult<PyFastaAlignment> {
+        let fastq_bytes = if fastq.is_instance_of::<PyString>() {
+            fastq.downcast::<PyString>()?.to_str()?.as_bytes()
+        } else if fastq.is_instance_of::<PyBytes>() {
+            fastq.downcast::<PyBytes>()?.as_bytes()
+        } else {
+            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+        };
+
+        self.aligner_wrapper.align_fastq_bytes(reference, fastq_bytes, with_label, with_reverse_complementary, allow_interrupt)
     }
 }

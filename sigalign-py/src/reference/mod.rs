@@ -15,6 +15,7 @@ use sigalign::{
     ReferenceBuilder,
 };
 
+use std::borrow::Cow;
 use std::fs::File;
 use std::path::Path;
 
@@ -46,16 +47,24 @@ impl PyReference {
         Self::from_builder(reference_builder)
     }
     #[classmethod]
-    #[pyo3(signature = (fasta_str, set_uppercase=false, bases_to_ignore=""))]
-    fn from_fasta_str(
+    #[pyo3(signature = (fasta, set_uppercase=false, bases_to_ignore=""))]
+    fn from_fasta(
         _cls: &Bound<PyType>,
-        fasta_str: &str,
+        fasta: &Bound<PyAny>,
         set_uppercase: bool,
         bases_to_ignore: &str,
     ) -> PyResult<Self> {
+        let fasta_bytes = if fasta.is_instance_of::<PyString>() {
+            fasta.downcast::<PyString>()?.to_str()?.as_bytes()
+        } else if fasta.is_instance_of::<PyBytes>() {
+            fasta.downcast::<PyBytes>()?.as_bytes()
+        } else {
+            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+        };
+
         let mut reference_builder = Self::new_configured_builder(set_uppercase, bases_to_ignore);
         
-        reference_builder = add_fasta_str_to_builder(reference_builder, fasta_str)?;
+        reference_builder = add_fasta_bytes_to_builder(reference_builder, fasta_bytes)?;
 
         Self::from_builder(reference_builder)
     }
@@ -79,8 +88,8 @@ impl PyReference {
     fn get_num_targets(&self) -> PyResult<u32> {
         Ok(self.inner.get_num_targets())
     }
-    #[getter(estimated_size_in_bytes)]
-    fn get_estimated_size_in_bytes(&self) -> PyResult<usize> {
+    #[getter(estimated_size)]
+    fn get_estimated_size(&self) -> PyResult<usize> {
         Ok(self.inner.get_estimated_size_in_bytes())
     }
     #[getter(total_length)]
@@ -88,9 +97,9 @@ impl PyReference {
         Ok(self.inner.get_total_length())
     }
 
-    fn get_sequence(&self, target_index: u32) -> PyResult<Vec<u8>> {
+    fn get_sequence(&self, target_index: u32) -> PyResult<String> {
         match self.inner.get_sequence(target_index) {
-            Some(v) => Ok(v),
+            Some(v) => Ok(String::from_utf8(v)?),
             None => Err(PyValueError::new_err("Target index is out of bound."))
         }
     }
@@ -221,11 +230,11 @@ fn add_target_to_builder(
 }
 
 #[inline]
-fn add_fasta_str_to_builder(
+fn add_fasta_bytes_to_builder(
     mut reference_builder: ReferenceBuilder,
-    fasta_str: &str,
+    fasta_bytes: &[u8],
 ) -> PyResult<ReferenceBuilder> {
-    reference_builder = reference_builder.add_fasta(fasta_str.as_bytes()).map_err(|e| {
+    reference_builder = reference_builder.add_fasta(fasta_bytes).map_err(|e| {
         let msg = format!("{e}");
         PyValueError::new_err(msg)
     })?;
