@@ -22,11 +22,21 @@ pub struct InMemoryStorage {
 }
 
 /// `SequenceBuffer` for `InMemoryStorage`.
+///
+/// ## ⚠️CAUTION⚠️
+/// This struct is not thread-safe, although it impl `Send`.
+/// `InMemoryStorage` must not be dropped while the buffer is in use.
+///
+/// ## Safety
+/// This struct uses raw pointers, which can lead to undefined behavior if used incorrectly.
+/// Ensure that the `InMemoryStorage`'s lifetime exceeds the buffer's usage to avoid dangling pointers.
 #[derive(Clone)]
 pub struct InMemoryBuffer {
     pointer: *const u8,
     len: usize,
 }
+
+unsafe impl Send for InMemoryBuffer {}
 
 // Sequence Storage
 impl SequenceStorage for InMemoryStorage {
