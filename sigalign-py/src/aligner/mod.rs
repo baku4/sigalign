@@ -1,31 +1,10 @@
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::exceptions::{
-    PyException,
-    PyValueError,
-};
 use pyo3::types::{PyBytes, PyString};
-use sigalign::{
-    Aligner,
-    algorithms::{
-        Local, LocalWithLimit, LocalWithChunk,
-        SemiGlobal, SemiGlobalWithLimit, SemiGlobalWithChunk,
-    },
-    results::{
-        QueryAlignment, TargetAlignment, Alignment,
-    }
-};
 
 use crate::{
     reference::PyReference,
-    results::{
-        PyFastaAlignment,
-        PyReadAlignment,
-        PyQueryAlignment,
-        PyTargetAlignment,
-        PyAlignment,
-        PyAlignmentOperations,
-        PyAlignmentOperation,
-    },
+    results::{PyFastaAlignment, PyQueryAlignment},
 };
 
 mod wrapper_for_algorithm;
@@ -61,7 +40,8 @@ impl PyAligner {
         use_limit: Option<u32>,
         use_chunk: Option<(u32, u32)>,
     ) -> PyResult<Self> {
-        let aligner_wrapper = AlignerWrapper::new(px, po, pe, minl, maxp, use_local_mode, use_limit, use_chunk)?;
+        let aligner_wrapper =
+            AlignerWrapper::new(px, po, pe, minl, maxp, use_local_mode, use_limit, use_chunk)?;
         Ok(PyAligner {
             aligner_wrapper,
             limitation_holder: use_limit,
@@ -127,10 +107,14 @@ impl PyAligner {
         } else if query.is_instance_of::<PyBytes>() {
             query.downcast::<PyBytes>()?.as_bytes()
         } else {
-            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+            return Err(PyValueError::new_err(
+                "The input must be either a string or bytes.",
+            ));
         };
 
-        let py_query_alignment =  self.aligner_wrapper.align_query(query_bytes, reference, with_label);
+        let py_query_alignment =
+            self.aligner_wrapper
+                .align_query(query_bytes, reference, with_label);
         Ok(py_query_alignment)
     }
     #[pyo3(signature = (
@@ -148,7 +132,13 @@ impl PyAligner {
         with_reverse_complementary: bool,
         allow_interrupt: bool,
     ) -> PyResult<PyFastaAlignment> {
-        self.aligner_wrapper.align_fasta_file(reference, file_path, with_label, with_reverse_complementary, allow_interrupt)
+        self.aligner_wrapper.align_fasta_file(
+            reference,
+            file_path,
+            with_label,
+            with_reverse_complementary,
+            allow_interrupt,
+        )
     }
     #[pyo3(signature = (
         fasta,
@@ -170,10 +160,18 @@ impl PyAligner {
         } else if fasta.is_instance_of::<PyBytes>() {
             fasta.downcast::<PyBytes>()?.as_bytes()
         } else {
-            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+            return Err(PyValueError::new_err(
+                "The input must be either a string or bytes.",
+            ));
         };
 
-        self.aligner_wrapper.align_fasta_bytes(reference, fasta_bytes, with_label, with_reverse_complementary, allow_interrupt)
+        self.aligner_wrapper.align_fasta_bytes(
+            reference,
+            fasta_bytes,
+            with_label,
+            with_reverse_complementary,
+            allow_interrupt,
+        )
     }
     #[pyo3(signature = (
         file_path,
@@ -190,7 +188,13 @@ impl PyAligner {
         with_reverse_complementary: bool,
         allow_interrupt: bool,
     ) -> PyResult<PyFastaAlignment> {
-        self.aligner_wrapper.align_fastq_file(reference, file_path, with_label, with_reverse_complementary, allow_interrupt)
+        self.aligner_wrapper.align_fastq_file(
+            reference,
+            file_path,
+            with_label,
+            with_reverse_complementary,
+            allow_interrupt,
+        )
     }
     #[pyo3(signature = (
         fastq,
@@ -212,9 +216,17 @@ impl PyAligner {
         } else if fastq.is_instance_of::<PyBytes>() {
             fastq.downcast::<PyBytes>()?.as_bytes()
         } else {
-            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+            return Err(PyValueError::new_err(
+                "The input must be either a string or bytes.",
+            ));
         };
 
-        self.aligner_wrapper.align_fastq_bytes(reference, fastq_bytes, with_label, with_reverse_complementary, allow_interrupt)
+        self.aligner_wrapper.align_fastq_bytes(
+            reference,
+            fastq_bytes,
+            with_label,
+            with_reverse_complementary,
+            allow_interrupt,
+        )
     }
 }

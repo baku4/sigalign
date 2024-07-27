@@ -1,37 +1,32 @@
 use super::{
-    PyFastaAlignment,
-    PyReadAlignment,
-    PyQueryAlignment,
-    PyTargetAlignment,
-    PyAlignment,
-    PyAlignmentOperations,
-    PyAlignmentOperation,
+    PyFastaAlignment, PyQueryAlignment, PyReadAlignment, PyTargetAlignment,
+    PyAlignmentOperations, PyAlignmentOperation,
 };
 
 pub type FlatTargetAlignment = (
-    u32,    // index of target
+    u32,            // index of target
     Option<String>, // label of target
-    u32,    // penalty
-    u32,    // length
-    u32,    // query start index
-    u32,    // query end index
-    u32,    // target start index
-    u32,    // target end index
-    String, // operations
+    u32,            // penalty
+    u32,            // length
+    u32,            // query start index
+    u32,            // query end index
+    u32,            // target start index
+    u32,            // target end index
+    String,         // operations
 );
 
 pub type FlatReadAlignment = (
-    String, // read
-    bool,   // is forward
-    u32,    // index of target
+    String,         // read
+    bool,           // is forward
+    u32,            // index of target
     Option<String>, // label of target
-    u32,    // penalty
-    u32,    // length
-    u32,    // query start index
-    u32,    // query end index
-    u32,    // target start index
-    u32,    // target end index
-    String, // operations
+    u32,            // penalty
+    u32,            // length
+    u32,            // query start index
+    u32,            // query end index
+    u32,            // target start index
+    u32,            // target end index
+    String,         // operations
 );
 
 impl PyFastaAlignment {
@@ -67,7 +62,7 @@ impl PyReadAlignment {
                     alignment.query_position.1,
                     alignment.target_position.0,
                     alignment.target_position.1,
-                    operations_to_string(&alignment.operations),
+                    operations_to_cigars(&alignment.operations),
                 );
                 flat_results.push(flat_read_result);
             });
@@ -105,16 +100,31 @@ impl PyTargetAlignment {
                 alignment.query_position.1,
                 alignment.target_position.0,
                 alignment.target_position.1,
-                operations_to_string(&alignment.operations),
+                operations_to_cigars(&alignment.operations),
             );
             flat_results.push(flat_result);
         });
     }
 }
 
-fn operations_to_string(operations: &Vec<PyAlignmentOperations>) -> String {
-    let string_ops: Vec<String> = operations.iter().map(|op| {
-        format!("{}{}", op.operation, op.count)
-    }).collect();
+fn operations_to_cigars(operations: &[PyAlignmentOperations]) -> String {
+    let string_ops: Vec<String> = operations
+        .iter()
+        .map(|op| format!(
+            "{}{}",
+            op.count,
+            operation_to_cigar(&op.operation),
+        ))
+        .collect();
     string_ops.concat()
+}
+
+#[inline(always)]
+fn operation_to_cigar(op: &PyAlignmentOperation) -> char {
+    match op {
+        PyAlignmentOperation::Match => '=',
+        PyAlignmentOperation::Insertion => 'I',
+        PyAlignmentOperation::Deletion => 'D',
+        PyAlignmentOperation::Subst => 'X',
+    }
 }

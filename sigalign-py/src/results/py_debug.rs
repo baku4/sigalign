@@ -1,21 +1,13 @@
 use core::fmt;
 
 use super::{
-    PyFastaAlignment,
-    PyReadAlignment,
-    PyQueryAlignment,
-    PyTargetAlignment,
-    PyAlignment,
-    PyAlignmentOperations,
-    PyAlignmentOperation,
+    PyAlignment, PyAlignmentOperation, PyAlignmentOperations, PyFastaAlignment, PyQueryAlignment,
+    PyReadAlignment, PyTargetAlignment,
 };
 
 impl PyFastaAlignment {
     pub fn py_debug(&self) -> String {
-        format!(
-            "FastaAlignment(num_read_alignments={})",
-            self.0.len(),
-        )
+        format!("FastaAlignment(num_read_alignments={})", self.0.len(),)
     }
 }
 
@@ -32,10 +24,7 @@ impl PyReadAlignment {
 
 impl PyQueryAlignment {
     pub fn py_debug(&self) -> String {
-        format!(
-            "QueryAlignment(num_target_alignments={})",
-            self.0.len(),
-        )
+        format!("QueryAlignment(num_target_alignments={})", self.0.len(),)
     }
 }
 
@@ -65,7 +54,10 @@ impl PyAlignment {
 
 impl PyAlignmentOperations {
     pub fn py_debug(&self) -> String {
-        format!("AlignmentOperations(operation={}, count={})", self.operation, self.count)
+        format!(
+            "AlignmentOperations(operation={}, count={})",
+            self.operation, self.count
+        )
     }
 }
 

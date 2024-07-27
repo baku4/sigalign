@@ -1,29 +1,33 @@
 use sigalign::results::{
-    QueryAlignment, LabeledQueryAlignment, TargetAlignment, LabeledTargetAlignment,
-    Alignment, AlignmentOperations, AlignmentOperation,
+    Alignment, AlignmentOperation, AlignmentOperations, LabeledQueryAlignment,
+    LabeledTargetAlignment, QueryAlignment, TargetAlignment,
 };
 
 use super::{
-    PyQueryAlignment,
-    PyTargetAlignment,
-    PyAlignment,
-    PyAlignmentOperations,
-    PyAlignmentOperation,
+    PyAlignment, PyAlignmentOperation, PyAlignmentOperations, PyQueryAlignment, PyTargetAlignment,
 };
 
 impl From<QueryAlignment> for PyQueryAlignment {
     fn from(query_alignment: QueryAlignment) -> Self {
-        Self(query_alignment.0.into_iter().map(|x| {
-            PyTargetAlignment::from(x)
-        }).collect())
+        Self(
+            query_alignment
+                .0
+                .into_iter()
+                .map(PyTargetAlignment::from)
+                .collect(),
+        )
     }
 }
 
 impl From<LabeledQueryAlignment> for PyQueryAlignment {
     fn from(labeled_query_alignment: LabeledQueryAlignment) -> Self {
-        Self(labeled_query_alignment.0.into_iter().map(|x| {
-            PyTargetAlignment::from(x)
-        }).collect())
+        Self(
+            labeled_query_alignment
+                .0
+                .into_iter()
+                .map(PyTargetAlignment::from)
+                .collect(),
+        )
     }
 }
 
@@ -32,9 +36,11 @@ impl From<TargetAlignment> for PyTargetAlignment {
         Self {
             index: target_alignment.index,
             label: None,
-            alignments: target_alignment.alignments.into_iter().map(|v| {
-                PyAlignment::from(v)
-            }).collect(),
+            alignments: target_alignment
+                .alignments
+                .into_iter()
+                .map(|v| PyAlignment::from(v))
+                .collect(),
         }
     }
 }
@@ -44,9 +50,11 @@ impl From<LabeledTargetAlignment> for PyTargetAlignment {
         Self {
             index: labeled_target_alignment.index,
             label: Some(labeled_target_alignment.label),
-            alignments: labeled_target_alignment.alignments.into_iter().map(|v| {
-                PyAlignment::from(v)
-            }).collect(),
+            alignments: labeled_target_alignment
+                .alignments
+                .into_iter()
+                .map(PyAlignment::from)
+                .collect(),
         }
     }
 }
@@ -58,9 +66,11 @@ impl From<Alignment> for PyAlignment {
             length: alignment.length,
             query_position: alignment.position.query,
             target_position: alignment.position.target,
-            operations: alignment.operations.into_iter().map(|v| {
-                PyAlignmentOperations::from(v)
-            }).collect(),
+            operations: alignment
+                .operations
+                .into_iter()
+                .map(PyAlignmentOperations::from)
+                .collect(),
         }
     }
 }

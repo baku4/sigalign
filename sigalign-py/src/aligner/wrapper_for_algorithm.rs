@@ -1,27 +1,19 @@
 use std::io::Read;
 
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::exceptions::{
-    PyException,
-    PyValueError,
-};
 use sigalign::algorithms::Algorithm;
 use sigalign::{
-    Aligner, Reference,
     algorithms::{
-        Local, LocalWithLimit, LocalWithChunk,
-        SemiGlobal, SemiGlobalWithLimit, SemiGlobalWithChunk,
+        Local, LocalWithChunk, LocalWithLimit, SemiGlobal, SemiGlobalWithChunk, SemiGlobalWithLimit,
     },
-    results::{
-        QueryAlignment, TargetAlignment, Alignment,
-    }
+    results::QueryAlignment,
+    Aligner, Reference,
+};
+use sigalign_utils::sequence_reader::{
+    fasta::FastaReader, fastq::FastqReader, IdRecord, SeqRecord,
 };
 use sigalign_utils::sequence_reader::{IdRefRecord, SeqRefRecord};
-use sigalign_utils::sequence_reader::{
-    IdRecord, SeqRecord,
-    fasta::FastaReader,
-    fastq::FastqReader,
-};
 
 use crate::reference::PyReference;
 use crate::results::{PyFastaAlignment, PyQueryAlignment, PyReadAlignment};
@@ -41,9 +33,9 @@ fn map_params_err(err: sigalign::algorithms::ParamsError) -> PyErr {
 
 impl AlignerWrapper {
     /*
-    
+
     New
-    
+
     */
     pub fn new(
         px: u32,
@@ -57,10 +49,13 @@ impl AlignerWrapper {
     ) -> PyResult<Self> {
         if use_local_mode {
             if let Some(limit) = use_limit {
-                let algorithm = LocalWithLimit::new(px, po, pe, minl, maxp, limit).map_err(map_params_err)?;
+                let algorithm =
+                    LocalWithLimit::new(px, po, pe, minl, maxp, limit).map_err(map_params_err)?;
                 Ok(AlignerWrapper::LocalWithLimit(Aligner::from(algorithm)))
             } else if let Some((chunk_size, chunk_limit)) = use_chunk {
-                let algorithm = LocalWithChunk::new(px, po, pe, minl, maxp, chunk_size, chunk_limit).map_err(map_params_err)?;
+                let algorithm =
+                    LocalWithChunk::new(px, po, pe, minl, maxp, chunk_size, chunk_limit)
+                        .map_err(map_params_err)?;
                 Ok(AlignerWrapper::LocalWithChunk(Aligner::from(algorithm)))
             } else {
                 let algorithm = Local::new(px, po, pe, minl, maxp).map_err(map_params_err)?;
@@ -68,11 +63,18 @@ impl AlignerWrapper {
             }
         } else {
             if let Some(limit) = use_limit {
-                let algorithm = SemiGlobalWithLimit::new(px, po, pe, minl, maxp, limit).map_err(map_params_err)?;
-                Ok(AlignerWrapper::SemiGlobalWithLimit(Aligner::from(algorithm)))
+                let algorithm = SemiGlobalWithLimit::new(px, po, pe, minl, maxp, limit)
+                    .map_err(map_params_err)?;
+                Ok(AlignerWrapper::SemiGlobalWithLimit(Aligner::from(
+                    algorithm,
+                )))
             } else if let Some((chunk_size, chunk_limit)) = use_chunk {
-                let algorithm = SemiGlobalWithChunk::new(px, po, pe, minl, maxp, chunk_size, chunk_limit).map_err(map_params_err)?;
-                Ok(AlignerWrapper::SemiGlobalWithChunk(Aligner::from(algorithm)))
+                let algorithm =
+                    SemiGlobalWithChunk::new(px, po, pe, minl, maxp, chunk_size, chunk_limit)
+                        .map_err(map_params_err)?;
+                Ok(AlignerWrapper::SemiGlobalWithChunk(Aligner::from(
+                    algorithm,
+                )))
             } else {
                 let algorithm = SemiGlobal::new(px, po, pe, minl, maxp).map_err(map_params_err)?;
                 Ok(AlignerWrapper::SemiGlobal(Aligner::from(algorithm)))
@@ -81,9 +83,9 @@ impl AlignerWrapper {
     }
 
     /*
-    
+
     Getters
-    
+
     */
     pub fn get_mismatch_penalty(&self) -> u32 {
         match self {
@@ -168,9 +170,9 @@ impl AlignerWrapper {
     }
 
     /*
-    
+
     Perform Alignment
-    
+
     */
     // - For query
     #[inline]
@@ -186,16 +188,19 @@ impl AlignerWrapper {
             AlignerWrapper::LocalWithLimit(v) => align_query_with_core_aligner(v, query, reference),
             AlignerWrapper::LocalWithChunk(v) => align_query_with_core_aligner(v, query, reference),
             AlignerWrapper::SemiGlobal(v) => align_query_with_core_aligner(v, query, reference),
-            AlignerWrapper::SemiGlobalWithLimit(v) => align_query_with_core_aligner(v, query, reference),
-            AlignerWrapper::SemiGlobalWithChunk(v) => align_query_with_core_aligner(v, query, reference),
+            AlignerWrapper::SemiGlobalWithLimit(v) => {
+                align_query_with_core_aligner(v, query, reference)
+            }
+            AlignerWrapper::SemiGlobalWithChunk(v) => {
+                align_query_with_core_aligner(v, query, reference)
+            }
         };
-        let py_query_alignment = if with_label {
+        if with_label {
             let labeled_query_alignment = reference.label_query_alignment(query_alignment);
             PyQueryAlignment::from(labeled_query_alignment)
         } else {
             PyQueryAlignment::from(query_alignment)
-        };
-        py_query_alignment
+        }
     }
 
     // - For fasta
@@ -209,9 +214,19 @@ impl AlignerWrapper {
     ) -> PyResult<PyFastaAlignment> {
         let mut fasta_reader = FastaReader::from_path(file_path)?;
         if checking_signals {
-            self.align_fasta_with_checking_signals(reference, &mut fasta_reader, with_label, with_reverse_complementary)
+            self.align_fasta_with_checking_signals(
+                reference,
+                &mut fasta_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         } else {
-            self.align_fasta_without_checking_signals(reference, &mut fasta_reader, with_label, with_reverse_complementary)
+            self.align_fasta_without_checking_signals(
+                reference,
+                &mut fasta_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         }
     }
     pub fn align_fasta_bytes(
@@ -224,9 +239,19 @@ impl AlignerWrapper {
     ) -> PyResult<PyFastaAlignment> {
         let mut fasta_reader = FastaReader::new(fasta_bytes);
         if checking_signals {
-            self.align_fasta_with_checking_signals(reference, &mut fasta_reader, with_label, with_reverse_complementary)
+            self.align_fasta_with_checking_signals(
+                reference,
+                &mut fasta_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         } else {
-            self.align_fasta_without_checking_signals(reference, &mut fasta_reader, with_label, with_reverse_complementary)
+            self.align_fasta_without_checking_signals(
+                reference,
+                &mut fasta_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         }
     }
     fn align_fasta_without_checking_signals<R: Read>(
@@ -237,24 +262,48 @@ impl AlignerWrapper {
         with_reverse_complementary: bool,
     ) -> PyResult<PyFastaAlignment> {
         match self {
-            AlignerWrapper::Local(v) => {
-                Ok(align_fasta_with_core_aligner(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::LocalWithLimit(v) => {
-                Ok(align_fasta_with_core_aligner(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::LocalWithChunk(v) => {
-                Ok(align_fasta_with_core_aligner(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::SemiGlobal(v) => {
-                Ok(align_fasta_with_core_aligner(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::SemiGlobalWithLimit(v) => {
-                Ok(align_fasta_with_core_aligner(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::SemiGlobalWithChunk(v) => {
-                Ok(align_fasta_with_core_aligner(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
+            AlignerWrapper::Local(v) => Ok(align_fasta_with_core_aligner(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::LocalWithLimit(v) => Ok(align_fasta_with_core_aligner(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::LocalWithChunk(v) => Ok(align_fasta_with_core_aligner(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::SemiGlobal(v) => Ok(align_fasta_with_core_aligner(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::SemiGlobalWithLimit(v) => Ok(align_fasta_with_core_aligner(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::SemiGlobalWithChunk(v) => Ok(align_fasta_with_core_aligner(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
         }
     }
     fn align_fasta_with_checking_signals<R: Read>(
@@ -265,24 +314,52 @@ impl AlignerWrapper {
         with_reverse_complementary: bool,
     ) -> PyResult<PyFastaAlignment> {
         match self {
-            AlignerWrapper::Local(v) => {
-                align_fasta_with_core_aligner_checking_signals(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
-            AlignerWrapper::LocalWithLimit(v) => {
-                align_fasta_with_core_aligner_checking_signals(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
-            AlignerWrapper::LocalWithChunk(v) => {
-                align_fasta_with_core_aligner_checking_signals(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
-            AlignerWrapper::SemiGlobal(v) => {
-                align_fasta_with_core_aligner_checking_signals(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
+            AlignerWrapper::Local(v) => align_fasta_with_core_aligner_checking_signals(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
+            AlignerWrapper::LocalWithLimit(v) => align_fasta_with_core_aligner_checking_signals(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
+            AlignerWrapper::LocalWithChunk(v) => align_fasta_with_core_aligner_checking_signals(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
+            AlignerWrapper::SemiGlobal(v) => align_fasta_with_core_aligner_checking_signals(
+                v,
+                fasta_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
             AlignerWrapper::SemiGlobalWithLimit(v) => {
-                align_fasta_with_core_aligner_checking_signals(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
+                align_fasta_with_core_aligner_checking_signals(
+                    v,
+                    fasta_reader,
+                    reference.as_ref(),
+                    with_label,
+                    with_reverse_complementary,
+                )
+            }
             AlignerWrapper::SemiGlobalWithChunk(v) => {
-                align_fasta_with_core_aligner_checking_signals(v, fasta_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
+                align_fasta_with_core_aligner_checking_signals(
+                    v,
+                    fasta_reader,
+                    reference.as_ref(),
+                    with_label,
+                    with_reverse_complementary,
+                )
+            }
         }
     }
     // - For fastq
@@ -296,9 +373,19 @@ impl AlignerWrapper {
     ) -> PyResult<PyFastaAlignment> {
         let mut fastq_reader = FastqReader::from_path(file_path)?;
         if checking_signals {
-            self.align_fastq_with_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+            self.align_fastq_with_checking_signals(
+                reference,
+                &mut fastq_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         } else {
-            self.align_fastq_without_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+            self.align_fastq_without_checking_signals(
+                reference,
+                &mut fastq_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         }
     }
     pub fn align_fastq_bytes(
@@ -311,9 +398,19 @@ impl AlignerWrapper {
     ) -> PyResult<PyFastaAlignment> {
         let mut fastq_reader = FastqReader::new(fastq_bytes);
         if checking_signals {
-            self.align_fastq_with_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+            self.align_fastq_with_checking_signals(
+                reference,
+                &mut fastq_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         } else {
-            self.align_fastq_without_checking_signals(reference, &mut fastq_reader, with_label, with_reverse_complementary)
+            self.align_fastq_without_checking_signals(
+                reference,
+                &mut fastq_reader,
+                with_label,
+                with_reverse_complementary,
+            )
         }
     }
     fn align_fastq_without_checking_signals<R: Read>(
@@ -324,24 +421,48 @@ impl AlignerWrapper {
         with_reverse_complementary: bool,
     ) -> PyResult<PyFastaAlignment> {
         match self {
-            AlignerWrapper::Local(v) => {
-                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::LocalWithLimit(v) => {
-                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::LocalWithChunk(v) => {
-                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::SemiGlobal(v) => {
-                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::SemiGlobalWithLimit(v) => {
-                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
-            AlignerWrapper::SemiGlobalWithChunk(v) => {
-                Ok(align_fastq_with_core_aligner(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary))
-            },
+            AlignerWrapper::Local(v) => Ok(align_fastq_with_core_aligner(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::LocalWithLimit(v) => Ok(align_fastq_with_core_aligner(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::LocalWithChunk(v) => Ok(align_fastq_with_core_aligner(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::SemiGlobal(v) => Ok(align_fastq_with_core_aligner(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::SemiGlobalWithLimit(v) => Ok(align_fastq_with_core_aligner(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
+            AlignerWrapper::SemiGlobalWithChunk(v) => Ok(align_fastq_with_core_aligner(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            )),
         }
     }
     fn align_fastq_with_checking_signals<R: Read>(
@@ -352,24 +473,52 @@ impl AlignerWrapper {
         with_reverse_complementary: bool,
     ) -> PyResult<PyFastaAlignment> {
         match self {
-            AlignerWrapper::Local(v) => {
-                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
-            AlignerWrapper::LocalWithLimit(v) => {
-                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
-            AlignerWrapper::LocalWithChunk(v) => {
-                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
-            AlignerWrapper::SemiGlobal(v) => {
-                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
+            AlignerWrapper::Local(v) => align_fastq_with_core_aligner_checking_signals(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
+            AlignerWrapper::LocalWithLimit(v) => align_fastq_with_core_aligner_checking_signals(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
+            AlignerWrapper::LocalWithChunk(v) => align_fastq_with_core_aligner_checking_signals(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
+            AlignerWrapper::SemiGlobal(v) => align_fastq_with_core_aligner_checking_signals(
+                v,
+                fastq_reader,
+                reference.as_ref(),
+                with_label,
+                with_reverse_complementary,
+            ),
             AlignerWrapper::SemiGlobalWithLimit(v) => {
-                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
+                align_fastq_with_core_aligner_checking_signals(
+                    v,
+                    fastq_reader,
+                    reference.as_ref(),
+                    with_label,
+                    with_reverse_complementary,
+                )
+            }
             AlignerWrapper::SemiGlobalWithChunk(v) => {
-                align_fastq_with_core_aligner_checking_signals(v, fastq_reader, reference.as_ref(), with_label, with_reverse_complementary)
-            },
+                align_fastq_with_core_aligner_checking_signals(
+                    v,
+                    fastq_reader,
+                    reference.as_ref(),
+                    with_label,
+                    with_reverse_complementary,
+                )
+            }
         }
     }
 }
@@ -410,7 +559,7 @@ fn align_fasta_with_core_aligner<A: Algorithm, R: Read>(
         } else {
             PyQueryAlignment::from(query_alignment)
         };
-        let py_read_alignment = PyReadAlignment{
+        let py_read_alignment = PyReadAlignment {
             read: label_buffer.clone(),
             is_forward: true,
             result: py_query_alignment,
@@ -426,7 +575,7 @@ fn align_fasta_with_core_aligner<A: Algorithm, R: Read>(
             } else {
                 PyQueryAlignment::from(query_alignment)
             };
-            let py_read_alignment = PyReadAlignment{
+            let py_read_alignment = PyReadAlignment {
                 read: label_buffer.clone(),
                 is_forward: false,
                 result: py_query_alignmnet,
@@ -462,7 +611,7 @@ fn align_fasta_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
             } else {
                 PyQueryAlignment::from(query_alignment)
             };
-            let py_read_alignment = PyReadAlignment{
+            let py_read_alignment = PyReadAlignment {
                 read: label_buffer.clone(),
                 is_forward: true,
                 result: py_query_alignment,
@@ -478,7 +627,7 @@ fn align_fasta_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
                 } else {
                     PyQueryAlignment::from(query_alignment)
                 };
-                let py_read_alignment = PyReadAlignment{
+                let py_read_alignment = PyReadAlignment {
                     read: label_buffer.clone(),
                     is_forward: false,
                     result: py_query_alignmnet,
@@ -509,7 +658,7 @@ fn align_fastq_with_core_aligner<A: Algorithm, R: Read>(
         } else {
             PyQueryAlignment::from(query_alignment)
         };
-        let py_read_alignment = PyReadAlignment{
+        let py_read_alignment = PyReadAlignment {
             read: String::from_utf8_lossy(record.id()).to_string(),
             is_forward: true,
             result: py_query_alignment,
@@ -517,7 +666,7 @@ fn align_fastq_with_core_aligner<A: Algorithm, R: Read>(
         py_read_alignments.push(py_read_alignment);
 
         if with_reverse_complementary {
-            let reversed = record.seq().iter().rev().map(|&x| x).collect::<Vec<u8>>();
+            let reversed = record.seq().iter().rev().copied().collect::<Vec<u8>>();
             let query_alignment = aligner.align(&reversed, reference);
             let py_query_alignmnet = if with_label {
                 let labeled_query_alignment = reference.label_query_alignment(query_alignment);
@@ -525,7 +674,7 @@ fn align_fastq_with_core_aligner<A: Algorithm, R: Read>(
             } else {
                 PyQueryAlignment::from(query_alignment)
             };
-            let py_read_alignment = PyReadAlignment{
+            let py_read_alignment = PyReadAlignment {
                 read: String::from_utf8_lossy(record.id()).to_string(),
                 is_forward: false,
                 result: py_query_alignmnet,
@@ -554,15 +703,15 @@ fn align_fastq_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
             } else {
                 PyQueryAlignment::from(query_alignment)
             };
-            let py_read_alignment = PyReadAlignment{
+            let py_read_alignment = PyReadAlignment {
                 read: String::from_utf8_lossy(record.id()).to_string(),
                 is_forward: true,
                 result: py_query_alignment,
             };
             py_read_alignments.push(py_read_alignment);
-    
+
             if with_reverse_complementary {
-                let reversed = record.seq().iter().rev().map(|&x| x).collect::<Vec<u8>>();
+                let reversed = record.seq().iter().rev().copied().collect::<Vec<u8>>();
                 let query_alignment = aligner.align(&reversed, reference);
                 let py_query_alignmnet = if with_label {
                     let labeled_query_alignment = reference.label_query_alignment(query_alignment);
@@ -570,7 +719,7 @@ fn align_fastq_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
                 } else {
                     PyQueryAlignment::from(query_alignment)
                 };
-                let py_read_alignment = PyReadAlignment{
+                let py_read_alignment = PyReadAlignment {
                     read: String::from_utf8_lossy(record.id()).to_string(),
                     is_forward: false,
                     result: py_query_alignmnet,

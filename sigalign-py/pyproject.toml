@@ -10,7 +10,7 @@ authors = [
 ]
 description = "SigAlign's language binding for python"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Rust",

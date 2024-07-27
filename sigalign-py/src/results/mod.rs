@@ -1,15 +1,7 @@
-use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::{
-    to_string,
-    to_string_pretty,
-};
-
-use sigalign::results::{
-    QueryAlignment, LabeledQueryAlignment, TargetAlignment, LabeledTargetAlignment,
-    Alignment, AlignmentOperations, AlignmentOperation,
-};
+use serde_json::{to_string, to_string_pretty};
 
 mod iterators; // Contains Python's iterators classes.
 pub use iterators::{FastaAlignmentIter, QueryAlignmentIter};
@@ -17,7 +9,6 @@ mod from;
 mod py_debug;
 mod to_flat_result;
 use to_flat_result::{FlatReadAlignment, FlatTargetAlignment};
-
 
 pub fn register_results_module_as_submodule(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let results_module = PyModule::new_bound(parent_module.py(), "results")?;
@@ -34,8 +25,7 @@ pub fn register_results_module_as_submodule(parent_module: &Bound<'_, PyModule>)
 
 /// Not in Rust library.
 #[pyclass(name = "FastaAlignment", sequence, frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PyFastaAlignment(pub Vec<PyReadAlignment>);
 #[pymethods]
 impl PyFastaAlignment {
@@ -75,8 +65,7 @@ impl PyFastaAlignment {
 
 /// Not in Rust library.
 #[pyclass(name = "ReadAlignment", sequence, frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PyReadAlignment {
     #[pyo3(get)]
     pub read: String,
@@ -118,8 +107,7 @@ impl PyReadAlignment {
 
 /// Represents the both `QueryAlignment` and `LabeledQueryAlignment`.
 #[pyclass(name = "QueryAlignment", sequence, frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PyQueryAlignment(pub Vec<PyTargetAlignment>);
 #[pymethods]
 impl PyQueryAlignment {
@@ -159,8 +147,7 @@ impl PyQueryAlignment {
 
 /// Represents the both `TargetAlignment` and `LabeledTargetAlignment`.
 #[pyclass(name = "TargetAlignment", frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PyTargetAlignment {
     #[pyo3(get)]
     pub index: u32,
@@ -177,7 +164,7 @@ impl PyTargetAlignment {
         Self {
             index,
             label,
-            alignments: alignments,
+            alignments,
         }
     }
     fn to_json(&self) -> String {
@@ -202,8 +189,7 @@ impl PyTargetAlignment {
 
 // Instead of `AlignmentPosition`, use tuple `(u32, u32)` for `query` and `target`, for simplicity.
 #[pyclass(name = "Alignment", frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PyAlignment {
     #[pyo3(get)]
     pub penalty: u32,
@@ -219,7 +205,13 @@ pub struct PyAlignment {
 #[pymethods]
 impl PyAlignment {
     #[new]
-    fn new(penalty: u32, length: u32, query_position: (u32, u32), target_position: (u32, u32), operations: Vec<PyAlignmentOperations>) -> Self {
+    fn new(
+        penalty: u32,
+        length: u32,
+        query_position: (u32, u32),
+        target_position: (u32, u32),
+        operations: Vec<PyAlignmentOperations>,
+    ) -> Self {
         Self {
             penalty,
             length,
@@ -243,8 +235,7 @@ impl PyAlignment {
 }
 
 #[pyclass(name = "AlignmentOperations", frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub struct PyAlignmentOperations {
     #[pyo3(get)]
     pub operation: PyAlignmentOperation,
@@ -255,10 +246,7 @@ pub struct PyAlignmentOperations {
 impl PyAlignmentOperations {
     #[new]
     fn py_new(operation: PyAlignmentOperation, count: u32) -> PyResult<Self> {
-        Ok(Self {
-            operation,
-            count,
-        })
+        Ok(Self { operation, count })
     }
     fn to_json(&self) -> String {
         to_string(self).unwrap()
@@ -275,8 +263,7 @@ impl PyAlignmentOperations {
 }
 
 #[pyclass(name = "AlignmentOperation", frozen, eq, hash)]
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
 pub enum PyAlignmentOperation {
     Match,
     Subst,

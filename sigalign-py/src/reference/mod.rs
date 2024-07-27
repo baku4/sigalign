@@ -1,21 +1,11 @@
-use pyo3::prelude::*;
 use pyo3::exceptions::{
-    PyFileNotFoundError,
-    PyTypeError,
-    PyValueError,
-    PyOSError,
-    PyFileExistsError,
+    PyFileExistsError, PyFileNotFoundError, PyOSError, PyTypeError, PyValueError,
 };
-use pyo3::types::{
-    PyBytes, PyList, PySequence, PyString, PyTuple, PyType
-};
+use pyo3::prelude::*;
+use pyo3::types::{PyBytes, PyList, PySequence, PyString, PyTuple, PyType};
 
-use sigalign::{
-    Reference,
-    ReferenceBuilder,
-};
+use sigalign::{Reference, ReferenceBuilder};
 
-use std::borrow::Cow;
 use std::fs::File;
 use std::path::Path;
 
@@ -41,7 +31,7 @@ impl PyReference {
         bases_to_ignore: &str,
     ) -> PyResult<Self> {
         let mut reference_builder = Self::new_configured_builder(set_uppercase, bases_to_ignore);
-        
+
         reference_builder = add_targets_from_iterable_to_builder(reference_builder, targets)?;
 
         Self::from_builder(reference_builder)
@@ -59,11 +49,13 @@ impl PyReference {
         } else if fasta.is_instance_of::<PyBytes>() {
             fasta.downcast::<PyBytes>()?.as_bytes()
         } else {
-            return Err(PyValueError::new_err("The input must be either a string or bytes."));
+            return Err(PyValueError::new_err(
+                "The input must be either a string or bytes.",
+            ));
         };
 
         let mut reference_builder = Self::new_configured_builder(set_uppercase, bases_to_ignore);
-        
+
         reference_builder = add_fasta_bytes_to_builder(reference_builder, fasta_bytes)?;
 
         Self::from_builder(reference_builder)
@@ -77,7 +69,7 @@ impl PyReference {
         bases_to_ignore: &str,
     ) -> PyResult<Self> {
         let mut reference_builder = Self::new_configured_builder(set_uppercase, bases_to_ignore);
-        
+
         let file_path = file_path.downcast::<PyString>()?.to_str()?;
         reference_builder = add_fasta_file_to_builder(reference_builder, file_path)?;
 
@@ -100,58 +92,58 @@ impl PyReference {
     fn get_sequence(&self, target_index: u32) -> PyResult<String> {
         match self.inner.get_sequence(target_index) {
             Some(v) => Ok(String::from_utf8(v)?),
-            None => Err(PyValueError::new_err("Target index is out of bound."))
+            None => Err(PyValueError::new_err("Target index is out of bound.")),
         }
     }
     fn get_label(&self, target_index: u32) -> PyResult<String> {
         match self.inner.get_label(target_index) {
             Some(v) => Ok(v),
-            None => Err(PyValueError::new_err("Target index is out of bound."))
+            None => Err(PyValueError::new_err("Target index is out of bound.")),
         }
     }
 
     #[pyo3(signature = (file_path, overwrite=false))]
-    fn save_to_file(
-        &self,
-        file_path: &str,
-        overwrite: bool,
-    ) -> PyResult<()> {
+    fn save_to_file(&self, file_path: &str, overwrite: bool) -> PyResult<()> {
         if !overwrite {
             let path = Path::new(file_path);
             if path.exists() {
-                
-                return Err(PyFileExistsError::new_err(
-                    format!("The file '{}' already exists. Set 'overwrite' to true to allow replacing it.", file_path)
-                ));
+                return Err(PyFileExistsError::new_err(format!(
+                    "The file '{}' already exists. Set 'overwrite' to true to allow replacing it.",
+                    file_path
+                )));
             }
         }
 
         let file = File::create(file_path)?;
         match self.inner.save_to(file) {
             Ok(_) => Ok(()),
-            Err(e) => Err(PyOSError::new_err(
-                format!("Failed to save the reference to file '{}'. Error: {}", file_path, e)
-            ))
+            Err(e) => Err(PyOSError::new_err(format!(
+                "Failed to save the reference to file '{}'. Error: {}",
+                file_path, e
+            ))),
         }
     }
     #[classmethod]
-    fn load_from_file(
-        _cls: &Bound<PyType>,
-        file_path: &Bound<PyAny>,
-    ) -> PyResult<Self> {
+    fn load_from_file(_cls: &Bound<PyType>, file_path: &Bound<PyAny>) -> PyResult<Self> {
         let file_path = file_path.downcast::<PyString>()?.to_str()?;
         let file = match File::open(file_path) {
             Ok(v) => v,
-            Err(e) => return Err(PyFileNotFoundError::new_err(
-                format!("The file '{}' could not be found. Error: {}", file_path, e)
-            )),
+            Err(e) => {
+                return Err(PyFileNotFoundError::new_err(format!(
+                    "The file '{}' could not be found. Error: {}",
+                    file_path, e
+                )))
+            }
         };
 
         let inner = match Reference::load_from(file) {
             Ok(v) => v,
-            Err(e) => return Err(PyTypeError::new_err(
-                format!("Failed to load a valid reference from file '{}'. Error: {}", file_path, e)
-            )),
+            Err(e) => {
+                return Err(PyTypeError::new_err(format!(
+                    "Failed to load a valid reference from file '{}'. Error: {}",
+                    file_path, e
+                )))
+            }
         };
 
         Ok(Self { inner })
@@ -159,12 +151,9 @@ impl PyReference {
 }
 
 impl PyReference {
-    fn new_configured_builder(
-        set_uppercase: bool,
-        bases_to_ignore: &str,
-    ) -> ReferenceBuilder {
+    fn new_configured_builder(set_uppercase: bool, bases_to_ignore: &str) -> ReferenceBuilder {
         let mut reference_builder = ReferenceBuilder::new();
-        if bases_to_ignore.len() > 0 {
+        if !bases_to_ignore.is_empty() {
             reference_builder = reference_builder.ignore_bases(bases_to_ignore.as_bytes());
         }
         reference_builder = reference_builder.set_uppercase(set_uppercase);
@@ -176,7 +165,7 @@ impl PyReference {
             Err(e) => {
                 let msg = format!("{e}");
                 Err(PyValueError::new_err(msg))
-            },
+            }
         }?;
         Ok(Self { inner: reference })
     }
@@ -217,14 +206,16 @@ fn add_target_to_builder(
             } else if second.is_instance_of::<PyBytes>() {
                 second.downcast::<PyBytes>()?.as_bytes()
             } else {
-                return Err(PyTypeError::new_err("Each target must either be a sequence string or a list/tuple with length of 2 (containing label and sequence)."))
+                return Err(PyTypeError::new_err("Each target must either be a sequence string or a list/tuple with length of 2 (containing label and sequence)."));
             };
             reference_builder = reference_builder.add_target(label, sequence);
         } else {
-            return Err(PyValueError::new_err("Each target must either be a sequence string or a list/tuple with length of 2 (containing label and sequence)."))
+            return Err(PyValueError::new_err("Each target must either be a sequence string or a list/tuple with length of 2 (containing label and sequence)."));
         }
     } else {
-        return Err(PyTypeError::new_err("Targets must be of type str, bytes, tuple, or list"))
+        return Err(PyTypeError::new_err(
+            "Targets must be of type str, bytes, tuple, or list",
+        ));
     }
     Ok(reference_builder)
 }
@@ -249,8 +240,8 @@ fn add_fasta_file_to_builder(
         let msg = format!("{e}");
         PyFileNotFoundError::new_err(msg)
     })?;
-    reference_builder = reference_builder.add_fasta(file).map_err(|_| {
-        PyValueError::new_err("Invalid FASTA record.")
-    })?;
+    reference_builder = reference_builder
+        .add_fasta(file)
+        .map_err(|_| PyValueError::new_err("Invalid FASTA record."))?;
     Ok(reference_builder)
 }
