@@ -1,13 +1,36 @@
 use super::{
-    FastaResult,
-    PyReadResult,
-    QueryResult,
-    PyTargetResult,
-    PyOperation,
+    PyFastaAlignment, PyQueryAlignment, PyReadAlignment, PyTargetAlignment,
+    PyAlignmentOperations, PyAlignmentOperation,
 };
 
-impl FastaResult {
-    pub fn to_flat_results(&self) -> Vec<FlatReadResult> {
+pub type FlatTargetAlignment = (
+    u32,            // index of target
+    Option<String>, // label of target
+    u32,            // penalty
+    u32,            // length
+    u32,            // query start index
+    u32,            // query end index
+    u32,            // target start index
+    u32,            // target end index
+    String,         // operations
+);
+
+pub type FlatReadAlignment = (
+    String,         // read
+    bool,           // is forward
+    u32,            // index of target
+    Option<String>, // label of target
+    u32,            // penalty
+    u32,            // length
+    u32,            // query start index
+    u32,            // query end index
+    u32,            // target start index
+    u32,            // target end index
+    String,         // operations
+);
+
+impl PyFastaAlignment {
+    pub fn to_flat_results(&self) -> Vec<FlatReadAlignment> {
         let vec_len: usize = self.num_alignments();
         let mut flat_results = Vec::with_capacity(vec_len);
 
@@ -17,19 +40,20 @@ impl FastaResult {
         flat_results
     }
 }
-impl PyReadResult {
-    pub fn to_flat_results(&self) -> Vec<FlatReadResult> {
+impl PyReadAlignment {
+    pub fn to_flat_results(&self) -> Vec<FlatReadAlignment> {
         let vec_len: usize = self.num_alignments();
         let mut flat_results = Vec::with_capacity(vec_len);
         self.push_flat_results(&mut flat_results);
         flat_results
     }
     #[inline]
-    fn push_flat_results(&self, flat_results: &mut Vec<FlatReadResult>) {
+    fn push_flat_results(&self, flat_results: &mut Vec<FlatReadAlignment>) {
         self.result.0.iter().for_each(|target_result| {
             target_result.alignments.iter().for_each(|alignment| {
-                let flat_result = (
+                let flat_read_result = (
                     self.read.clone(),
+                    self.is_forward,
                     target_result.index,
                     target_result.label.clone(),
                     alignment.penalty,
@@ -38,28 +62,16 @@ impl PyReadResult {
                     alignment.query_position.1,
                     alignment.target_position.0,
                     alignment.target_position.1,
-                    operations_to_string(&alignment.operations),
+                    operations_to_cigars(&alignment.operations),
                 );
-                flat_results.push(flat_result);
+                flat_results.push(flat_read_result);
             });
         });
     }
 }
-pub type FlatReadResult = (
-    String, // read
-    u32,    // index of target
-    Option<String>, // label of target
-    u32,    // penalty
-    u32,    // length
-    u32,    // query start index
-    u32,    // query end index
-    u32,    // target start index
-    u32,    // target end index
-    String, // operations
-);
 
-impl QueryResult {
-    pub fn to_flat_results(&self) -> Vec<FlatTargetResult> {
+impl PyQueryAlignment {
+    pub fn to_flat_results(&self) -> Vec<FlatTargetAlignment> {
         let vec_len: usize = self.num_alignments();
         let mut flat_results = Vec::with_capacity(vec_len);
 
@@ -69,15 +81,15 @@ impl QueryResult {
         flat_results
     }
 }
-impl PyTargetResult {
-    pub fn to_flat_results(&self) -> Vec<FlatTargetResult> {
+impl PyTargetAlignment {
+    pub fn to_flat_results(&self) -> Vec<FlatTargetAlignment> {
         let vec_len: usize = self.num_alignments();
         let mut flat_results = Vec::with_capacity(vec_len);
         self.push_flat_results(&mut flat_results);
         flat_results
     }
     #[inline]
-    fn push_flat_results(&self, flat_results: &mut Vec<FlatTargetResult>) {
+    fn push_flat_results(&self, flat_results: &mut Vec<FlatTargetAlignment>) {
         self.alignments.iter().for_each(|alignment| {
             let flat_result = (
                 self.index,
@@ -88,27 +100,31 @@ impl PyTargetResult {
                 alignment.query_position.1,
                 alignment.target_position.0,
                 alignment.target_position.1,
-                operations_to_string(&alignment.operations),
+                operations_to_cigars(&alignment.operations),
             );
             flat_results.push(flat_result);
         });
     }
 }
-pub type FlatTargetResult = (
-    u32,    // index of target
-    Option<String>, // label of target
-    u32,    // penalty
-    u32,    // length
-    u32,    // query start index
-    u32,    // query end index
-    u32,    // target start index
-    u32,    // target end index
-    String, // operations
-);
 
-fn operations_to_string(operations: &Vec<PyOperation>) -> String {
-    let string_ops: Vec<String> = operations.iter().map(|op| {
-        format!("{}{}", op.case, op.count)
-    }).collect();
+fn operations_to_cigars(operations: &[PyAlignmentOperations]) -> String {
+    let string_ops: Vec<String> = operations
+        .iter()
+        .map(|op| format!(
+            "{}{}",
+            op.count,
+            operation_to_cigar(&op.operation),
+        ))
+        .collect();
     string_ops.concat()
+}
+
+#[inline(always)]
+fn operation_to_cigar(op: &PyAlignmentOperation) -> char {
+    match op {
+        PyAlignmentOperation::Match => '=',
+        PyAlignmentOperation::Insertion => 'I',
+        PyAlignmentOperation::Deletion => 'D',
+        PyAlignmentOperation::Subst => 'X',
+    }
 }

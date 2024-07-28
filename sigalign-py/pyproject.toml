@@ -1,16 +1,16 @@
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
+requires = ["maturin>=1,<2"]
 build-backend = "maturin"
 
 [project]
 name = "sigalign"
-version = "0.2.0"
+version = "0.3.0"
 authors = [
   { name="baku" },
 ]
 description = "SigAlign's language binding for python"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Rust",
