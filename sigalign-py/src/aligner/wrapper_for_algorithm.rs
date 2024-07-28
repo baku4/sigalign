@@ -10,8 +10,14 @@ use sigalign::{
     results::QueryAlignment,
     Aligner, Reference,
 };
-use sigalign_utils::sequence_reader::{
-    fasta::FastaReader, fastq::FastqReader, IdRecord, SeqRecord,
+use sigalign_utils::{
+        sequence_reader::{
+        fasta::FastaReader, fastq::FastqReader, IdRecord, SeqRecord,
+    },
+    sequence_manipulation::reverse_complementary::{
+        reverse_complement_of_dna_sequence,
+        reverse_complement_of_dna_sequence_in_place,
+    },
 };
 use sigalign_utils::sequence_reader::{IdRefRecord, SeqRefRecord};
 
@@ -567,7 +573,7 @@ fn align_fasta_with_core_aligner<A: Algorithm, R: Read>(
         py_read_alignments.push(py_read_alignment);
 
         if with_reverse_complementary {
-            query_buffer.reverse();
+            reverse_complement_of_dna_sequence_in_place(&mut query_buffer);
             let query_alignment = aligner.align(&query_buffer, reference);
             let py_query_alignmnet = if with_label {
                 let labeled_query_alignment = reference.label_query_alignment(query_alignment);
@@ -619,7 +625,7 @@ fn align_fasta_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
             py_read_alignments.push(py_read_alignment);
 
             if with_reverse_complementary {
-                query_buffer.reverse();
+                reverse_complement_of_dna_sequence_in_place(&mut query_buffer);
                 let query_alignment = aligner.align(&query_buffer, reference);
                 let py_query_alignmnet = if with_label {
                     let labeled_query_alignment = reference.label_query_alignment(query_alignment);
@@ -666,7 +672,7 @@ fn align_fastq_with_core_aligner<A: Algorithm, R: Read>(
         py_read_alignments.push(py_read_alignment);
 
         if with_reverse_complementary {
-            let reversed = record.seq().iter().rev().copied().collect::<Vec<u8>>();
+            let reversed = reverse_complement_of_dna_sequence(record.seq());
             let query_alignment = aligner.align(&reversed, reference);
             let py_query_alignmnet = if with_label {
                 let labeled_query_alignment = reference.label_query_alignment(query_alignment);
@@ -711,7 +717,7 @@ fn align_fastq_with_core_aligner_checking_signals<A: Algorithm, R: Read>(
             py_read_alignments.push(py_read_alignment);
 
             if with_reverse_complementary {
-                let reversed = record.seq().iter().rev().copied().collect::<Vec<u8>>();
+                let reversed = reverse_complement_of_dna_sequence(record.seq());
                 let query_alignment = aligner.align(&reversed, reference);
                 let py_query_alignmnet = if with_label {
                     let labeled_query_alignment = reference.label_query_alignment(query_alignment);
