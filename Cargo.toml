@@ -6,7 +6,10 @@ members = [
     "sigalign-utils",
     "sigalign",
     "tests",
+    # language bindings
     "sigalign-py",
+    # examples
+    "examples/read-mapper",
 ]
 exclude = [
     "examples/sigalign-demo-web",
