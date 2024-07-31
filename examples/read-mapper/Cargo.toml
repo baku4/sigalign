@@ -12,3 +12,4 @@ sigalign = { path = "../../sigalign", features = ["short_key"] }
 anyhow = "1.0.86"
 clap = "4.5"
 glob = "0.3.1"
+parking_lot = "0.12"

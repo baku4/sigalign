@@ -7,17 +7,19 @@ use sigalign_impl::{
 };
 use sigalign_utils::{
     file_extension_checker::{is_fasta_file, is_gzip_file},
-    sequence_reader::decompress::get_gzip_decoder,
+    sequence_reader::{decompress::get_gzip_decoder, fasta::FastaReader, IdRecord, SeqRecord},
 };
 use std::{
     fs::File,
-    io::{BufWriter, Read, Write as _},
+    io::{BufWriter, Read},
     path::PathBuf,
     time::Instant,
 };
 
 mod path_detector;
 pub use path_detector::ReferencePathDetector;
+mod manifest;
+pub use manifest::{write_manifest_header, write_manifest_line};
 
 const DEFAULT_MAX_LENGTH: u32 = u32::MAX - 1;
 
@@ -171,15 +173,25 @@ impl Config {
     }
     fn build_and_save_references(&self) -> Result<()> {
         let reference_path_detector = ReferencePathDetector::new(&self.output_file);
-        let mut current_index_of_reference = 0;
+        let mut reference_index = 0;
 
-        let mut num_targets_in_input_files = Vec::new();
-        let mut num_targets_in_references = Vec::new();
+        // Manifest file
+        let mut manifest_file = File::create(reference_path_detector.get_manifest_file_path())?;
+        let mut manifest_writer = BufWriter::new(&mut manifest_file);
+        write_manifest_header(&mut manifest_writer)?;
 
+        // Save reference by chunk
+        let mut sequence_buffer = Vec::new();
+        let mut label_buffer = String::new();
         let mut sequence_storage = InMemoryStorage::new();
 
-        for input_file in &self.input_files {
-            let before_fill_num_targets = sequence_storage.num_targets();
+        // For each input file
+        for (input_file_index, input_file) in self.input_files.iter().enumerate() {
+            let input_file_name = input_file
+                .file_name()
+                .unwrap_or_default()
+                .to_str()
+                .unwrap_or_default();
             let readable_file: Box<dyn Read> = {
                 let file = File::open(input_file)?;
                 if is_gzip_file(input_file) {
@@ -188,113 +200,79 @@ impl Config {
                     Box::new(file)
                 }
             };
-            let filled_sequence_storages =
-                sequence_storage.fill_fasta_until_max_length(readable_file, self.max_length)?;
-            let after_fill_num_targets = sequence_storage.num_targets();
-            let num_targets_in_input_file = {
-                let mut v = after_fill_num_targets - before_fill_num_targets;
-                filled_sequence_storages.iter().for_each(|s| {
-                    v += s.num_targets();
-                });
-                v
-            };
-            num_targets_in_input_files.push(num_targets_in_input_file);
+            let mut fasta_reader = FastaReader::new(readable_file);
+            let mut record_index = 0;
 
-            for filled_sequence_storage in filled_sequence_storages {
-                let reference_path =
-                    reference_path_detector.get_path_of_index(current_index_of_reference);
-                let reference = get_reference_with_default_option(filled_sequence_storage)?;
-                reference.get_total_length();
-                num_targets_in_references.push(reference.get_num_targets());
+            let mut target_index = sequence_storage.num_targets();
+            let mut total_length = sequence_storage.get_total_length();
 
-                eprintln!(
-                    "Saving reference chunk index {} to {} ({} bp, {} targets)",
-                    current_index_of_reference,
-                    reference_path.display(),
-                    reference.get_total_length(),
-                    reference.get_num_targets(),
-                );
-                let out_file = File::create(reference_path)?;
-                reference.save_to(out_file)?;
-                current_index_of_reference += 1;
+            while let Some(mut record) = fasta_reader.next() {
+                sequence_buffer.clear();
+                record.extend_seq_buf(&mut sequence_buffer);
+                label_buffer.clear();
+                record.extend_id_string(&mut label_buffer)?;
+                
+                write_manifest_line(
+                    &mut manifest_writer,
+                    &input_file_index,
+                    input_file_name,
+                    &record_index,
+                    &reference_index,
+                    &target_index,
+                    label_buffer.as_str(),
+                    &sequence_buffer.len(),
+                )?;
+
+                if (total_length != 0) && (total_length + sequence_buffer.len() as u32 > self.max_length) {
+                    // Build and Save
+                    let reference = get_reference_with_default_option(sequence_storage)?;
+                    let reference_path = reference_path_detector.get_path_of_index(reference_index);
+                    eprintln!(
+                        "Saving reference chunk index {} to {} ({} bp, {} targets)",
+                        reference_index,
+                        reference_path.display(),
+                        reference.get_total_length(),
+                        reference.get_num_targets(),
+                    );
+                    let out_file = File::create(reference_path)?;
+                    reference.save_to(out_file)?;
+                    reference_index += 1;
+                    total_length = 0;
+
+                    // Reset
+                    sequence_storage = InMemoryStorage::new();
+                }
+
+                sequence_storage.add_target(&label_buffer, &sequence_buffer);
+
+                total_length += sequence_buffer.len() as u32;
+                record_index += 1;
+                target_index += 1;
             }
         }
+        
         // Save last reference
-        let reference_path = reference_path_detector.get_path_of_index(current_index_of_reference);
-        let reference = get_reference_with_default_option(sequence_storage)?;
-        reference.get_total_length();
-        num_targets_in_references.push(reference.get_num_targets());
-
+        if sequence_storage.num_targets() != 0 {
+            let reference = get_reference_with_default_option(sequence_storage)?;
+            let reference_path = reference_path_detector.get_path_of_index(reference_index);
+            eprintln!(
+                "Saving reference chunk index {} to {} ({} bp, {} targets)",
+                reference_index,
+                reference_path.display(),
+                reference.get_total_length(),
+                reference.get_num_targets(),
+            );
+            let out_file = File::create(reference_path)?;
+            reference.save_to(out_file)?;
+        }
+        
         eprintln!(
-            "Saving reference chunk index {} to {} ({} bp, {} targets)",
-            current_index_of_reference,
-            reference_path.display(),
-            reference.get_total_length(),
-            reference.get_num_targets(),
-        );
-        let out_file = File::create(reference_path)?;
-
-        write_target_manifest_file(
-            &num_targets_in_input_files,
-            &num_targets_in_references,
-            self.input_files.as_slice(),
-            &reference_path_detector,
-        )?;
-        eprintln!(
-            "Target manifest file saved to {}",
+            "Target manifest file has been saved to {}",
             reference_path_detector.get_manifest_file_path().display()
         );
-        reference.save_to(out_file)?;
 
         Ok(())
     }
-}
-
-fn write_target_manifest_file(
-    num_targets_in_input_files: &[u32],
-    num_targets_in_references: &[u32],
-    input_files: &[PathBuf],
-    reference_path_detector: &ReferencePathDetector,
-) -> Result<()> {
-    let mut manifest_file_path = File::create(reference_path_detector.get_manifest_file_path())?;
-    let mut writer = BufWriter::new(&mut manifest_file_path);
-
-    let iter_1 = num_targets_in_input_files
-        .iter()
-        .enumerate()
-        .map(|(file_index, record_count)| {
-            (0..*record_count).map(move |record_index| (file_index, record_index))
-        })
-        .flatten();
-    let iter_2 = num_targets_in_references
-        .iter()
-        .enumerate()
-        .map(|(reference_index, target_count)| {
-            (0..*target_count).map(move |record_index| (reference_index, record_index))
-        })
-        .flatten();
-    writer
-        .write_all(
-            "file_index\tfile_name\trecord_index\treference_index\ttarget_index\n".as_bytes(),
-        )
-        .unwrap();
-    iter_1.zip(iter_2).for_each(
-        |((file_index, record_index), (reference_index, target_index))| {
-            let file_name = input_files[file_index]
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
-            let line = format!(
-                "{}\t{}\t{}\t{}\t{}\n",
-                file_index, file_name, record_index, reference_index, target_index,
-            );
-            writer.write_all(line.as_bytes()).unwrap();
-        },
-    );
-    writer.flush()?;
-
-    Ok(())
 }
 
 fn get_reference_with_default_option(mut sequence_storage: InMemoryStorage) -> Result<Reference> {
