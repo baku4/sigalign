@@ -4,10 +4,17 @@ use crate::{
     Result, error, error_msg,
     reference::ReferencePathDetector,
 };
-use super::arg_parser::{
-    check_input_file_extension_is_allowed,
+use super::{
+    arg_parser::check_input_file_extension_is_allowed,
+    query_reader::QueryReader,
 };
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
+
+mod thread_pool;
+use sigalign::{algorithms::{Algorithm, Local, LocalWithChunk, LocalWithLimit, SemiGlobal, SemiGlobalWithChunk, SemiGlobalWithLimit}, Aligner, Reference};
+use thread_pool::ThreadPool;
+
+const THREAD_BATCH_SIZE: usize = 64;
 
 pub struct ManualAlignmentApp;
 
@@ -28,9 +35,9 @@ struct Config {
     is_local: bool,
     limit: Option<u32>,
     chunk: Option<(u32, u32)>,
-    // Threads
+    // Others
+    with_reverse_complementary: bool,
     num_threads: usize,
-    // Output Format
     output_is_sam: bool, // true: SAM, false: TSV
 }
 
@@ -65,6 +72,7 @@ impl ManualAlignmentApp {
             .arg(Arg::new("limit").short('l').long("limit")
                 .help("Limit the number of alignments for each query")
                 .value_parser(value_parser!(u32))
+                .conflicts_with("chunk")
                 .required(false)
                 .display_order(5))
             .arg(Arg::new("chunk").short('u').long("chunk")
@@ -79,17 +87,88 @@ impl ManualAlignmentApp {
                 .value_parser(value_parser!(u32))
                 .required(false)
                 .display_order(7))
-            .arg(arg!(--semi_global "Use semi-global alignment instead of local")
+            .arg(arg!(-f --forward "Use forward strand only")
                 .display_order(8)
                 .required(false))
-            .arg(arg!(--tsv "Output format is TSV instead of SAM")
+            .arg(arg!(--semi_global "Use semi-global alignment instead of local")
                 .display_order(9)
+                .required(false))
+            .arg(arg!(--tsv "Output format is TSV instead of SAM")
+                .display_order(10)
                 .required(false))
     }
     pub fn run(matches: &ArgMatches) -> Result<()> {
+        // Parse arguments
         let config = Config::from_matches(matches)?;
         println!("{:#?}", config);
-        todo!()
+
+        // Run by algorithm
+        if config.is_local {
+            if let Some(limit) = config.limit {
+                let aligner = Aligner::new(
+                    LocalWithLimit::new(config.px, config.po, config.pe, config.minl, config.maxp, limit)?
+                );
+                Self::execute_alignment_with_thread_pool(&config, aligner)?;
+            } else if let Some(chunk) = config.chunk {
+                let aligner = Aligner::new(
+                    LocalWithChunk::new(config.px, config.po, config.pe, config.minl, config.maxp, chunk.0, chunk.1)?,
+                );
+                Self::execute_alignment_with_thread_pool(&config, aligner)?;
+            } else {
+                let aligner = Aligner::new(
+                    Local::new(config.px, config.po, config.pe, config.minl, config.maxp)?,
+                );
+                Self::execute_alignment_with_thread_pool(&config, aligner)?;
+            }
+        } else {
+            if let Some(limit) = config.limit {
+                let aligner = Aligner::new(
+                    SemiGlobalWithLimit::new(config.px, config.po, config.pe, config.minl, config.maxp, limit)?
+                );
+                Self::execute_alignment_with_thread_pool(&config, aligner)?;
+            } else if let Some(chunk) = config.chunk {
+                let aligner = Aligner::new(
+                    SemiGlobalWithChunk::new(config.px, config.po, config.pe, config.minl, config.maxp, chunk.0, chunk.1)?,
+                );
+                Self::execute_alignment_with_thread_pool(&config, aligner)?;
+            } else {
+                let aligner = Aligner::new(
+                    SemiGlobal::new(config.px, config.po, config.pe, config.minl, config.maxp)?,
+                );
+                Self::execute_alignment_with_thread_pool(&config, aligner)?;
+            }
+        };
+        
+        Ok(())
+    }
+    fn execute_alignment_with_thread_pool<A: Algorithm + 'static>(
+        config: &Config,
+        aligner: Aligner<A>,
+    ) -> Result<()> {
+        let thread_pool: ThreadPool = ThreadPool::new(
+            config.num_threads,
+            THREAD_BATCH_SIZE,
+            aligner,
+        );
+
+        let reference_paths = config.reference_path.load_reference_chunk_paths()?;
+        for (reference_index, reference_path) in reference_paths.into_iter().enumerate() {
+            // Load reference
+            let file = std::fs::File::open(reference_path)?;
+            let reference = Reference::load_from(file)?;
+
+            // Load query
+            let query_reader = QueryReader::new(
+                &config.input_file,
+                config.is_gzip_compressed,
+                config.is_fasta_file,
+            )?;
+
+            // Execute alignment
+            thread_pool.execute(reference, reference_index as u32, query_reader);
+        }
+
+        Ok(())
     }
 }
 
@@ -142,6 +221,7 @@ impl Config {
         let chunk = matches.get_one::<(u32, u32)>("chunk").copied();
 
         // Others
+        let use_only_forward = matches.get_flag("forward");
         let num_threads = matches.get_one::<u32>("thread").copied().unwrap() as usize;
         let output_is_sam = if matches.get_flag("tsv") {
             false
@@ -162,6 +242,7 @@ impl Config {
             is_local,
             limit,
             chunk,
+            with_reverse_complementary: !use_only_forward,
             num_threads,
             output_is_sam,
         })

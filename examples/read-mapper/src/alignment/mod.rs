@@ -19,6 +19,8 @@ use sigalign_utils::{
 
 // Common module
 mod arg_parser;
+mod query_reader;
+mod write_results;
 // Alignment app
 mod manual;
 use manual::ManualAlignmentApp;
