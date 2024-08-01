@@ -1,17 +1,24 @@
 use std::path::PathBuf;
 
-use crate::{
-    Result, error, error_msg,
-    reference::ReferencePathDetector,
-};
 use super::{
     arg_parser::check_input_file_extension_is_allowed,
     query_reader::QueryReader,
+    write_results::{
+        extend_sam_line_with_itoa_buffer, extend_tsv_line_with_itoa_buffer, write_sam_header,
+        write_tsv_header,
+    },
 };
+use crate::{error, error_msg, reference::ReferencePathDetector, Result};
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
+use sigalign::{
+    algorithms::{
+        Algorithm, Local, LocalWithChunk, LocalWithLimit, SemiGlobal, SemiGlobalWithChunk,
+        SemiGlobalWithLimit,
+    },
+    Aligner, Reference,
+};
 
 mod thread_pool;
-use sigalign::{algorithms::{Algorithm, Local, LocalWithChunk, LocalWithLimit, SemiGlobal, SemiGlobalWithChunk, SemiGlobalWithLimit}, Aligner, Reference};
 use thread_pool::ThreadPool;
 
 const THREAD_BATCH_SIZE: usize = 64;
@@ -24,7 +31,7 @@ struct Config {
     input_file: PathBuf,
     is_gzip_compressed: bool,
     is_fasta_file: bool, // true: FASTA, false: FASTQ
-    reference_path: ReferencePathDetector,
+    reference_path_detector: ReferencePathDetector,
     // Alignment Regulator
     px: u32,
     po: u32,
@@ -93,66 +100,118 @@ impl ManualAlignmentApp {
             .arg(arg!(--semi_global "Use semi-global alignment instead of local")
                 .display_order(9)
                 .required(false))
-            .arg(arg!(--tsv "Output format is TSV instead of SAM")
+            .arg(arg!(--sam "Output format is SAM instead of TSV")
                 .display_order(10)
                 .required(false))
     }
     pub fn run(matches: &ArgMatches) -> Result<()> {
         // Parse arguments
         let config = Config::from_matches(matches)?;
-        println!("{:#?}", config);
+        eprintln!("{:#?}", config);
 
         // Run by algorithm
         if config.is_local {
             if let Some(limit) = config.limit {
-                let aligner = Aligner::new(
-                    LocalWithLimit::new(config.px, config.po, config.pe, config.minl, config.maxp, limit)?
-                );
+                let aligner = Aligner::new(LocalWithLimit::new(
+                    config.px,
+                    config.po,
+                    config.pe,
+                    config.minl,
+                    config.maxp,
+                    limit,
+                )?);
                 Self::execute_alignment_with_thread_pool(&config, aligner)?;
             } else if let Some(chunk) = config.chunk {
-                let aligner = Aligner::new(
-                    LocalWithChunk::new(config.px, config.po, config.pe, config.minl, config.maxp, chunk.0, chunk.1)?,
-                );
+                let aligner = Aligner::new(LocalWithChunk::new(
+                    config.px,
+                    config.po,
+                    config.pe,
+                    config.minl,
+                    config.maxp,
+                    chunk.0,
+                    chunk.1,
+                )?);
                 Self::execute_alignment_with_thread_pool(&config, aligner)?;
             } else {
-                let aligner = Aligner::new(
-                    Local::new(config.px, config.po, config.pe, config.minl, config.maxp)?,
-                );
+                let aligner = Aligner::new(Local::new(
+                    config.px,
+                    config.po,
+                    config.pe,
+                    config.minl,
+                    config.maxp,
+                )?);
                 Self::execute_alignment_with_thread_pool(&config, aligner)?;
             }
         } else {
             if let Some(limit) = config.limit {
-                let aligner = Aligner::new(
-                    SemiGlobalWithLimit::new(config.px, config.po, config.pe, config.minl, config.maxp, limit)?
-                );
+                let aligner = Aligner::new(SemiGlobalWithLimit::new(
+                    config.px,
+                    config.po,
+                    config.pe,
+                    config.minl,
+                    config.maxp,
+                    limit,
+                )?);
                 Self::execute_alignment_with_thread_pool(&config, aligner)?;
             } else if let Some(chunk) = config.chunk {
-                let aligner = Aligner::new(
-                    SemiGlobalWithChunk::new(config.px, config.po, config.pe, config.minl, config.maxp, chunk.0, chunk.1)?,
-                );
+                let aligner = Aligner::new(SemiGlobalWithChunk::new(
+                    config.px,
+                    config.po,
+                    config.pe,
+                    config.minl,
+                    config.maxp,
+                    chunk.0,
+                    chunk.1,
+                )?);
                 Self::execute_alignment_with_thread_pool(&config, aligner)?;
             } else {
-                let aligner = Aligner::new(
-                    SemiGlobal::new(config.px, config.po, config.pe, config.minl, config.maxp)?,
-                );
+                let aligner = Aligner::new(SemiGlobal::new(
+                    config.px,
+                    config.po,
+                    config.pe,
+                    config.minl,
+                    config.maxp,
+                )?);
                 Self::execute_alignment_with_thread_pool(&config, aligner)?;
             }
         };
-        
+
         Ok(())
     }
     fn execute_alignment_with_thread_pool<A: Algorithm + 'static>(
         config: &Config,
         aligner: Aligner<A>,
     ) -> Result<()> {
+        // Write header for results
+        {
+            let stdout = std::io::stdout().lock();
+            if config.output_is_sam {
+                write_sam_header(stdout, &config.reference_path_detector)?;
+            } else {
+                write_tsv_header(stdout)?;
+            }
+        }
+
         let thread_pool: ThreadPool = ThreadPool::new(
             config.num_threads,
             THREAD_BATCH_SIZE,
             aligner,
+            config.with_reverse_complementary,
+            config.output_is_sam,
         );
 
-        let reference_paths = config.reference_path.load_reference_chunk_paths()?;
+        let start_time = std::time::Instant::now();
+        let reference_paths = config
+            .reference_path_detector
+            .load_reference_chunk_paths()?;
+        let reference_chunk_count = reference_paths.len();
         for (reference_index, reference_path) in reference_paths.into_iter().enumerate() {
+            eprintln!(
+                "Processing reference chunk: {} / {}",
+                reference_index + 1,
+                reference_chunk_count
+            );
+
             // Load reference
             let file = std::fs::File::open(reference_path)?;
             let reference = Reference::load_from(file)?;
@@ -165,8 +224,11 @@ impl ManualAlignmentApp {
             )?;
 
             // Execute alignment
-            thread_pool.execute(reference, reference_index as u32, query_reader);
+            thread_pool.execute(reference, query_reader);
         }
+        drop(thread_pool);
+        let elapsed_time = start_time.elapsed();
+        eprintln!("Alignment finished in {:.2} s", elapsed_time.as_secs_f64());
 
         Ok(())
     }
@@ -176,10 +238,14 @@ impl Config {
     fn from_matches(matches: &ArgMatches) -> Result<Self> {
         // Input file paths
         let input_file = matches.get_one::<PathBuf>("input").unwrap().clone();
-        let (is_gzip_compressed, is_fasta_file) = check_input_file_extension_is_allowed(&input_file)?;
-        
+        let (is_gzip_compressed, is_fasta_file) =
+            check_input_file_extension_is_allowed(&input_file)?;
+
         let reference_path = {
-            let path = matches.get_one::<PathBuf>("reference").ok_or(error!("Invalid reference fasta"))?.clone();
+            let path = matches
+                .get_one::<PathBuf>("reference")
+                .ok_or(error!("Invalid reference fasta"))?
+                .clone();
             // if !path.exists() {
             //     error_msg!("Reference file does not exist: {:?}", path);
             // } FIXME: Revive later
@@ -188,26 +254,38 @@ impl Config {
 
         // Alignment Regulator
         let (px, po, pe) = {
-            let mut iterator: clap::parser::ValuesRef<_> = matches.get_many::<String>("penalties").unwrap();
-            let px: u32 = iterator.next().unwrap().parse().map_err(
-                |_| error!("Mismatch penalty allows only positive integer")
-            )?;
-            let po: u32 = iterator.next().unwrap().parse().map_err(
-                |_| error!("Gap-open penalty allows only non-negative integer")
-            )?;
-            let pe: u32 = iterator.next().unwrap().parse().map_err(
-                |_| error!("Gap-extend penalty allows only positive integer")
-            )?;
+            let mut iterator: clap::parser::ValuesRef<_> =
+                matches.get_many::<String>("penalties").unwrap();
+            let px: u32 = iterator
+                .next()
+                .unwrap()
+                .parse()
+                .map_err(|_| error!("Mismatch penalty allows only positive integer"))?;
+            let po: u32 = iterator
+                .next()
+                .unwrap()
+                .parse()
+                .map_err(|_| error!("Gap-open penalty allows only non-negative integer"))?;
+            let pe: u32 = iterator
+                .next()
+                .unwrap()
+                .parse()
+                .map_err(|_| error!("Gap-extend penalty allows only positive integer"))?;
             (px, po, pe)
         };
         let (minl, maxp) = {
-            let mut iterator: clap::parser::ValuesRef<_> = matches.get_many::<String>("cutoffs").unwrap();
-            let minl: u32 = iterator.next().unwrap().parse().map_err(
-                |_| error!("Minimum length allows only positive integer")
-            )?;
-            let maxp: f32 = iterator.next().unwrap().parse().map_err(
-                |_| error!("Maximum penalty per length allows only positive float")
-            )?;
+            let mut iterator: clap::parser::ValuesRef<_> =
+                matches.get_many::<String>("cutoffs").unwrap();
+            let minl: u32 = iterator
+                .next()
+                .unwrap()
+                .parse()
+                .map_err(|_| error!("Minimum length allows only positive integer"))?;
+            let maxp: f32 = iterator
+                .next()
+                .unwrap()
+                .parse()
+                .map_err(|_| error!("Maximum penalty per length allows only positive float"))?;
             (minl, maxp)
         };
 
@@ -223,17 +301,13 @@ impl Config {
         // Others
         let use_only_forward = matches.get_flag("forward");
         let num_threads = matches.get_one::<u32>("thread").copied().unwrap() as usize;
-        let output_is_sam = if matches.get_flag("tsv") {
-            false
-        } else {
-            true
-        };
+        let output_is_sam = matches.get_flag("sam");
 
         Ok(Self {
             input_file,
             is_gzip_compressed,
             is_fasta_file,
-            reference_path,
+            reference_path_detector: reference_path,
             px,
             po,
             pe,

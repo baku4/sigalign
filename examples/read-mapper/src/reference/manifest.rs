@@ -22,7 +22,13 @@ pub fn write_manifest_line<W: Write>(
     writer.write(
         format!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
-            file_index, file_name, record_index, reference_index, target_index, target_label, target_length
+            file_index,
+            file_name,
+            record_index,
+            reference_index,
+            target_index,
+            target_label,
+            target_length
         )
         .as_bytes(),
     )?;
