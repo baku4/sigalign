@@ -180,7 +180,7 @@ impl Worker {
                                     extend_sam_line_with_itoa_buffer(
                                         &mut bytes_results_buffer,
                                         &label,
-                                        true,
+                                        false,
                                         query.len() as u32,
                                         &labeled_result,
                                         &mut itoa_buffer,
@@ -189,7 +189,7 @@ impl Worker {
                                     extend_tsv_line_with_itoa_buffer(
                                         &mut bytes_results_buffer,
                                         &label,
-                                        true,
+                                        false,
                                         &labeled_result,
                                         &mut itoa_buffer,
                                     )
