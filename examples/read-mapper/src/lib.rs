@@ -26,10 +26,10 @@ impl Application {
         match matches.subcommand() {
             Some(("reference", sub_matches)) => {
                 ReferenceApp::run(sub_matches)?;
-            },
+            }
             Some(("alignment", sub_matches)) => {
                 AlignmentApp::run(sub_matches)?;
-            },
+            }
             _ => unreachable!(),
         }
 

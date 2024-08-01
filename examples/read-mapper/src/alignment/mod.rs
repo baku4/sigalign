@@ -4,17 +4,12 @@ use std::{fs::File, path::PathBuf, time::Instant};
 use crate::{error, error_msg, reference::ReferencePathDetector, Result};
 
 use sigalign::{
-    Reference,
-    Aligner,
     algorithms::{Local, SemiGlobal},
+    Aligner, Reference,
 };
 use sigalign_utils::{
     sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place,
-    sequence_reader::{
-        IdRefRecord as _, SeqRecord as _,
-        fasta::FastaReader,
-        fastq::FastqReader,
-    },
+    sequence_reader::{fasta::FastaReader, fastq::FastqReader, IdRefRecord as _, SeqRecord as _},
 };
 
 // Common module
@@ -39,9 +34,7 @@ impl AlignmentApp {
     pub fn run(matches: &ArgMatches) -> Result<()> {
         let tag_1 = ManualAlignmentApp::tag();
         match matches.subcommand() {
-            Some((tag_1, sub_matches)) => {
-                ManualAlignmentApp::run(sub_matches)
-            },
+            Some((tag_1, sub_matches)) => ManualAlignmentApp::run(sub_matches),
             _ => unreachable!(),
         }
     }
