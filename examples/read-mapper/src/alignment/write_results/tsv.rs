@@ -5,7 +5,7 @@ use sigalign::results::{AlignmentOperation, LabeledQueryAlignment};
 
 pub fn write_tsv_header<W: Write>(mut writer: W) -> Result<()> {
     writer.write_all(
-        b"query_name\tis_forward\ttarget_name\tquery_start\tquery_end\ttarget_start\ttarget_end\toperations\n"
+        b"query_name\tis_forward\ttarget_name\tpenalty\tlength\tquery_start\tquery_end\ttarget_start\ttarget_end\toperations\n"
     )?;
     Ok(())
 }
@@ -34,6 +34,10 @@ pub fn extend_tsv_line_with_itoa_buffer(
                     );
                     tsv_line_buffer.push(b'\t');
                     tsv_line_buffer.extend(labeled_target_alignment.label.as_bytes());
+                    tsv_line_buffer.push(b'\t');
+                    tsv_line_buffer.extend(itoa_buffer.format(alignment.penalty).as_bytes());
+                    tsv_line_buffer.push(b'\t');
+                    tsv_line_buffer.extend(itoa_buffer.format(alignment.length).as_bytes());
                     tsv_line_buffer.push(b'\t');
                     tsv_line_buffer
                         .extend(itoa_buffer.format(alignment.position.query.0).as_bytes());
