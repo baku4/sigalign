@@ -7,11 +7,11 @@ use sigalign_utils::file_extension_checker::{is_fasta_file, is_fastq_file, is_gz
 /// Return (is_gzip_compressed, is_fasta_file)
 /// if is_fasta_file is false, it is a FASTQ file
 pub fn check_input_file_extension_is_allowed(input_file: &PathBuf) -> Result<(bool, bool)> {
-    // if input_file.is_dir() {
-    //     error_msg!("Input file ({}) must be a file", input_file.display())
-    // } else if !input_file.exists() {
-    //     error_msg!("Input file ({}) does not exist", input_file.display())
-    // } FIXME: Revive later
+    if input_file.is_dir() {
+        error_msg!("Input file ({}) must be a file", input_file.display())
+    } else if !input_file.exists() {
+        error_msg!("Input file ({}) does not exist", input_file.display())
+    }
 
     let is_gzip_compressed = is_gzip_file(input_file);
     let is_fasta_file = if is_gzip_compressed {

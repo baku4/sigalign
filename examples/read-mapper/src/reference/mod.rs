@@ -90,7 +90,7 @@ impl ReferenceApp {
         };
 
         eprintln!(
-            "Total elapsed time: {} s",
+            "Total elapsed time: {:.8} s",
             total_start.elapsed().as_secs_f64()
         );
         Ok(())

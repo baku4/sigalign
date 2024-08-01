@@ -1,11 +1,9 @@
 use parking_lot::Mutex;
 use std::io::Write as _;
-use std::path::PathBuf;
 use std::sync::{mpsc, Arc};
 use std::thread;
 
 use sigalign::algorithms::Algorithm;
-use sigalign::results::QueryAlignment;
 use sigalign::{Aligner, Reference};
 use sigalign_utils::sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place;
 

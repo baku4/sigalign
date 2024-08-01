@@ -1,13 +1,9 @@
 use std::{fs::File, io::Read, path::PathBuf};
 
-use crate::{error, error_msg, Result};
+use crate::{error, Result};
 
-use sigalign_utils::{
-    sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place,
-    sequence_reader::{
-        decompress::get_gzip_decoder, fasta::FastaReader, fastq::FastqReader, IdRecord,
-        IdRefRecord as _, SeqRecord as _,
-    },
+use sigalign_utils::sequence_reader::{
+    decompress::get_gzip_decoder, fasta::FastaReader, fastq::FastqReader, IdRecord, SeqRecord as _,
 };
 
 pub enum QueryReader {
