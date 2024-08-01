@@ -1,10 +1,8 @@
-use crate::{Result, error_msg};
+use crate::{error_msg, Result};
 
 use std::path::PathBuf;
 
-use sigalign_utils::{
-    file_extension_checker::{is_fasta_file, is_fastq_file, is_gzip_file},
-};
+use sigalign_utils::file_extension_checker::{is_fasta_file, is_fastq_file, is_gzip_file};
 
 /// Return (is_gzip_compressed, is_fasta_file)
 /// if is_fasta_file is false, it is a FASTQ file
@@ -28,8 +26,11 @@ pub fn check_input_file_extension_is_allowed(input_file: &PathBuf) -> Result<(bo
     };
 
     if !is_fasta_file && !is_fastq_file {
-        error_msg!("Input file ({}) is not a FASTA or FASTQ file", input_file.display())
+        error_msg!(
+            "Input file ({}) is not a FASTA or FASTQ file",
+            input_file.display()
+        )
     }
-    
+
     Ok((is_gzip_compressed, is_fasta_file))
 }

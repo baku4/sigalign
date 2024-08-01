@@ -1,11 +1,12 @@
 use std::{fs::File, io::Read, path::PathBuf};
 
-use crate::{Result, error, error_msg};
+use crate::{error, error_msg, Result};
 
 use sigalign_utils::{
     sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place,
     sequence_reader::{
-        decompress::get_gzip_decoder, fasta::FastaReader, fastq::FastqReader, IdRecord, IdRefRecord as _, SeqRecord as _
+        decompress::get_gzip_decoder, fasta::FastaReader, fastq::FastqReader, IdRecord,
+        IdRefRecord as _, SeqRecord as _,
     },
 };
 
@@ -15,11 +16,7 @@ pub enum QueryReader {
 }
 
 impl QueryReader {
-    pub fn new(
-        file_path: &PathBuf,
-        is_gzip_compressed: bool,
-        is_fasta_file: bool,
-    ) -> Result<Self> {
+    pub fn new(file_path: &PathBuf, is_gzip_compressed: bool, is_fasta_file: bool) -> Result<Self> {
         let read: Box<dyn Read + Send> = {
             let file = File::open(file_path)?;
             if is_gzip_compressed {
@@ -51,7 +48,7 @@ impl QueryReader {
                 } else {
                     Err(error!("No more records"))
                 }
-            },
+            }
             Self::Fastq(reader) => {
                 if let Some(mut record) = reader.next() {
                     sequence_buffer.clear();
@@ -62,7 +59,7 @@ impl QueryReader {
                 } else {
                     Err(error!("No more records"))
                 }
-            },
+            }
         }
     }
 }

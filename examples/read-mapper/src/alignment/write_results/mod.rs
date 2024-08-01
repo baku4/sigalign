@@ -2,26 +2,13 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use anyhow::Ok;
+use sigalign::results::{AlignmentOperation, AlignmentOperations, LabeledQueryAlignment};
 
-use crate::{Result, error, error_msg};
 use crate::reference::ReferencePathDetector;
+use crate::{error, error_msg, Result};
 
-pub fn write_sam_header<W: Write>(
-    mut writer: W,
-    reference_path_detector: &ReferencePathDetector,
-) -> Result<()> {
-    writer.write_all(b"@HD\tVN:1.6\tSO:unsorted\n")?;
-    
-    // Fields of manifest file:
-    // file_index, file_name, record_index, reference_index, target_index, target_label, target_length
-    let manifest_file = File::open(reference_path_detector.get_manifest_file_path())?;
-    let reader = BufReader::new(manifest_file);
-    for line in reader.lines() {
-        let line = line?;
-        let fields: Vec<&str> = line.split('\t').collect();
-        
-        writer.write_all(format!("@SQ\tSN:{}\tLN:{}\n", fields[5], fields[6]).as_bytes())?;
-    }
+mod tsv;
+pub use tsv::{extend_tsv_line_with_itoa_buffer, write_tsv_header};
 
-    Ok(())
-}
+mod sam;
+pub use sam::{extend_sam_line_with_itoa_buffer, write_sam_header};

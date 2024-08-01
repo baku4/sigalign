@@ -211,7 +211,7 @@ impl Config {
                 record.extend_seq_buf(&mut sequence_buffer);
                 label_buffer.clear();
                 record.extend_id_string(&mut label_buffer)?;
-                
+
                 write_manifest_line(
                     &mut manifest_writer,
                     &input_file_index,
@@ -223,7 +223,9 @@ impl Config {
                     &sequence_buffer.len(),
                 )?;
 
-                if (total_length != 0) && (total_length + sequence_buffer.len() as u32 > self.max_length) {
+                if (total_length != 0)
+                    && (total_length + sequence_buffer.len() as u32 > self.max_length)
+                {
                     // Build and Save
                     let reference = get_reference_with_default_option(sequence_storage)?;
                     let reference_path = reference_path_detector.get_path_of_index(reference_index);
@@ -250,7 +252,7 @@ impl Config {
                 target_index += 1;
             }
         }
-        
+
         // Save last reference
         if sequence_storage.num_targets() != 0 {
             let reference = get_reference_with_default_option(sequence_storage)?;
@@ -265,7 +267,7 @@ impl Config {
             let out_file = File::create(reference_path)?;
             reference.save_to(out_file)?;
         }
-        
+
         eprintln!(
             "Target manifest file has been saved to {}",
             reference_path_detector.get_manifest_file_path().display()
