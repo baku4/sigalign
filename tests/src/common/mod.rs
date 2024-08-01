@@ -12,6 +12,7 @@ pub mod configuration;
 
 // Test Data
 pub mod test_data;
+pub mod test_alignment_results;
 pub mod random_text_and_pattern;
 pub mod random_regulator;
 
