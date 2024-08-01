@@ -1,8 +1,7 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 
 use anyhow::Result;
-use sigalign::results::{AlignmentOperation, AlignmentOperations, LabeledQueryAlignment};
+use sigalign::results::{AlignmentOperation, LabeledQueryAlignment};
 
 pub fn write_tsv_header<W: Write>(mut writer: W) -> Result<()> {
     writer.write_all(

@@ -2,10 +2,10 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 
 use anyhow::Ok;
-use sigalign::results::{AlignmentOperation, AlignmentOperations, LabeledQueryAlignment};
+use sigalign::results::{AlignmentOperation, LabeledQueryAlignment};
 
 use crate::reference::ReferencePathDetector;
-use crate::{error, error_msg, Result};
+use crate::Result;
 
 pub fn write_sam_header<W: Write>(
     mut writer: W,
@@ -81,13 +81,6 @@ pub fn extend_sam_line_with_itoa_buffer(
         });
 }
 
-#[inline]
-fn to_cigar_string(alignment_operations: &[AlignmentOperations]) -> String {
-    alignment_operations
-        .iter()
-        .map(|op| format!("{}{}", op.count, to_cigar_code(&op.operation)))
-        .collect()
-}
 #[inline(always)]
 fn to_cigar_code(alignment_operation: &AlignmentOperation) -> u8 {
     match alignment_operation {
