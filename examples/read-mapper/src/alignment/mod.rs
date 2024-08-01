@@ -1,16 +1,5 @@
-use clap::{arg, value_parser, Arg, ArgMatches, Command};
-use std::{fs::File, path::PathBuf, time::Instant};
-
-use crate::{error, error_msg, reference::ReferencePathDetector, Result};
-
-use sigalign::{
-    algorithms::{Local, SemiGlobal},
-    Aligner, Reference,
-};
-use sigalign_utils::{
-    sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place,
-    sequence_reader::{fasta::FastaReader, fastq::FastqReader, IdRefRecord as _, SeqRecord as _},
-};
+use crate::Result;
+use clap::{ArgMatches, Command};
 
 // Common module
 mod arg_parser;
@@ -32,9 +21,9 @@ impl AlignmentApp {
             .subcommand(ManualAlignmentApp::get_command().display_order(1))
     }
     pub fn run(matches: &ArgMatches) -> Result<()> {
-        let tag_1 = ManualAlignmentApp::tag();
+        let _tag_1 = ManualAlignmentApp::tag();
         match matches.subcommand() {
-            Some((tag_1, sub_matches)) => ManualAlignmentApp::run(sub_matches),
+            Some((_tag_1, sub_matches)) => ManualAlignmentApp::run(sub_matches),
             _ => unreachable!(),
         }
     }

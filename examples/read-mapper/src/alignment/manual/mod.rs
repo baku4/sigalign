@@ -8,7 +8,7 @@ use super::{
         write_tsv_header,
     },
 };
-use crate::{error, error_msg, reference::ReferencePathDetector, Result};
+use crate::{error, reference::ReferencePathDetector, Result};
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use sigalign::{
     algorithms::{
@@ -206,15 +206,21 @@ impl ManualAlignmentApp {
             .load_reference_chunk_paths()?;
         let reference_chunk_count = reference_paths.len();
         for (reference_index, reference_path) in reference_paths.into_iter().enumerate() {
-            eprintln!(
+            eprint!(
                 "Processing reference chunk: {} / {}",
                 reference_index + 1,
                 reference_chunk_count
             );
 
             // Load reference
-            let file = std::fs::File::open(reference_path)?;
-            let reference = Reference::load_from(file)?;
+            let reference = {
+                let start_time = std::time::Instant::now();
+                let file = std::fs::File::open(reference_path)?;
+                let reference = Reference::load_from(file)?;
+                let elapsed_time = start_time.elapsed();
+                eprintln!(" (loaded in {:.8} s)", elapsed_time.as_secs_f64());
+                reference
+            };
 
             // Load query
             let query_reader = QueryReader::new(
@@ -228,7 +234,7 @@ impl ManualAlignmentApp {
         }
         drop(thread_pool);
         let elapsed_time = start_time.elapsed();
-        eprintln!("Alignment finished in {:.2} s", elapsed_time.as_secs_f64());
+        eprintln!("Alignment finished in {:.8} s", elapsed_time.as_secs_f64());
 
         Ok(())
     }
