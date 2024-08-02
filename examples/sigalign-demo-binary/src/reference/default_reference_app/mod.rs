@@ -295,7 +295,7 @@ fn get_reference_with_default_option(
         sequence_storage,
         dynamic_lfi_option,
     )?;
-    let reference = Reference::from_raw(raw_reference);
+    let reference = Reference::from(raw_reference);
     Ok(reference)
 }
 
