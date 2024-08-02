@@ -17,11 +17,11 @@ use super::{
     write_alignment_result_as_tsv, ForwardDirection, ReverseDirection,
 };
 
-use sigalign_core::aligner::{
-    LocalAligner,
-    Aligner, AlignmentRegulator,
+use sigalign::{
+    algorithms::Local,
+    Aligner,
+    Reference,
 };
-use sigalign_impl::allocation_strategy::LinearStrategy;
 use sigalign_utils::{
     sequence_reader::{
         fasta::FastaReader,
@@ -29,9 +29,8 @@ use sigalign_utils::{
     },
     sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place,
 };
-use sigalign::Reference;
 
-type DefaultAligner = LocalAligner<LinearStrategy>;
+type DefaultAligner = Aligner<Local>;
 
 pub struct AlignmentApp;
 #[derive(Debug, Clone)]
@@ -162,7 +161,6 @@ impl AlignmentConfig {
         let mut query = Vec::new();
         //  - Reference
         let reference_chunk_path = self.reference_path.load_reference_chunk_paths()?;
-        let mut sequence_buffer = Reference::get_sequence_buffer();
 
         // Perform alignment
         for (reference_index, chunk_path) in reference_chunk_path.into_iter().enumerate() {
@@ -178,11 +176,9 @@ impl AlignmentConfig {
                 // Forward
                 query.clear();
                 record.extend_seq_buf(&mut query);
-                let result = aligner.alignment(
-                    &reference.as_ref(),
-                    &mut sequence_buffer,
-                    reference.get_full_sorted_target_indices(),
+                let result = aligner.align(
                     &query,
+                    &reference,
                 );
                 write_alignment_result_as_tsv::<ForwardDirection>(
                     result,
@@ -194,11 +190,9 @@ impl AlignmentConfig {
 
                 // Reverse complement
                 reverse_complement_of_dna_sequence_in_place(&mut query);
-                let result = aligner.alignment(
-                    &reference.as_ref(),
-                    &mut sequence_buffer,
-                    reference.get_full_sorted_target_indices(),
+                let result = aligner.align(
                     &query,
+                    &reference,
                 );
                 write_alignment_result_as_tsv::<ReverseDirection>(
                     result,
@@ -213,14 +207,14 @@ impl AlignmentConfig {
         Ok(())
     }
     fn make_aligner(&self) -> Result<DefaultAligner> {
-        let regulator = AlignmentRegulator::new(
+        let algorithm = Local::new(
             self.px,
             self.po,
             self.pe,
             self.minl,
             self.maxp,
         )?;
-        let aligner = DefaultAligner::new(regulator);
+        let aligner = DefaultAligner::new(algorithm);
 
         Ok(aligner)
     }
