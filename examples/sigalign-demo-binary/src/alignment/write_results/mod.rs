@@ -1,6 +1,11 @@
 use std::io::{BufWriter, StdoutLock, Write as _};
 
-use sigalign_core::results::{AlignmentResult, TargetAlignmentResult, AlignmentOperation, AlignmentOperations};
+use sigalign_core::results::{
+    QueryAlignment,
+    TargetAlignment,
+    AlignmentOperation,
+    AlignmentOperations,
+};
 
 pub trait Direction {
     const IS_FORWARD : u8;
@@ -12,13 +17,13 @@ impl Direction for ReverseDirection { const IS_FORWARD : u8 = 0; }
 
 #[inline(always)]
 pub fn write_alignment_result_as_tsv<D: Direction>(
-    result: AlignmentResult,
+    result: QueryAlignment,
     buf_writer: &mut BufWriter<StdoutLock>,
     itoa_buffer: &mut itoa::Buffer,
     ref_idx: &usize,
     query_id: &[u8],
 ) {
-    result.0.into_iter().for_each(|TargetAlignmentResult {
+    result.0.into_iter().for_each(|TargetAlignment {
         index: target_index,
         alignments: anchor_results,
     }| {
