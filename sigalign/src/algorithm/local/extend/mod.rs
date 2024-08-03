@@ -102,6 +102,13 @@ pub fn extend_anchor(
         right_vpc_buffer,
         anchor_size * cutoff.maximum_scaled_penalty_per_length,
     );
+
+
+
+    // !!   Same to this point    !!
+    
+
+
     // 4.2. Backtrace left
     let left_optimal_vpc = &left_vpc_buffer[optimal_left_vpc_index];
     let left_back_trace_result = left_wave_front.backtrace_of_left_side(
