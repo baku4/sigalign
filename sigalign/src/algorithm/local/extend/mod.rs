@@ -36,7 +36,7 @@ pub fn extend_anchor(
     operations_buffer: &mut Vec<AlignmentOperations>,
     traversed_anchor_index_buffer: &mut Vec<AnchorIndex>,
     extension_buffer: &mut Vec<Extension>,
-) {
+) -> Option<()> {
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
     // 1.1. Define the range of sequence to extend    
@@ -126,6 +126,15 @@ pub fn extend_anchor(
         left_target_end_index,
         left_back_trace_result.traversed_anchor_range,
     );
+
+
+    // If this anchor is not leftmost anchor: return None
+    let (v1, v2) = left_back_trace_result.traversed_anchor_range;
+    if v1 != v2 {
+        return None;
+    }
+
+
     // 4.2. Backtrace right
     let right_optimal_vpc = &right_vpc_buffer[optimal_right_vpc_index];
     let right_back_trace_result = right_wave_front.backtrace_of_right_side(
@@ -166,4 +175,5 @@ pub fn extend_anchor(
         right_traversed_anchor_range: right_back_trace_result.traversed_anchor_range,
     };
     extension_buffer.push(extension);
+    Some(())
 }
