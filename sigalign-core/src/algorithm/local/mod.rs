@@ -12,9 +12,8 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
+    WaveFront, WaveFrontScore, BackTraceMarker,
     Extension, SparePenaltyCalculator,
-    transform_right_additive_positions_to_traversed_anchor_index,
 };
 mod extend;
 use extend::extend_anchor;
@@ -36,7 +35,6 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
 ) -> QueryAlignment {
     let mut anchor_table_map = AnchorTable::new_by_target_index(pattern_locater, query, sorted_target_indices, pattern_size);
@@ -56,7 +54,6 @@ pub fn local_alignment_algorithm<L: BufferedPatternLocator>(
             right_wave_front,
             left_vpc_buffer,
             right_vpc_buffer,
-            traversed_anchors_buffer,
             operations_buffer,
         );
 
@@ -87,7 +84,6 @@ fn local_alignment_query_to_target(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
 ) -> Vec<Alignment> {
     // Initialize
@@ -122,7 +118,6 @@ fn local_alignment_query_to_target(
                     left_vpc_buffer,
                     right_vpc_buffer,
                     operations_buffer,
-                    traversed_anchors_buffer,
                 );
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
@@ -130,15 +125,6 @@ fn local_alignment_query_to_target(
                 //   - If extension does not exists:
                 //     (i.e., alignment result is invalid or leftmost anchor is already used), pass.
                 if let Some(extension) = optional_extension {
-                    traversed_anchors_buffer.iter().for_each(|tv| {
-                        if tv.to_skip {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        }
-                    });
                     let alignment = extension.parse_anchor_alignment_result(operations_buffer);
                     alignment_results.push(alignment);
                 }
@@ -163,7 +149,6 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     // Limit of the number of alignments
     mut limit: u32,
@@ -186,7 +171,6 @@ pub fn local_alignment_algorithm_with_limit<L: BufferedPatternLocator>(
             right_wave_front,
             left_vpc_buffer,
             right_vpc_buffer,
-            traversed_anchors_buffer,
             operations_buffer,
             &mut limit,
         );
@@ -218,7 +202,6 @@ fn local_alignment_query_to_target_with_limit(
     right_wave_front: &mut WaveFront,
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
-    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
     operations_buffer: &mut Vec<AlignmentOperations>,
     // Limit of the number of alignments
     limit: &mut u32,
@@ -258,7 +241,6 @@ fn local_alignment_query_to_target_with_limit(
                     left_vpc_buffer,
                     right_vpc_buffer,
                     operations_buffer,
-                    traversed_anchors_buffer,
                 );
                 // After extension, "traversed_anchors_buffer" is filled with right traversed anchors
 
@@ -266,15 +248,6 @@ fn local_alignment_query_to_target_with_limit(
                 //   - If extension does not exists:
                 //     (i.e., alignment result is invalid or leftmost anchor is already used), pass.
                 if let Some(extension) = optional_extension {
-                    traversed_anchors_buffer.iter().for_each(|tv| {
-                        if tv.to_skip {
-                            anchor_table.0[
-                                tv.addt_pattern_index as usize
-                            ][
-                                tv.addt_target_position as usize
-                            ].to_skip = true;
-                        }
-                    });
                     let alignment = extension.parse_anchor_alignment_result(operations_buffer);
                     alignment_results.push(alignment);
                     // Reduce the limit

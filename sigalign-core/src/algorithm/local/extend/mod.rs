@@ -7,9 +7,8 @@ use crate::{
 };
 use super::{
     AnchorTable, AnchorIndex,
-    WaveFront, WaveFrontScore, BackTraceMarker, TraversedAnchor,
+    WaveFront, WaveFrontScore, BackTraceMarker,
     Extension, SparePenaltyCalculator,
-    transform_right_additive_positions_to_traversed_anchor_index,
 };
 
 mod valid_position_candidate;
@@ -35,7 +34,6 @@ pub fn extend_anchor(
     left_vpc_buffer: &mut Vec<Vpc>,
     right_vpc_buffer: &mut Vec<Vpc>,
     operations_buffer: &mut Vec<AlignmentOperations>,
-    traversed_anchors_buffer: &mut Vec<TraversedAnchor>,
 ) -> Option<Extension> {
     // 1. Init
     let anchor = &anchor_table.0[anchor_index.0 as usize][anchor_index.1 as usize];
@@ -135,22 +133,13 @@ pub fn extend_anchor(
         operations_buffer,
     )?;
     // 4.4. Backtrace from right
-    let right_operation_range_in_buffer = right_wave_front.backtrace_of_right_side_with_checking_traversed(
+    let right_operation_range_in_buffer = right_wave_front.backtrace_of_right_side_without_checking_traversed(
         right_optimal_vpc.penalty,
-        cutoff.maximum_scaled_penalty_per_length as i32,
         *pattern_size,
         pattern_count,
         right_optimal_vpc.component_index,
         penalties,
         operations_buffer,
-        traversed_anchors_buffer,
-    );
-    transform_right_additive_positions_to_traversed_anchor_index(
-        anchor_table,
-        traversed_anchors_buffer,
-        anchor_index.0,
-        left_target_end_index,
-        *pattern_size,
     );
 
     // 5. Push extension
