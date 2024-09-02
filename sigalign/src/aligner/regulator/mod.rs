@@ -7,6 +7,9 @@ use crate::results::{
 use thiserror::Error;
 use num::integer::{div_ceil, gcd};
 
+mod pattern_size;
+use pattern_size::calculate_max_pattern_size;
+
 #[derive(Error, Debug)]
 pub enum RegulatorError {
     #[error("Cutoff is too low to detect the pattern.")]
@@ -61,9 +64,9 @@ impl AlignmentRegulator {
 
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let max_pattern_size = calculate_max_pattern_size(
+            &penalties,
             &cutoff,
             &min_penalty_for_pattern,
-            penalties.e,
         );
         
         Self {
@@ -177,93 +180,4 @@ impl MinPenaltyForPattern {
             even
         }
     }
-}
-
-// For pattern size calculation
-#[inline(always)]
-pub fn calculate_max_pattern_size(
-    cutoff: &Cutoff,
-    min_penalty_for_pattern: &MinPenaltyForPattern,
-    gap_extend_penalty: u32,
-) -> u32 {
-    // Initialize
-    let mut lower_bound = get_lower_bound_of_n(
-        0,
-        cutoff.minimum_aligned_length,
-        gap_extend_penalty,
-        min_penalty_for_pattern.odd,
-    );
-    let mut upper_bound;
-    let mut n = 0;
-    let mut k = 0;
-    let mut k1;
-    let mut k2 = 0;
-    
-    while k < lower_bound {
-        n += 1;
-        upper_bound = lower_bound - 1;
-        lower_bound = get_lower_bound_of_n(
-            n,
-            cutoff.minimum_aligned_length,
-            gap_extend_penalty,
-            min_penalty_for_pattern.odd,
-        );
-
-        if n % 2 == 1 { // If n is odd
-            let m = (n+1) / 2;
-            k1 = max_k_satisfying_maxp_for_odd(
-                m,
-                gap_extend_penalty,
-                min_penalty_for_pattern.odd,
-                min_penalty_for_pattern.even,
-                cutoff.maximum_scaled_penalty_per_length,
-            );
-            k2 = max_k_satisfying_maxp_for_even(
-                m,
-                gap_extend_penalty,
-                min_penalty_for_pattern.odd,
-                min_penalty_for_pattern.even,
-                cutoff.maximum_scaled_penalty_per_length,
-            );
-            k = upper_bound.min(k1).min(k2);
-        } else {
-            k = upper_bound.min(k2);
-        }
-    }
-    k
-}
-#[inline(always)]
-fn get_lower_bound_of_n(
-    n: u32, // Number of patterns
-    minl: u32, // Minimum length
-    pe: u32, // Gap-extend penalty
-    p1: u32, // Penalty for odd pattern
-) -> u32 {
-    let numerator = pe*(minl+4) - p1;
-    let denominator = pe*(n+2);
-    div_ceil(numerator, denominator) - 1
-}
-#[inline(always)]
-fn max_k_satisfying_maxp_for_odd(
-    m: u32,
-    pe: u32,
-    p1: u32,
-    p2: u32,
-    scaled_maxp: u32,
-) -> u32 {
-    let numerator = PREC_SCALE*pe*(m*p1+m*p2-p2) + 4*scaled_maxp*pe - scaled_maxp*p1;
-    let denominator = scaled_maxp*pe*(2*m+1);
-    div_ceil(numerator, denominator) - 2
-}
-#[inline(always)]
-fn max_k_satisfying_maxp_for_even(
-    m: u32,
-    pe: u32,
-    p1: u32,
-    p2: u32,
-    scaled_maxp: u32,
-) -> u32 {
-    let numerator = PREC_SCALE*m*pe*(p1+p2) + 4*scaled_maxp*pe - scaled_maxp*p1;
-    let denominator = scaled_maxp*pe*(2*m+2);
-    div_ceil(numerator, denominator) - 2
 }
