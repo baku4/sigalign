@@ -9,7 +9,7 @@ pub fn calculate_max_pattern_size(
     min_penalty_for_pattern: &MinPenaltyForPattern,
 ) -> u32 {
     let mut lower_k = 1;
-    let mut upper_k = upper_value_of_k(min_penalty_for_pattern, cutoff.maximum_scaled_penalty_per_length);
+    let mut upper_k = upper_value_of_k(cutoff, min_penalty_for_pattern);
 
     let mut result = lower_k;
 
@@ -30,13 +30,20 @@ pub fn calculate_max_pattern_size(
 }
 
 fn upper_value_of_k(
+    cutoff: &Cutoff,
     min_penalty_for_pattern: &MinPenaltyForPattern,
-    maximum_scaled_penalty_per_length: u32,
 ) -> u32 {
-    div_floor(
+    let v1 = div_floor(
         PREC_SCALE * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even),
-        2 * maximum_scaled_penalty_per_length,
-    )
+        2 * cutoff.maximum_scaled_penalty_per_length,
+    );
+
+    let v2 = div_ceil(
+        cutoff.minimum_aligned_length + 2,
+        2,
+    ) - 1;
+
+    v1.min(v2)
 }
 
 fn check_if_k_can_be_used_as_pattern_size(
@@ -340,6 +347,35 @@ fn max_k_satisfying_maxp_for_even(
     div_ceil(numerator, denominator) - 2
 }
 
+fn calculate_max_pattern_size_oldest(
+    cutoff: &Cutoff,
+    min_penalty_for_pattern: &MinPenaltyForPattern,
+) -> u32 {
+    let mut m = 1;
+    let mut upper_bound = div_ceil(
+        cutoff.minimum_aligned_length + 4,
+        2,
+    ) - 2;
+    loop {
+        let lower_bound = (
+            (cutoff.minimum_aligned_length + 4)  as f32 / (2*m + 2) as f32
+            - 1_f32
+        ).ceil() as u32;
+        let max_penalty = div_ceil(
+            PREC_SCALE * m * (min_penalty_for_pattern.odd + min_penalty_for_pattern.even)
+            + (4 * cutoff.maximum_scaled_penalty_per_length),
+            2 * cutoff.maximum_scaled_penalty_per_length * (m+1)
+        ) - 2;
+        // println!("m: {}, lower_bound: {}, upper_bound: {}, max_penalty: {}", m, lower_bound, upper_bound, max_penalty);
+
+        let pattern_size = max_penalty.min(upper_bound);
+        if pattern_size >= lower_bound {
+            return pattern_size as u32
+        }
+        m += 1;
+        upper_bound = lower_bound - 1;
+    }
+}
 
 #[test]
 fn calculate_pattern_size_with_current_version() {
