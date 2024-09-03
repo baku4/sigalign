@@ -19,7 +19,6 @@ pub fn calculate_max_pattern_size(
         if check_if_k_can_be_used_as_pattern_size(
             mid_k, penalty, cutoff, min_penalty_for_pattern
         ) {
-            println!("valid k: {}", mid_k);
             result = mid_k;
             lower_k = mid_k + 1;
         } else {
@@ -47,7 +46,6 @@ fn check_if_k_can_be_used_as_pattern_size(
     min_penalty_for_pattern: &MinPenaltyForPattern,
 ) -> bool {
     let mut m = calculate_m(k, cutoff.minimum_aligned_length);
-    println!("k: {}, m: {}", k, m);
     let optional_case_number = if m == 0 {
         m = 1;
         Some(1)
