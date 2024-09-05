@@ -55,9 +55,9 @@ impl AlignmentRegulator {
 
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let max_pattern_size = calculate_max_pattern_size(
+            &penalties,
             &cutoff,
             &min_penalty_for_pattern,
-            penalties.e,
         );
         
         Self {
@@ -182,9 +182,9 @@ mod tests {
         let cutoff = Cutoff::new(50, 0.15);
         let min_penalty_for_pattern = MinPenaltyForPattern::new(&penalties);
         let pattern_size = calculate_max_pattern_size(
+            &penalties,
             &cutoff,
             &min_penalty_for_pattern,
-            penalties.e,
         );
         println!("{}", pattern_size);
     }
