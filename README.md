@@ -101,7 +101,7 @@ aligner = Aligner(4, 6, 2, 50, 0.2)
 
 # (3) Execute Alignment
 query = "CAAACTCACAATTGTATTTCTTTGCCAGCTGGGCATATACTTTTTCCGCCCCCTCATTTAACTTCTTGGA"
-results = aligner.align_query(reference, query)
+results = aligner.align_query(query, reference)
 
 # (4) Display Results
 for target_result in results:
