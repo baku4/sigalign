@@ -15,5 +15,5 @@ pub use io::{
     EstimateSize,
 };
 mod label;
-pub use label::LabelStorage;
+pub use label::{LabelStorage, LabelRefStorage};
 mod clone;

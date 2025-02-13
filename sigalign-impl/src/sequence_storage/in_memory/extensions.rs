@@ -6,6 +6,7 @@ use sigalign_core::reference::extensions::{
     Serialize,
     EstimateSize,
     LabelStorage,
+    LabelRefStorage,
 };
 use crate::core::{EndianType, ReadBytesExt, WriteBytesExt};
 use super::InMemoryStorage;
@@ -62,12 +63,17 @@ impl EstimateSize for InMemoryStorage {
 //  - Label Storage
 impl LabelStorage for InMemoryStorage {
     fn label_of_target_unchecked(&self, target_index: u32) -> String {
+        self.label_ref_of_target_unchecked(target_index).to_string()
+    }
+}
+impl LabelRefStorage for InMemoryStorage {
+    fn label_ref_of_target_unchecked(&self, target_index: u32) -> &str {
         unsafe {
-            String::from_utf8_unchecked(
-                self.concatenated_label.as_bytes()[
+            std::str::from_utf8_unchecked(
+                &self.concatenated_label.as_bytes()[
                     self.label_index[target_index as usize]
                     ..self.label_index[target_index as usize +1]
-                ].to_vec()
+                ]
             )
         }
     }
@@ -78,5 +84,11 @@ impl InMemoryStorage {
             return None
         }
         Some(self.label_of_target_unchecked(target_index))
+    }
+    pub fn get_label_ref_safely(&self, target_index: u32) -> Option<&str> {
+        if target_index as usize >= self.target_count {
+            return None
+        }
+        Some(self.label_ref_of_target_unchecked(target_index))
     }
 }
