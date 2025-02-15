@@ -56,5 +56,4 @@ pub use labeled::{
     LabeledTargetAlignment,
 };
 
-mod to_json;
 mod count_alignments;

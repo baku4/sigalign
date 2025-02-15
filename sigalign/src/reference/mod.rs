@@ -40,6 +40,10 @@ impl Reference {
     pub fn get_label(&self, target_index: u32) -> Option<String> {
         self.as_ref().get_sequence_storage().get_label_safely(target_index)
     }
+    /// Get the label of the target as a string slice. None if the target index is out of range.
+    pub fn get_label_str(&self, target_index: u32) -> Option<&str> {
+        self.as_ref().get_sequence_storage().get_label_ref_safely(target_index)
+    }
     /// Get the number of targets.
     pub fn get_num_targets(&self) -> u32 {
         self.as_ref().num_targets()

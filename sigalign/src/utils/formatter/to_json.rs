@@ -39,7 +39,7 @@ macro_rules! impl_translate_between_json {
     };
 }
 
-use super::{
+use crate::results::{
     LabeledQueryAlignment,
     LabeledTargetAlignment,
 };
