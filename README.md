@@ -162,4 +162,4 @@ SigAlign is released under the [MIT License]((https://github.com/baku4/sigalign/
 
 ## Citation
 
-Bahk, K., & Sung, J. (2024). SigAlign: an alignment algorithm guided by explicit similarity criteria. *Nucleic Acids Research*, gkae607. https://doi.org/10.1093/nar/gkae607
+Bahk, K., & Sung, J. (2024). SigAlign: an alignment algorithm guided by explicit similarity criteria. *Nucleic Acids Research*, 52(15), 8717-8733.
