@@ -53,7 +53,12 @@ fn print_results_as_sam() {
     let sam_results = {
         let mut sam_results_buffer = Vec::new();
         let mut sam_writer = SamWriter::from_writer(&mut sam_results_buffer);
-        sam_writer.write_header().unwrap();
+        sam_writer.write_hd_header().unwrap();
+        for target_index in 0..reference.get_num_targets() {
+            let target_label = reference.get_label_str(target_index).unwrap();
+            let target_length = reference.get_sequence_length(target_index).unwrap();
+            sam_writer.write_sq_header(&target_label, &target_length).unwrap();
+        }
         // (1) Raw results
         sam_writer.write_query_alignment(
             &query_alignment,

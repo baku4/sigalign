@@ -187,6 +187,14 @@ impl InMemoryStorage {
         let seq = buffer.buffered_sequence().to_vec();
         Some(seq)
     }
+    pub fn get_sequence_length_safely(&self, target_index: u32) -> Option<u32> {
+        if target_index as usize >= self.target_count {
+            return None
+        }
+        let start_index = self.sequence_index[target_index as usize];
+        let end_index = self.sequence_index[target_index as usize +1];
+        Some((end_index - start_index) as u32)
+    }
     pub fn get_total_length(&self) -> u32 {
         self.concatenated_sequence.len() as u32
     }

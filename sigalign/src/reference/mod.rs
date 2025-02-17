@@ -36,6 +36,10 @@ impl Reference {
     pub fn get_sequence(&self, target_index: u32) -> Option<Vec<u8>> {
         self.as_ref().get_sequence_storage().get_sequence_safely(target_index)
     }
+    /// Get the sequence length of the target. None if the target index is out of range.
+    pub fn get_sequence_length(&self, target_index: u32) -> Option<u32> {
+        self.as_ref().get_sequence_storage().get_sequence_length_safely(target_index)
+    }
     /// Get the label of the target. None if the target index is out of range.
     pub fn get_label(&self, target_index: u32) -> Option<String> {
         self.as_ref().get_sequence_storage().get_label_safely(target_index)

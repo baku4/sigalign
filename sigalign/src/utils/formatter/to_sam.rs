@@ -22,9 +22,20 @@ impl<W: Write> SamWriter<W> {
             itoa_buffer: itoa::Buffer::new(),
         }
     }
-    /// Writes a minimal SAM header.
-    pub fn write_header(&mut self) -> Result<(), io::Error> {
+    /// Writes the HD header line.
+    pub fn write_hd_header(&mut self) -> Result<(), io::Error> {
         self.buf_writer.write_all(b"@HD\tVN:1.6\tSO:unsorted\n")?;
+        Ok(())
+    }
+    /// Writes the SQ header line.
+    ///  - SN: Reference sequence name
+    ///  - LN: Reference sequence length
+    pub fn write_sq_header(
+        &mut self,
+        sn: &str,
+        ln: &u32,
+    ) -> Result<(), io::Error> {
+        self.buf_writer.write_all(format!("@SQ\tSN:{}\tLN:{}\n", sn, ln).as_bytes())?;
         Ok(())
     }
     /// Write the SAM record 
