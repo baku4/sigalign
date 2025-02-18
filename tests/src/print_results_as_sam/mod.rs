@@ -1,3 +1,5 @@
+use std::io::{BufWriter, Write};
+
 use log::{error, info};
 use crate::common::{
     init_logger,
@@ -17,7 +19,7 @@ use sigalign::{
     Aligner, Reference, ReferenceBuilder,
     algorithms::{Algorithm, Local, SemiGlobal},
     results::{Alignment, QueryAlignment, TargetAlignment},
-    utils::formatter::SamWriter,
+    utils::formatter::SamFormatter,
 };
 
 #[test]
@@ -52,36 +54,45 @@ fn print_results_as_sam() {
     // Write record as SAM
     let sam_results = {
         let mut sam_results_buffer = Vec::new();
-        let mut sam_writer = SamWriter::from_writer(&mut sam_results_buffer);
-        sam_writer.write_hd_header().unwrap();
+        let mut sam_results_buf_writer = BufWriter::new(&mut sam_results_buffer);
+        let mut sam_formatter = SamFormatter::new();
+        sam_formatter.write_hd_header(&mut sam_results_buf_writer).unwrap();
         for target_index in 0..reference.get_num_targets() {
             let target_label = reference.get_label_str(target_index).unwrap();
             let target_length = reference.get_sequence_length(target_index).unwrap();
-            sam_writer.write_sq_header(&target_label, &target_length).unwrap();
+            sam_formatter.write_sq_header(
+                &mut sam_results_buf_writer,
+                &target_label,
+                &target_length,
+            ).unwrap();
         }
         // (1) Raw results
-        sam_writer.write_query_alignment(
+        sam_formatter.write_query_alignment(
+            &mut sam_results_buf_writer,
             &query_alignment,
             &query_labels,
             true,
             &reference,
         ).unwrap();
         // (2) Treat as reverse
-        sam_writer.write_query_alignment(
+        sam_formatter.write_query_alignment(
+            &mut sam_results_buf_writer,
             &query_alignment,
             &query_labels,
             false,
             &reference,
         ).unwrap();
         // (3) Raw results again
-        sam_writer.write_query_alignment(
+        sam_formatter.write_query_alignment(
+            &mut sam_results_buf_writer,
             &query_alignment,
             &query_labels,
             true,
             &reference,
         ).unwrap();
 
-        drop(sam_writer);
+        sam_results_buf_writer.flush().unwrap();
+        drop(sam_results_buf_writer);
 
         String::from_utf8(sam_results_buffer).unwrap()
     };

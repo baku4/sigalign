@@ -86,7 +86,7 @@ pub use with_limit::{LocalWithLimit, SemiGlobalWithLimit};
 pub use with_chunk::{LocalWithChunk, SemiGlobalWithChunk};
 
 /// An alignment algorithm.
-pub trait Algorithm: std::fmt::Debug + Clone {
+pub trait Algorithm: std::fmt::Debug + Clone + Send + Sync {
     // Low-level alignment method
     fn align(
         &mut self,

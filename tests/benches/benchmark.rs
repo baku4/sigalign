@@ -12,9 +12,11 @@ mod count_matches;
 use count_matches::count_the_consecutive_match;
 mod fasta_reader;
 use fasta_reader::read_fasta_file;
+mod convert_results_to_string_with_itoa;
+use convert_results_to_string_with_itoa::convert_results_to_tsv_string;
 
 criterion_group!(
     benches,
-    read_fasta_file,
+    convert_results_to_tsv_string,
 );
 criterion_main!(benches);
