@@ -3,73 +3,70 @@ use std::io::Write;
 use anyhow::Result;
 use sigalign::results::{AlignmentOperation, LabeledQueryAlignment};
 
-pub fn write_tsv_header<W: Write>(mut writer: W) -> Result<()> {
-    writer.write_all(
-        b"query_name\tis_forward\ttarget_name\tpenalty\tlength\tquery_start\tquery_end\ttarget_start\ttarget_end\toperations\n"
-    )?;
-    Ok(())
+#[derive(Clone)]
+pub struct TsvFormatter {
+    itoa_buffer: itoa::Buffer,
 }
 
-pub fn extend_tsv_line_with_itoa_buffer(
-    tsv_line_buffer: &mut Vec<u8>,
-    query_name: &str,
-    is_forward: bool,
-    labeled_query_alignment: &LabeledQueryAlignment,
-    itoa_buffer: &mut itoa::Buffer,
-) {
-    labeled_query_alignment
-        .0
-        .iter()
-        .for_each(|labeled_target_alignment| {
-            labeled_target_alignment
-                .alignments
-                .iter()
-                .for_each(|alignment| {
-                    tsv_line_buffer.extend(query_name.as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer.extend(
-                        itoa_buffer
-                            .format(if is_forward { 1 } else { 0 })
-                            .as_bytes(),
-                    );
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer.extend(labeled_target_alignment.label.as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer.extend(itoa_buffer.format(alignment.penalty).as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer.extend(itoa_buffer.format(alignment.length).as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer
-                        .extend(itoa_buffer.format(alignment.position.query.0).as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer
-                        .extend(itoa_buffer.format(alignment.position.query.1).as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer
-                        .extend(itoa_buffer.format(alignment.position.target.0).as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    tsv_line_buffer
-                        .extend(itoa_buffer.format(alignment.position.target.1).as_bytes());
-                    tsv_line_buffer.push(b'\t');
-                    alignment
-                        .operations
-                        .iter()
-                        .for_each(|alignment_operations| {
-                            tsv_line_buffer
-                                .extend(itoa_buffer.format(alignment_operations.count).as_bytes());
-                            tsv_line_buffer.push(to_cigar_code(&alignment_operations.operation));
-                        });
-                    tsv_line_buffer.push(b'\n');
-                })
-        });
-}
-
-#[inline(always)]
-fn to_cigar_code(alignment_operation: &AlignmentOperation) -> u8 {
-    match alignment_operation {
-        AlignmentOperation::Match => b'=',
-        AlignmentOperation::Subst => b'X',
-        AlignmentOperation::Insertion => b'I',
-        AlignmentOperation::Deletion => b'D',
+impl TsvFormatter {
+    pub fn new() -> Self {
+        Self {
+            itoa_buffer: itoa::Buffer::new(),
+        }
+    }
+    pub fn write_header(&mut self, writer: &mut impl Write) -> Result<()> {
+        writer.write_all(
+            b"query_name\tstrand\ttarget_name\tpenalty\tlength\tquery_start\tquery_end\ttarget_start\ttarget_end\toperations\n"
+        )?;
+        Ok(())
+    }
+    pub fn write_tsv_record(
+        &mut self,
+        writer: &mut impl Write,
+        labeled_query_alignment: &LabeledQueryAlignment,
+        query_name: &str,
+        is_forward: bool,
+    ) -> Result<()> {
+        for labeled_target_alignment in labeled_query_alignment
+        .0.iter() {
+            for alignment in labeled_target_alignment.alignments.iter() {
+                writer.write_all(query_name.as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(
+                    if is_forward { b"+" } else { b"-" }
+                )?;
+                writer.write_all(b"\t")?;
+                writer.write_all(labeled_target_alignment.label.as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(self.itoa_buffer.format(alignment.penalty).as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(self.itoa_buffer.format(alignment.length).as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(self.itoa_buffer.format(alignment.position.query.0).as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(self.itoa_buffer.format(alignment.position.query.1).as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(self.itoa_buffer.format(alignment.position.target.0).as_bytes())?;
+                writer.write_all(b"\t")?;
+                writer.write_all(self.itoa_buffer.format(alignment.position.target.1).as_bytes())?;
+                writer.write_all(b"\t")?;
+                // (6) CIGAR
+                for op in alignment.operations.iter() {
+                    writer.write(
+                        self.itoa_buffer.format(op.count).as_bytes()
+                    )?;
+                    writer.write(
+                        match op.operation {
+                            AlignmentOperation::Match => b"=",
+                            AlignmentOperation::Subst => b"X",
+                            AlignmentOperation::Insertion => b"I",
+                            AlignmentOperation::Deletion => b"D",
+                        }
+                    )?;
+                }
+                writer.write_all(b"\n")?;
+            }
+        }
+        Ok(())
     }
 }

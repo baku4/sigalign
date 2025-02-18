@@ -3,10 +3,7 @@ use std::path::PathBuf;
 use super::{
     arg_parser::check_input_file_extension_is_allowed,
     query_reader::QueryReader,
-    write_results::{
-        extend_sam_line_with_itoa_buffer, extend_tsv_line_with_itoa_buffer, write_sam_header,
-        write_tsv_header,
-    },
+    write_results::ResFormatter,
 };
 use crate::{error, reference::ReferencePathDetector, Result};
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
@@ -184,13 +181,10 @@ impl ManualAlignmentApp {
     ) -> Result<()> {
         // Write header for results
         {
-            let stdout = std::io::stdout().lock();
-            if config.output_is_sam {
-                write_sam_header(stdout, &config.reference_path_detector)?;
-            } else {
-                write_tsv_header(stdout)?;
-            }
-        }
+            let mut res_writer = ResFormatter::new(config.output_is_sam);
+            let mut stdout = std::io::stdout();
+            res_writer.write_header(&mut stdout, &config.reference_path_detector)?;
+        };
 
         let thread_pool: ThreadPool = ThreadPool::new(
             config.num_threads,

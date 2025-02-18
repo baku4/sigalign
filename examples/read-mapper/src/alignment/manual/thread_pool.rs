@@ -1,5 +1,5 @@
 use parking_lot::Mutex;
-use std::io::Write as _;
+use std::io::{BufWriter, Write};
 use std::sync::{mpsc, Arc};
 use std::thread;
 
@@ -7,7 +7,9 @@ use sigalign::algorithms::Algorithm;
 use sigalign::{Aligner, Reference};
 use sigalign_utils::sequence_manipulation::reverse_complementary::reverse_complement_of_dna_sequence_in_place;
 
-use super::{extend_sam_line_with_itoa_buffer, extend_tsv_line_with_itoa_buffer, QueryReader};
+use crate::alignment::write_results::ResFormatter;
+
+use super::QueryReader;
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
@@ -108,11 +110,14 @@ impl Worker {
         let mut query_buffers: Vec<(Vec<u8>, String)> =
             vec![(Vec::new(), String::new()); batch_size];
         // Bytes to write as results
-        let mut bytes_results_buffer = Vec::new();
+        let results_buffer = Vec::new();
+        let mut buf_writer = BufWriter::new(results_buffer);
 
         let thread = thread::spawn(move || {
+            let mut res_formatter = ResFormatter::new(
+                output_is_sam,
+            );
             let stdout = std::io::stdout();
-            let mut itoa_buffer = itoa::Buffer::new();
 
             loop {
                 let Job {
@@ -146,28 +151,19 @@ impl Worker {
                     // Align
                     let last_buffer_index =
                         optional_last_buffer_index.unwrap_or(query_buffers.len());
+                    // Forward
                     for (query, label) in query_buffers[..last_buffer_index].iter() {
                         let result = aligner.align(query, &reference);
                         let labeled_result = reference.label_query_alignment(result);
-                        if output_is_sam {
-                            extend_sam_line_with_itoa_buffer(
-                                &mut bytes_results_buffer,
-                                &label,
-                                true,
-                                query.len() as u32,
-                                &labeled_result,
-                                &mut itoa_buffer,
-                            )
-                        } else {
-                            extend_tsv_line_with_itoa_buffer(
-                                &mut bytes_results_buffer,
-                                &label,
-                                true,
-                                &labeled_result,
-                                &mut itoa_buffer,
-                            )
-                        };
+                        res_formatter.write_record(
+                            &mut buf_writer,
+                            &labeled_result,
+                            label,
+                            query.len() as u32,
+                            true,
+                        ).unwrap();
                     }
+                    // Reverse
                     if with_reverse_complementary {
                         query_buffers[..last_buffer_index]
                             .iter_mut()
@@ -176,32 +172,23 @@ impl Worker {
 
                                 let result = aligner.align(query, &reference);
                                 let labeled_result = reference.label_query_alignment(result);
-                                if output_is_sam {
-                                    extend_sam_line_with_itoa_buffer(
-                                        &mut bytes_results_buffer,
-                                        &label,
-                                        false,
-                                        query.len() as u32,
-                                        &labeled_result,
-                                        &mut itoa_buffer,
-                                    )
-                                } else {
-                                    extend_tsv_line_with_itoa_buffer(
-                                        &mut bytes_results_buffer,
-                                        &label,
-                                        false,
-                                        &labeled_result,
-                                        &mut itoa_buffer,
-                                    )
-                                };
+                                res_formatter.write_record(&mut buf_writer,
+                                    &labeled_result,
+                                    label,
+                                    query.len() as u32,
+                                    false,
+                                ).unwrap();
                             });
                     }
 
                     // Write results
                     {
+                        buf_writer.flush().unwrap();
+                        let inner = buf_writer.get_mut();
+
                         let mut lock = stdout.lock();
-                        lock.write_all(&bytes_results_buffer).unwrap();
-                        bytes_results_buffer.clear();
+                        lock.write_all(&inner).unwrap();
+                        inner.clear();
                     }
 
                     // If no more records: break
