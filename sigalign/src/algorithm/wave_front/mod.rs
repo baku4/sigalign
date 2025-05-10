@@ -11,7 +11,6 @@ pub use backtrace::BackTraceResult;
 // Wave Front
 #[derive(Debug, Clone)]
 pub struct WaveFront {
-    pub max_penalty: usize,
     pub end_point: WaveEndPoint,
     pub wave_front_scores: Vec<WaveFrontScore>,
 }
@@ -67,7 +66,6 @@ impl WaveFront {
         }
 
         Self {
-            max_penalty,
             end_point: WaveEndPoint { penalty: 0, k: None },
             wave_front_scores,
         }
