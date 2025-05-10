@@ -90,7 +90,7 @@ fn test_current_is_equal_to_stable_or_dpm<A, F1, F2>(
     init_logger();
 
     let settings = {
-        TestSetting::from_env().unwrap().val_with_032_and_dpm
+        TestSetting::from_env().unwrap().val_with_033_and_dpm
     };
     info!("Test Settings: {:?}", settings);
 

@@ -8,9 +8,9 @@ sigalign-core = { path = "../sigalign-core", features = ["short_key"] }
 sigalign-utils = { path = "../sigalign-utils" }
 sigalign-impl = { path = "../sigalign-impl" }
 sigalign = { path = "../sigalign", features = ["short_key"] }
-sigalign_stable = { package = "sigalign", version = "0.3.2", features = ["short_key"] }
+sigalign_stable = { package = "sigalign", version = "0.3.3", features = ["short_key"] }
 
-lt-fm-index = "0.7.0-alpha.3"
+lt-fm-index = "0.7.0"
 
 anyhow = "1.0.65"
 log = "0.4.17"

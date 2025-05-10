@@ -146,6 +146,6 @@ impl<B: Block<u32>> Serialize for StaticLfi<B> {
 //  - EstimateSize
 impl<B: Block<u32>> EstimateSize for StaticLfi<B> {
     fn serialized_size(&self) -> usize {
-        self.inner.to_be_saved_size()
+        self.inner.encoded_len()
     }
 }

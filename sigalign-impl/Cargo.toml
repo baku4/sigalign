@@ -16,7 +16,7 @@ byteorder = "1.5.0"
 capwriter = "0.2.0"
 
 [dependencies.lt-fm-index]
-version = "0.7.0-alpha.2"
+version = "0.7.0"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.lt-fm-index]
-version = "0.7.0-alpha.2"
+version = "0.7.0"
 features = ["fastbwt"]

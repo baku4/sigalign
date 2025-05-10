@@ -14,8 +14,8 @@ fn config_dir_path() -> Result<PathBuf> {
 pub struct TestSetting {
     // satisfy_cutoff
     pub satisfy_cutoff: SatisfyCutoff,
-    // validation_with_032_and_dpm
-    pub val_with_032_and_dpm: ValidationWith032AndDpm,
+    // validation_with_033_and_dpm
+    pub val_with_033_and_dpm: ValidationWith033AndDpm,
 }
 impl TestSetting {
     pub fn from_env() -> Result<Self> {
@@ -80,7 +80,7 @@ pub struct SatisfyCutoff {
     pub max_subst_percent: u32,
 }
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ValidationWith032AndDpm {
+pub struct ValidationWith033AndDpm {
     pub seed_start: u64,
     pub seed_count: u64,
     pub max_subst_percent: u32,
