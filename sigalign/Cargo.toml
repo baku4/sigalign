@@ -1,6 +1,6 @@
 [package]
 name = "sigalign"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["baku4 <bahkhun@gamil.com>"]
 edition = "2021"
 description = "A Similarity-Guided Alignment Algorithm"
