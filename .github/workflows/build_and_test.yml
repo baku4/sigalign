@@ -9,28 +9,30 @@ env:
 
 jobs:
   build-on-majors:
-    name: "Build on major platforms"
+    name: "Build sigalign on major platforms"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Update Rust toolchain
-      run: rustup update
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      - uses: actions/checkout@v4
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Build sigalign
+        run: cargo build -p sigalign --verbose
+      - name: Run tests crate
+        run: cargo test -p sigalign-tests --verbose
 
   wasm-build:
-    name: "Build as WASM"
+    name: "Build sigalign as WASM"
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Update Rust
-      run: rustup update
-    - name: Add build target
-      run: rustup target add wasm32-unknown-unknown
-    - name: Build
-      run: cargo build --target wasm32-unknown-unknown --verbose
+      - uses: actions/checkout@v4
+      - name: Update Rust
+        run: rustup update
+      - name: Add build target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build sigalign (wasm32)
+        run: cargo build -p sigalign --target wasm32-unknown-unknown --verbose
