@@ -1,5 +1,4 @@
 use crate::core::regulators::Penalty;
-use bytemuck::{Pod, Zeroable};
 
 mod match_counter;
 use match_counter::{MatchCounter, ForwardMatchCounter, ReverseMatchCounter};
@@ -115,7 +114,7 @@ impl WaveFrontScore {
 
 // Components
 #[repr(C)]
-#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct Components {
     pub m: Component,
     pub d: Component,
@@ -129,9 +128,6 @@ pub struct Component {
     pub insertion_count: u16,
     pub bt: BackTraceMarker,
 }
-// FIXME: Check if Pod is needed
-unsafe impl Pod for Component {}
-unsafe impl Zeroable for Component {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BackTraceMarker {

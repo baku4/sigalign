@@ -280,20 +280,3 @@ impl WaveFrontScore {
         None
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_if_the_default_value_of_component_is_filled_with_zero() {
-        let components = Components::default();
-        unsafe {
-            let my_struct_bytes: [u8; std::mem::size_of::<Components>()] = std::mem::transmute(components);
-            let all_zero = my_struct_bytes.iter().all(|&byte| byte == 0);
-    
-            assert!(all_zero, "Not all bytes in the struct are zero");
-        }
-
-        println!("All bytes in the struct are zero")
-    }
-}
