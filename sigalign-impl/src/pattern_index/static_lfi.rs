@@ -99,7 +99,7 @@ fn calculate_lookup_table_kmer_size(
     for v in 1..=max_cap {
         let estimated_byte_size_of_lt = (chr_count+1).pow(v);
         if estimated_byte_size_of_lt >= maximum_bytes_size {
-            return v - 1
+            return u32::max(1, v - 1)
         }
     }
     max_cap

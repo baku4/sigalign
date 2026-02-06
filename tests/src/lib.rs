@@ -17,5 +17,6 @@ pub mod result_validation_with_dynamic_programming_matrix;
 // Reference acts expectedly
 mod reference_gives_correct_data;
 mod reference_save_and_load;
+mod reference_with_short_sequences;
 // Test utilities functions
 mod print_results_as_sam;
