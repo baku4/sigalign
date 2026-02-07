@@ -5,7 +5,9 @@
 		A <b>Si</b>milarity-<b>G</b>uided <b>Align</b>ment Algorithm
 	</p>
     <p>
-        <a href="https://github.com/baku4/sigalign/actions/workflows/build_and_test.yml/" target="_blank"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/baku4/sigalign/build_and_test.yml?style=flat-square&label=build %26 test"></a>
+        <a href="https://github.com/baku4/sigalign/actions/workflows/build_and_test.yml" target="_blank">
+            <img alt="CI" src="https://img.shields.io/github/actions/workflow/status/baku4/sigalign/build_and_test.yml?style=flat-square&amp;label=build%20%26%20test">
+        </a>
         <a href="https://github.com/baku4/sigalign/" target="_blank"><img alt="License" src="https://img.shields.io/github/license/baku4/sigalign?style=flat-square"></a>
         <br>
 		<a href="https://crates.io/crates/sigalign/" target="_blank"><img alt="Crates.io" src="https://img.shields.io/crates/v/sigalign.svg?style=flat-square&logo=rust"></a>
